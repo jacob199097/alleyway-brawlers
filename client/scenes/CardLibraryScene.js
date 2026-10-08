@@ -274,15 +274,25 @@ export class CardLibraryScene extends Phaser.Scene {
     }
 
     _handleGridTap(wx, wy) {
+        const hit = this.cardAt(wx, wy);
+        if (hit) showCardZoom(this, hit.cardData);
+    }
+
+    /** The card under a world point (also used by desktop right-click zoom / hover). */
+    cardAt(wx, wy) {
+        if (wy < GRID_Y || wy > GRID_Y + GRID_H) return null;   // grid is clipped to this band
         // Convert world Y to container-local Y
         const ly = wy - this._gridContainer.y;
         for (const hit of this._cardHits) {
             if (Math.abs(wx - hit.lx) <= CARD_W / 2 &&
                 Math.abs(ly - hit.ly) <= CARD_H / 2) {
-                showCardZoom(this, hit.cardData);
-                return;
+                return {
+                    cardData: hit.cardData,
+                    bounds: new Phaser.Geom.Rectangle(hit.lx - CARD_W / 2, this._gridContainer.y + hit.ly - CARD_H / 2, CARD_W, CARD_H),
+                };
             }
         }
+        return null;
     }
 
     // ── Loading spinner ───────────────────────────────────────────────────────

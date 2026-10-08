@@ -30,6 +30,7 @@ import { isDesktop, bindRegistry } from './utils/Platform.js';
 import { SettingsManager } from './utils/SettingsManager.js';
 import { W, H } from './utils/Layout.js';
 import { LetterboxScene } from './scenes/LetterboxScene.js';
+import { installDesktopInput } from './utils/DesktopInput.js';
 
 // Desktop shell: drop the mobile-only page hints (home-screen app, orientation lock, touch-action)
 if (isDesktop) {
@@ -103,6 +104,7 @@ const config = {
 
 export const game = new Phaser.Game(config);
 bindRegistry(game.registry);
+if (isDesktop) game.events.once('ready', () => installDesktopInput(game));
 
 // Expose for hot-reload / debug
 if (typeof window !== 'undefined') window.__TWT__ = { game, settings: SettingsManager };

@@ -157,11 +157,11 @@ function createWindow() {
         if (!url.startsWith(home)) e.preventDefault();
     });
 
-    if (IS_DEV) {
-        w.webContents.on('before-input-event', (e, input) => {
-            if (input.type === 'keyDown' && input.key === 'F12') w.webContents.toggleDevTools();
-        });
-    }
+    w.webContents.on('before-input-event', (e, input) => {
+        if (input.type !== 'keyDown' || input.isAutoRepeat) return;
+        if (input.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+        else if (IS_DEV && input.key === 'F12') w.webContents.toggleDevTools();
+    });
 
     w.loadURL(IS_DEV ? DEV_URL : APP_URL);
     w.on('closed', () => { if (win === w) win = null; });
@@ -201,6 +201,19 @@ async function applyDisplay(s) {
     win.setResizable(s.displayMode === 'fullscreen');
     win.setContentBounds(windowedContentBounds(d, [s.windowWidth, s.windowHeight]));
     if (s.displayMode === 'fullscreen') win.setFullScreen(true);
+}
+
+/** F11: fullscreen ↔ windowed (borderless goes to fullscreen). Saved, no confirm dialog. */
+async function toggleFullscreen() {
+    if (applying || !win) return;
+    applying = true;
+    try {
+        const s = sanitizeDisplay(settings.get());
+        await applyDisplay({ ...s, displayMode: s.displayMode === 'fullscreen' ? 'windowed' : 'fullscreen' });
+        settings.flush();
+    } finally {
+        applying = false;
+    }
 }
 
 async function confirmKeep() {

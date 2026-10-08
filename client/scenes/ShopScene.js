@@ -422,6 +422,7 @@ export class ShopScene extends Phaser.Scene {
                         // Tap individual card to zoom
                         if (front.setInteractive) {
                             front.setInteractive();
+                            front.cardZoomData = { ...card, art_url: card.art_url ?? card.cardId ?? card.id };
                             front.on('pointerup', () => {
                                 showCardZoom(this, {
                                     ...card,

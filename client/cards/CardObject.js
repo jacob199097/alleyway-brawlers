@@ -36,6 +36,8 @@ export class CardObject extends Phaser.Events.EventEmitter {
 
         this.container = scene.add.container(x, y);
         this._build();
+        // Lets desktop right-click zoom / hover find this card (utils/DesktopInput.js)
+        this._frame.cardObject = this;
 
         if (mode === 'hand') {
             this._attachTapListener();

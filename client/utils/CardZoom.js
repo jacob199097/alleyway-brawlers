@@ -4,10 +4,23 @@
  * attachHoldZoom(scene, obj, cardData, holdMs)  → wires hold-to-zoom on any interactive object
  */
 import { sceneView, BASE_H } from './Layout.js';
+import { isDesktop } from './Platform.js';
 
 const ZOOM_W = 240;
 const ZOOM_H = 336;   // 5:7 portrait — bigger art, narrower stats panel
 const DEPTH  = 200;
+
+// Dismiss function of the zoom currently on screen (desktop input closes it with Esc / right-click)
+let openDismiss = null;
+
+/** Close the card zoom if one is open. Returns true if something was closed. */
+export function closeCardZoom() {
+    if (!openDismiss) return false;
+    openDismiss();
+    return true;
+}
+
+export const isCardZoomOpen = () => !!openDismiss;
 
 const RARITY_LABEL = { 1: 'Common', 2: 'Rare', 3: 'Epic', 4: 'Legendary', 5: 'Mythic' };
 const RARITY_COLOR = { 1: '#9aa0a6', 2: '#2196f3', 3: '#f4d35e', 4: '#9c27b0', 5: '#ff9800' };
@@ -67,9 +80,20 @@ export function showCardZoom(scene, rawCardData) {
     const panelH = BASE_H - 28;
     const cardX  = W / 2;   // card art centered on screen
 
+    closeCardZoom();   // only one zoom at a time
     const objs    = [];
     const reg     = o => { objs.push(o); return o; };
-    const dismiss = () => objs.forEach(o => o?.destroy());
+    // HTML inputs (e.g. deck search) sit above the canvas — hide them while the zoom is up
+    const domEls = scene.children.list.filter(o => o.type === 'DOMElement' && o.visible);
+    domEls.forEach(o => o.setVisible(false));
+    const dismiss = () => {
+        objs.forEach(o => o?.destroy());
+        domEls.forEach(o => o.active && o.setVisible(true));
+        if (openDismiss === dismiss) openDismiss = null;
+        scene.events.off('shutdown', dismiss);
+    };
+    openDismiss = dismiss;
+    scene.events.once('shutdown', dismiss);
 
     // Backdrop — blocks input beneath, dismiss on tap
     reg(scene.add.rectangle(W / 2, cy, W, view.h, 0x000000)
@@ -199,7 +223,7 @@ export function showCardZoom(scene, rawCardData) {
     }
 
     // Dismiss hint
-    reg(scene.add.text(cardX, cy + ZOOM_H / 2 + 12, 'tap to close', {
+    reg(scene.add.text(cardX, cy + ZOOM_H / 2 + 12, isDesktop ? 'click, right-click or Esc to close' : 'tap to close', {
         fontSize: '8px', color: '#888888',
     }).setOrigin(0.5, 0.5).setDepth(DEPTH + 4));
 

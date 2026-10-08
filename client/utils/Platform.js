@@ -35,3 +35,6 @@ export function apiFetch(path, opts = {}) {
     if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
     return fetch(API_BASE + path, { ...opts, headers });
 }
+
+/** Verb for UI hints: mouse on desktop, touch on web/mobile ("Click a card…" / "Tap a card…"). */
+export const TAP_VERB = isDesktop ? 'Click' : 'Tap';

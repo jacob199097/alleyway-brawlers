@@ -1,5 +1,5 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
-import { apiFetch } from '../utils/Platform.js';
+import { apiFetch, TAP_VERB } from '../utils/Platform.js';
 import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
@@ -46,7 +46,7 @@ export class ProfileScene extends Phaser.Scene {
         gfx.lineStyle(2, 0x4cc9f0, 1);
         gfx.strokeCircle(iconX, iconY, iconR + 2);
 
-        this.add.text(lx, 118, 'TAP ICON TO CHANGE', {
+        this.add.text(lx, 118, `${TAP_VERB.toUpperCase()} ICON TO CHANGE`, {
             fontSize: '7px', color: '#555577',
         }).setOrigin(0.5);
 

@@ -25,7 +25,7 @@ import { SettingsManager } from '../utils/SettingsManager.js';
 import { Graphics } from '../utils/Graphics.js';
 import { showCardZoom }   from '../utils/CardZoom.js';
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
-import { apiFetch } from '../utils/Platform.js';
+import { apiFetch, TAP_VERB } from '../utils/Platform.js';
 import { VIEW_TOP, VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
@@ -585,6 +585,7 @@ export class DuelScene extends Phaser.Scene {
 
             // Tap to zoom the leader card
             frame.setInteractive({ useHandCursor: true });
+            frame.cardZoomData = leader;   // desktop right-click zoom / hover
             frame.on('pointerdown', () => showCardZoom(this, leader));
         }
 
@@ -655,7 +656,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.82).setDepth(80));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.82).setDepth(80).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 420, 260, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(81));
         reg(this.add.text(W / 2, H / 2 - 112, title, {
@@ -688,6 +689,7 @@ export class DuelScene extends Phaser.Scene {
 
             if (allowInspect) {
                 bg.setInteractive({ useHandCursor: true });
+                bg.cardZoomData = c;
                 bg.on('pointerup', () => { cleanup(); showCardZoom(this, c); });
             }
         });
@@ -1053,6 +1055,26 @@ export class DuelScene extends Phaser.Scene {
         if (this.state.activePlayer !== 'player') return;
         // Jumping to 'end' immediately wraps up the turn via _endTurn
         this._startPhase('end');
+    }
+
+    /** Desktop: hold Tab to see every zone's card count for both sides (utils/DesktopInput.js). */
+    _showZoneSummary(on) {
+        this._zoneSummary?.destroy();
+        this._zoneSummary = null;
+        if (!on || !this.state) return;
+
+        const line = (who, side) => `${who}   Deck ${side.deck.length}  ·  Hand ${side.hand.length}  ·  ` +
+            `Hideout ${side.hideout.length}  ·  Gutter ${side.gutter.length}`;
+        const opp = this.add.text(0, -11, line('OPPONENT', this.state.opponent), {
+            fontSize: '10px', fontFamily: 'Arial Black', color: '#ffa7b0',
+        }).setOrigin(0.5);
+        const you = this.add.text(0, 11, line('YOU', this.state.player), {
+            fontSize: '10px', fontFamily: 'Arial Black', color: '#9ddcff',
+        }).setOrigin(0.5);
+        const w = Math.max(opp.width, you.width) + 28;
+        const bg = this.add.rectangle(0, 0, w, 50, 0x05060f, 0.92).setStrokeStyle(1, 0xf4d35e, 0.9);
+        this._zoneSummary = this.add.container(W / 2, (ROW_Y.opp_front + ROW_Y.pl_front) / 2, [bg, opp, you])
+            .setDepth(90);
     }
 
     // Show/hide action buttons based on whose turn / phase it is
@@ -1598,7 +1620,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7).setDepth(60));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7).setDepth(60).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 260, 120, 0x0d0d2a)
             .setStrokeStyle(2, 0x4cc9f0).setDepth(61));
         reg(this.add.text(W / 2, H / 2 - 40, `DEPLOY ${cardData.name?.toUpperCase() || ''}`, {
@@ -3912,7 +3934,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (obj) => { els.push(obj); return obj; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.72).setDepth(60));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.72).setDepth(60).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 270, 135, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(61));
 
@@ -3958,13 +3980,13 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const tossed = new Set();
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.78).setDepth(70));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.78).setDepth(70).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 320, 200, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(71));
         reg(this.add.text(W / 2, H / 2 - 82, 'MULLIGAN', {
             fontSize: '16px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5).setDepth(72));
-        reg(this.add.text(W / 2, H / 2 - 62, 'Tap cards to toss — redraw up to 4', {
+        reg(this.add.text(W / 2, H / 2 - 62, `${TAP_VERB} cards to toss — redraw up to 4`, {
             fontSize: '8px', color: '#aaaacc',
         }).setOrigin(0.5).setDepth(72));
 
@@ -3995,6 +4017,7 @@ export class DuelScene extends Phaser.Scene {
             // Toss-overlay tint (semi-transparent red rectangle)
             const tossOverlay = reg(this.add.rectangle(x, y, cw, ch, 0xe63946, 0)
                 .setDepth(74).setInteractive({ useHandCursor: true }));
+            tossOverlay.cardZoomData = card;   // right-click inspects while choosing
 
             const setTossed = (on) => {
                 bg.setStrokeStyle(on ? 2 : 1, on ? 0xe63946 : 0x4cc9f0);
@@ -4442,8 +4465,8 @@ export class DuelScene extends Phaser.Scene {
         objs.push(shield);
 
         const msg = excess === 1
-            ? 'HAND LIMIT: Tap a card to discard (1 remaining)'
-            : `HAND LIMIT: Tap ${excess} cards to discard (${excess} remaining)`;
+            ? `HAND LIMIT: ${TAP_VERB} a card to discard (1 remaining)`
+            : `HAND LIMIT: ${TAP_VERB} ${excess} cards to discard (${excess} remaining)`;
         const banner = this.add.text(W / 2, H / 2 - 44, msg, {
             fontSize: '11px', fontFamily: 'Arial Black', color: '#f4d35e',
             stroke: '#000000', strokeThickness: 4,
@@ -4505,7 +4528,7 @@ export class DuelScene extends Phaser.Scene {
         objs.push(shield);
 
         // Persistent banner
-        const banner = this.add.text(W / 2, H / 2 - 44, 'CORNER DEAL: TAP A CARD TO DISCARD', {
+        const banner = this.add.text(W / 2, H / 2 - 44, `CORNER DEAL: ${TAP_VERB.toUpperCase()} A CARD TO DISCARD`, {
             fontSize: '11px', fontFamily: 'Arial Black', color: '#ff4444',
             stroke: '#000000', strokeThickness: 4,
             backgroundColor: '#000000bb',

@@ -1,5 +1,6 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch } from '../utils/Platform.js';
+import { openSettings } from './SettingsScene.js';
 import { W, H, BASE_H, EXTRA_H, midY } from '../utils/Layout.js';
 
 const BAR_H = Math.round(W * 260 / 2400); // 91px — matches main_menu_bar.png aspect ratio
@@ -112,10 +113,7 @@ export class MainMenuScene extends Phaser.Scene {
 
         // ── Invisible click zones over bar's native icons ──────────────────
         // Settings gear (leftmost, before mail)
-        this._makeBarZone(500, BAR_Y, 30, () => {
-            this.scene.pause();
-            this.scene.launch('SettingsScene');
-        });
+        this._makeBarZone(500, BAR_Y, 30, () => openSettings(this));
         // Mail icon
         this._makeBarZone(545, BAR_Y, 28, () => this.scene.start('MailboxScene'));
         // Chat / social icon

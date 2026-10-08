@@ -157,6 +157,7 @@ export class PostMatchScene extends Phaser.Scene {
             const img = this.add.image(cardX, cardY, mvp.artKey)
                 .setDisplaySize(CW, CH).setDepth(12)
                 .setInteractive({ useHandCursor: true });
+            img.cardZoomData = { ...mvp, id: mvp.artKey, art_url: mvp.artKey };
             img.on('pointerup', () => showCardZoom(this, { ...mvp, id: mvp.artKey, art_url: mvp.artKey }));
         } else {
             this.add.rectangle(cardX, cardY, CW, CH, 0x1a1a2e)

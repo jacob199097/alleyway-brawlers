@@ -454,20 +454,30 @@ export class DeckBuilderScene extends Phaser.Scene {
             for (const h of this._collHits) {
                 if (Math.abs(h.lx - wx)       <= h.w / 2 &&
                     Math.abs(h.ly - ly)        <= h.h / 2) {
-                    return { source: 'collection', item: h.item };
+                    return { source: 'collection', item: h.item,
+                             bounds: new Phaser.Geom.Rectangle(h.lx - h.w / 2, this._collCont.y + h.ly - h.h / 2, h.w, h.h) };
                 }
             }
         } else {
+            if (wy < DECK_TOP) return null;   // rows scrolled up under the leader pane are hidden
             const ly = wy  - this._deckCont.y;
             const lx = wx  - DECK_X;
             for (const h of this._deckHits) {
                 if (Math.abs(h.lx - lx) <= h.w / 2 &&
                     Math.abs(h.ly - ly) <= h.h / 2) {
-                    return { source: 'deck', item: h.item };
+                    return { source: 'deck', item: h.item,
+                             bounds: new Phaser.Geom.Rectangle(DECK_X + h.lx - h.w / 2, this._deckCont.y + h.ly - h.h / 2, h.w, h.h) };
                 }
             }
         }
         return null;
+    }
+
+    /** Desktop right-click zoom / hover (utils/DesktopInput.js): the card under a world point. */
+    cardAt(wx, wy) {
+        if (this._exitOpen || this._leaderPickerOpen) return null;
+        const hit = this._hitCard(wx, wy);
+        return hit && { cardData: hit.item, bounds: hit.bounds };
     }
 
     _handleTap(hit) {

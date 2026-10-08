@@ -13,6 +13,14 @@ const CLR_DANGER   = 0xe63946;
 // Kept across scene.restart() (used to redraw after every change)
 let currentTab   = 'audio';
 let displayDraft = null;   // Display tab choices not yet applied
+let returnTo     = 'MainMenuScene';   // scene paused underneath, resumed on close
+
+/** Open settings over `fromScene` (paused until settings close). */
+export function openSettings(fromScene) {
+    returnTo = fromScene.scene.key;
+    fromScene.scene.pause();
+    fromScene.scene.launch('SettingsScene');
+}
 
 export class SettingsScene extends Phaser.Scene {
     constructor() {
@@ -38,8 +46,10 @@ export class SettingsScene extends Phaser.Scene {
         this.add.rectangle(px, py - panelH / 2 + 44, panelW - 40, 1, CLR_ACCENT)
             .setAlpha(0.4).setDepth(2);
 
-        this._closeBtn(px - 110, py + panelH / 2 - 28);
-        this._logoutBtn(px + 110, py + panelH / 2 - 28);
+        // No log-out mid-match (opened from a duel with Esc) — just close
+        const fromMenu = returnTo === 'MainMenuScene';
+        this._closeBtn(fromMenu ? px - 110 : px, py + panelH / 2 - 28);
+        if (fromMenu) this._logoutBtn(px + 110, py + panelH / 2 - 28);
 
         if (isDesktop) {
             this._tabs(px, py - panelH / 2 + 64);
@@ -338,6 +348,13 @@ export class SettingsScene extends Phaser.Scene {
         });
     }
 
+    /** Close and resume the scene settings were opened from (also Esc on desktop). */
+    close() {
+        displayDraft = null;
+        this.scene.stop();
+        this.scene.resume(returnTo);
+    }
+
     _closeBtn(x, y) {
         const btn = this.add.rectangle(x, y, 180, 36, CLR_DANGER)
             .setStrokeStyle(1, 0xffffff).setDepth(2).setInteractive({ useHandCursor: true });
@@ -345,12 +362,7 @@ export class SettingsScene extends Phaser.Scene {
             fontSize: '13px', fontFamily: 'Arial Black', color: '#ffffff',
         }).setOrigin(0.5).setDepth(3);
         btn.on('pointerdown', () => btn.setAlpha(0.7));
-        btn.on('pointerup', () => {
-            btn.setAlpha(1);
-            displayDraft = null;
-            this.scene.stop();
-            this.scene.resume('MainMenuScene');
-        });
+        btn.on('pointerup', () => { btn.setAlpha(1); this.close(); });
         btn.on('pointerout', () => btn.setAlpha(1));
     }
 
