@@ -1,10 +1,9 @@
 import { RARITY_COLOR }            from '../cards/RarityConfig.js';
 import { showCardZoom }            from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
+import { H } from '../utils/Layout.js';
 
 const W = 844;
-const H = 390;
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 const DIVIDER_X  = 418;
@@ -13,11 +12,12 @@ const CONTENT_Y  = HEADER_H;
 const CONTENT_H  = H - HEADER_H;
 
 // Collection grid (left panel)
-const COLL_COLS  = 4;
 const CARD_W     = 70;
 const CARD_H     = 92;
 const CARD_GAP   = 6;
 const CARD_PAD   = 8;
+// As many columns as fit the left panel (5) — was a fixed 4 that left the right of the panel empty
+const COLL_COLS  = Math.floor((DIVIDER_X - CARD_PAD * 2 + CARD_GAP) / (CARD_W + CARD_GAP));
 
 // Deck list (right panel)
 const DECK_X     = DIVIDER_X + 4;
@@ -36,7 +36,7 @@ const HOLD_MS    = 450; // ms for hold-to-zoom
 export class DeckBuilderScene extends Phaser.Scene {
     constructor() {
         super('DeckBuilderScene');
-        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+        this.fullLayout = true;   // laid out against Layout.H — taller grid and deck list on desktop
     }
 
     create() {
@@ -62,7 +62,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._collHits       = [];    // [{lx,ly,w,h,item}] local-space hit areas
         this._deckHits       = [];
 
-        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.65);
+        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.65);
         this._buildHeader();
         this._buildPanelBg();
         this._buildContainers();
@@ -193,7 +193,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._collCont.setMask(cg.createGeometryMask());
 
         const dg = this.make.graphics({ add: false });
-        dg.fillRect(DECK_X, DECK_TOP, DECK_PNL_W, VIEW_BOTTOM - DECK_TOP);
+        dg.fillRect(DECK_X, DECK_TOP, DECK_PNL_W, H - DECK_TOP);
         this._deckCont.setMask(dg.createGeometryMask());
     }
 
@@ -557,12 +557,11 @@ export class DeckBuilderScene extends Phaser.Scene {
         if (this._exitOpen) return;
         this._exitOpen = true;
 
-        const W = 844, H = 390;
         const objs = [];
         const reg  = o => { objs.push(o); return o; };
         const close = () => { objs.forEach(o => o?.destroy()); this._exitOpen = false; };
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7)
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7)
             .setDepth(200).setInteractive());
 
         const px = W / 2, py = H / 2;
@@ -726,7 +725,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         const reg  = o => { objs.push(o); return o; };
         const close = () => { objs.forEach(o => o?.destroy?.()); this._leaderPickerOpen = false; };
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.75)
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75)
             .setDepth(200).setInteractive())
             .on('pointerdown', close);
 

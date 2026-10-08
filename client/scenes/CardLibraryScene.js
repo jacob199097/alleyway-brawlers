@@ -1,16 +1,15 @@
 import { RARITY_COLOR, RARITY_LABEL } from '../cards/RarityConfig.js';
 import { showCardZoom }               from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { H } from '../utils/Layout.js';
 
 const W = 844;
-const H = 390;
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const HEADER_H    = 38;   // title row
 const FILTER_H    = 30;   // filter tab row
 const GRID_Y      = HEADER_H + FILTER_H;   // 68
-const GRID_H      = H - GRID_Y;            // 322
+const GRID_H      = H - GRID_Y;            // 322 at 390 tall, 407 on desktop
 const GRID_X      = 8;
 const GRID_W      = W - GRID_X * 2;
 
@@ -33,7 +32,7 @@ const RARITY_FILTERS = [
 export class CardLibraryScene extends Phaser.Scene {
     constructor() {
         super('CardLibraryScene');
-        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+        this.fullLayout = true;   // laid out against Layout.H — taller scrolling grid on desktop
     }
 
     // ── create ────────────────────────────────────────────────────────────────
@@ -52,7 +51,7 @@ export class CardLibraryScene extends Phaser.Scene {
         this._scrollBase    = 0;
 
         // Background
-        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x04060c);
+        this.add.rectangle(W / 2, H / 2, W, H, 0x04060c);
 
         this._buildHeader();
         this._buildFilterBar();

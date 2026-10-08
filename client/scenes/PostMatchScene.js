@@ -88,12 +88,6 @@ export class PostMatchScene extends Phaser.Scene {
         const valFont  = { fontSize: '11px', fontFamily: 'Arial Black', color: '#ffffff' };
 
         let ry = PY + 14;
-        const row = (label, value, color = '#ffffff') => {
-            this.add.text(cx, ry, label, { ...statFont }).setOrigin(0.5, 0.5).setDepth(11);
-            ry += 12;
-            this.add.text(cx, ry, String(value), { ...valFont, color }).setOrigin(0.5, 0.5).setDepth(11);
-            ry += 18;
-        };
 
         const reasonStr = isWin
             ? "Opponent's Morale reduced to 0"
@@ -106,9 +100,17 @@ export class PostMatchScene extends Phaser.Scene {
 
         this.add.rectangle(cx, ry, PW - 16, 1, 0x4cc9f0, 0.3).setDepth(11); ry += 8;
 
-        row('YOUR MORALE', d.playerMorale ?? '—', isWin ? '#4cc9f0' : '#e63946');
-        row('OPP MORALE',  d.opponentMorale ?? '—', isWin ? '#e63946' : '#4cc9f0');
-        row('TURNS PLAYED', d.turns ?? '—');
+        // Stats side by side (stacked they overflowed the panel and pushed XP/rewards out)
+        [
+            ['YOUR MORALE', d.playerMorale ?? '—',   isWin ? '#4cc9f0' : '#e63946'],
+            ['OPP MORALE',  d.opponentMorale ?? '—', isWin ? '#e63946' : '#4cc9f0'],
+            ['TURNS',       d.turns ?? '—',          '#ffffff'],
+        ].forEach(([label, value, color], i) => {
+            const colX = PX + PW * (i + 0.5) / 3;
+            this.add.text(colX, ry, label, { ...statFont }).setOrigin(0.5, 0.5).setDepth(11);
+            this.add.text(colX, ry + 13, String(value), { ...valFont, color }).setOrigin(0.5, 0.5).setDepth(11);
+        });
+        ry += 30;
 
         this.add.rectangle(cx, ry, PW - 16, 1, 0x4cc9f0, 0.3).setDepth(11); ry += 8;
 

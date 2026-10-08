@@ -249,38 +249,44 @@ export class MainMenuScene extends Phaser.Scene {
             .sort((a, b) => (b.progress / b.target) - (a.progress / a.target))
             .slice(0, 3);
 
-        let ry = TOP + 48;
+        // Rows are ~16px tall (label line + bar); 22px apart keeps three per frame without overlap
+        const ROW_STEP = 22;
+
+        let ry = TOP + 50;
         for (const q of mainVisible) {
             this._renderQuestRow(CX, ry, ROW_W, q, false);
-            ry += 25;
+            ry += ROW_STEP;
         }
 
         // ── Daily quests section (bottom half) ──────────────────────────────
-        ry = MID + -20;
+        // Starts clear of the daily frame's top edge
+        ry = MID - 9;
         for (const q of (daily || [])) {
             this._renderQuestRow(CX, ry, ROW_W, q, true);
-            ry += 25;
+            ry += ROW_STEP;
         }
     }
 
+    /** One quest: name (left) and progress or CLAIM (right) on one line, progress bar below. */
     _renderQuestRow(cx, y, rowW, quest, isDaily) {
         const done    = quest.progress >= quest.target;
         const claimed = quest.claimed;
         const pct     = Math.min(1, quest.progress / quest.target);
         const barW    = rowW * 0.68;
         const barH    = 4;
+        const bx      = cx - barW / 2;
+        const rightX  = bx + barW;
 
         const nameCol = claimed ? '#666666' : done ? '#4caf50' : '#ffffff';
 
-        this.add.text(cx, y, quest.label, {
+        this.add.text(bx, y, quest.label, {
             fontSize: '7px', fontFamily: 'Arial Black', color: nameCol,
-        }).setOrigin(0.5, 0).setDepth(2);
+        }).setOrigin(0, 0).setDepth(2);
 
         // Progress bar
-        const bx = cx - barW / 2;
-        this.add.rectangle(cx, y + 12, barW, barH, 0x111133).setOrigin(0.5, 0.5).setDepth(2);
+        this.add.rectangle(cx, y + 13, barW, barH, 0x111133).setOrigin(0.5, 0.5).setDepth(2);
         if (pct > 0) {
-            this.add.rectangle(bx, y + 12, barW * pct, barH, done ? 0x4caf50 : 0x4cc9f0)
+            this.add.rectangle(bx, y + 13, barW * pct, barH, done ? 0x4caf50 : 0x4cc9f0)
                 .setOrigin(0, 0.5).setDepth(2);
         }
 
@@ -289,10 +295,10 @@ export class MainMenuScene extends Phaser.Scene {
             const reward = quest.rewardKarat
                 ? `+${quest.rewardKarat}K`
                 : `+${quest.rewardContraband}C`;
-            const btn = this.add.text(cx, y + 19, `CLAIM ${reward}`, {
+            const btn = this.add.text(rightX, y - 1, `CLAIM ${reward}`, {
                 fontSize: '6px', fontFamily: 'Arial Black', color: '#000000',
                 backgroundColor: '#4caf50', padding: { x: 3, y: 1 },
-            }).setOrigin(0.5, 0).setDepth(3).setInteractive({ useHandCursor: true });
+            }).setOrigin(1, 0).setDepth(3).setInteractive({ useHandCursor: true });
 
             btn.on('pointerdown', () => btn.setAlpha(0.7));
             btn.on('pointerout',  () => btn.setAlpha(1));
@@ -301,9 +307,9 @@ export class MainMenuScene extends Phaser.Scene {
                 this._claimQuest(quest.id, btn);
             });
         } else {
-            this.add.text(cx, y + 19, `${quest.progress} / ${quest.target}`, {
+            this.add.text(rightX, y + 1, `${quest.progress} / ${quest.target}`, {
                 fontSize: '6px', fontFamily: 'Arial', color: claimed ? '#555555' : '#aaaaaa',
-            }).setOrigin(0.5, 0).setDepth(2);
+            }).setOrigin(1, 0).setDepth(2);
         }
     }
 
