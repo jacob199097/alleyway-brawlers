@@ -247,8 +247,8 @@ export function attachHoldZoom(scene, gameObject, cardData, holdMs = 600) {
 
     gameObject.on('pointerdown', (ptr) => {
         cancel();
-        startX = ptr.x;
-        startY = ptr.y;
+        startX = ptr.worldX;
+        startY = ptr.worldY;
         timer  = scene.time.delayedCall(holdMs, () => {
             timer = null;
             showCardZoom(scene, cardData);
@@ -256,7 +256,7 @@ export function attachHoldZoom(scene, gameObject, cardData, holdMs = 600) {
     });
 
     gameObject.on('pointermove', (ptr) => {
-        if (Math.abs(ptr.x - startX) > 8 || Math.abs(ptr.y - startY) > 8) cancel();
+        if (Math.abs(ptr.worldX - startX) > 8 || Math.abs(ptr.worldY - startY) > 8) cancel();
     });
 
     gameObject.on('pointerup',  cancel);

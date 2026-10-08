@@ -1,5 +1,6 @@
 import { showCardZoom } from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
+import { SettingsManager } from '../utils/SettingsManager.js';
 
 const W = 844;
 const H = 390;
@@ -19,7 +20,9 @@ export class PostMatchScene extends Phaser.Scene {
         if (d.snapshotKey && this.textures.exists(d.snapshotKey)) {
             const bg = this.add.image(W / 2, H / 2, d.snapshotKey)
                 .setDisplaySize(W, H).setDepth(0);
-            try { bg.postFX?.addBlur?.(0, 2, 2, 1.0); } catch (_) {}
+            if (SettingsManager.postFx) {
+                try { bg.postFX?.addBlur?.(0, 2, 2, 1.0); } catch (_) {}
+            }
             // Slight darken so the foreground panels stay readable
             this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.35).setDepth(1);
         } else {

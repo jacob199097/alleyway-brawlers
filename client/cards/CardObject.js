@@ -142,15 +142,15 @@ export class CardObject extends Phaser.Events.EventEmitter {
 
         this._frame.on('pointerdown', (ptr) => {
             cancel();
-            startX = ptr.x;
-            startY = ptr.y;
+            startX = ptr.worldX;
+            startY = ptr.worldY;
             timer  = this.scene.time.delayedCall(600, () => {
                 timer = null;
                 showCardZoom(this.scene, this.cardData);
             });
         });
         this._frame.on('pointermove', (ptr) => {
-            if (Math.abs(ptr.x - startX) > 8 || Math.abs(ptr.y - startY) > 8) cancel();
+            if (Math.abs(ptr.worldX - startX) > 8 || Math.abs(ptr.worldY - startY) > 8) cancel();
         });
         this._frame.on('pointerup',  cancel);
         this._frame.on('pointerout', cancel);
@@ -175,9 +175,9 @@ export class CardObject extends Phaser.Events.EventEmitter {
     _attachTapListener() {
         this._frame.setInteractive({ useHandCursor: true });
         let downX = 0, downY = 0;
-        this._frame.on('pointerdown', (ptr) => { downX = ptr.x; downY = ptr.y; });
+        this._frame.on('pointerdown', (ptr) => { downX = ptr.worldX; downY = ptr.worldY; });
         this._frame.on('pointerup',  (ptr) => {
-            if (Math.abs(ptr.x - downX) < 10 && Math.abs(ptr.y - downY) < 10) {
+            if (Math.abs(ptr.worldX - downX) < 10 && Math.abs(ptr.worldY - downY) < 10) {
                 this.emit('tapped');
             }
         });

@@ -9,6 +9,7 @@ directories:
 files:
   - main.js
   - preload.js
+  - settings.js
   - package.json
 extraResources:
   - from: ../dist

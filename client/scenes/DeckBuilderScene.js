@@ -361,13 +361,13 @@ export class DeckBuilderScene extends Phaser.Scene {
 
     _pDown(ptr) {
         if (this._pState !== 'idle') return;
-        if (ptr.y < CONTENT_Y) return;   // header buttons use their own handlers
+        if (ptr.worldY < CONTENT_Y) return;   // header buttons use their own handlers
 
         this._pState        = 'pending';
-        this._pStart        = { x: ptr.x, y: ptr.y };
+        this._pStart        = { x: ptr.worldX, y: ptr.worldY };
         this._collScrollBase = this._collScroll;
         this._deckScrollBase = this._deckScroll;
-        this._pressHit      = this._hitCard(ptr.x, ptr.y);
+        this._pressHit      = this._hitCard(ptr.worldX, ptr.worldY);
 
         // Hold-to-zoom timer
         if (this._pressHit) {
@@ -384,8 +384,8 @@ export class DeckBuilderScene extends Phaser.Scene {
     _pMove(ptr) {
         if (this._pState === 'idle') return;
 
-        const dx   = ptr.x - this._pStart.x;
-        const dy   = ptr.y - this._pStart.y;
+        const dx   = ptr.worldX - this._pStart.x;
+        const dy   = ptr.worldY - this._pStart.y;
         const dist = Math.hypot(dx, dy);
 
         if (this._pState === 'pending' && dist > 8) {
@@ -413,10 +413,10 @@ export class DeckBuilderScene extends Phaser.Scene {
         }
 
         if (this._pState === 'dragging' && this._drag) {
-            this._drag.ghost.setPosition(ptr.x, ptr.y);
-            this._drag.label.setPosition(ptr.x, ptr.y);
+            this._drag.ghost.setPosition(ptr.worldX, ptr.worldY);
+            this._drag.label.setPosition(ptr.worldX, ptr.worldY);
             // Highlight drop zone
-            const overDeck = ptr.x >= DIVIDER_X;
+            const overDeck = ptr.worldX >= DIVIDER_X;
             const validDrop = (this._drag.source === 'collection' && overDeck) ||
                               (this._drag.source === 'deck'       && !overDeck);
             this._drag.ghost.setFillStyle(validDrop ? 0x4cc9f0 : 0xe63946, 0.8);
@@ -474,9 +474,9 @@ export class DeckBuilderScene extends Phaser.Scene {
     // ── Drag ─────────────────────────────────────────────────────────────────
 
     _startDrag(hit, ptr) {
-        const ghost = this.add.rectangle(ptr.x, ptr.y, CARD_W, CARD_H, 0x4cc9f0, 0.82)
+        const ghost = this.add.rectangle(ptr.worldX, ptr.worldY, CARD_W, CARD_H, 0x4cc9f0, 0.82)
             .setDepth(100).setStrokeStyle(2, 0xffffff);
-        const label = this.add.text(ptr.x, ptr.y, hit.item.name, {
+        const label = this.add.text(ptr.worldX, ptr.worldY, hit.item.name, {
             fontSize: '7px', fontFamily: 'Arial Black',
             color: '#ffffff', align: 'center',
             wordWrap: { width: CARD_W - 8 },
@@ -491,7 +491,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         label.destroy();
         this._drag = null;
 
-        const overDeck = ptr.x >= DIVIDER_X;
+        const overDeck = ptr.worldX >= DIVIDER_X;
         if (source === 'collection' && overDeck)  this._addToDeck(item);
         else if (source === 'deck'  && !overDeck) this._removeFromDeck(item.cardId);
     }

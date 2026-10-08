@@ -27,6 +27,7 @@ import { RPSScene }               from './scenes/RPSScene.js';
 import { SettingsScene }          from './scenes/SettingsScene.js';
 import { VideoBackgroundScene } from './scenes/VideoBackgroundScene.js';
 import { isDesktop, bindRegistry } from './utils/Platform.js';
+import { SettingsManager } from './utils/SettingsManager.js';
 
 // Desktop shell: drop the mobile-only page hints (home-screen app, orientation lock, touch-action)
 if (isDesktop) {
@@ -48,6 +49,8 @@ const config = {
     // when displayed at non-native sizes (in-hand small, zoomed large)
     pixelArt:        false,
     antialias:       true,
+    // Edge anti-aliasing (WebGL MSAA) — player setting, applies on restart
+    antialiasGL:     SettingsManager.antialias,
     roundPixels:     false,
 
     scale: {
@@ -99,4 +102,4 @@ export const game = new Phaser.Game(config);
 bindRegistry(game.registry);
 
 // Expose for hot-reload / debug
-if (typeof window !== 'undefined') window.__TWT__ = { game };
+if (typeof window !== 'undefined') window.__TWT__ = { game, settings: SettingsManager };

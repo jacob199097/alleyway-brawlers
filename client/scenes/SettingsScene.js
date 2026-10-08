@@ -1,4 +1,5 @@
-import { SettingsManager } from '../utils/SettingsManager.js';
+import { SettingsManager, OPTIONS } from '../utils/SettingsManager.js';
+import { isDesktop } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -9,6 +10,10 @@ const CLR_INACTIVE = 0x333355;
 const CLR_ACTIVE   = 0x4cc9f0;
 const CLR_GOLD     = 0xf4d35e;
 const CLR_DANGER   = 0xe63946;
+
+// Kept across scene.restart() (used to redraw after every change)
+let currentTab   = 'audio';
+let displayDraft = null;   // Display tab choices not yet applied
 
 export class SettingsScene extends Phaser.Scene {
     constructor() { super('SettingsScene'); }
@@ -31,7 +36,18 @@ export class SettingsScene extends Phaser.Scene {
         this.add.rectangle(px, py - panelH / 2 + 44, panelW - 40, 1, CLR_ACCENT)
             .setAlpha(0.4).setDepth(2);
 
-        // Two columns
+        this._closeBtn(px - 110, py + panelH / 2 - 28);
+        this._logoutBtn(px + 110, py + panelH / 2 - 28);
+
+        if (isDesktop) {
+            this._tabs(px, py - panelH / 2 + 64);
+            if (currentTab === 'audio')    this._audioTab(px, py - panelH / 2 + 92);
+            if (currentTab === 'display')  this._displayTab(py - panelH / 2 + 104);
+            if (currentTab === 'graphics') this._graphicsTab(py - panelH / 2 + 98);
+            return;
+        }
+
+        // Web: two columns
         const leftX  = px - 200;
         const rightX = px + 160;
         let cursorL  = py - panelH / 2 + 66;
@@ -43,9 +59,169 @@ export class SettingsScene extends Phaser.Scene {
 
         cursorR = this._sectionHeader('VIDEO', rightX - 80, cursorR);
         this._qualityRow(rightX, cursorR);
+    }
 
-        this._closeBtn(px - 110, py + panelH / 2 - 28);
-        this._logoutBtn(px + 110, py + panelH / 2 - 28);
+    // ── Desktop tabs ──────────────────────────────────────────────────────────
+
+    _tabs(cx, y) {
+        const tabs = [['audio', 'AUDIO'], ['display', 'DISPLAY'], ['graphics', 'GRAPHICS']];
+        tabs.forEach(([key, label], i) => {
+            const x      = cx + (i - 1) * 140;
+            const active = currentTab === key;
+            const btn = this.add.rectangle(x, y, 130, 24, active ? CLR_ACTIVE : CLR_INACTIVE)
+                .setStrokeStyle(1, active ? CLR_GOLD : CLR_INACTIVE)
+                .setDepth(2).setInteractive({ useHandCursor: true });
+            this.add.text(x, y, label, {
+                fontSize: '11px', fontFamily: 'Arial Black', color: active ? '#000000' : '#aaaacc',
+            }).setOrigin(0.5).setDepth(3);
+            btn.on('pointerup', () => { currentTab = key; this.scene.restart(); });
+        });
+    }
+
+    _audioTab(cx, y) {
+        y = this._volumeRow('BGM Volume', 'bgmVolume', cx, y);
+        this._volumeRow('SFX Volume', 'sfxVolume', cx, y);
+    }
+
+    _displayTab(y) {
+        const labelX = 200, selX = 540, rowH = 36;
+        const loading = this.add.text(W / 2, y + rowH, 'Loading displays…', {
+            fontSize: '11px', color: '#aaaacc',
+        }).setOrigin(0.5).setDepth(2);
+
+        window.desktop.display.info().then(info => {
+            if (!this.scene.isActive()) return;
+            loading.destroy();
+            const current = info.current;
+            const draft   = displayDraft ??= { ...current };
+            const monitor = info.displays.find(d => d.id === draft.displayId) || info.displays[0];
+            const windowed = draft.displayMode === 'windowed';
+            const redraw  = (patch) => { Object.assign(draft, patch); this.scene.restart(); };
+
+            this._cycleRow(labelX, selX, y, 'Display Mode',
+                ['windowed', 'borderless', 'fullscreen'], v => v.toUpperCase(),
+                draft.displayMode, v => redraw({ displayMode: v }), { width: 200 });
+
+            const sizes   = monitor.resolutions;
+            const sizeKey = ([w, h]) => `${w}×${h}`;
+            const chosen  = sizes.find(([w, h]) => w === draft.windowWidth && h === draft.windowHeight)
+                         || sizes[sizes.length - 1];
+            this._cycleRow(labelX, selX, y + rowH, 'Resolution',
+                windowed ? sizes : [monitor.native], sizeKey,
+                windowed ? chosen : monitor.native,
+                ([w, h]) => redraw({ windowWidth: w, windowHeight: h }),
+                { width: 200, enabled: windowed });
+
+            this._cycleRow(labelX, selX, y + rowH * 2, 'Monitor',
+                info.displays.map(d => d.id), id => info.displays.find(d => d.id === id).label,
+                monitor.id, id => redraw({ displayId: id }),
+                { width: 200, enabled: info.displays.length > 1 });
+
+            const resolved = { ...draft, windowWidth: chosen[0], windowHeight: chosen[1], displayId: monitor.id };
+            const changed  = ['displayMode', 'displayId', 'windowWidth', 'windowHeight']
+                .some(k => resolved[k] !== current[k]);
+            const apply = this._smallBtn(W / 2, y + rowH * 3 + 14, 'APPLY', changed, () => {
+                apply.label.setText('CONFIRM…');
+                window.desktop.display.apply(resolved).then(() => {
+                    displayDraft = null;
+                    if (this.scene.isActive()) this.scene.restart();
+                });
+            });
+            this.add.text(W / 2, y + rowH * 3 + 46,
+                'You will be asked to keep the new settings — they revert after 10 seconds otherwise.', {
+                    fontSize: '9px', fontFamily: 'Arial', color: '#8888aa',
+                }).setOrigin(0.5).setDepth(2);
+        });
+    }
+
+    _graphicsTab(y) {
+        const S = SettingsManager;
+        const onOff = v => (v ? 'ON' : 'OFF');
+        const set = key => v => { S.set(key, v); this.scene.restart(); };
+        const rowH = 30;
+        const L = { label: 66, sel: 318 };
+        const R = { label: 444, sel: 690 };
+
+        this._cycleRow(L.label, L.sel, y, 'Quality',
+            ['low', 'medium', 'high', 'custom'], v => v.toUpperCase(), S.quality,
+            v => { S.quality = v; this.scene.restart(); });
+        this._cycleRow(L.label, L.sel, y + rowH, 'Render Scale',
+            OPTIONS.renderScale, v => `${v * 100}%`, S.get('renderScale'), set('renderScale'));
+        this._cycleRow(L.label, L.sel, y + rowH * 2, 'Anti-aliasing',
+            [true, false], onOff, S.get('antialias'), set('antialias'), { note: 'restart' });
+        this._cycleRow(L.label, L.sel, y + rowH * 3, 'Blur Effects',
+            [true, false], onOff, S.get('postFx'), set('postFx'));
+        this._cycleRow(L.label, L.sel, y + rowH * 4, 'Menu Video',
+            [true, false], onOff, S.get('videoBackground'), set('videoBackground'));
+        this._cycleRow(L.label, L.sel, y + rowH * 5, 'Particles',
+            OPTIONS.particleDensity, v => ({ 0.5: 'LOW', 0.75: 'MEDIUM', 1: 'HIGH' }[v]),
+            S.get('particleDensity'), set('particleDensity'));
+
+        this._cycleRow(R.label, R.sel, y, 'V-Sync',
+            [true, false], onOff, S.get('vsync'), set('vsync'), { note: 'restart' });
+        this._cycleRow(R.label, R.sel, y + rowH, 'FPS Cap',
+            OPTIONS.fpsLimit, v => (v ? `${v}` : 'UNLIMITED'), S.get('fpsLimit'), set('fpsLimit'));
+        this._cycleRow(R.label, R.sel, y + rowH * 2, 'Show FPS',
+            [true, false], onOff, S.get('showFps'), set('showFps'));
+        this._cycleRow(R.label, R.sel, y + rowH * 3, 'Pause Unfocused',
+            [true, false], onOff, S.get('pauseOnBlur'), set('pauseOnBlur'));
+
+        const pending = S.pendingRestart;
+        if (pending.length) {
+            this.add.text(R.label, y + rowH * 4 + 4, `Restart required: ${pending.join(', ')}`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#f4d35e',
+            }).setOrigin(0, 0.5).setDepth(2);
+            this._smallBtn(R.sel - 10, y + rowH * 5, 'APPLY & RESTART', true, () => window.desktop.relaunch(), 170);
+        }
+    }
+
+    /**
+     * Label + "◀ value ▶" selector. Clicking the value or ▶ steps forward, ◀ steps back.
+     * values are compared with ===, fmt turns a value into display text.
+     */
+    _cycleRow(labelX, cx, y, label, values, fmt, current, onChange, opts = {}) {
+        const { note, enabled = true, width = 150 } = opts;
+        const labelText = this.add.text(labelX, y, label, {
+            fontSize: '12px', fontFamily: 'Arial Black', color: enabled ? '#ffffff' : '#666688',
+        }).setOrigin(0, 0.5).setDepth(2);
+        if (note) {
+            this.add.text(labelX + labelText.width + 6, y + 1, `(${note})`, {
+                fontSize: '9px', fontFamily: 'Arial', color: '#f4d35e',
+            }).setOrigin(0, 0.5).setDepth(2);
+        }
+
+        const idx = Math.max(0, values.indexOf(current));
+        const box = this.add.rectangle(cx, y, width, 22, CLR_INACTIVE)
+            .setStrokeStyle(1, enabled ? CLR_ACCENT : CLR_INACTIVE).setDepth(2);
+        this.add.text(cx, y, fmt(values[idx]), {
+            fontSize: '11px', fontFamily: 'Arial Black', color: enabled ? '#ffffff' : '#666688',
+        }).setOrigin(0.5).setDepth(3);
+        if (!enabled || values.length < 2) { box.setAlpha(0.5); return; }
+
+        const step = d => onChange(values[(idx + d + values.length) % values.length]);
+        box.setInteractive({ useHandCursor: true }).on('pointerup', () => step(1));
+        [[-1, '◀'], [1, '▶']].forEach(([d, glyph]) => {
+            this.add.text(cx + d * (width / 2 - 11), y, glyph, {
+                fontSize: '10px', color: '#4cc9f0',
+            }).setOrigin(0.5).setDepth(4).setPadding(6, 4)
+                .setInteractive({ useHandCursor: true })
+                .on('pointerup', () => step(d));
+        });
+    }
+
+    _smallBtn(x, y, label, enabled, cb, width = 140) {
+        const btn = this.add.rectangle(x, y, width, 26, enabled ? CLR_ACTIVE : CLR_INACTIVE)
+            .setStrokeStyle(1, enabled ? CLR_GOLD : CLR_INACTIVE).setDepth(2);
+        btn.label = this.add.text(x, y, label, {
+            fontSize: '11px', fontFamily: 'Arial Black', color: enabled ? '#000000' : '#666688',
+        }).setOrigin(0.5).setDepth(3);
+        if (enabled) {
+            btn.setInteractive({ useHandCursor: true }).on('pointerup', () => {
+                btn.disableInteractive();
+                cb();
+            });
+        }
+        return btn;
     }
 
     _logoutBtn(x, y) {
@@ -124,7 +300,7 @@ export class SettingsScene extends Phaser.Scene {
 
         this.input.setDraggable(thumb);
         thumb.on('drag', (_p, dragX) => update(dragX));
-        hitZone.on('pointerdown', ptr => update(ptr.x));
+        hitZone.on('pointerdown', ptr => update(ptr.worldX));
 
         return y + 72;
     }
@@ -169,6 +345,7 @@ export class SettingsScene extends Phaser.Scene {
         btn.on('pointerdown', () => btn.setAlpha(0.7));
         btn.on('pointerup', () => {
             btn.setAlpha(1);
+            displayDraft = null;
             this.scene.stop();
             this.scene.resume('MainMenuScene');
         });

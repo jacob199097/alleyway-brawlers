@@ -15,6 +15,9 @@
  *   'on_upkeep'        — at the start of the active player's turn
  */
 
+// Horizontal centre of the 844-wide world (scene.scale.width is the zoomed canvas on desktop)
+const CENTER_X = 844 / 2;
+
 export class EffectBus {
 
     constructor(scene) {
@@ -87,7 +90,7 @@ export class EffectBus {
                 }
             }
 
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'ERIC LV.3: SWEEP!', '#ff6b35');
+            scene._showFloatingText?.(CENTER_X, 200, 'ERIC LV.3: SWEEP!', '#ff6b35');
             scene._recalcClanBonuses?.();
         });
 
@@ -102,7 +105,7 @@ export class EffectBus {
                 if (defender?.effectKey !== 'eric_lv3_draw') return;
                 const defOwner = attackerOwner === 'player' ? 'opponent' : 'player';
                 scene._drawCard?.(defOwner);
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'ERIC LV.3: DRAW!', '#f4d35e');
+                scene._showFloatingText?.(CENTER_X, 200, 'ERIC LV.3: DRAW!', '#f4d35e');
                 return;
             }
             if (trigger === 'on_upkeep') {
@@ -140,7 +143,7 @@ export class EffectBus {
         this.register('block_enforcer_redirect', (trigger, payload, scene) => {
             if (trigger !== 'on_play') return;
             if (payload.card?.effectKey !== 'block_enforcer_redirect') return;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'BLOCK ENFORCER: HOLDING THE LINE!', '#4cc9f0');
+            scene._showFloatingText?.(CENTER_X, 200, 'BLOCK ENFORCER: HOLDING THE LINE!', '#4cc9f0');
         });
 
         // ── Goldfang – +500 ATK when attacking a DEF-position character ──────
@@ -150,7 +153,7 @@ export class EffectBus {
             const { attacker, defender, result } = payload;
             if (attacker?.effectKey !== 'goldfang_attacker') return;
             if (defender?.position !== 'def') return;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'GOLDFANG: +500 ATK vs DEFENDER!', '#f4d35e');
+            scene._showFloatingText?.(CENTER_X, 200, 'GOLDFANG: +500 ATK vs DEFENDER!', '#f4d35e');
         });
 
         // ── Pride Lieutenant – on deploy: another LIONS gets +500 ATK ────────
@@ -169,7 +172,7 @@ export class EffectBus {
                 if (!target) return;
                 target._baseAtk = target._baseAtk ?? target.attack;
                 target._ltBuff  = (target._ltBuff || 0) + 500;
-                scene._showFloatingText?.(scene.scale.width / 2, 200, `LIEUTENANT: ${target.name} +500 ATK!`, '#f4d35e');
+                scene._showFloatingText?.(CENTER_X, 200, `LIEUTENANT: ${target.name} +500 ATK!`, '#f4d35e');
                 scene._recalcClanBonuses?.();
             }
         });
@@ -182,7 +185,7 @@ export class EffectBus {
             if (!mentor) return;
             scene._drawCard?.(owner);
             scene._drawCard?.(owner);
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'PRIDE MENTOR: DRAW 2!', '#4cc9f0');
+            scene._showFloatingText?.(CENTER_X, 200, 'PRIDE MENTOR: DRAW 2!', '#4cc9f0');
         });
 
         // ── Brutus – on enter: chosen enemy -700 ATK; on kill: next LIONS +300 ATK
@@ -201,7 +204,7 @@ export class EffectBus {
                     if (!target) return;
                     target._baseAtk = target._baseAtk ?? target.attack;
                     target._brutusDebuff = (target._brutusDebuff || 0) + 700;
-                    scene._showFloatingText?.(scene.scale.width / 2, 200, `BRUTUS: ${target.name} -700 ATK!`, '#e63946');
+                    scene._showFloatingText?.(CENTER_X, 200, `BRUTUS: ${target.name} -700 ATK!`, '#e63946');
                     scene._recalcClanBonuses?.();
                 }
                 return;
@@ -211,7 +214,7 @@ export class EffectBus {
                 if (attacker?.effectKey !== 'brutus_enter') return;
                 if (!result?.defenderDestroyed) return;
                 scene.state[attackerOwner]._brutusChainBonus = 300;
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'BRUTUS: NEXT LION +300 ATK!', '#f4d35e');
+                scene._showFloatingText?.(CENTER_X, 200, 'BRUTUS: NEXT LION +300 ATK!', '#f4d35e');
             }
         });
 
@@ -219,7 +222,7 @@ export class EffectBus {
         // Awaken check happens in DuelScene at the start of each turn.
         this.register('king_roan_leader', (trigger, payload, scene) => {
             if (trigger === 'on_play' && payload.card?.effectKey === 'king_roan_leader' && payload.isLeaderEntry) {
-                scene._showFloatingText?.(scene.scale.width / 2, 140, '👑 LEADER BONUS ACTIVATED!', '#f4d35e');
+                scene._showFloatingText?.(CENTER_X, 140, '👑 LEADER BONUS ACTIVATED!', '#f4d35e');
                 scene._recalcClanBonuses?.();
             }
         });
@@ -232,7 +235,7 @@ export class EffectBus {
             if (!attacker) return;
             attacker._baseAtk = attacker._baseAtk ?? attacker.attack;
             attacker._ambushDebuff = (attacker._ambushDebuff || 0) + 1000;
-            scene._showFloatingText?.(scene.scale.width / 2, 180, "LION'S AMBUSH: ATTACKER -1000 ATK!", '#f4d35e');
+            scene._showFloatingText?.(CENTER_X, 180, "LION'S AMBUSH: ATTACKER -1000 ATK!", '#f4d35e');
             scene._recalcClanBonuses?.();
         });
 
@@ -246,7 +249,7 @@ export class EffectBus {
             // Visual downed on the opponent's slot
             const slot = scene._slotObjects?.opp_front?.find(s => s.slotIndex === attackerIdx);
             slot?.cardObject?.setDowned?.();
-            scene._showFloatingText?.(scene.scale.width / 2, 180, 'NO WITNESSES: ATTACK NEGATED!', '#e63946');
+            scene._showFloatingText?.(CENTER_X, 180, 'NO WITNESSES: ATTACK NEGATED!', '#e63946');
             scene.effectBus.trigger('on_downed', { card: attacker, owner: 'opponent' });
             scene._recalcDownedBonuses?.();
         });
@@ -260,7 +263,7 @@ export class EffectBus {
             if (!target || target.subtype !== 'striver' || target.clanTag !== 'lion') return;
             // Mark the target so the next destruction is negated once
             target._kingsTestShield = true;
-            scene._showFloatingText?.(scene.scale.width / 2, 180, "KING'S TEST: DESTRUCTION NEGATED!", '#f4d35e');
+            scene._showFloatingText?.(CENTER_X, 180, "KING'S TEST: DESTRUCTION NEGATED!", '#f4d35e');
         });
 
         // ── Hustle: Corner Deal – draw 2, discard 1 (free with Striver) ──────
@@ -272,10 +275,10 @@ export class EffectBus {
             scene._drawCard?.(owner);
             const hasStriver = scene.state[owner].field.some(c => c && c.subtype === 'striver' && !c.downed);
             if (!hasStriver) {
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'CORNER DEAL: DRAW 2 – DISCARD 1', '#4cc9f0');
+                scene._showFloatingText?.(CENTER_X, 200, 'CORNER DEAL: DRAW 2 – DISCARD 1', '#4cc9f0');
                 scene._promptDiscard?.(owner);
             } else {
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'CORNER DEAL: DRAW 2 FREE!', '#4cc9f0');
+                scene._showFloatingText?.(CENTER_X, 200, 'CORNER DEAL: DRAW 2 FREE!', '#4cc9f0');
             }
         });
 
@@ -298,7 +301,7 @@ export class EffectBus {
                 if (!target) return;
                 const slotIdx = scene.state[owner].field.indexOf(target);
                 scene._recoverDownedCard?.(owner, slotIdx);
-                scene._showFloatingText?.(scene.scale.width / 2, 200, `LION RESCUE: ${target.name} STANDS UP!`, '#4cc9f0');
+                scene._showFloatingText?.(CENTER_X, 200, `LION RESCUE: ${target.name} STANDS UP!`, '#4cc9f0');
             }
         });
 
@@ -314,7 +317,7 @@ export class EffectBus {
             result.promotedCardId = 'hunter_lv2';
             result.promotingSlot  = slotIdx;
             result.promotingOwner = attackerOwner;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'HUNTER: PROMOTED!', '#f4d35e');
+            scene._showFloatingText?.(CENTER_X, 200, 'HUNTER: PROMOTED!', '#f4d35e');
         });
 
         // ── Hunter Lv.2 – promote on KO downed; down 1 enemy on any KO
@@ -331,7 +334,7 @@ export class EffectBus {
                     result.promotedCardId = 'hunter_lv3';
                     result.promotingSlot  = slotIdx;
                     result.promotingOwner = attackerOwner;
-                    scene._showFloatingText?.(scene.scale.width / 2, 200, 'HUNTER LV.2: PROMOTED!', '#f4d35e');
+                    scene._showFloatingText?.(CENTER_X, 200, 'HUNTER LV.2: PROMOTED!', '#f4d35e');
                 }
             }
             // Down 1 enemy on any KO
@@ -347,7 +350,7 @@ export class EffectBus {
             result.hunterShouldDown = true;
             if (result.defenderWasDowned) {
                 result.attackerCanAttackAgain = true;
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'HUNTER LV.3: ATTACK AGAIN!', '#f4d35e');
+                scene._showFloatingText?.(CENTER_X, 200, 'HUNTER LV.3: ATTACK AGAIN!', '#f4d35e');
             }
         });
 
@@ -363,7 +366,7 @@ export class EffectBus {
             result.promotedCardId = 'viper_lv2';
             result.promotingSlot  = slotIdx;
             result.promotingOwner = attackerOwner;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'VIPER: PROMOTED!', '#4cc9f0');
+            scene._showFloatingText?.(CENTER_X, 200, 'VIPER: PROMOTED!', '#4cc9f0');
         });
 
         // ── Viper Lv.2 – promote on Down
@@ -378,7 +381,7 @@ export class EffectBus {
             result.promotedCardId = 'viper_lv3';
             result.promotingSlot  = slotIdx;
             result.promotingOwner = attackerOwner;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'VIPER LV.2: PROMOTED!', '#4cc9f0');
+            scene._showFloatingText?.(CENTER_X, 200, 'VIPER LV.2: PROMOTED!', '#4cc9f0');
         });
 
         // ── Viper Lv.3 – move after KO; attack again on KO downed
@@ -390,7 +393,7 @@ export class EffectBus {
             result.viperShouldMoveAfterKill = true;
             if (result.defenderWasDowned) {
                 result.attackerCanAttackAgain = true;
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'VIPER LV.3: ATTACK AGAIN!', '#4cc9f0');
+                scene._showFloatingText?.(CENTER_X, 200, 'VIPER LV.3: ATTACK AGAIN!', '#4cc9f0');
             }
         });
 
@@ -400,14 +403,14 @@ export class EffectBus {
             const { attacker, result, attackerOwner, defOwner } = payload;
             if (attacker?.effectKey !== 'debt_collector') return;
             if (!result.defenderDowned) return;
-            scene._showFloatingText?.(scene.scale.width / 2, 200, 'DEBT COLLECTOR: OPPONENT DISCARDS!', '#e63946');
+            scene._showFloatingText?.(CENTER_X, 200, 'DEBT COLLECTOR: OPPONENT DISCARDS!', '#e63946');
             scene._debtCollectorDiscard?.(defOwner);
         });
 
         // ── Bulwark – deploy toast + recompute adjacent DEF on field changes
         this.register('bulwark', (trigger, payload, scene) => {
             if (trigger === 'on_play' && payload.card?.effectKey === 'bulwark') {
-                scene._showFloatingText?.(scene.scale.width / 2, 200, 'BULWARK: HOLDING THE LINE!', '#4cc9f0');
+                scene._showFloatingText?.(CENTER_X, 200, 'BULWARK: HOLDING THE LINE!', '#4cc9f0');
             }
             if (['on_play', 'on_battle', 'on_destroy', 'on_downed'].includes(trigger)) {
                 scene._recalcBulwarkDefBonuses?.();

@@ -22,6 +22,7 @@ import { BrawlPhase }      from '../cards/BrawlPhase.js';
 import { EffectBus }       from '../cards/EffectBus.js';
 import { AiBrain }         from '../cards/AiBrain.js';
 import { SettingsManager } from '../utils/SettingsManager.js';
+import { Graphics } from '../utils/Graphics.js';
 import { showCardZoom }   from '../utils/CardZoom.js';
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch } from '../utils/Platform.js';
@@ -2046,13 +2047,13 @@ export class DuelScene extends Phaser.Scene {
         let downAt = 0, downX = 0, downY = 0;
         frame.on('pointerdown', (ptr) => {
             downAt = this.time.now;
-            downX  = ptr.x;
-            downY  = ptr.y;
+            downX  = ptr.worldX;
+            downY  = ptr.worldY;
         });
         frame.on('pointerup', (ptr) => {
             const dt = this.time.now - downAt;
-            const dx = Math.abs(ptr.x - downX);
-            const dy = Math.abs(ptr.y - downY);
+            const dx = Math.abs(ptr.worldX - downX);
+            const dy = Math.abs(ptr.worldY - downY);
             // Quick tap (not a hold-zoom, not a drag)
             if (dt < 350 && dx < 8 && dy < 8) {
                 this._showCardActionMenu(slot);
@@ -2754,7 +2755,7 @@ export class DuelScene extends Phaser.Scene {
         result.promotedCardId  = attCard.promotesTo;
         result.promotingSlot   = attackerSlotIdx;
         result.promotingOwner  = attackerOwner;
-        this._showFloatingText(this.scale.width / 2, 200, 'BLOOD SCENT: PROMOTED!', '#e63946');
+        this._showFloatingText(W / 2, 200, 'BLOOD SCENT: PROMOTED!', '#e63946');
     }
 
     _declareDirectAttack(attackerSlot) {
@@ -3217,8 +3218,9 @@ export class DuelScene extends Phaser.Scene {
 
         // Debris shards burst
         const SHARD_COLORS = [0xe63946, 0xff8c00, 0xffd700, 0xffffff];
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
+        const shardCount = SettingsManager.particles(8);
+        for (let i = 0; i < shardCount; i++) {
+            const angle = (i / shardCount) * Math.PI * 2;
             const shard = this.add.rectangle(
                 container.x, container.y,
                 Phaser.Math.Between(8, 18), Phaser.Math.Between(3, 6),
@@ -3579,8 +3581,9 @@ export class DuelScene extends Phaser.Scene {
         });
 
         // Shrapnel particles (8 streaks fanning outward)
-        for (let i = 0; i < 8; i++) {
-            const ang  = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
+        const shrapnelCount = SettingsManager.particles(8);
+        for (let i = 0; i < shrapnelCount; i++) {
+            const ang  = (i / shrapnelCount) * Math.PI * 2 + Math.random() * 0.3;
             const dist = 28 + Math.random() * 14;
             const p    = this.add.rectangle(x, y, 5, 2, 0xffaa33, 1)
                 .setDepth(31).setAngle(Phaser.Math.RadToDeg(ang));
@@ -4658,7 +4661,7 @@ export class DuelScene extends Phaser.Scene {
             this.tweens.add({ targets: wash, scaleX: 2.4, scaleY: 2.0, alpha: 0,
                 duration: 460, ease: 'Power2', onComplete: () => wash.destroy() });
             // Mist droplets drifting up & sideways
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; i < SettingsManager.particles(12); i++) {
                 const ox = Phaser.Math.Between(-SLOT_W / 2, SLOT_W / 2);
                 const drop = this.add.circle(cx + ox, cy + 6, 3 + Math.random() * 3, 0x66ff99, 0.65).setDepth(7);
                 this.tweens.add({ targets: drop,
@@ -4723,8 +4726,8 @@ export class DuelScene extends Phaser.Scene {
             this._playGlowSweep(cx, cy, 0xffd700);
 
             // Micro camera zoom
-            this.cameras.main.zoomTo(1.06, 90, 'Linear', false, (cam, prog) => {
-                if (prog === 1) this.cameras.main.zoomTo(1.0, 160, 'Power2');
+            this.cameras.main.zoomTo(Graphics.zoom * 1.06, 90, 'Linear', false, (cam, prog) => {
+                if (prog === 1) this.cameras.main.zoomTo(Graphics.zoom, 160, 'Power2');
             });
 
         } else {
@@ -4749,14 +4752,15 @@ export class DuelScene extends Phaser.Scene {
             this._spawnEmbers(cx, cy, 14, 0xffd700);
             this._playGlowSweep(cx, cy, 0xff6b35);
             this.cameras.main.shake(180, 0.018);
-            this.cameras.main.zoomTo(1.10, 110, 'Linear', false, (cam, prog) => {
-                if (prog === 1) this.cameras.main.zoomTo(1.0, 220, 'Power2');
+            this.cameras.main.zoomTo(Graphics.zoom * 1.10, 110, 'Linear', false, (cam, prog) => {
+                if (prog === 1) this.cameras.main.zoomTo(Graphics.zoom, 220, 'Power2');
             });
         }
     }
 
     /** Scatter small colored rectangles outward from a point. */
     _spawnSparks(cx, cy, count, color, radius) {
+        count = SettingsManager.particles(count);
         for (let i = 0; i < count; i++) {
             const angle  = (i / count) * Math.PI * 2 + Math.random() * 0.5;
             const dist   = radius * (0.5 + Math.random() * 0.8);
@@ -4778,6 +4782,7 @@ export class DuelScene extends Phaser.Scene {
 
     /** Drift small particles upward (fire embers effect). */
     _spawnEmbers(cx, cy, count, color) {
+        count = SettingsManager.particles(count);
         for (let i = 0; i < count; i++) {
             const ox    = Phaser.Math.Between(-SLOT_W / 2, SLOT_W / 2);
             const ember = this.add.circle(cx + ox, cy, 2 + Math.random() * 2, color, 0.85).setDepth(7);
@@ -5224,7 +5229,9 @@ export class DuelScene extends Phaser.Scene {
         const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(998);
 
         // Apply blur to the duel camera if postFX is supported (Phaser 3.60+)
-        try { this.cameras.main.postFX?.addBlur?.(0, 2, 2, 0.5); } catch (_) {}
+        if (SettingsManager.postFx) {
+            try { this.cameras.main.postFX?.addBlur?.(0, 2, 2, 0.5); } catch (_) {}
+        }
 
         this.tweens.add({
             targets:  overlay,
@@ -5525,8 +5532,6 @@ export class DuelScene extends Phaser.Scene {
         const be = this.state.player.field[beSlot.slotIndex];
         this._enterResolving();
 
-        const W = this.scale.width;
-        const H = this.scale.height;
         const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)
             .setDepth(80).setInteractive();
         const PW = 290, PH = 124;
@@ -5570,8 +5575,6 @@ export class DuelScene extends Phaser.Scene {
     }
 
     _showAmbushPromptModal(card, callback) {
-        const W = this.scale.width;
-        const H = this.scale.height;
 
         // Dim overlay — blocks all input beneath
         const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)

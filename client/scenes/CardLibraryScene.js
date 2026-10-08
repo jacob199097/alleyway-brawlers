@@ -241,13 +241,14 @@ export class CardLibraryScene extends Phaser.Scene {
 
         overlay.on('pointerdown', (ptr) => {
             this._isDragging  = true;
-            this._dragStartY  = ptr.y;
+            this._dragStartX  = ptr.worldX;
+            this._dragStartY  = ptr.worldY;
             this._scrollBase  = this._scrollY;
         });
 
         overlay.on('pointermove', (ptr) => {
             if (!this._isDragging) return;
-            const dy     = ptr.y - this._dragStartY;
+            const dy     = ptr.worldY - this._dragStartY;
             const maxScroll = Math.max(0, this._contentH - GRID_H);
             this._scrollY           = Phaser.Math.Clamp(this._scrollBase + dy, -maxScroll, 0);
             this._gridContainer.y   = GRID_Y + this._scrollY;
@@ -255,11 +256,11 @@ export class CardLibraryScene extends Phaser.Scene {
 
         overlay.on('pointerup', (ptr) => {
             if (this._isDragging) {
-                const dx = Math.abs(ptr.x - (ptr.downX ?? ptr.x));
-                const dy = Math.abs(ptr.y - this._dragStartY);
+                const dx = Math.abs(ptr.worldX - this._dragStartX);
+                const dy = Math.abs(ptr.worldY - this._dragStartY);
                 // If movement was minimal it's a tap — handle card tap
                 if (dx < 6 && dy < 6) {
-                    this._handleGridTap(ptr.x, ptr.y);
+                    this._handleGridTap(ptr.worldX, ptr.worldY);
                 }
             }
             this._isDragging = false;
