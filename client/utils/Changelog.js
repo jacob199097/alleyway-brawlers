@@ -5,7 +5,7 @@
  * the first MainMenuScene create() after the version string changes.
  */
 
-import { sceneH } from './Layout.js';
+import { sceneView } from './Layout.js';
 
 const CURRENT_VERSION = '0.4.0';
 const STORAGE_KEY     = 'twt_seen_changelog_v';
@@ -29,7 +29,8 @@ const W = 844;
 
 export function maybeShowChangelog(scene) {
     if (!scene) return;
-    const H = sceneH(scene);
+    const view = sceneView(scene);
+    const CY   = view.cy;
     let seen = '';
     try { seen = localStorage.getItem(STORAGE_KEY) || ''; } catch {}
     if (seen === CURRENT_VERSION) return;
@@ -40,26 +41,26 @@ export function maybeShowChangelog(scene) {
     const objs = [];
     const reg  = o => { objs.push(o); return o; };
 
-    reg(scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.78).setDepth(8000).setInteractive());
+    reg(scene.add.rectangle(W / 2, CY, W, view.h, 0x000000, 0.78).setDepth(8000).setInteractive());
 
     const PNL_W = 460, PNL_H = 280;
-    reg(scene.add.rectangle(W / 2, H / 2, PNL_W, PNL_H, 0x101030, 0.98)
+    reg(scene.add.rectangle(W / 2, CY, PNL_W, PNL_H, 0x101030, 0.98)
         .setStrokeStyle(2, 0xf4d35e).setDepth(8001));
 
-    reg(scene.add.text(W / 2, H / 2 - PNL_H / 2 + 18, `${entry.title}  •  v${entry.version}`, {
+    reg(scene.add.text(W / 2, CY - PNL_H / 2 + 18, `${entry.title}  •  v${entry.version}`, {
         fontSize: '14px', fontFamily: 'Arial Black', color: '#f4d35e',
     }).setOrigin(0.5).setDepth(8002));
 
-    reg(scene.add.rectangle(W / 2, H / 2 - PNL_H / 2 + 32, PNL_W - 32, 1, 0xf4d35e, 0.4)
+    reg(scene.add.rectangle(W / 2, CY - PNL_H / 2 + 32, PNL_W - 32, 1, 0xf4d35e, 0.4)
         .setDepth(8002));
 
     const body = entry.bullets.map(b => '• ' + b).join('\n');
-    reg(scene.add.text(W / 2, H / 2 - 8, body, {
+    reg(scene.add.text(W / 2, CY - 8, body, {
         fontSize: '11px', fontFamily: 'Arial', color: '#dddde8',
         align: 'left', lineSpacing: 6, wordWrap: { width: PNL_W - 40 },
     }).setOrigin(0.5).setDepth(8002));
 
-    const bx = W / 2, by = H / 2 + PNL_H / 2 - 28;
+    const bx = W / 2, by = CY + PNL_H / 2 - 28;
     const btn = reg(scene.add.rectangle(bx, by, 140, 32, 0x2d6a4f)
         .setStrokeStyle(2, 0xa7e8c1).setDepth(8002).setInteractive({ useHandCursor: true }));
     reg(scene.add.text(bx, by, "GOT IT", {

@@ -1,12 +1,17 @@
 import { showCardZoom } from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
 import { SettingsManager } from '../utils/SettingsManager.js';
+import { VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
 
 export class PostMatchScene extends Phaser.Scene {
-    constructor() { super('PostMatchScene'); }
+    constructor() {
+        super('PostMatchScene');
+        // Same centred 16:9 view as the duel it sits on (its snapshot covers that whole view)
+        this.fullLayout = 'center';
+    }
 
     init(data) { this._data = data || {}; }
 
@@ -19,12 +24,12 @@ export class PostMatchScene extends Phaser.Scene {
         // to a dark solid colour if the snapshot wasn't supplied.
         if (d.snapshotKey && this.textures.exists(d.snapshotKey)) {
             const bg = this.add.image(W / 2, H / 2, d.snapshotKey)
-                .setDisplaySize(W, H).setDepth(0);
+                .setDisplaySize(W, VIEW_H).setDepth(0);
             if (SettingsManager.postFx) {
                 try { bg.postFX?.addBlur?.(0, 2, 2, 1.0); } catch (_) {}
             }
             // Slight darken so the foreground panels stay readable
-            this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.35).setDepth(1);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.35).setDepth(1);
         } else {
             this.cameras.main.setBackgroundColor(0x0a0a18);
         }
@@ -50,7 +55,7 @@ export class PostMatchScene extends Phaser.Scene {
         // ── Gradient veil under image so stat panels stay readable ────────────
         const veil = this.add.graphics().setDepth(3);
         veil.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, 0, 0.75, 0.75);
-        veil.fillRect(0, H * 0.42, W, H * 0.58);
+        veil.fillRect(0, H * 0.42, W, VIEW_BOTTOM - H * 0.42);
 
         // ── Stat panels (left) and MVP (right) ────────────────────────────────
         this._buildOutcomePanel(d, isWin, accent);
@@ -62,7 +67,7 @@ export class PostMatchScene extends Phaser.Scene {
         this._wireImageButtons(isWin);
 
         // ── Fade in ───────────────────────────────────────────────────────────
-        const fadeVeil = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 1).setDepth(200);
+        const fadeVeil = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 1).setDepth(200);
         this.tweens.add({ targets: fadeVeil, alpha: 0, duration: 700, ease: 'Power2',
             onComplete: () => fadeVeil.destroy() });
 

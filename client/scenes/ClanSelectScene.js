@@ -1,4 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 /**
  * Shown after first login when the player has not yet picked their starting
  * clan. Two big tiles — Lions and Vipers — and a CONFIRM button. Calls the
@@ -28,11 +29,14 @@ const CLANS = [
 ];
 
 export class ClanSelectScene extends Phaser.Scene {
-    constructor() { super('ClanSelectScene'); }
+    constructor() {
+        super('ClanSelectScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
         // Sit on top of the menu video background
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.6);
 
         this.add.text(W / 2, 28, 'CHOOSE YOUR CLAN', {
             fontSize: '18px', fontFamily: 'Arial Black', color: '#f4d35e',

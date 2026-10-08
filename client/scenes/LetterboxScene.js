@@ -42,4 +42,9 @@ export class LetterboxScene extends Phaser.Scene {
         this.add.rectangle(0, band - 1, W, 1, 0x4cc9f0, 0.35).setOrigin(0, 0);
         this.add.rectangle(0, band + BASE_H, W, 1, 0x4cc9f0, 0.35).setOrigin(0, 0);
     }
+
+    update() {
+        // Other scenes call sendToBack() too (the menu video does) — stay underneath all of them
+        if (this.scene.getIndex() !== 0) this.scene.sendToBack();
+    }
 }

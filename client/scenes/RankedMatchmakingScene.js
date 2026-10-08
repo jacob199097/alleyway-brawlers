@@ -1,3 +1,5 @@
+import { VIEW_H } from '../utils/Layout.js';
+
 const W = 844;
 const H = 390;
 
@@ -32,7 +34,10 @@ function rankLabel(rank) {
 }
 
 export class RankedMatchmakingScene extends Phaser.Scene {
-    constructor() { super('RankedMatchmakingScene'); }
+    constructor() {
+        super('RankedMatchmakingScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
         const player = this.registry.get('player') || {};
@@ -52,11 +57,11 @@ export class RankedMatchmakingScene extends Phaser.Scene {
 
     _buildBackground() {
         if (this.textures.exists('duel_background')) {
-            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, H);
+            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, VIEW_H);
             // Dark overlay so text stays readable
-            this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.62);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.62);
         } else {
-            this.add.rectangle(W / 2, H / 2, W, H, 0x0a0a1a);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x0a0a1a);
         }
 
         // Subtle gold top-edge accent
@@ -390,7 +395,7 @@ export class RankedMatchmakingScene extends Phaser.Scene {
         const cy = H / 2;
 
         // Dim overlay
-        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.72);
+        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.72);
         this._searchGroup.add(overlay);
 
         // Spinner ring (graphics object, rotated in update)

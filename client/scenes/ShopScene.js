@@ -1,6 +1,7 @@
 import { RARITY_LABEL, RARITY_COLOR } from '../cards/RarityConfig.js';
 import { attachHoldZoom, showCardZoom } from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -14,10 +15,13 @@ const RARITY_LABELS = Object.fromEntries(Object.entries(RARITY_LABEL).map(([k, v
 const RARITY_COLORS = RARITY_COLOR;
 
 export class ShopScene extends Phaser.Scene {
-    constructor() { super('ShopScene'); }
+    constructor() {
+        super('ShopScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
 
         this._buildHeader();
         this._buildPacksPanel();
@@ -161,7 +165,7 @@ export class ShopScene extends Phaser.Scene {
         all.__restore = () => hidden.forEach(o => o?.setVisible?.(true));
 
         // ── Stage 1: subtle vignette so cards pop against the menu video ─────
-        const overlay = reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0)
+        const overlay = reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0)
             .setDepth(80).setInteractive());
         this.tweens.add({ targets: overlay, alpha: 0.55, duration: 250 });
 
@@ -268,7 +272,7 @@ export class ShopScene extends Phaser.Scene {
 
     _transitionToScene(sceneKey) {
         // Fade the entire scene to black, then start the next one.
-        const fader = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0)
+        const fader = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0)
             .setDepth(9999);
         this.tweens.add({
             targets: fader, alpha: 1, duration: 260, ease: 'Cubic.In',

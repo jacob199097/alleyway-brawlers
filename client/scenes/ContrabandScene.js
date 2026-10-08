@@ -1,4 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 const W = 844;
 const H = 390;
 
@@ -11,10 +12,13 @@ const BUNDLES = [
 ];
 
 export class ContrabandScene extends Phaser.Scene {
-    constructor() { super('ContrabandScene'); }
+    constructor() {
+        super('ContrabandScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.7);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.7);
 
         this.add.text(W / 2, 22, 'PURCHASE CONTRABAND', {
             fontSize: '16px', fontFamily: 'Arial Black', color: '#e040fb',

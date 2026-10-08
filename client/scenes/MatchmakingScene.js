@@ -1,14 +1,18 @@
 import { SocketClient } from '../network/SocketClient.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
 
 export class MatchmakingScene extends Phaser.Scene {
-    constructor() { super('MatchmakingScene'); }
+    constructor() {
+        super('MatchmakingScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
 
         this._statusText = this.add.text(W / 2, H / 2 - 50, 'Connecting...', {
             fontSize: '22px', fontFamily: 'Arial Black', color: '#4cc9f0',

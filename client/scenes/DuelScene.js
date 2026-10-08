@@ -26,6 +26,7 @@ import { Graphics } from '../utils/Graphics.js';
 import { showCardZoom }   from '../utils/CardZoom.js';
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_TOP, VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -53,7 +54,11 @@ const KO_TEXT = { main: 'DROPPED!', sub: 'is taken down' };
 
 export class DuelScene extends Phaser.Scene {
 
-    constructor() { super('DuelScene'); }
+    constructor() {
+        super('DuelScene');
+        // 390-tall board centred in the 16:9 desktop view; full-screen layers span VIEW_TOP..VIEW_BOTTOM
+        this.fullLayout = 'center';
+    }
 
     // ── Phaser lifecycle ──────────────────────────────────────────────────────
 
@@ -312,10 +317,10 @@ export class DuelScene extends Phaser.Scene {
 
     _buildBoard() {
         // Background
-        this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, H);
+        this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, VIEW_H);
 
         // A subtle dark overlay tones the board down for readability
-        this.add.rectangle(W / 2, H / 2, W, H, 0x04060c, 0.25).setDepth(0);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x04060c, 0.25).setDepth(0);
 
         // Glowing center divider with fade-out edges
         this._buildCenterDivider();
@@ -650,7 +655,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.82).setDepth(80));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.82).setDepth(80));
         reg(this.add.rectangle(W / 2, H / 2, 420, 260, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(81));
         reg(this.add.text(W / 2, H / 2 - 112, title, {
@@ -806,13 +811,13 @@ export class DuelScene extends Phaser.Scene {
         const maskTop = 322;
 
         // Visual hand-area background to clearly separate the hand from the field
-        this.add.rectangle(W / 2, maskTop + (H - maskTop) / 2, W, H - maskTop, 0x020408, 0.72)
+        this.add.rectangle(W / 2, maskTop + (VIEW_BOTTOM - maskTop) / 2, W, VIEW_BOTTOM - maskTop, 0x020408, 0.72)
             .setDepth(5);
         this.add.rectangle(W / 2, maskTop, W, 2, 0x4cc9f0, 0.35).setDepth(5);
 
         this._handContainer = this.add.container(0, handY).setDepth(6);
         const maskShape = this.add.graphics();
-        maskShape.fillRect(0, maskTop, W, H - maskTop);
+        maskShape.fillRect(0, maskTop, W, VIEW_BOTTOM - maskTop);
         this._handContainer.setMask(maskShape.createGeometryMask());
         maskShape.setVisible(false);
         this._handMaskShape = maskShape;
@@ -1165,7 +1170,7 @@ export class DuelScene extends Phaser.Scene {
         this._hoveredHandCard = cardObj;
         // Expand mask so the lifted card clears the back-row zone boundary
         this._handMaskShape?.clear();
-        this._handMaskShape?.fillRect(0, 0, W, H);
+        this._handMaskShape?.fillRect(0, VIEW_TOP, W, VIEW_H);
         cardObj.container.setDepth(45);
         this.tweens.killTweensOf(cardObj.container);
         this.tweens.add({
@@ -1188,7 +1193,7 @@ export class DuelScene extends Phaser.Scene {
         if (this._hoveredHandCard === cardObj) this._hoveredHandCard = null;
         // Restore mask once card settles back into the strip
         this._handMaskShape?.clear();
-        this._handMaskShape?.fillRect(0, this._handMaskTop, W, H - this._handMaskTop);
+        this._handMaskShape?.fillRect(0, this._handMaskTop, W, VIEW_BOTTOM - this._handMaskTop);
         cardObj.container.setDepth(1);
         this.tweens.killTweensOf(cardObj.container);
         this.tweens.add({
@@ -1593,7 +1598,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(60));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7).setDepth(60));
         reg(this.add.rectangle(W / 2, H / 2, 260, 120, 0x0d0d2a)
             .setStrokeStyle(2, 0x4cc9f0).setDepth(61));
         reg(this.add.text(W / 2, H / 2 - 40, `DEPLOY ${cardData.name?.toUpperCase() || ''}`, {
@@ -1680,7 +1685,7 @@ export class DuelScene extends Phaser.Scene {
         const layer = this.add.container(0, 0).setDepth(55);
 
         // Dim the board
-        const curtain = this.add.rectangle(cx, cy, W, H, 0x000011, 0).setDepth(54);
+        const curtain = this.add.rectangle(cx, cy, W, VIEW_H, 0x000011, 0).setDepth(54);
         this.tweens.add({ targets: curtain, alpha: 0.65, duration: 200 });
 
         // Cyan glow ring in center
@@ -2131,7 +2136,7 @@ export class DuelScene extends Phaser.Scene {
         const py     = above < 14 ? below : above;
 
         // Tap-shield to dismiss when tapping outside
-        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
             .setDepth(69).setInteractive();
         shield.on('pointerdown', () => this._closeCardActionMenu());
 
@@ -2247,7 +2252,7 @@ export class DuelScene extends Phaser.Scene {
         const objs = [];
 
         // Full-screen shield — absorbs all input so only our overlays are tappable
-        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
             .setDepth(47).setInteractive();
         objs.push(shield);
 
@@ -3026,8 +3031,8 @@ export class DuelScene extends Phaser.Scene {
         // ── Faction-tinted curtain ────────────────────────────────────────────
         const bgColor  = isLion  ? 0x08060 : isViper ? 0x010806 : 0x000000;
         const vigColor = isLion  ? 0x1a0e00 : isViper ? 0x011a06 : 0x0d000d;
-        const curtain  = this.add.rectangle(W/2, H/2, W, H, bgColor,  0).setDepth(60);
-        const vignette = this.add.rectangle(W/2, H/2, W, H, vigColor, 0).setDepth(60);
+        const curtain  = this.add.rectangle(W/2, H/2, W, VIEW_H, bgColor,  0).setDepth(60);
+        const vignette = this.add.rectangle(W/2, H/2, W, VIEW_H, vigColor, 0).setDepth(60);
         layer.add([curtain, vignette]);
         this.tweens.add({ targets: curtain,  alpha: 0.84, duration: 160 });
         this.tweens.add({ targets: vignette, alpha: 0.40, duration: 160 });
@@ -3907,7 +3912,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (obj) => { els.push(obj); return obj; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(60));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.72).setDepth(60));
         reg(this.add.rectangle(W / 2, H / 2, 270, 135, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(61));
 
@@ -3953,7 +3958,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const tossed = new Set();
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.78).setDepth(70));
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.78).setDepth(70));
         reg(this.add.rectangle(W / 2, H / 2, 320, 200, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(71));
         reg(this.add.text(W / 2, H / 2 - 82, 'MULLIGAN', {
@@ -4432,7 +4437,7 @@ export class DuelScene extends Phaser.Scene {
             this._exitResolving();
         };
 
-        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
             .setDepth(SHIELD_DEPTH).setInteractive();
         objs.push(shield);
 
@@ -4495,7 +4500,7 @@ export class DuelScene extends Phaser.Scene {
         };
 
         // Full-screen shield blocks board input. Sits below the elevated hand.
-        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
             .setDepth(SHIELD_DEPTH).setInteractive();
         objs.push(shield);
 
@@ -5074,7 +5079,7 @@ export class DuelScene extends Phaser.Scene {
         const layer = this.add.container(0, 0).setDepth(55);
 
         // Dim the board
-        const curtain = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(54);
+        const curtain = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0).setDepth(54);
         this.tweens.add({ targets: curtain, alpha: 0.6, duration: 200 });
 
         // Glow ring around card
@@ -5226,7 +5231,7 @@ export class DuelScene extends Phaser.Scene {
         data = { ...data, soloMatchId: this._soloMatchId, cardsPlayed: this._playerCardsPlayed };
 
         // Dim overlay — keep DuelScene partially visible as background behind the result screen
-        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(998);
+        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0).setDepth(998);
 
         // Apply blur to the duel camera if postFX is supported (Phaser 3.60+)
         if (SettingsManager.postFx) {
@@ -5534,7 +5539,7 @@ export class DuelScene extends Phaser.Scene {
         const be = this.state.player.field[beSlot.slotIndex];
         this._enterResolving();
 
-        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)
+        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.65)
             .setDepth(80).setInteractive();
         const PW = 290, PH = 124;
         const px = W / 2, py = H / 2;
@@ -5579,7 +5584,7 @@ export class DuelScene extends Phaser.Scene {
     _showAmbushPromptModal(card, callback) {
 
         // Dim overlay — blocks all input beneath
-        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)
+        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.65)
             .setDepth(80).setInteractive();
 
         const PW = 280, PH = 120;

@@ -42,16 +42,23 @@ function textResolution() {
     return Phaser.Math.Clamp(Math.ceil(zoom * 2) / 2, 1, 4);
 }
 
-/** Converted scenes (fullLayout) use the whole 844×H world; the rest draw in the centred
- *  844×390 band they were designed for, with the letterbox showing above and below. */
+/**
+ * Camera per scene layout mode (see Layout.js):
+ *  - fullLayout true:     whole 844×H world, laid out against H
+ *  - fullLayout 'center': whole viewport, but the 390-tall design is centred in it (world y
+ *                         runs from -EXTRA_H/2 to BASE_H + EXTRA_H/2); the scene stretches
+ *                         its full-screen layers to cover that
+ *  - otherwise:           the centred 844×390 band, letterbox above and below
+ */
 function fitCameras(scene) {
     if (!scene.cameras) return;
-    const viewH = scene.fullLayout ? H : BASE_H;
+    const mode  = scene.fullLayout;
+    const viewH = mode ? H : BASE_H;
     const top   = Math.round(((H - viewH) / 2) * zoom);
     for (const cam of scene.cameras.cameras) {
         cam.setViewport(0, top, game.scale.width, Math.round(viewH * zoom));
         cam.setZoom(zoom);
-        cam.centerOn(W / 2, viewH / 2);
+        cam.centerOn(W / 2, mode === 'center' ? BASE_H / 2 : viewH / 2);
     }
 }
 

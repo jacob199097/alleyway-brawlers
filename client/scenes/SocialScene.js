@@ -5,15 +5,19 @@
 
 import { SocketClient } from '../network/SocketClient.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
 
 export class SocialScene extends Phaser.Scene {
-    constructor() { super('SocialScene'); }
+    constructor() {
+        super('SocialScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
 
         this.add.text(W / 2, 36, 'SOCIAL CLUB', {
             fontSize: '22px', fontFamily: 'Arial Black', color: '#f4d35e',
@@ -120,7 +124,7 @@ export class SocialScene extends Phaser.Scene {
     }
 
     _showChallengePopup(fromPlayerId, fromUsername) {
-        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000)
+        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000)
             .setAlpha(0.75).setDepth(90).setInteractive();
 
         this.add.text(W / 2, H / 2 - 60, `⚔ CHALLENGE from\n${fromUsername}`, {
@@ -151,7 +155,7 @@ export class SocialScene extends Phaser.Scene {
         // Slide-up chat panel
         const panel = this.add.container(0, H).setDepth(95);
 
-        const bg = this.add.rectangle(W / 2, -H / 2, W, H, 0x111122)
+        const bg = this.add.rectangle(W / 2, -H / 2, W, VIEW_H, 0x111122)
             .setStrokeStyle(2, 0x4cc9f0);
         panel.add(bg);
 

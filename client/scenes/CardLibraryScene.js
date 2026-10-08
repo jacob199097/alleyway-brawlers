@@ -1,6 +1,7 @@
 import { RARITY_COLOR, RARITY_LABEL } from '../cards/RarityConfig.js';
 import { showCardZoom }               from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -30,7 +31,10 @@ const RARITY_FILTERS = [
 ];
 
 export class CardLibraryScene extends Phaser.Scene {
-    constructor() { super('CardLibraryScene'); }
+    constructor() {
+        super('CardLibraryScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     // ── create ────────────────────────────────────────────────────────────────
 
@@ -48,7 +52,7 @@ export class CardLibraryScene extends Phaser.Scene {
         this._scrollBase    = 0;
 
         // Background
-        this.add.rectangle(W / 2, H / 2, W, H, 0x04060c);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x04060c);
 
         this._buildHeader();
         this._buildFilterBar();
@@ -224,6 +228,7 @@ export class CardLibraryScene extends Phaser.Scene {
         maskGfx.fillStyle(0xffffff);
         maskGfx.fillRect(0, GRID_Y, W, GRID_H);
         this._gridContainer.setMask(maskGfx.createGeometryMask());
+        maskGfx.setVisible(false);   // the mask shape itself must not render (was a white panel)
 
         // Empty-state text (hidden by default)
         this._emptyTxt = this.add.text(W / 2, GRID_Y + GRID_H / 2, 'No cards match filters', {

@@ -1,3 +1,5 @@
+import { VIEW_H } from '../utils/Layout.js';
+
 /**
  * Rock Paper Scissors — determines who goes first.
  * Winner chooses first or second. Draws replay.
@@ -21,7 +23,10 @@ function beats(a, b) {
 }
 
 export class RPSScene extends Phaser.Scene {
-    constructor() { super('RPSScene'); }
+    constructor() {
+        super('RPSScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     init(data) {
         this._duelData = data.duelData || {};
@@ -39,10 +44,10 @@ export class RPSScene extends Phaser.Scene {
 
     _buildBackground() {
         if (this.textures.exists('duel_background')) {
-            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, H);
-            this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.55);
+            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, VIEW_H);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.55);
         } else {
-            this.add.rectangle(W / 2, H / 2, W, H, 0x080818);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x080818);
         }
     }
 

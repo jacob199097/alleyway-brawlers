@@ -1,5 +1,6 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -8,10 +9,13 @@ const H = 390;
 const AVAILABLE_ICONS = ['profile_001', 'profile_002'];
 
 export class ProfileScene extends Phaser.Scene {
-    constructor() { super('ProfileScene'); }
+    constructor() {
+        super('ProfileScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
 
         apiFetch('/api/profile/me')
             .then(r => r.json())

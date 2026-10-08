@@ -1,4 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 const W = 844;
 const H = 390;
 
@@ -10,7 +11,10 @@ const RANK_COLORS = {
 };
 
 export class FightModeScene extends Phaser.Scene {
-    constructor() { super('FightModeScene'); }
+    constructor() {
+        super('FightModeScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
         const player = this.registry.get('player') || {};
@@ -50,7 +54,7 @@ export class FightModeScene extends Phaser.Scene {
         const reg  = o => { objs.push(o); return o; };
         const close = () => objs.forEach(o => o?.destroy?.());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(100).setInteractive());
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7).setDepth(100).setInteractive());
         reg(this.add.rectangle(W / 2, H / 2, 460, 160, 0x101030, 0.98)
             .setStrokeStyle(2, 0xe63946).setDepth(101));
         reg(this.add.text(W / 2, H / 2 - 44, 'CAN\'T START DUEL', {
@@ -75,10 +79,10 @@ export class FightModeScene extends Phaser.Scene {
 
     _buildBackground() {
         if (this.textures.exists('duel_background')) {
-            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, H);
-            this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
+            this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, VIEW_H);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
         } else {
-            this.add.rectangle(W / 2, H / 2, W, H, 0x080818);
+            this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x080818);
         }
         this.add.rectangle(W / 2, 0, W, 3, 0x4cc9f0).setOrigin(0.5, 0);
     }

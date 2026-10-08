@@ -8,6 +8,8 @@
  *
  *  - A scene that hasn't been converted is drawn in a centred 844×390 band; the space above
  *    and below shows the themed letterbox (LetterboxScene). Nothing to do.
+ *  - A scene can set `this.fullLayout = 'center'` to fill the 16:9 view with its 390-tall
+ *    design centred (it only has to stretch its full-screen layers — see VIEW_* below).
  *  - A converted scene sets `this.fullLayout = true` in its constructor and lays out against
  *    `H` using the anchors below. On web H === BASE_H, so the same code keeps working there.
  */
@@ -25,5 +27,17 @@ export const midY = (y) => y + EXTRA_H / 2;
 /** A y from the 390-tall design for something anchored to the bottom edge. */
 export const bottomY = (y) => y + EXTRA_H;
 
-/** World height of a given scene: H if it is converted (fullLayout), else the 390 band. */
-export const sceneH = (scene) => (scene?.fullLayout ? H : BASE_H);
+// Scenes with `fullLayout = 'center'` keep their 390-tall design and get it centred in the
+// 16:9 view; world y then runs VIEW_TOP..VIEW_BOTTOM. Full-screen layers (backgrounds, dim
+// overlays, input shields) should span that instead of 0..390.
+export const VIEW_TOP    = -EXTRA_H / 2;
+export const VIEW_BOTTOM = BASE_H + EXTRA_H / 2;
+export const VIEW_H      = BASE_H + EXTRA_H;
+
+/** Visible world area of a scene for its layout mode — for overlays drawn into any scene. */
+export function sceneView(scene) {
+    const mode   = scene?.fullLayout;
+    const top    = mode === 'center' ? VIEW_TOP : 0;
+    const bottom = mode === 'center' ? VIEW_BOTTOM : mode ? H : BASE_H;
+    return { top, bottom, h: bottom - top, cy: (top + bottom) / 2 };
+}

@@ -1,10 +1,14 @@
 import { SettingsManager } from '../utils/SettingsManager.js';
+import { VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
 
 export class PreloadScene extends Phaser.Scene {
-    constructor() { super('PreloadScene'); }
+    constructor() {
+        super('PreloadScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     preload() {
         this._buildProgressBar();
@@ -125,13 +129,13 @@ export class PreloadScene extends Phaser.Scene {
 
         // Background — use menu background if already cached, else dark fallback
         if (this.textures.exists('menu_background')) {
-            this.add.image(x, y, 'menu_background').setDisplaySize(W, H).setOrigin(0.5);
+            this.add.image(x, y, 'menu_background').setDisplaySize(W, VIEW_H).setOrigin(0.5);
         } else {
-            this.add.rectangle(x, y, W, H, 0x04060c).setOrigin(0.5);
+            this.add.rectangle(x, y, W, VIEW_H, 0x04060c).setOrigin(0.5);
         }
 
         // Dark overlay so the progress bar / title stay readable
-        this.add.rectangle(x, y, W, H, 0x000000, 0.55).setOrigin(0.5);
+        this.add.rectangle(x, y, W, VIEW_H, 0x000000, 0.55).setOrigin(0.5);
 
         if (this.textures.exists('title_alleyway')) {
             this.add.image(x, y - 90, 'title_alleyway').setDisplaySize(300, 163).setOrigin(0.5);

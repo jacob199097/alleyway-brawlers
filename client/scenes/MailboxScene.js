@@ -1,4 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 /**
  * Mailbox — system messages, rewards, news.
  * Two-pane layout: list on the left, full message on the right.
@@ -8,10 +9,13 @@ const W = 844;
 const H = 390;
 
 export class MailboxScene extends Phaser.Scene {
-    constructor() { super('MailboxScene'); }
+    constructor() {
+        super('MailboxScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.7);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.7);
 
         this.add.text(W / 2, 22, 'MAILBOX', {
             fontSize: '16px', fontFamily: 'Arial Black', color: '#f4d35e',

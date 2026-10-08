@@ -1,9 +1,13 @@
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_H } from '../utils/Layout.js';
 const W = 844;
 const H = 390;
 
 export class LoginScene extends Phaser.Scene {
-    constructor() { super('LoginScene'); }
+    constructor() {
+        super('LoginScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     preload() {
         this.load.image('menu_background', 'assets/menu_background.png');
@@ -19,7 +23,7 @@ export class LoginScene extends Phaser.Scene {
         }
 
         // Dark panel (right-side form area)
-        this.add.rectangle(W * 0.65, H / 2, W * 0.46, H, 0x0d0d1a).setAlpha(0.85);
+        this.add.rectangle(W * 0.65, H / 2, W * 0.46, VIEW_H, 0x0d0d1a).setAlpha(0.85);
 
         // ── Left: Title logo ──────────────────────────────────────────────────
         if (this.textures.exists('title_alleyway')) {
@@ -176,7 +180,7 @@ export class LoginScene extends Phaser.Scene {
         };
 
         // Backdrop blocks all input below
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.78)
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.78)
             .setDepth(900).setInteractive());
 
         reg(this.add.rectangle(W / 2, H / 2, 480, 200, 0x101030, 0.98)

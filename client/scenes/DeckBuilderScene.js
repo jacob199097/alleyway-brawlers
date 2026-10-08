@@ -1,6 +1,7 @@
 import { RARITY_COLOR }            from '../cards/RarityConfig.js';
 import { showCardZoom }            from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
+import { VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -33,7 +34,10 @@ const DRAG_DIST  = 14;   // px before drag mode activates
 const HOLD_MS    = 450; // ms for hold-to-zoom
 
 export class DeckBuilderScene extends Phaser.Scene {
-    constructor() { super('DeckBuilderScene'); }
+    constructor() {
+        super('DeckBuilderScene');
+        this.fullLayout = 'center';   // 390-tall design centred in the 16:9 view (utils/Layout.js)
+    }
 
     create() {
         this._inventory      = [];
@@ -58,7 +62,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._collHits       = [];    // [{lx,ly,w,h,item}] local-space hit areas
         this._deckHits       = [];
 
-        this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.65);
+        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.65);
         this._buildHeader();
         this._buildPanelBg();
         this._buildContainers();
@@ -189,7 +193,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._collCont.setMask(cg.createGeometryMask());
 
         const dg = this.make.graphics({ add: false });
-        dg.fillRect(DECK_X, DECK_TOP, DECK_PNL_W, H - DECK_TOP);
+        dg.fillRect(DECK_X, DECK_TOP, DECK_PNL_W, VIEW_BOTTOM - DECK_TOP);
         this._deckCont.setMask(dg.createGeometryMask());
     }
 
@@ -558,7 +562,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         const reg  = o => { objs.push(o); return o; };
         const close = () => { objs.forEach(o => o?.destroy()); this._exitOpen = false; };
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7)
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7)
             .setDepth(200).setInteractive());
 
         const px = W / 2, py = H / 2;
@@ -722,7 +726,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         const reg  = o => { objs.push(o); return o; };
         const close = () => { objs.forEach(o => o?.destroy?.()); this._leaderPickerOpen = false; };
 
-        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75)
+        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.75)
             .setDepth(200).setInteractive())
             .on('pointerdown', close);
 
