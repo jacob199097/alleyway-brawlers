@@ -3,6 +3,7 @@
  * showCardZoom(scene, cardData)  → shows overlay, returns dismiss fn
  * attachHoldZoom(scene, obj, cardData, holdMs)  → wires hold-to-zoom on any interactive object
  */
+import { sceneH, BASE_H } from './Layout.js';
 
 const ZOOM_W = 240;
 const ZOOM_H = 336;   // 5:7 portrait — bigger art, narrower stats panel
@@ -55,14 +56,15 @@ function _normalize(data) {
 export function showCardZoom(scene, rawCardData) {
     const cardData = _normalize(rawCardData);
     const W  = 844;
-    const H  = 390;
+    const H  = sceneH(scene);
+    const oy = (H - BASE_H) / 2;   // content keeps its 390-tall design, centred in taller scenes
     const cy = H / 2;
 
     // Three-column layout: stats panel (left) | card (middle) | keyword (right)
     const panelX = 10;
-    const panelY = 14;
+    const panelY = 14 + oy;
     const panelW = 200;
-    const panelH = H - 28;
+    const panelH = BASE_H - 28;
     const cardX  = W / 2;   // card art centered on screen
 
     const objs    = [];

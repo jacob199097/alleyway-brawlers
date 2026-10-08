@@ -1,8 +1,7 @@
 import { SettingsManager, OPTIONS } from '../utils/SettingsManager.js';
 import { isDesktop } from '../utils/Platform.js';
 
-const W = 844;
-const H = 390;
+import { W, H } from '../utils/Layout.js';
 
 const CLR_PANEL    = 0x1a1a2e;
 const CLR_ACCENT   = 0x4cc9f0;
@@ -16,7 +15,10 @@ let currentTab   = 'audio';
 let displayDraft = null;   // Display tab choices not yet applied
 
 export class SettingsScene extends Phaser.Scene {
-    constructor() { super('SettingsScene'); }
+    constructor() {
+        super('SettingsScene');
+        this.fullLayout = true;   // fills the whole 16:9 world on desktop (utils/Layout.js)
+    }
 
     create() {
         this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.72).setDepth(0);

@@ -1,10 +1,11 @@
 import { SettingsManager } from '../utils/SettingsManager.js';
-
-const W = 844;
-const H = 390;
+import { W, H } from '../utils/Layout.js';
 
 export class VideoBackgroundScene extends Phaser.Scene {
-    constructor() { super('VideoBackgroundScene'); }
+    constructor() {
+        super('VideoBackgroundScene');
+        this.fullLayout = true;   // fills the whole 16:9 world on desktop (utils/Layout.js)
+    }
 
     create() {
         // Low quality: static art instead of decoding video behind every menu

@@ -28,6 +28,8 @@ import { SettingsScene }          from './scenes/SettingsScene.js';
 import { VideoBackgroundScene } from './scenes/VideoBackgroundScene.js';
 import { isDesktop, bindRegistry } from './utils/Platform.js';
 import { SettingsManager } from './utils/SettingsManager.js';
+import { W, H } from './utils/Layout.js';
+import { LetterboxScene } from './scenes/LetterboxScene.js';
 
 // Desktop shell: drop the mobile-only page hints (home-screen app, orientation lock, touch-action)
 if (isDesktop) {
@@ -40,8 +42,8 @@ if (isDesktop) {
 // ── Shared game config (portrait, scale to fill screen) ──────────────────────
 const config = {
     type:            Phaser.AUTO,
-    width:           844,
-    height:          390,
+    width:           W,
+    height:          H,
     backgroundColor: '#1a1a2e',
     parent:          'game-container',
 
@@ -57,8 +59,8 @@ const config = {
         mode:             Phaser.Scale.FIT,
         autoCenter:       Phaser.Scale.CENTER_BOTH,
         orientation:      Phaser.Scale.LANDSCAPE,
-        width:            844,
-        height:           390,
+        width:            W,
+        height:           H,
     },
 
     // No browser context menu (desktop will use right-click for card zoom)
@@ -75,6 +77,7 @@ const config = {
 
     scene: [
         BootScene,
+        LetterboxScene,
         LoginScene,
         PreloadScene,
         MainMenuScene,

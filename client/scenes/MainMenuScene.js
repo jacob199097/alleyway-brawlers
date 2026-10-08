@@ -1,8 +1,7 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch } from '../utils/Platform.js';
+import { W, H, BASE_H, EXTRA_H, midY } from '../utils/Layout.js';
 
-const W     = 844;
-const H     = 390;
 const BAR_H = Math.round(W * 260 / 2400); // 91px — matches main_menu_bar.png aspect ratio
 const BAR_Y = BAR_H / 2;                  // vertical centre of bar
 
@@ -18,7 +17,10 @@ function xpProgress(player) {
 }
 
 export class MainMenuScene extends Phaser.Scene {
-    constructor() { super('MainMenuScene'); }
+    constructor() {
+        super('MainMenuScene');
+        this.fullLayout = true;   // lays out against Layout.H (see utils/Layout.js)
+    }
 
     create() {
         const token = this.registry.get('token');
@@ -126,18 +128,22 @@ export class MainMenuScene extends Phaser.Scene {
 
     _buildCenterButtons() {
         const cx = W / 2;
-        const y1 = BAR_H + 14 + 65;   // 170
-        const y2 = y1 + 131 + 10;     // 311
+        // Fight + deck editor + library column. The 16:9 desktop world has room to centre the
+        // whole column under the bar; the 390-tall layout keeps its original spacing.
+        const columnH = 131 + 10 + 131 + 12 + 26;
+        const top = EXTRA_H ? BAR_H + (H - BAR_H - columnH) / 2 : BAR_H + 14;
+        const y1  = top + 65;          // 170 at 390 tall
+        const y2  = y1 + 131 + 10;     // 311 at 390 tall
 
         this._makeImageBtn(cx, y1, 'fight_menu',  240, 131, () => this.scene.start('FightModeScene'));
         this._makeImageBtn(cx, y2, 'deck_editor', 240, 131, () => this.scene.start('DeckBuilderScene'));
 
         // Card Library button — compact, below deck editor
-        this._buildCardLibraryBtn(cx);
+        this._buildCardLibraryBtn(cx, y2 + 65 + 12 + 13);
     }
 
-    _buildCardLibraryBtn(cx) {
-        const btnW = 130, btnH = 26, btnY = BAR_H + 14 + 65 + 131 + 10 + 131 + 12;
+    _buildCardLibraryBtn(cx, btnY) {
+        const btnW = 130, btnH = 26;
         const bg = this.add.rectangle(cx, btnY, btnW, btnH, 0x000a1a)
             .setStrokeStyle(1, 0x4cc9f0, 0.9).setInteractive({ useHandCursor: true });
         this.add.text(cx, btnY, '📖 CARD LIBRARY', {
@@ -154,7 +160,8 @@ export class MainMenuScene extends Phaser.Scene {
         const rx = W - 110;
         // Available height below bar: 299px
         // Three buttons at 178×97 + 4px gaps = 299px → no extra padding needed
-        const y1 = BAR_H + 49;         // 140
+        // (centred in the extra height on desktop)
+        const y1 = midY(BAR_H + 49);   // 140 at 390 tall
         const y2 = y1 + 97 + 5;        // 242
         const y3 = y2 + 97 + 5;        // 344
 
@@ -223,15 +230,17 @@ export class MainMenuScene extends Phaser.Scene {
     _buildQuestsPanel(player, { daily, main }) {
         // Pinned to the far-left; enlarged (depth -1 so the fight button stays on top
         // if any right-edge pixels bleed into its area).
+        // Panel keeps its 390-tall design, centred in any extra height (desktop)
+        const oy  = EXTRA_H / 2;
         const PW  = 500;
-        const PH  = H + -90;
-        this.add.image(0, H / 2, 'quests').setOrigin(0.2, 0.4).setDisplaySize(PW, PH).setDepth(-1);
+        const PH  = BASE_H + -90;
+        this.add.image(0, BASE_H / 2 + oy, 'quests').setOrigin(0.2, 0.4).setDisplaySize(PW, PH).setDepth(-1);
 
         // Content must still stay left of the fight button (left edge x≈302)
         const CONTENT_W = 300;           // safe content zone width
         const CX    = CONTENT_W / 2;     // centre of content zone
-        const TOP   = BAR_H;             // y ≈ 91
-        const MID   = BAR_H + (H - BAR_H) / 2;  // y ≈ 240
+        const TOP   = BAR_H + oy;        // y ≈ 91 at 390 tall
+        const MID   = BAR_H + (BASE_H - BAR_H) / 2 + oy;  // y ≈ 240 at 390 tall
         const ROW_W = CONTENT_W - 60;
 
         // ── Main quests section (top half) ──────────────────────────────────

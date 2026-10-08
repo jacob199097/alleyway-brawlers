@@ -6,8 +6,9 @@
  *        showToast(this, 'Saved!', 'success');
  */
 
+import { sceneH } from './Layout.js';
+
 const W = 844;
-const H = 390;
 
 const COLORS = {
     info:    { fill: 0x1a1a2e, stroke: 0x4cc9f0, text: '#9ddcff' },
@@ -19,7 +20,7 @@ const COLORS = {
 const TOAST_W = 220;
 const TOAST_H = 32;
 const TOAST_GAP = 6;
-const ANCHOR_Y = H - 12;            // bottom margin
+const BOTTOM_MARGIN = 12;
 const ANCHOR_X = W - 12 - TOAST_W / 2;
 
 // One queue per scene-game instance, tracked by scene reference
@@ -34,7 +35,7 @@ export function showToast(scene, message, kind = 'info', duration = 2400) {
     const stack  = _stackKey(scene);
 
     const slot   = stack.length;
-    const targetY = ANCHOR_Y - (slot * (TOAST_H + TOAST_GAP)) - TOAST_H / 2;
+    const targetY = (sceneH(scene) - BOTTOM_MARGIN) - (slot * (TOAST_H + TOAST_GAP)) - TOAST_H / 2;
     const startY  = targetY + 28;
 
     const bg = scene.add.rectangle(ANCHOR_X, startY, TOAST_W, TOAST_H, colors.fill, 0.95)
@@ -60,7 +61,7 @@ export function showToast(scene, message, kind = 'info', duration = 2400) {
                 if (idx >= 0) stack.splice(idx, 1);
                 // Slide remaining toasts down to fill the gap
                 stack.forEach((e, i) => {
-                    const ny = ANCHOR_Y - (i * (TOAST_H + TOAST_GAP)) - TOAST_H / 2;
+                    const ny = (sceneH(e.scene) - BOTTOM_MARGIN) - (i * (TOAST_H + TOAST_GAP)) - TOAST_H / 2;
                     if (e.scene && e.scene.tweens) {
                         e.scene.tweens.add({ targets: [e.bg, e.txt], y: ny, duration: 180, ease: 'Power2' });
                     }

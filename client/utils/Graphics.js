@@ -2,7 +2,7 @@
  * GRAPHICS RUNTIME
  * Live-applied render options. SettingsManager owns the values and calls in here.
  *
- *  - Render scale (desktop only): scenes are laid out in an 844×390 world, but the canvas is
+ *  - Render scale (desktop only): scenes are laid out in an 844-wide world (Layout.js), but the canvas is
  *    sized to the window's physical pixels × renderScale and every scene camera is zoomed to
  *    match, so art and text stay sharp at 1080p/1440p/4K (above 100% supersamples).
  *    Web keeps the 844×390 canvas (zoom 1) and is unaffected.
@@ -15,8 +15,8 @@
 import Phaser from 'phaser';
 import { isDesktop } from './Platform.js';
 
-export const BASE_W = 844;
-export const BASE_H = 390;
+import { W, H, BASE_H } from './Layout.js';
+
 const MAX_CANVAS = 8192;
 
 let game          = null;
@@ -32,8 +32,8 @@ let framesRendered = 0;
 
 function computeZoom() {
     if (!isDesktop) return 1;
-    const fit = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H) * (window.devicePixelRatio || 1);
-    const z   = Phaser.Math.Clamp(fit * renderScale, 0.25, MAX_CANVAS / BASE_W);
+    const fit = Math.min(window.innerWidth / W, window.innerHeight / H) * (window.devicePixelRatio || 1);
+    const z   = Phaser.Math.Clamp(fit * renderScale, 0.25, MAX_CANVAS / W);
     return Math.round(z * 100) / 100;
 }
 
@@ -42,11 +42,16 @@ function textResolution() {
     return Phaser.Math.Clamp(Math.ceil(zoom * 2) / 2, 1, 4);
 }
 
+/** Converted scenes (fullLayout) use the whole 844×H world; the rest draw in the centred
+ *  844×390 band they were designed for, with the letterbox showing above and below. */
 function fitCameras(scene) {
     if (!scene.cameras) return;
+    const viewH = scene.fullLayout ? H : BASE_H;
+    const top   = Math.round(((H - viewH) / 2) * zoom);
     for (const cam of scene.cameras.cameras) {
+        cam.setViewport(0, top, game.scale.width, Math.round(viewH * zoom));
         cam.setZoom(zoom);
-        cam.centerOn(BASE_W / 2, BASE_H / 2);
+        cam.centerOn(W / 2, viewH / 2);
     }
 }
 
@@ -59,9 +64,8 @@ function forEachText(list, fn) {
 
 function applyZoom() {
     const z = computeZoom();
-    if (z === zoom && game.scale.width === Math.round(BASE_W * z)) return;
     zoom = z;
-    game.scale.resize(Math.round(BASE_W * z), Math.round(BASE_H * z));
+    game.scale.resize(Math.round(W * z), Math.round(H * z));
     const res = textResolution();
     for (const scene of game.scene.scenes) {
         fitCameras(scene);   // includes paused/sleeping scenes so they're right when resumed

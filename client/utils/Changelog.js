@@ -5,6 +5,8 @@
  * the first MainMenuScene create() after the version string changes.
  */
 
+import { sceneH } from './Layout.js';
+
 const CURRENT_VERSION = '0.4.0';
 const STORAGE_KEY     = 'twt_seen_changelog_v';
 
@@ -24,10 +26,10 @@ const ENTRIES = [
 ];
 
 const W = 844;
-const H = 390;
 
 export function maybeShowChangelog(scene) {
     if (!scene) return;
+    const H = sceneH(scene);
     let seen = '';
     try { seen = localStorage.getItem(STORAGE_KEY) || ''; } catch {}
     if (seen === CURRENT_VERSION) return;

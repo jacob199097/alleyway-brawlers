@@ -5242,7 +5242,9 @@ export class DuelScene extends Phaser.Scene {
                 // Snapshot the (already-blurred) duel scene so PostMatchScene can use
                 // it as a background — relying on the paused scene to keep rendering
                 // beneath the post-match camera doesn't work consistently.
-                this.game.renderer.snapshot((image) => {
+                // Only this scene's camera area (on desktop the canvas also holds the letterbox)
+                const cam = this.cameras.main;
+                this.game.renderer.snapshotArea(cam.x, cam.y, cam.width, cam.height, (image) => {
                     const key = 'duel_snapshot_' + Date.now();
                     if (this.textures.exists(key)) this.textures.remove(key);
                     this.textures.addImage(key, image);
