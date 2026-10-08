@@ -1,4 +1,5 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W     = 844;
 const H     = 390;
@@ -27,7 +28,7 @@ export class MainMenuScene extends Phaser.Scene {
         this._playBGM();
 
         // Always fetch fresh player data so post-match rewards show immediately
-        fetch('/api/profile/me', { headers: { Authorization: `Bearer ${token}` } })
+        apiFetch('/api/profile/me')
             .then(r => r.ok ? r.json() : null)
             .then(player => {
                 if (!player) { this.scene.start('LoginScene'); return; }
@@ -209,12 +210,9 @@ export class MainMenuScene extends Phaser.Scene {
     // ── Quest panel ───────────────────────────────────────────────────────────
 
     async _loadAndBuildQuests(player) {
-        const token = this.registry.get('token');
         let questData = { daily: [], main: [] };
         try {
-            const r = await fetch('/api/quests', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const r = await apiFetch('/api/quests');
             if (r.ok) questData = await r.json();
         } catch (_) {}
 
@@ -301,12 +299,10 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     _claimQuest(questId, btn) {
-        const token = this.registry.get('token');
         btn.setText('...').disableInteractive();
 
-        fetch(`/api/quests/claim/${questId}`, {
+        apiFetch(`/api/quests/claim/${questId}`, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
         })
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         .then(({ ok, data }) => {

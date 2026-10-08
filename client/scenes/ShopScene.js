@@ -1,5 +1,6 @@
 import { RARITY_LABEL, RARITY_COLOR } from '../cards/RarityConfig.js';
 import { attachHoldZoom, showCardZoom } from '../utils/CardZoom.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -121,11 +122,10 @@ export class ShopScene extends Phaser.Scene {
     }
 
     _buyAndOpen(packId, meta, currency = 'karat') {
-        const token = this.registry.get('token');
 
-        fetch('/api/shop/open', {
+        apiFetch('/api/shop/open', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ packType: packId, currency }),
         })
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))

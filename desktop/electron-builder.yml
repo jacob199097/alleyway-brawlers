@@ -1,0 +1,24 @@
+appId: com.alleyway.brawlers
+productName: AlleyWay Brawlers
+copyright: Copyright © 2026 AlleyWay Brawlers
+
+directories:
+  output: release
+
+# Only the shell goes into app.asar; the game build ships beside it as resources/game
+files:
+  - main.js
+  - preload.js
+  - package.json
+extraResources:
+  - from: ../dist
+    to: game
+
+win:
+  target:
+    - nsis   # installer for testing
+    - dir    # unpacked folder (release/win-unpacked) for the Steam depot
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

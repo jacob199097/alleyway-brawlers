@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/Platform.js';
 /**
  * Mailbox — system messages, rewards, news.
  * Two-pane layout: list on the left, full message on the right.
@@ -61,17 +62,14 @@ export class MailboxScene extends Phaser.Scene {
             fontSize: '9px', fontFamily: 'Arial Black', color: '#9ddcff',
         }).setOrigin(0.5).setDepth(1);
         btn.on('pointerup', () => {
-            const token = this.registry.get('token');
-            fetch('/api/mail/read-all', {
+            apiFetch('/api/mail/read-all', {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
             }).then(() => this._loadMessages()).catch(() => {});
         });
     }
 
     _loadMessages() {
-        const token = this.registry.get('token');
-        fetch('/api/mail', { headers: { Authorization: `Bearer ${token}` } })
+        apiFetch('/api/mail')
             .then(r => r.json())
             .then(data => {
                 this._messages = data.messages || [];
@@ -135,10 +133,8 @@ export class MailboxScene extends Phaser.Scene {
         // Mark read on the server (idempotent) and locally
         if (!msg.read_at) {
             msg.read_at = new Date().toISOString();
-            const token = this.registry.get('token');
-            fetch(`/api/mail/${msg.id}/read`, {
+            apiFetch(`/api/mail/${msg.id}/read`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
             }).catch(() => {});
             this._renderList();
         }
@@ -191,10 +187,8 @@ export class MailboxScene extends Phaser.Scene {
     }
 
     _deleteMessage(msg) {
-        const token = this.registry.get('token');
-        fetch(`/api/mail/${msg.id}`, {
+        apiFetch(`/api/mail/${msg.id}`, {
             method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
         })
         .then(() => {
             this._messages = this._messages.filter(m => m.id !== msg.id);

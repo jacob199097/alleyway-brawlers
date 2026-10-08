@@ -1,5 +1,6 @@
 import { RARITY_COLOR }            from '../cards/RarityConfig.js';
 import { showCardZoom }            from '../utils/CardZoom.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -195,12 +196,10 @@ export class DeckBuilderScene extends Phaser.Scene {
     // ── Data ──────────────────────────────────────────────────────────────────
 
     _loadData() {
-        const token = this.registry.get('token');
-        const h     = { Authorization: `Bearer ${token}` };
 
         Promise.all([
-            fetch('/api/profile/inventory', { headers: h }).then(r => r.json()),
-            fetch('/api/deck',              { headers: h }).then(r => r.json()),
+            apiFetch('/api/profile/inventory').then(r => r.json()),
+            apiFetch('/api/deck').then(r => r.json()),
         ]).then(([inv, decks]) => {
             this._inventory = inv;
             this._allDecks  = Array.isArray(decks) ? decks : [];
@@ -220,8 +219,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._activeDeckId = deck.id;
         this._deckNameTxt.setText(this._truncate(deck.name || `Deck ${deck.id}`, 16));
 
-        const token = this.registry.get('token');
-        fetch(`/api/deck/${deck.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        apiFetch(`/api/deck/${deck.id}`)
             .then(r => r.json())
             .then(data => {
                 this._deckCards = (data.cards || []).flatMap(c =>
@@ -528,11 +526,10 @@ export class DeckBuilderScene extends Phaser.Scene {
         this._deckCards.forEach(c => { grouped[c.cardId] = (grouped[c.cardId] || 0) + 1; });
         const cards = Object.entries(grouped).map(([cardId, copies]) => ({ cardId, copies }));
 
-        const token = this.registry.get('token');
         const body  = { cards, leaderCardId: this._leaderCard?.id ?? null };
-        fetch(`/api/deck/${this._activeDeckId}/cards`, {
+        apiFetch(`/api/deck/${this._activeDeckId}/cards`, {
             method:  'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(body),
         })
         .then(r => r.json())
@@ -609,10 +606,8 @@ export class DeckBuilderScene extends Phaser.Scene {
 
     _setActive() {
         if (!this._activeDeckId) return;
-        const token = this.registry.get('token');
-        fetch(`/api/deck/${this._activeDeckId}/activate`, {
+        apiFetch(`/api/deck/${this._activeDeckId}/activate`, {
             method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}` },
         })
         .then(r => r.json())
         .then(d => {
@@ -627,10 +622,9 @@ export class DeckBuilderScene extends Phaser.Scene {
     _createDeck() {
         const name = window.prompt('New deck name:');
         if (!name) return;
-        const token = this.registry.get('token');
-        fetch('/api/deck', {
+        apiFetch('/api/deck', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ name }),
         })
         .then(r => r.json())

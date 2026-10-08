@@ -1,4 +1,5 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -12,8 +13,7 @@ export class ProfileScene extends Phaser.Scene {
     create() {
         this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setAlpha(0.6);
 
-        const token = this.registry.get('token');
-        fetch('/api/profile/me', { headers: { Authorization: `Bearer ${token}` } })
+        apiFetch('/api/profile/me')
             .then(r => r.json())
             .then(p => this._render(p))
             .catch(() => this.add.text(W / 2, H / 2, 'Failed to load profile.', {
@@ -141,10 +141,9 @@ export class ProfileScene extends Phaser.Scene {
     }
 
     _selectIcon(key) {
-        const token = this.registry.get('token');
-        fetch('/api/profile/me', {
+        apiFetch('/api/profile/me', {
             method:  'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ avatarUrl: key }),
         })
         .then(r => r.json())

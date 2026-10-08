@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/Platform.js';
 const W = 844;
 const H = 390;
 
@@ -129,7 +130,7 @@ export class LoginScene extends Phaser.Scene {
         this._errText.setText('');
         this._actionBtnText?.setText('...');
 
-        fetch(endpoint, {
+        apiFetch(endpoint, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         })

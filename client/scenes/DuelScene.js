@@ -24,6 +24,7 @@ import { AiBrain }         from '../cards/AiBrain.js';
 import { SettingsManager } from '../utils/SettingsManager.js';
 import { showCardZoom }   from '../utils/CardZoom.js';
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -5206,9 +5207,9 @@ export class DuelScene extends Phaser.Scene {
         this._soloMatchId = null;
         const token = this.registry.get('token');
         if (!token || this.scene.key !== 'DuelScene') return;   // multiplayer is server-driven
-        fetch('/api/match/start', {
+        apiFetch('/api/match/start', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ranked: this._ranked }),
         })
         .then(r => r.ok ? r.json() : null)

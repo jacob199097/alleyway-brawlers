@@ -6,8 +6,10 @@
  */
 
 import { io } from 'socket.io-client';
+import { API_BASE } from '../utils/Platform.js';
 
-const SERVER_URL = import.meta.env?.VITE_SERVER_URL || 'http://localhost:3000';
+// '' = same origin as the page (Vite proxies /socket.io in dev)
+const SERVER_URL = API_BASE || undefined;
 
 class _SocketClient {
     constructor() {

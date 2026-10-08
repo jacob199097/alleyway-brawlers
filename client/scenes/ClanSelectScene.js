@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/Platform.js';
 /**
  * Shown after first login when the player has not yet picked their starting
  * clan. Two big tiles — Lions and Vipers — and a CONFIRM button. Calls the
@@ -106,13 +107,12 @@ export class ClanSelectScene extends Phaser.Scene {
     }
 
     _confirm() {
-        const token = this.registry.get('token');
         this._confirmBtn.disableInteractive();
         this._confirmTxt.setText('SAVING...');
 
-        fetch('/api/onboarding/start-clan', {
+        apiFetch('/api/onboarding/start-clan', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ clan: this._selected }),
         })
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))

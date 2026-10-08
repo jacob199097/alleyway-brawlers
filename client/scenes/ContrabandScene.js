@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/Platform.js';
 const W = 844;
 const H = 390;
 
@@ -74,10 +75,9 @@ export class ContrabandScene extends Phaser.Scene {
     }
 
     _purchase(bundle) {
-        const token = this.registry.get('token');
-        fetch('/api/shop/contraband/purchase', {
+        apiFetch('/api/shop/contraband/purchase', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ bundleId: bundle.id }),   // server owns price + amount
         })
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))

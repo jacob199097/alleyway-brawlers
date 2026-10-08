@@ -5,6 +5,7 @@
  */
 
 import { SettingsManager } from '../utils/SettingsManager.js';
+import { apiFetch } from '../utils/Platform.js';
 
 export class BootScene extends Phaser.Scene {
     constructor() { super('BootScene'); }
@@ -19,9 +20,7 @@ export class BootScene extends Phaser.Scene {
         const token = localStorage.getItem('twt_token');
         if (token) {
             // Validate token by fetching player profile
-            fetch('/api/profile/me', {
-                headers: { Authorization: `Bearer ${token}` },
-            })
+            apiFetch('/api/profile/me')
             .then(r => r.ok ? r.json() : Promise.reject())
             .then(player => {
                 this.registry.set('player', player);

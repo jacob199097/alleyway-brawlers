@@ -24,6 +24,8 @@
       position: relative;
     }
     canvas { display: block; }
+    /* Desktop (Electron) shell: mouse-driven, no touch gesture suppression */
+    html.desktop, html.desktop body { touch-action: auto; }
 
   </style>
 </head>

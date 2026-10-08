@@ -4,6 +4,7 @@
  */
 
 import { SocketClient } from '../network/SocketClient.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -47,10 +48,9 @@ export class SocialScene extends Phaser.Scene {
         this._makeBtn(340, 80, '+', () => {
             const username = inputDom.node.querySelector('input').value.trim();
             if (!username) return;
-            const token = this.registry.get('token');
-            fetch('/api/social/friends/request', {
+            apiFetch('/api/social/friends/request', {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ targetUsername: username }),
             })
             .then(r => r.json())
@@ -61,10 +61,7 @@ export class SocialScene extends Phaser.Scene {
     }
 
     _buildFriendsList() {
-        const token = this.registry.get('token');
-        fetch('/api/social/friends', {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch('/api/social/friends')
         .then(r => r.json())
         .then(friends => this._renderFriends(friends));
     }
@@ -103,10 +100,8 @@ export class SocialScene extends Phaser.Scene {
             // Action buttons
             if (isPending) {
                 this._makeBtn(330, y, '✓', () => {
-                    const token = this.registry.get('token');
-                    fetch(`/api/social/friends/${f.friendship_id}/accept`, {
+                    apiFetch(`/api/social/friends/${f.friendship_id}/accept`, {
                         method: 'PATCH',
-                        headers: { Authorization: `Bearer ${token}` },
                     }).then(() => this.scene.restart());
                 }, 0x2d6a4f);
             } else {
@@ -147,10 +142,7 @@ export class SocialScene extends Phaser.Scene {
         this._activeChatId = friendId;
 
         // Fetch history
-        const token = this.registry.get('token');
-        fetch(`/api/social/messages/${friendId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch(`/api/social/messages/${friendId}`)
         .then(r => r.json())
         .then(msgs => this._buildChatUI(friendId, friendName, msgs));
     }

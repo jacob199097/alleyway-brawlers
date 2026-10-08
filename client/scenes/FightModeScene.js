@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/Platform.js';
 const W = 844;
 const H = 390;
 
@@ -25,8 +26,7 @@ export class FightModeScene extends Phaser.Scene {
     }
 
     _loadActiveDeckSize() {
-        const token = this.registry.get('token');
-        fetch('/api/deck', { headers: { Authorization: `Bearer ${token}` } })
+        apiFetch('/api/deck')
             .then(r => r.json())
             .then(decks => {
                 const active = (decks || []).find(d => d.is_active);

@@ -1,5 +1,6 @@
 import { RARITY_COLOR, RARITY_LABEL } from '../cards/RarityConfig.js';
 import { showCardZoom }               from '../utils/CardZoom.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -308,10 +309,7 @@ export class CardLibraryScene extends Phaser.Scene {
     // ── Data fetch ────────────────────────────────────────────────────────────
 
     _fetchCollection() {
-        const token = this.registry.get('token');
-        fetch('/api/collection/my', {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch('/api/collection/my')
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json();
@@ -441,10 +439,8 @@ export class CardLibraryScene extends Phaser.Scene {
     // ── Mark All Seen ─────────────────────────────────────────────────────────
 
     _markAllSeen() {
-        const token = this.registry.get('token');
-        fetch('/api/collection/mark-seen', {
+        apiFetch('/api/collection/mark-seen', {
             method:  'POST',
-            headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {}); // ignore errors per spec
 
         // Remove all NEW badges from the grid

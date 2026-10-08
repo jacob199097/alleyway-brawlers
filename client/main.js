@@ -26,6 +26,15 @@ import { FightModeScene }         from './scenes/FightModeScene.js';
 import { RPSScene }               from './scenes/RPSScene.js';
 import { SettingsScene }          from './scenes/SettingsScene.js';
 import { VideoBackgroundScene } from './scenes/VideoBackgroundScene.js';
+import { isDesktop, bindRegistry } from './utils/Platform.js';
+
+// Desktop shell: drop the mobile-only page hints (home-screen app, orientation lock, touch-action)
+if (isDesktop) {
+    document.querySelectorAll(
+        'meta[name="mobile-web-app-capable"], meta[name="apple-mobile-web-app-capable"], meta[name="screen-orientation"]'
+    ).forEach(m => m.remove());
+    document.documentElement.classList.add('desktop');
+}
 
 // ── Shared game config (portrait, scale to fill screen) ──────────────────────
 const config = {
@@ -49,7 +58,7 @@ const config = {
         height:           390,
     },
 
-    // Mobile-friendly: disable right-click context menu
+    // No browser context menu (desktop will use right-click for card zoom)
     disableContextMenu: true,
 
     // Enable multi-touch input
@@ -87,6 +96,7 @@ const config = {
 };
 
 export const game = new Phaser.Game(config);
+bindRegistry(game.registry);
 
 // Expose for hot-reload / debug
 if (typeof window !== 'undefined') window.__TWT__ = { game };

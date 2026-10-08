@@ -1,4 +1,5 @@
 import { SocketClient } from '../network/SocketClient.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -48,12 +49,11 @@ export class MatchmakingScene extends Phaser.Scene {
         this._subText.setText(`vs ${matchData.opponentName}`);
 
         this.time.delayedCall(1200, () => {
-            const token = this.registry.get('token');
-            fetch('/api/deck?active=true', { headers: { Authorization: `Bearer ${token}` } })
+            apiFetch('/api/deck?active=true')
                 .then(r => r.json())
                 .then(decks => {
                     const active = decks.find(d => d.is_active) || decks[0];
-                    if (active) return fetch(`/api/deck/${active.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json());
+                    if (active) return apiFetch(`/api/deck/${active.id}`).then(r => r.json());
                     return null;
                 })
                 .then(deckData => {

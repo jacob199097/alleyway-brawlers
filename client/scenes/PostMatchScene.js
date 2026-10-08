@@ -1,4 +1,5 @@
 import { showCardZoom } from '../utils/CardZoom.js';
+import { apiFetch } from '../utils/Platform.js';
 
 const W = 844;
 const H = 390;
@@ -253,9 +254,9 @@ export class PostMatchScene extends Phaser.Scene {
             return;
         }
 
-        fetch('/api/match/complete', {
+        apiFetch('/api/match/complete', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 matchId:        d.soloMatchId,
                 result:         d.result,
