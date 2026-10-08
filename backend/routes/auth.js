@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../db/pool');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/mailer');
 
-const JWT_SECRET  = process.env.JWT_SECRET  || 'change_me_in_production';
+const JWT_SECRET  = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const SALT_ROUNDS = 12;
 

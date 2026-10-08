@@ -244,9 +244,12 @@ export class PostMatchScene extends Phaser.Scene {
         const token = this.registry.get('token');
         const d     = this._data;
 
-        if (!token) {
-            this._animateXpBar(d.result === 'win' ? 100 : 20, 1);
-            this._rewardText?.setText(d.result === 'win' ? '+50 Karat' : '+10 Karat');
+        // Multiplayer rewards were already applied by the server and arrive with the match result
+        if (d.rewards) { this._showRewards(d.rewards); return; }
+
+        if (!token || !d.soloMatchId) {
+            this._animateXpBar(0, 0);
+            this._rewardText?.setText('Rewards not recorded');
             return;
         }
 
@@ -254,33 +257,39 @@ export class PostMatchScene extends Phaser.Scene {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
+                matchId:        d.soloMatchId,
                 result:         d.result,
+                cardsPlayed:    d.cardsPlayed,
                 playerMorale:   d.playerMorale,
                 opponentMorale: d.opponentMorale,
                 turns:          d.turns,
             }),
         })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-            if (!data?.rewards) {
-                this._animateXpBar(d.result === 'win' ? 100 : 20, 1);
-                this._rewardText?.setText(d.result === 'win' ? '+50 Karat' : '+10 Karat');
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data?.rewards) {
+                this._animateXpBar(0, 0);
+                this._rewardText?.setText(data?.error || 'Rewards not recorded');
                 return;
             }
-            const r = data.rewards;
-            this._animateXpBar(r.xpEarned ?? 0, r.xpPercent ?? 0);
-
-            const lines = [`+${r.karatEarned} Karat`];
-            if (r.firstWinBonus) lines.push('★ First Win Bonus!');
-            if (r.leveledUp)     lines.push(`→ Level ${r.newLevel}!`);
-            this._rewardText?.setText(lines.join('\n'));
-
-            if (r.rankChanged) this._showRankUp(r.newRank);
+            this._showRewards(data.rewards);
         })
         .catch(() => {
-            this._animateXpBar(d.result === 'win' ? 100 : 20, 1);
-            this._rewardText?.setText(d.result === 'win' ? '+50 Karat' : '+10 Karat');
+            this._animateXpBar(0, 0);
+            this._rewardText?.setText('Network error — rewards not recorded');
         });
+    }
+
+    _showRewards(r) {
+        this._animateXpBar(r.xpEarned ?? 0, r.xpPercent ?? 0);
+
+        const lines = [`+${r.karatEarned ?? 0} Karat`];
+        if (r.dailyCapReached) lines.push('Daily reward limit reached');
+        if (r.firstWinBonus)   lines.push('★ First Win Bonus!');
+        if (r.leveledUp)       lines.push(`→ Level ${r.newLevel}!`);
+        this._rewardText?.setText(lines.join('\n'));
+
+        if (r.rankChanged) this._showRankUp(r.newRank);
     }
 
     // ── Animated XP bar fill ──────────────────────────────────────────────────

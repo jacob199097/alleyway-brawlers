@@ -13,6 +13,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const { pool }       = require('../db/pool');
 
 // In-memory queue: [{ socketId, playerId, username, deckId, joinedAt }]
 const queue = [];
@@ -39,6 +40,40 @@ function tryPair() {
     const p1 = queue.shift();
     const p2 = queue.shift();
     return { p1, p2 };
+}
+
+function isInMatch(playerId) {
+    for (const m of activeMatches.values()) {
+        if (m.p1.playerId === playerId || m.p2.playerId === playerId) return true;
+    }
+    return false;
+}
+
+// ── Server-side deck ──────────────────────────────────────────────────────────
+
+/**
+ * Loads a player's active deck from the DB as a pool of playable copies.
+ * Cards played in a match must come out of this pool, with stats taken from
+ * the DB — never from what the client sends.
+ * @returns {Promise<Map<string, {card: object, remaining: number}>|null>}
+ *          null when the player has no valid 40-card deck.
+ */
+async function loadDeckPool(playerId) {
+    const { rows } = await pool.query(
+        `SELECT c.id, c.name, c.clan, c.clan_tag, c.card_type, c.subtype, c.level,
+                c.authority, c.attack, c.defense, c.rarity, c.art_url, c.effect_key,
+                LEAST(dc.copies, pi.quantity) AS copies
+         FROM   decks d
+         JOIN   deck_cards dc       ON dc.deck_id = d.id
+         JOIN   cards c             ON c.id = dc.card_id
+         JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = d.player_id
+         WHERE  d.id = (SELECT id FROM decks WHERE player_id = $1
+                        ORDER BY is_active DESC, updated_at DESC LIMIT 1)`,
+        [playerId]
+    );
+    const total = rows.reduce((s, r) => s + r.copies, 0);
+    if (total !== 40) return null;
+    return new Map(rows.map(r => [r.id, { card: r, remaining: r.copies }]));
 }
 
 // ── Match Room ────────────────────────────────────────────────────────────────
@@ -83,8 +118,25 @@ function removeMatch(matchId) {
 function registerMatchmaking(socket, io, playerData) {
 
     // ── Join Queue ───────────────────────────────────────────────────────────
-    socket.on('queue:join', () => {
-        const entry = { socketId: socket.id, ...playerData };
+    socket.on('queue:join', async () => {
+        if (isInMatch(playerData.playerId)) {
+            socket.emit('queue:error', { message: 'Already in a match.' });
+            return;
+        }
+        let deckPool;
+        try {
+            deckPool = await loadDeckPool(playerData.playerId);
+        } catch (err) {
+            console.error('[Queue] Deck load failed:', err.message);
+            socket.emit('queue:error', { message: 'Could not load your deck.' });
+            return;
+        }
+        if (!deckPool) {
+            socket.emit('queue:error', { message: 'You need a complete 40-card deck to play online.' });
+            return;
+        }
+
+        const entry = { socketId: socket.id, ...playerData, deckPool };
         const added  = addToQueue(entry);
 
         if (!added) {
@@ -160,10 +212,12 @@ function registerMatchmaking(socket, io, playerData) {
                 message: 'Your opponent disconnected. You win by forfeit.',
             });
 
-            removeMatch(matchId);
+            // Leaving is a loss — record it and pay the opponent the win.
+            // (Lazy require: duelHandler imports this module.)
+            require('./duelHandler').finishMatch(io, match, isP1 ? 'p2' : 'p1');
             break;
         }
     });
 }
 
-module.exports = { registerMatchmaking, getMatch, removeMatch, activeMatches };
+module.exports = { registerMatchmaking, createMatch, getMatch, removeMatch, isInMatch, loadDeckPool, activeMatches };

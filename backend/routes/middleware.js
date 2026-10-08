@@ -1,7 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_production';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function requireAuth(req, res, next) {
     const header = req.headers.authorization;

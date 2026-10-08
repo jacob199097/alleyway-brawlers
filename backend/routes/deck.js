@@ -78,8 +78,34 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
     const { cards, leaderCardId } = req.body;
     if (!Array.isArray(cards)) return res.status(400).json({ error: 'cards must be an array.' });
 
-    const totalCopies = cards.reduce((s, c) => s + (c.copies || 1), 0);
+    // Merge duplicate entries and validate copy counts before touching the DB
+    const wanted = new Map();   // cardId → copies
+    for (const entry of cards) {
+        const copies = entry?.copies ?? 1;
+        if (typeof entry?.cardId !== 'string' || !Number.isInteger(copies) || copies < 1) {
+            return res.status(400).json({ error: 'Each card needs a cardId and a whole number of copies.' });
+        }
+        wanted.set(entry.cardId, (wanted.get(entry.cardId) || 0) + copies);
+    }
+    const totalCopies = [...wanted.values()].reduce((s, n) => s + n, 0);
     if (totalCopies !== 40) return res.status(400).json({ error: `Deck must be exactly 40 cards (currently ${totalCopies}).` });
+
+    // Every card must be a non-leader card the player owns enough copies of (max 3)
+    const { rows: owned } = await pool.query(
+        `SELECT c.id, c.name, c.card_type, pi.quantity
+         FROM   cards c
+         JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1
+         WHERE  c.id::text = ANY($2::text[])`,
+        [req.playerId, [...wanted.keys()]]
+    );
+    const ownedById = new Map(owned.map(r => [r.id, r]));
+    for (const [cardId, copies] of wanted) {
+        const row = ownedById.get(cardId);
+        if (!row) return res.status(400).json({ error: 'Deck contains a card you do not own.' });
+        if (row.card_type === 'leader') return res.status(400).json({ error: 'Leader cards cannot go in the main deck.' });
+        if (copies > 3) return res.status(400).json({ error: `Max 3 copies of ${row.name}.` });
+        if (copies > row.quantity) return res.status(400).json({ error: `You only own ${row.quantity} of ${row.name}.` });
+    }
 
     const client = await pool.connect();
     try {
@@ -87,10 +113,10 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
         // Delete existing
         await client.query('DELETE FROM deck_cards WHERE deck_id = $1', [req.params.id]);
         // Insert new
-        for (const { cardId, copies } of cards) {
+        for (const [cardId, copies] of wanted) {
             await client.query(
                 `INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1,$2,$3)`,
-                [req.params.id, cardId, Math.min(3, Math.max(1, copies || 1))]
+                [req.params.id, cardId, copies]
             );
         }
         // Leader (optional) — verify it's a leader card the player owns.

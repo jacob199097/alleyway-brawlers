@@ -203,16 +203,8 @@ router.post('/claim/:questId', requireAuth, async (req, res) => {
     }
 });
 
-// ── POST /api/quests/progress ─────────────────────────────────────────────────
-// Client reports incremental progress (e.g. cards played during a match).
-router.post('/progress', requireAuth, async (req, res) => {
-    const { questId, amount = 1 } = req.body;
-    if (!questId || typeof amount !== 'number' || amount < 1) {
-        return res.status(400).json({ error: 'Invalid payload.' });
-    }
-    await incrementDailyQuest(req.playerId, questId, Math.floor(amount));
-    res.json({ ok: true });
-});
+// Quest progress is never reported by the client — it's recorded server-side
+// (pack opens in packOpener, cards played via /api/match/complete).
 
 // ── Internal helpers (called by game server / shop) ───────────────────────────
 
@@ -223,7 +215,7 @@ async function incrementDailyQuest(playerId, questId, amount = 1) {
     try {
         await pool.query(
             `INSERT INTO player_daily_quests (player_id, quest_id, quest_date, progress)
-             VALUES ($1,$2,$3,$4)
+             VALUES ($1,$2,$3,LEAST($4::int, $5::int))
              ON CONFLICT (player_id, quest_id, quest_date)
              DO UPDATE SET progress = LEAST(
                  player_daily_quests.progress + EXCLUDED.progress,

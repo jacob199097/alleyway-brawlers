@@ -137,7 +137,7 @@ export class MultiplayerDuelScene extends DuelScene {
                 });
             }
 
-            if (payload.gameOver) this._handleMatchOver(payload);
+            // On gameOver the server follows up with 'duel:matchOver' (winner + rewards)
         });
 
         // Phase advance from server
@@ -155,10 +155,8 @@ export class MultiplayerDuelScene extends DuelScene {
 
         // Opponent disconnected
         sc.on('match:opponentDisconnected', ({ message }) => {
+            // The server records the forfeit and follows up with 'duel:matchOver'
             this._showFloatingText(W / 2, 200, message, '#4cc9f0');
-            this.time.delayedCall(2000, () => {
-                this.scene.start('PostMatchScene', { result: 'win', forfeit: true });
-            });
         });
 
         // Opponent chose a position for their promoted card
@@ -214,13 +212,8 @@ export class MultiplayerDuelScene extends DuelScene {
 
         this.time.delayedCall(1500, () => {
             this.scene.start('PostMatchScene', {
-                result:      iWon ? 'win' : 'loss',
-                goldEarned:  myReward?.goldEarned  ?? 0,
-                xpEarned:    myReward?.xpEarned    ?? 0,
-                leveledUp:   myReward?.leveledUp   ?? false,
-                newLevel:    myReward?.newLevel     ?? null,
-                rankChanged: myReward?.rankChanged  ?? false,
-                newRank:     myReward?.newRank      ?? null,
+                result:  payload.winnerId == null ? 'draw' : (iWon ? 'win' : 'loss'),
+                rewards: myReward || { karatEarned: 0, xpEarned: 0 },
             });
         });
     }

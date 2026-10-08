@@ -2,11 +2,11 @@ const W = 844;
 const H = 390;
 
 const BUNDLES = [
-    { amount: 500,   price: 4.99,  imageKey: 'contraband_499',  tag: '' },
-    { amount: 1200,  price: 9.99,  imageKey: 'contraband_999',  tag: 'STARTER' },
-    { amount: 2500,  price: 19.99, imageKey: 'contraband_1999', tag: '' },
-    { amount: 7000,  price: 49.99, imageKey: 'contraband_4999', tag: 'BEST VALUE' },
-    { amount: 15000, price: 99.99, imageKey: 'contraband_9999', tag: '' },
+    { id: 'cb_500', amount: 500,   price: 4.99,  imageKey: 'contraband_499',  tag: '' },
+    { id: 'cb_1200', amount: 1200,  price: 9.99,  imageKey: 'contraband_999',  tag: 'STARTER' },
+    { id: 'cb_2500', amount: 2500,  price: 19.99, imageKey: 'contraband_1999', tag: '' },
+    { id: 'cb_7000', amount: 7000,  price: 49.99, imageKey: 'contraband_4999', tag: 'BEST VALUE' },
+    { id: 'cb_15000', amount: 15000, price: 99.99, imageKey: 'contraband_9999', tag: '' },
 ];
 
 export class ContrabandScene extends Phaser.Scene {
@@ -78,7 +78,7 @@ export class ContrabandScene extends Phaser.Scene {
         fetch('/api/shop/contraband/purchase', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body:    JSON.stringify({ amount: bundle.amount, price: bundle.price }),
+            body:    JSON.stringify({ bundleId: bundle.id }),   // server owns price + amount
         })
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         .then(({ ok, data }) => {
@@ -89,7 +89,7 @@ export class ContrabandScene extends Phaser.Scene {
                 this.registry.set('player', player);
             }
             this._refreshContrabandLabel();
-            this._showToast(`+${bundle.amount.toLocaleString()} Contraband added!`, '#e040fb');
+            this._showToast(`+${data.contrabandGranted.toLocaleString()} Contraband added!`, '#e040fb');
         })
         .catch(() => this._showToast('Network error', '#e63946'));
     }

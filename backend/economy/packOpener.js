@@ -111,10 +111,22 @@ async function openPack(playerId, packType, currency = 'karat') {
     try {
         await client.query('BEGIN');
 
-        // ── Deduct chosen currency (fail fast if insufficient) ───────────────
+        // ── Use a pre-bought pack if the player has one, otherwise charge ────
         let newKarat = null;
         let newContraband = null;
-        if (currency === 'contraband') {
+        const { rowCount: usedOwnedPack } = await client.query(
+            `UPDATE player_packs
+             SET    quantity = quantity - 1
+             WHERE  player_id = $1 AND pack_type = $2 AND quantity > 0`,
+            [playerId, packType]
+        );
+        if (usedOwnedPack) {
+            const { rows } = await client.query(
+                'SELECT karat, contraband FROM players WHERE id = $1', [playerId]
+            );
+            newKarat      = rows[0].karat;
+            newContraband = rows[0].contraband;
+        } else if (currency === 'contraband') {
             const { rows } = await client.query(
                 `UPDATE players
                  SET    contraband = contraband - $1
@@ -155,16 +167,6 @@ async function openPack(playerId, packType, currency = 'karat') {
                 [playerId, card.id]
             );
         }
-
-        // ── Record the pack opening (consume from player_packs if pre-bought) ─
-        // If they're buying directly, we skip the pack inventory step.
-        // If they had a pre-purchased pack, decrement it:
-        await client.query(
-            `UPDATE player_packs
-             SET quantity = quantity - 1
-             WHERE player_id = $1 AND pack_type = $2 AND quantity > 0`,
-            [playerId, packType]
-        );
 
         await client.query('COMMIT');
 
@@ -222,14 +224,8 @@ async function buyPack(playerId, packType) {
         await client.query(
             `INSERT INTO player_packs (player_id, pack_type, quantity)
              VALUES ($1, $2, 1)
-             ON CONFLICT DO NOTHING`,
-            [playerId, packType]
-        );
-        // If conflict (row already exists), increment:
-        await client.query(
-            `UPDATE player_packs
-             SET quantity = quantity + 1
-             WHERE player_id = $1 AND pack_type = $2`,
+             ON CONFLICT (player_id, pack_type)
+             DO UPDATE SET quantity = player_packs.quantity + 1`,
             [playerId, packType]
         );
 

@@ -146,14 +146,63 @@ function resolveCombat(attacker, defender, matchState, attackerOwner) {
 
 // ── Register duel events on a socket ─────────────────────────────────────────
 
+// ── Validation helpers ────────────────────────────────────────────────────────
+
+/** 'p1' | 'p2' for a player in this match, null for anyone else. */
+function roleOf(match, playerId) {
+    if (match.p1.playerId === playerId) return 'p1';
+    if (match.p2.playerId === playerId) return 'p2';
+    return null;
+}
+
+function isSlot(n, min, max) { return Number.isInteger(n) && n >= min && n <= max; }
+
+/** Finds a card with copies left in the player's server-side deck pool. */
+function findInDeck(side, requestedId) {
+    const pool = side.deckPool;
+    if (!pool || typeof requestedId !== 'string') return null;
+    // Clients may identify a card by DB id or by its art key
+    const entry = pool.get(requestedId)
+        || [...pool.values()].find(e => e.card.art_url === requestedId);
+    return entry && entry.remaining > 0 ? entry : null;
+}
+
+/** Consumes one copy from a deck-pool entry and builds the field card from DB stats. */
+function takeFromDeck(entry, requestedPosition) {
+    entry.remaining--;
+
+    const c       = entry.card;
+    const catalog = c.art_url ? CARD_CATALOG[c.art_url] : null;
+    return {
+        id:         c.art_url || c.id,
+        dbId:       c.id,
+        name:       c.name,
+        clan:       c.clan,
+        clanTag:    c.clan_tag,
+        cardType:   c.card_type,
+        subtype:    c.subtype,
+        level:      c.level,
+        authority:  c.authority,
+        attack:     c.attack  ?? 0,
+        defense:    c.defense ?? 0,
+        rarity:     c.rarity,
+        art_url:    c.art_url,
+        effectKey:  c.effect_key,
+        promotesTo: catalog?.promotesTo ?? null,
+        position:   requestedPosition === 'def' ? 'def' : 'atk',
+    };
+}
+
 function registerDuelHandler(socket, io, playerData) {
 
     // ── Play a card from hand to field ───────────────────────────────────────
-    socket.on('duel:playCard', ({ matchId, card, slotIndex }) => {
+    socket.on('duel:playCard', ({ matchId, card, slotIndex } = {}) => {
         const match = getMatch(matchId);
-        if (!match) return socket.emit('duel:error', { message: 'Match not found.' });
+        if (!match || match.over) return socket.emit('duel:error', { message: 'Match not found.' });
 
-        const role = match.p1.playerId === playerData.playerId ? 'p1' : 'p2';
+        const role = roleOf(match, playerData.playerId);
+        if (!role) return socket.emit('duel:error', { message: 'You are not in this match.' });
+        if (!isSlot(slotIndex, 0, 9)) return socket.emit('duel:error', { message: 'Invalid slot.' });
 
         if (match.activePlayerId !== playerData.playerId) {
             return socket.emit('duel:error', { message: 'Not your turn.' });
@@ -167,20 +216,32 @@ function registerDuelHandler(socket, io, playerData) {
             return socket.emit('duel:error', { message: 'Slot already occupied.' });
         }
 
+        // Look up the card in the player's own deck — stats come from the DB
+        const entry = findInDeck(match[role], card?.dbId || card?.id);
+        if (!entry) {
+            return socket.emit('duel:error', { message: 'That card is not in your deck.' });
+        }
+        const cardType = entry.card.card_type;
+        if (cardType === 'leader') {
+            return socket.emit('duel:error', { message: 'Leader cards cannot be played to the field.' });
+        }
+
         // Gang Members go front row; Ambushes / Hustles go back row
-        if (card.cardType === 'gang_member' && !isFrontRow(slotIndex)) {
+        if (cardType === 'gang_member' && !isFrontRow(slotIndex)) {
             return socket.emit('duel:error', { message: 'Gang Members must be placed in the front row (slots 0-4).' });
         }
-        if (card.cardType !== 'gang_member' && !isBackRow(slotIndex)) {
+        if (cardType !== 'gang_member' && !isBackRow(slotIndex)) {
             return socket.emit('duel:error', { message: 'Hustles and Ambushes go in the back row (slots 5-9).' });
         }
 
-        // Place card
+        // Place the server-built card (consumes one copy from the deck pool)
+        const placed = takeFromDeck(entry, card?.position);
         match[role].field[slotIndex] = {
-            ...card,
-            faceDown:    card.cardType === 'ambush',
+            ...placed,
+            faceDown:    cardType === 'ambush',
             hasAttacked: false,
         };
+        card = match[role].field[slotIndex];
 
         recalcClanBonuses(match);
 
@@ -196,9 +257,15 @@ function registerDuelHandler(socket, io, playerData) {
     });
 
     // ── Declare an attack ────────────────────────────────────────────────────
-    socket.on('duel:attack', ({ matchId, attackerSlot, defenderSlot }) => {
+    socket.on('duel:attack', ({ matchId, attackerSlot, defenderSlot } = {}) => {
         const match = getMatch(matchId);
-        if (!match) return socket.emit('duel:error', { message: 'Match not found.' });
+        if (!match || match.over) return socket.emit('duel:error', { message: 'Match not found.' });
+        if (!roleOf(match, playerData.playerId)) {
+            return socket.emit('duel:error', { message: 'You are not in this match.' });
+        }
+        if (!isSlot(attackerSlot, 0, 4) || (defenderSlot !== null && !isSlot(defenderSlot, 0, 4))) {
+            return socket.emit('duel:error', { message: 'Invalid slot.' });
+        }
 
         if (match.activePlayerId !== playerData.playerId) {
             return socket.emit('duel:error', { message: 'Not your turn.' });
@@ -207,7 +274,7 @@ function registerDuelHandler(socket, io, playerData) {
             return socket.emit('duel:error', { message: 'Attacks can only be declared in the Brawl Phase.' });
         }
 
-        const role         = match.p1.playerId === playerData.playerId ? 'p1' : 'p2';
+        const role         = roleOf(match, playerData.playerId);
         const opponentRole = role === 'p1' ? 'p2' : 'p1';
 
         const attacker = match[role].field[attackerSlot];
@@ -298,18 +365,23 @@ function registerDuelHandler(socket, io, playerData) {
         emitFieldStats(io, match);
 
         if (gameOver) {
-            _handleMatchOver(io, match, role);
+            // Winner is decided by morale, not by who attacked — an attack that
+            // backfires can knock out the attacker. Both at 0 is a draw.
+            const p1Out = match.p1.morale <= 0;
+            const p2Out = match.p2.morale <= 0;
+            finishMatch(io, match, p1Out && p2Out ? null : (p1Out ? 'p2' : 'p1'));
         }
     });
 
     // ── Set position for a just-promoted card ────────────────────────────────
-    socket.on('duel:setPromotionPosition', ({ matchId, slotIndex, position }) => {
+    socket.on('duel:setPromotionPosition', ({ matchId, slotIndex, position } = {}) => {
         const match = getMatch(matchId);
-        if (!match) return;
+        if (!match || match.over) return;
 
-        const role = match.p1.playerId === playerData.playerId ? 'p1' : 'p2';
+        const role = roleOf(match, playerData.playerId);
+        if (!role || !isSlot(slotIndex, 0, 4) || !['atk', 'def'].includes(position)) return;
         const card = match[role].field[slotIndex];
-        if (!card) return;
+        if (!card || card.cardType !== 'gang_member') return;
 
         card.position = position;
 
@@ -323,9 +395,9 @@ function registerDuelHandler(socket, io, playerData) {
     });
 
     // ── Phase advance ────────────────────────────────────────────────────────
-    socket.on('duel:phaseAdvance', ({ matchId }) => {
+    socket.on('duel:phaseAdvance', ({ matchId } = {}) => {
         const match = getMatch(matchId);
-        if (!match || match.activePlayerId !== playerData.playerId) return;
+        if (!match || match.over || match.activePlayerId !== playerData.playerId) return;
 
         match.phase = nextPhase(match.phase);
 
@@ -354,19 +426,30 @@ function registerDuelHandler(socket, io, playerData) {
 
 // ── Match-over resolution ─────────────────────────────────────────────────────
 
-async function _handleMatchOver(io, match, winnerRole) {
-    const winnerId = match[winnerRole].playerId;
-    const loserId  = winnerRole === 'p1' ? match.p2.playerId : match.p1.playerId;
+/**
+ * Ends a match exactly once, records it and pays out rewards.
+ * @param {'p1'|'p2'|null} winnerRole  null = draw
+ */
+async function finishMatch(io, match, winnerRole) {
+    if (match.over) return;
+    match.over = true;
+    removeMatch(match.matchId);
+
+    const winnerId = winnerRole ? match[winnerRole].playerId : null;
+    const loserId  = winnerRole ? match[winnerRole === 'p1' ? 'p2' : 'p1'].playerId : null;
 
     let rewardResults = null;
     try {
         rewardResults = await resolveMatch({
             winnerId,
             loserId,
+            p1Id: match.p1.playerId,
+            p2Id: match.p2.playerId,
             matchMeta: {
                 turns:        match.turn,
                 p1MoraleEnd:  match.p1.morale,
                 p2MoraleEnd:  match.p2.morale,
+                durationSecs: Math.round((Date.now() - match.startedAt) / 1000),
             },
         });
     } catch (err) {
@@ -380,8 +463,6 @@ async function _handleMatchOver(io, match, winnerRole) {
         p1Morale:  match.p1.morale,
         p2Morale:  match.p2.morale,
     });
-
-    removeMatch(match.matchId);
 }
 
-module.exports = { registerDuelHandler, resolveCombat };
+module.exports = { registerDuelHandler, resolveCombat, finishMatch };

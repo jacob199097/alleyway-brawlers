@@ -69,6 +69,7 @@ export class DuelScene extends Phaser.Scene {
         this._opponentHideout = rawOppHideout.filter(c => c.cardType !== 'leader');
         this._isMultiplayer   = false;
         this._firstPlayer     = data.firstPlayer   || 'player';
+        this._ranked          = !!data.ranked;
     }
 
     create() {
@@ -83,6 +84,7 @@ export class DuelScene extends Phaser.Scene {
         this.effectBus = new EffectBus(this);
         this._mvpLog = {};
         this._playerCardsPlayed = 0;
+        this._startSoloSession();
         this.brawlPhase = new BrawlPhase(this, this.state, this.effectBus);
 
         // Opponent card-back strip (shows card count at top edge)
@@ -5198,18 +5200,24 @@ export class DuelScene extends Phaser.Scene {
         );
     }
 
-    _reportQuestProgress() {
+    // Solo (AI) matches get a server-issued session id; rewards can only be
+    // claimed against it once, from PostMatchScene.
+    _startSoloSession() {
+        this._soloMatchId = null;
         const token = this.registry.get('token');
-        if (!token || !this._playerCardsPlayed) return;
-        fetch('/api/quests/progress', {
+        if (!token || this.scene.key !== 'DuelScene') return;   // multiplayer is server-driven
+        fetch('/api/match/start', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body:    JSON.stringify({ questId: 'daily_play_10', amount: this._playerCardsPlayed }),
-        }).catch(() => {});
+            body:    JSON.stringify({ ranked: this._ranked }),
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.matchId) this._soloMatchId = d.matchId; })
+        .catch(() => {});
     }
 
     _launchPostMatch(data) {
-        this._reportQuestProgress();
+        data = { ...data, soloMatchId: this._soloMatchId, cardsPlayed: this._playerCardsPlayed };
 
         // Dim overlay — keep DuelScene partially visible as background behind the result screen
         const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(998);

@@ -72,56 +72,109 @@ router.post('/open', requireAuth, async (req, res) => {
     }
 });
 
+// ── Contraband bundles — the server is the only source of price and amount ───
+// The client only ever names a bundleId; never trust an amount or price it sends.
+const CONTRABAND_BUNDLES = {
+    cb_500:   { contraband: 500,   priceCents: 499  },
+    cb_1200:  { contraband: 1200,  priceCents: 999  },
+    cb_2500:  { contraband: 2500,  priceCents: 1999 },
+    cb_7000:  { contraband: 7000,  priceCents: 4999 },
+    cb_15000: { contraband: 15000, priceCents: 9999 },
+};
+
+// Free grants without a real payment are only possible when explicitly opted
+// into on a non-production server (local testing of the shop UI).
+function devFreePurchases() {
+    return process.env.NODE_ENV !== 'production' && process.env.DEV_FREE_PURCHASES === 'true';
+}
+
 // ── POST /api/shop/contraband/create-intent — create Stripe PaymentIntent ────
 router.post('/contraband/create-intent', requireAuth, async (req, res) => {
-    const { amount = 100 } = req.body;
-    if (!Number.isInteger(amount) || amount <= 0) {
-        return res.status(400).json({ error: 'Invalid amount.' });
-    }
+    const { bundleId } = req.body;
+    const bundle = CONTRABAND_BUNDLES[bundleId];
+    if (!bundle) return res.status(400).json({ error: 'Invalid bundle.' });
     try {
         const intent = await getStripe().paymentIntents.create({
-            amount:   499,   // $4.99 in cents
+            amount:   bundle.priceCents,
             currency: 'usd',
-            metadata: { playerId: req.playerId, contrabandAmount: String(amount) },
+            metadata: { playerId: req.playerId, bundleId },
         });
         res.json({ clientSecret: intent.client_secret });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('[shop/create-intent]', err.message);
+        res.status(500).json({ error: 'Could not start payment.' });
     }
 });
 
-// ── POST /api/shop/contraband/purchase — verify payment, then grant ───────────
+// ── POST /api/shop/contraband/purchase — verify payment, then grant once ─────
 router.post('/contraband/purchase', requireAuth, async (req, res) => {
-    const { paymentIntentId, amount = 100 } = req.body;
-    if (!Number.isInteger(amount) || amount <= 0) {
-        return res.status(400).json({ error: 'Invalid amount.' });
-    }
+    const { paymentIntentId, bundleId } = req.body;
+
+    let grantKey, grantBundleId;
     try {
-        // Dev mode: skip Stripe verification when NODE_ENV is not 'production'
-        // OR when Stripe isn't configured. Production must have STRIPE_SECRET_KEY
-        // set and the client must complete a PaymentIntent through Stripe
-        // Elements first.
-        const devMode = process.env.NODE_ENV !== 'production'
-            || !process.env.STRIPE_SECRET_KEY;
-        if (!devMode) {
-            if (!paymentIntentId) {
+        if (devFreePurchases()) {
+            if (!CONTRABAND_BUNDLES[bundleId]) return res.status(400).json({ error: 'Invalid bundle.' });
+            grantKey      = `dev_${req.playerId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            grantBundleId = bundleId;
+        } else {
+            if (!process.env.STRIPE_SECRET_KEY) {
+                return res.status(503).json({ error: 'Purchases are not available yet.' });
+            }
+            if (typeof paymentIntentId !== 'string' || !paymentIntentId) {
                 return res.status(400).json({ error: 'Missing paymentIntentId.' });
             }
             const intent = await getStripe().paymentIntents.retrieve(paymentIntentId);
+            const bundle = CONTRABAND_BUNDLES[intent.metadata?.bundleId];
             if (intent.status !== 'succeeded') {
                 return res.status(402).json({ error: 'Payment not completed.' });
             }
-            if (String(intent.metadata.playerId) !== String(req.playerId)) {
+            if (String(intent.metadata?.playerId) !== String(req.playerId)) {
                 return res.status(403).json({ error: 'Payment does not belong to this account.' });
             }
+            // Bundle comes from the intent the server created, and the amount
+            // actually charged must match its price.
+            if (!bundle || intent.amount_received !== bundle.priceCents || intent.currency !== 'usd') {
+                return res.status(400).json({ error: 'Payment does not match a valid bundle.' });
+            }
+            grantKey      = intent.id;
+            grantBundleId = intent.metadata.bundleId;
         }
-        const { rows } = await pool.query(
-            'UPDATE players SET contraband = contraband + $1 WHERE id = $2 RETURNING contraband',
-            [amount, req.playerId]
-        );
-        res.json({ success: true, newContraband: rows[0].contraband, devMode });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('[shop/purchase] verify', err.message);
+        return res.status(500).json({ error: 'Could not verify payment.' });
+    }
+
+    const bundle = CONTRABAND_BUNDLES[grantBundleId];
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // One grant per PaymentIntent — a replayed id inserts nothing.
+        const { rowCount } = await client.query(
+            `INSERT INTO payment_grants (payment_intent_id, player_id, bundle_id, contraband)
+             VALUES ($1, $2, $3, $4) ON CONFLICT (payment_intent_id) DO NOTHING`,
+            [grantKey, req.playerId, grantBundleId, bundle.contraband]
+        );
+        if (!rowCount) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'This payment has already been redeemed.' });
+        }
+        const { rows } = await client.query(
+            'UPDATE players SET contraband = contraband + $1 WHERE id = $2 RETURNING contraband',
+            [bundle.contraband, req.playerId]
+        );
+        await client.query('COMMIT');
+        res.json({
+            success: true,
+            contrabandGranted: bundle.contraband,
+            newContraband: rows[0].contraband,
+            devMode: grantKey.startsWith('dev_'),
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('[shop/purchase] grant', err.message);
+        res.status(500).json({ error: 'Purchase failed.' });
+    } finally {
+        client.release();
     }
 });
 
