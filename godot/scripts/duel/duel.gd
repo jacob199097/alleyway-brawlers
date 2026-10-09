@@ -1381,6 +1381,9 @@ func _update_aim() -> void:
 	elif leaders.has("opponent") and leaders.opponent.glow > 0.0 and leaders.opponent.hit(m):
 		end = leaders.opponent.home
 		snapped = true
+	elif _direct_btn and is_instance_valid(_direct_btn) and _direct_btn.get_global_rect().has_point(m):
+		end = _direct_btn.get_global_rect().get_center()
+		snapped = true
 	_arrow.aim(field.player[_selected_slot].home, end, RED if snapped else GOLD, snapped)
 
 
@@ -2550,12 +2553,11 @@ func _end_drag() -> void:
 func _show_direct_button(slot: int) -> void:
 	var b := Button.new()
 	b.text = "DIRECT ATTACK  ⚔"
-	b.custom_minimum_size = Vector2(340, 70)
+	b.custom_minimum_size = Vector2(340, 62)
 	b.add_theme_font_size_override("font_size", 28)
 	b.add_theme_stylebox_override("normal", _box(Color("4a0d14"), RED, 3, 10))
-	# Over the empty enemy row, or between the rows when Downed characters are still there
-	var row_y: float = ROWS.opponent[0] if field.opponent.is_empty() else DIVIDER_Y
-	b.position = Vector2(1080 - 170, row_y - 35)
+	# Up by the opponent's hand, away from the board, so it isn't clicked by mistake
+	b.position = Vector2(1080 - 170, 8)
 	b.pressed.connect(func():
 		_cancel_interaction()
 		_act("player", {"kind": "attack", "from": slot, "target": -1}))

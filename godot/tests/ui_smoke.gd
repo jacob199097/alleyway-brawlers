@@ -110,16 +110,20 @@ func _try_attack() -> bool:
 	for slot in duel_screen.field.player:
 		if not duel_screen.duel.can_attack_with("player", slot):
 			continue
+		var targets: Array = duel_screen.duel.attack_targets("player")
 		duel_screen._on_field_click(slot)
 		_check(duel_screen._mode == "target", "targeting mode")
+		var acted := true
+		var picked := -99
 		if duel_screen._direct_btn:
 			duel_screen._direct_btn.pressed.emit()
 		else:
 			var key: String = duel_screen._valid.keys()[0]
 			duel_screen._cancel_interaction()
-			duel_screen._act("player", {"kind": "attack", "from": slot, "target": int(key.split(":")[1])})
+			picked = int(key.split(":")[1])
+			acted = duel_screen._act("player", {"kind": "attack", "from": slot, "target": picked})
 		_check(duel_screen.duel.sides.player.field[slot] == null or duel_screen.duel.sides.player.field[slot].has_attacked,
-			"attack resolved")
+			"attack resolved (slot %d -> %d, acted %s, targets %s, card %s)" % [slot, picked, acted, targets, duel_screen.duel.sides.player.field[slot]])
 		attacks += 1
 		return true
 	return false
