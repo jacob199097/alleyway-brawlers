@@ -200,14 +200,17 @@ func can_attack_with(side: String, slot: int) -> bool:
 	return c != null and c.position == "atk" and not c.downed and not c.has_attacked and not c.face_down
 
 
-## Attack targets: enemy character slots, or DIRECT (and LEADER while it's dormant) when the
-## enemy front row is empty.
+## Attack targets: any enemy character; DIRECT when none of them is still standing (an empty
+## front row, or only Downed characters); and the enemy LEADER whenever it is dormant.
 func attack_targets(side: String) -> Array:
 	var foe := other(side)
 	var foes := characters(foe)
-	if not foes.is_empty():
-		return foes.map(func(e): return e.slot)
-	return [DIRECT, LEADER] if leader_dormant(foe) else [DIRECT]
+	var targets: Array = foes.map(func(e): return e.slot)
+	if not foes.any(func(e): return not e.card.downed):
+		targets.append(DIRECT)
+	if leader_dormant(foe):
+		targets.append(LEADER)
+	return targets
 
 
 ## Switch ATK ↔ DEF: once per turn, not on the turn it arrived, not after attacking.

@@ -193,11 +193,15 @@ export class DuelState {
         return c != null && c.position === 'atk' && !c.downed && !c.has_attacked && !c.face_down;
     }
 
+    // Any enemy character; DIRECT when none is still standing (empty row or only Downed);
+    // the enemy LEADER whenever it is dormant.
     attackTargets(side) {
         const foe = other(side);
         const foes = this.characters(foe);
-        if (foes.length) return foes.map(e => e.slot);
-        return this.leaderDormant(foe) ? [DIRECT, LEADER] : [DIRECT];
+        const targets = foes.map(e => e.slot);
+        if (!foes.some(e => !e.card.downed)) targets.push(DIRECT);
+        if (this.leaderDormant(foe)) targets.push(LEADER);
+        return targets;
     }
 
     canChangePosition(side, slot) {

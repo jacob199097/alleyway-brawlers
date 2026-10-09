@@ -4,6 +4,7 @@ extends RefCounted
 ## so the screen can animate each step.
 
 const SLOT_ORDER := [2, 1, 3, 0, 4]   # deploy toward the middle first
+const NO_TARGET := -99
 
 
 ## The starter decks used until the client loads real decks from the server
@@ -99,32 +100,39 @@ static func _brawl(d: DuelState, side: String) -> Dictionary:
 			continue
 		var att: Dictionary = d.card_at(side, slot)
 		var targets := d.attack_targets(side)
-		if DuelState.DIRECT in targets:
-			# Knock out a dormant leader when one hit does it (−1000 morale and no Dormant bonus);
-			# otherwise go for the opponent's morale
-			var leader = d.sides[foe].leader
-			if DuelState.LEADER in targets and att.attack >= leader.influence:
-				return {"kind": "attack", "from": slot, "target": DuelState.LEADER}
-			return {"kind": "attack", "from": slot, "target": DuelState.DIRECT}
-		var best := -1
+		var best := NO_TARGET
 		var best_score := 0.0
 		for t in targets:
-			var df: Dictionary = d.card_at(foe, t)
 			var score := 0.0
-			if df.face_down:
-				score = 1.0 if att.attack >= 1600 else 0.0   # unknown DEF: only strong attackers try
-			elif df.downed:
-				score = 3.0 if att.attack > df.defense else 0.0
-			elif df.position == "def":
-				score = 2.0 if att.attack > df.defense else 0.0
-			elif att.attack > df.attack:
-				score = 2.0 + (att.attack - df.attack) / 1000.0
+			if t == DuelState.DIRECT:
+				# Finish the game if this hit does it; otherwise chip the opponent's morale
+				score = 100.0 if att.attack >= d.sides[foe].morale else 2.5 + att.attack / 2000.0
+			elif t == DuelState.LEADER:
+				# Knock out a dormant leader when one hit does it (−1000 morale, no Dormant bonus);
+				# chipping its Influence is a last resort
+				score = 4.0 if att.attack >= d.sides[foe].leader.influence else 0.5
+			else:
+				score = _target_score(att, d.card_at(foe, t))
 			if score > best_score:
 				best_score = score
 				best = t
-		if best >= 0:
+		if best != NO_TARGET:
 			return {"kind": "attack", "from": slot, "target": best}
 	return {}
+
+
+## How much the CPU wants to attack this enemy character (0 = not worth it).
+static func _target_score(att: Dictionary, df: Dictionary) -> float:
+	var score := 0.0
+	if df.face_down:
+		score = 1.0 if att.attack >= 1600 else 0.0   # unknown DEF: only strong attackers try
+	elif df.downed:
+		score = 3.0 if att.attack > df.defense else 0.0
+	elif df.position == "def":
+		score = 2.0 if att.attack > df.defense else 0.0
+	elif att.attack > df.attack:
+		score = 2.0 + (att.attack - df.attack) / 1000.0
+	return score
 
 
 ## The strongest face-up attacker the opponent shows.

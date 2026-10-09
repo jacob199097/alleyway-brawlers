@@ -2370,12 +2370,17 @@ func _begin_target(slot: int) -> void:
 			_valid["opponent:%d" % t] = RED
 	if DuelState.DIRECT in targets:
 		_show_direct_button(slot)
+	var parts: Array = []
+	if targets.any(func(t): return t >= 0):
+		parts.append("choose a character")
+	if DuelState.DIRECT in targets:
+		parts.append("attack directly")
 	if DuelState.LEADER in targets and leaders.has("opponent"):
 		leaders.opponent.glow_color = RED
 		leaders.opponent.glow = 1.0
-		_show_prompt("Attack directly, or click the dormant leader to hit its Influence")
-	else:
-		_show_prompt("Choose a target  ·  right-click to cancel")
+		parts.append("hit the dormant leader's Influence")
+	var text := ", ".join(parts)
+	_show_prompt(text.left(1).to_upper() + text.substr(1) + "  ·  right-click to cancel")
 	queue_redraw()
 
 
@@ -2517,7 +2522,9 @@ func _show_direct_button(slot: int) -> void:
 	b.custom_minimum_size = Vector2(340, 70)
 	b.add_theme_font_size_override("font_size", 28)
 	b.add_theme_stylebox_override("normal", _box(Color("4a0d14"), RED, 3, 10))
-	b.position = Vector2(1080 - 170, ROWS.opponent[0] - 35)
+	# Over the empty enemy row, or between the rows when Downed characters are still there
+	var row_y: float = ROWS.opponent[0] if field.opponent.is_empty() else DIVIDER_Y
+	b.position = Vector2(1080 - 170, row_y - 35)
 	b.pressed.connect(func():
 		_cancel_interaction()
 		_act("player", {"kind": "attack", "from": slot, "target": -1}))

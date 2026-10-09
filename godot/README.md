@@ -59,7 +59,7 @@ Right-click any card to zoom it.
 |---|---|
 | See a card's details | Hover over it |
 | Play a card | Click it in your hand for options, or drag it onto a slot |
-| Attack | In the Brawl phase, click a glowing character, then click a target. When the enemy front row is empty, attack directly, or click their dormant leader to hit its Influence |
+| Attack | In the Brawl phase, click a glowing character, then click a target: an enemy character, or their dormant leader (always allowed) to hit its Influence. When the enemy has no standing characters (none, or only Downed ones), you can also attack directly |
 | Character actions | Click your character to change its position, promote it (Maya) or use its ability (Maya Lv.3) |
 | Card prompts | Effects that say "you may" or "choose" open a panel. Click an option, or click a highlighted card |
 | Next phase | **Space** / **Enter**, or the button on the right |
