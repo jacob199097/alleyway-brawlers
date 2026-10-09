@@ -29,6 +29,7 @@ var turn := 1
 var active := "player"
 var phase := "upkeep"
 var winner := ""
+var end_reason := ""     # how the game ended: "morale" or "deck_out"
 ## The prompt the game is waiting on, or {}:
 ##   {kind = "choose", side, key, prompt, options = [{id, label, side?, slot?}], card, cb}
 ##   {kind = "discard", side, count, prompt, cb}
@@ -601,11 +602,16 @@ func _damage(side: String, amount: int) -> void:
 	s.morale = maxi(0, s.morale - amount)
 	_emit("damage", {"side": side, "amount": amount, "morale": s.morale})
 	if s.morale <= 0 and winner == "":
-		winner = other(side)
-		pending = {}
-		_asks.clear()
-		_new_asks.clear()
-		_emit("game_over", {"winner": winner})
+		_end(other(side), "morale")
+
+
+func _end(win_side: String, reason: String) -> void:
+	winner = win_side
+	end_reason = reason
+	pending = {}
+	_asks.clear()
+	_new_asks.clear()
+	_emit("game_over", {"winner": winner, "reason": reason})
 
 
 func _brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> int:
@@ -1075,6 +1081,9 @@ static func _prompt_event(ask: Dictionary) -> Dictionary:
 func _draw(side: String, opening := false) -> void:
 	var s: Dictionary = sides[side]
 	if s.deck.is_empty():
+		# Decked out: a player who has to draw from an empty deck loses
+		if winner == "":
+			_end(other(side), "deck_out")
 		return
 	var c: Dictionary = s.deck.pop_back()
 	s.hand.append(c)

@@ -22,6 +22,12 @@ func _ready() -> void:
 	_build_right()
 	_build_quests()
 	_intro()
+	if not Game.settings.tutorial_done and not Game.settings.tutorial_offered:
+		# First visit: suggest the guided first duel once
+		Game.set_setting("tutorial_offered", true)
+		await get_tree().create_timer(0.6).timeout
+		UI.dialog(self, "NEW TO THE ALLEY?", "Play a quick guided duel to learn the basics: Authority, attacking, Downed cards, leaders and Direct Attacks.",
+			[["PLAY TUTORIAL", Game.start_tutorial, UI.GREEN], ["NOT NOW", func(): pass]])
 	if Game.offline:
 		var l := UI.label("OFFLINE  ·  vs CPU with the starter deck  ·  nothing is saved", 22, UI.PURPLE, true)
 		l.size = Vector2(1920, 30)

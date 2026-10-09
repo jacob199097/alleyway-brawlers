@@ -32,6 +32,7 @@ const GOLD := Color("f4d35e")
 const GREEN := Color("3ddc84")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
+const Tutorial := preload("res://scripts/duel/tutorial.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
@@ -67,6 +68,7 @@ var _dragging := false
 var _menu: Control = null
 var _direct_btn: Button = null
 var _arrow: AttackArrow              # the curved targeting arrow
+var _tutorial: Node = null          # the guided first duel (Game.duel_setup.mode == "tutorial")
 var _dim_rect: ColorRect = null
 var _match_id := ""
 var _cards_played := 0
@@ -85,6 +87,7 @@ var _streak_tex: Texture2D
 var _strike_at := Vector2.INF       # where the last clash landed (damage flies from there)
 var _strike_time := 0.0              # game time of that clash
 var _game_time := 0.0
+var _end_reason := "morale"         # from game_over: "morale" or "deck_out"
 
 var _font: SystemFont
 var _dot: Texture2D
@@ -115,7 +118,8 @@ func _ready() -> void:
 		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.player_title(int(me.get("level", 1))).to_upper()])
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
 	if online_start.is_empty():
-		_build_panel("opponent", $HUD/UI/OppPanel, "CPU", "profile_002", "CPU OPPONENT")
+		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
+		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "profile_002", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
 	else:
 		var opp: Dictionary = online_start.get("opponent", {})
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
@@ -142,15 +146,22 @@ func _ready() -> void:
 		_setup_online(online_start)
 		return
 
-	# The player's saved deck from Fight Mode (Game.duel_setup); the CPU uses the starter deck.
-	var setup := DuelAI.test_setup()
 	var chosen: Dictionary = Game.duel_setup
-	if chosen.has("deck"):
-		setup.decks.player = chosen.deck
-		setup.hideouts.player = chosen.get("hideout", [])
-		setup.leaders.player = chosen.get("leader", "")
-	duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, str(chosen.get("first", "player")))
-	_start_match_session(chosen.get("ranked", false))
+	if chosen.get("mode") == "tutorial":
+		# A staged match with a coach (scripts/duel/tutorial.gd); nothing is recorded
+		_tutorial = Tutorial.new()
+		add_child(_tutorial)
+		duel = _tutorial.make_duel(self)
+		_set_morale("opponent", duel.sides.opponent.morale)   # the rival starts roughed up
+	else:
+		# The player's saved deck from Fight Mode (Game.duel_setup); the CPU uses the starter deck.
+		var setup := DuelAI.test_setup()
+		if chosen.has("deck"):
+			setup.decks.player = chosen.deck
+			setup.hideouts.player = chosen.get("hideout", [])
+			setup.leaders.player = chosen.get("leader", "")
+		duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, str(chosen.get("first", "player")))
+		_start_match_session(chosen.get("ranked", false))
 	_make_leader_views()
 	counts = duel._counts()
 	_refresh_hud()
@@ -308,6 +319,8 @@ func _process(delta: float) -> void:
 		camera.offset = Vector2.ZERO
 	_update_post()
 	_update_aim()
+	if _tutorial:
+		_tutorial.update()
 	if _ui.has("detail_art"):
 		# The featured card floats gently, catching the light
 		var tm := Time.get_ticks_msec() / 1000.0
@@ -405,7 +418,7 @@ func _draw_pile(side: String, pile: String) -> void:
 			draw_rect(r, Color(1, 1, 1, 0.3), false, 2.0)
 	var at := Vector2(p.x - 60, p.y + 16)
 	draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, 46, 10, Color(0, 0, 0, 0.9))
-	draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, 46, Color.WHITE)
+	draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, 46, RED if pile == "deck" and n <= 5 else Color.WHITE)
 	_draw_zone_label(p, pile.to_upper())
 
 
@@ -420,6 +433,8 @@ func _draw_zone_label(p: Vector2, text: String) -> void:
 # ── Event playback ───────────────────────────────────────────────────────────
 
 func _act(side: String, action: Dictionary) -> bool:
+	if _tutorial and side == "player" and not _tutorial.allow(action):
+		return false
 	if _online:
 		# The server applies the move and sends back what happened (mp:update)
 		if _awaiting or side != "player" or not Net.send("mp:action", {"matchId": _match_id, "action": action}):
@@ -472,7 +487,9 @@ func _after_events() -> void:
 		await _wait(0.4)
 		if _playing:
 			return
-		var a := DuelAI.choose(duel, side)
+		var a: Dictionary = _tutorial.opponent_move() if _tutorial and side == "opponent" else {}
+		if a.is_empty():
+			a = DuelAI.choose(duel, side)
 		if a.is_empty() or not _act(side, a):
 			if not _act(side, {"kind": "next"}):
 				push_warning("CPU has no legal action: %s" % a)
@@ -1116,6 +1133,13 @@ func _ev_game_over(ev: Dictionary) -> void:
 	_mode = "over"
 	_cancel_interaction()
 	var won: bool = ev.winner == "player"
+	_end_reason = str(ev.get("reason", "morale"))
+	if _end_reason == "deck_out":
+		var loser := "opponent" if won else "player"
+		_stamp(pile_pos(loser, "deck"), "DECKED OUT", RED)
+		shake(12)
+		Sfx.play("down", 0.7)
+		await _wait(0.9)
 	await _wait(0.5)
 	Sfx.play("victory" if won else "defeat")
 	var dim := ColorRect.new()
@@ -1162,7 +1186,7 @@ func _finish_match(won: bool) -> void:
 		"result": "win" if won else "loss",
 		"player_morale": duel.sides.player.morale, "opponent_morale": duel.sides.opponent.morale,
 		"turns": duel.turn, "cards_played": _cards_played, "mvp": mvp,
-		"match_id": _match_id, "snapshot": snap,
+		"match_id": _match_id, "snapshot": snap, "tutorial": _tutorial != null, "reason": _end_reason,
 	}
 	if _online:
 		# The server records the match and sends the rewards (mp:over)

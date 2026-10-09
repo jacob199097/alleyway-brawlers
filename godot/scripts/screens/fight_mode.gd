@@ -29,6 +29,9 @@ func _ready() -> void:
 	for i in modes.size():
 		_card(modes[i], Vector2(270 + i * 470, 170))
 	UI.back_button(self, func(): Game.go("main_menu"))
+	var tut := UI.button("HOW TO PLAY  ·  TUTORIAL", Game.start_tutorial, Vector2(440, 60), UI.GREEN)
+	tut.position = Vector2(960 - 220, 958)
+	add_child(tut)
 
 
 func _card(m: Dictionary, at: Vector2) -> void:

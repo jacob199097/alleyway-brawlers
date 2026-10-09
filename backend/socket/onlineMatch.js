@@ -183,7 +183,7 @@ function createOnlineService(io, deps) {
         for (const ev of events) {
             if (['summon', 'set', 'hustle'].includes(ev.type)) match.seats[ev.side].cardsPlayed += 1;
         }
-        if (match.state.winner) finish(match, match.state.winner, 'morale');
+        if (match.state.winner) finish(match, match.state.winner, match.state.endReason || 'morale');
         else armTimer(match);
     }
 

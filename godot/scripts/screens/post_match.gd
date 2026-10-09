@@ -92,6 +92,8 @@ func _outcome_panel(d: Dictionary, won: bool) -> void:
 			reason = "Your opponent conceded" if won else "You conceded"
 		"disconnect":
 			reason = "Your opponent left the match" if won else "You were disconnected"
+		"deck_out":
+			reason = "Your opponent ran out of cards" if won else "You ran out of cards"
 	var r := UI.label(reason, 26, Color.WHITE, true)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
@@ -172,6 +174,10 @@ func _mvp_panel(mvp: Dictionary) -> void:
 
 ## Rewards are decided by the server (solo-match session from match/start).
 func _submit(d: Dictionary) -> void:
+	if d.get("tutorial", false):
+		_xp_label.text = "TUTORIAL COMPLETE"
+		_rewards.text = "You know the basics. See you in the alley!" if d.get("result") == "win" else "Replay it any time from Fight → Tutorial."
+		return
 	if d.get("online", false):
 		# Online matches are recorded by the server, which sends the rewards with the result
 		if d.get("rewards") is Dictionary:

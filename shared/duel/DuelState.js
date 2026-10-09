@@ -79,6 +79,7 @@ export class DuelState {
         this.active = first;
         this.phase = 'upkeep';
         this.winner = '';
+        this.endReason = ''; // how the game ended: 'morale' or 'deck_out'
         this.pending = {};
         this.sides = {};
         this._events = [];
@@ -578,13 +579,16 @@ export class DuelState {
         const s = this.sides[side];
         s.morale = Math.max(0, s.morale - amount);
         this._emit('damage', { side, amount, morale: s.morale });
-        if (s.morale <= 0 && this.winner === '') {
-            this.winner = other(side);
-            this.pending = {};
-            this._asks = [];
-            this._newAsks = [];
-            this._emit('game_over', { winner: this.winner });
-        }
+        if (s.morale <= 0 && this.winner === '') this._end(other(side), 'morale');
+    }
+
+    _end(winSide, reason) {
+        this.winner = winSide;
+        this.endReason = reason;
+        this.pending = {};
+        this._asks = [];
+        this._newAsks = [];
+        this._emit('game_over', { winner: this.winner, reason });
     }
 
     _brawlBonus(side, from, att, def) {
@@ -1044,7 +1048,11 @@ export class DuelState {
 
     _draw(side, opening = false) {
         const s = this.sides[side];
-        if (!s.deck.length) return;
+        if (!s.deck.length) {
+            // Decked out: a player who has to draw from an empty deck loses
+            if (this.winner === '') this._end(other(side), 'deck_out');
+            return;
+        }
         const c = s.deck.pop();
         s.hand.push(c);
         this._emit('draw', { side, card: clone(c), opening });

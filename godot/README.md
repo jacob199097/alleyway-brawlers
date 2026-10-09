@@ -24,7 +24,8 @@ If a card changes in `shared/cards.js`, regenerate the card data with
 | Login | Log in, register or reset your password. **Play Offline** gives CPU duels with the starter deck; nothing is saved. |
 | Clan select | Choose your starting clan on first login. The server seeds your starter inventory and deck. |
 | Main menu | The player bar shows your level, XP, currencies and unread mail. It also has quests (with Claim buttons), Fight, Deck Editor, Card Library, Shop, Profile and Social. **Esc** opens Settings. |
-| Fight mode | Casual, Ranked (from level 5) or VS CPU. Every mode uses your saved active deck, which must have 40 cards. |
+| Fight mode | Casual, Ranked (from level 5) or VS CPU. Every mode uses your saved active deck, which must have 40 cards. **How to Play** starts the tutorial. |
+| Tutorial | A guided first duel (`scripts/duel/tutorial.gd`): a coach panel teaches Authority, summoning, attacking, Downed and K.O., DEF cards, leaders and Direct Attacks, then you finish the match. It picks cheap cards from the current card data and switches their effects off. The main menu offers it once to new players. |
 | Rock-paper-scissors | Decides who goes first. The winner picks. |
 | Duel | Uses your deck, leader and promoted forms, and opens a server match session. |
 | Post-match | Shows the result, stats, the MVP card, and the rewards from the server. |
@@ -90,6 +91,7 @@ Replace `godot` with the path to the console exe.
 godot --headless --path godot --script res://tests/sim.gd                # 200 CPU-vs-CPU games on the rules
 godot --headless --fixed-fps 60 --path godot res://tests/ui_smoke.tscn   # clicks through summon, attack and prompts
 godot --path godot -- --autoplay                                         # the CPU plays both sides
+godot --headless --fixed-fps 60 --path godot res://tests/tutorial_smoke.tscn  # plays the whole tutorial
 ```
 To try the menus without the real server, there is a fake server that keeps its data in
 memory. Start it, then run the screenshot tour, or point **Settings → Server** at

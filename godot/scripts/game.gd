@@ -31,6 +31,8 @@ const DEFAULT_SETTINGS := {
 	"fps_cap": 0,                   # 0 = unlimited
 	"show_fps": false,
 	"server_url": "http://192.168.0.200:3000",
+	"tutorial_done": false,         # finished or skipped the guided first duel
+	"tutorial_offered": false,      # the main menu has suggested it once
 }
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"
 
@@ -129,6 +131,12 @@ func sign_out() -> void:
 	player = {}
 	offline = false
 	_save_session()
+
+
+## The guided first duel (scripts/duel/tutorial.gd). Works signed in or offline.
+func start_tutorial() -> void:
+	duel_setup = {"mode": "tutorial"}
+	go("duel")
 
 
 func play_offline() -> void:
