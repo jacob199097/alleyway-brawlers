@@ -146,7 +146,10 @@ func _flip_card(c: Dictionary, center: Vector2) -> void:
 	holder.modulate.a = 0.0
 	_reveal.add_child(holder)
 	var back := UI.texture_rect(CardDB.back(), size_)
+	var mat := UI.card_material(size_)
+	back.material = mat
 	holder.add_child(back)
+	var turn := func(deg: float): mat.set_shader_parameter("y_rot", deg)
 	Sfx.play("draw")
 	var t := create_tween().set_parallel()
 	t.tween_property(holder, "position:y", center.y - size_.y / 2, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -172,16 +175,17 @@ func _flip_card(c: Dictionary, center: Vector2) -> void:
 	if rarity >= 5:
 		# Fake-out: almost flips, snaps back, then commits
 		var f := create_tween()
-		f.tween_property(holder, "scale:x", 0.7, 0.14)
-		f.tween_property(holder, "scale:x", 1.05, 0.13).set_trans(Tween.TRANS_BACK)
-		f.tween_property(holder, "scale:x", 1.0, 0.09)
+		f.tween_method(turn, 0.0, 55.0, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		f.tween_method(turn, 55.0, -10.0, 0.16).set_trans(Tween.TRANS_BACK)
+		f.tween_method(turn, -10.0, 0.0, 0.1)
 		await f.finished
 		await get_tree().create_timer(0.18).timeout
 	var flip := create_tween()
-	flip.tween_property(holder, "scale:x", 0.0, 0.14)
+	flip.tween_method(turn, 0.0, 90.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	flip.tween_callback(func():
-		back.texture = UI.card_art(c) if UI.card_art(c) else CardDB.back())
-	flip.tween_property(holder, "scale:x", 1.0, 0.16).set_trans(Tween.TRANS_BACK)
+		back.texture = UI.card_art(c) if UI.card_art(c) else CardDB.back()
+		mat.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0))
+	flip.tween_method(turn, -90.0, 0.0, 0.22 if rarity >= 4 else 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await flip.finished
 	Sfx.play("promote" if rarity >= 3 else "flip", 1.0 + 0.1 * rarity)
 	if rarity >= 3:

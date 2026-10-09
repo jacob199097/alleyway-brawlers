@@ -77,6 +77,10 @@ Right-click any card to zoom it.
 | `scripts/duel/duel_state.gd` | The rules, as pure data. Actions go in as dictionaries and every change comes out as an event. These could later run on the server unchanged. |
 | `scripts/duel/duel_ai.gd` | The CPU player. It picks one action at a time. |
 | `scripts/duel/duel.gd` | The duel screen. It plays each event as an animation. |
+| `scripts/duel/card_view.gd` | One card on the board. It tilts in 3D toward the mouse and into its motion, recoils from hits, and flips over in 3D. |
+| `scripts/duel/attack_arrow.gd` | The curved targeting arrow. |
+| `shaders/card.gdshader` | 3D tilt, light sheen and holographic foil (Epic and Legendary) for every card, in the duel and the menus. |
+| `shaders/post.gdshader` | Full-screen hit effects: shockwaves, colour split, impact frames, and the red low-Morale vignette. |
 | `scripts/sfx.gd` | Sound effects. They are generated in code until real files are added to `assets/sfx/<name>.wav` or `.ogg`. |
 | `data/cards.json` | Card data, exported from `shared/cards.js`. |
 

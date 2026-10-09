@@ -1,7 +1,8 @@
 class_name CardTile
 extends Control
 ## A card in a menu grid: art with a rarity border, name, and optional corner badges.
-## Left-click → pressed, right-click → zoomed. Lifts slightly on hover.
+## Left-click → pressed, right-click → zoomed. Lifts slightly on hover, and the art tilts in 3D
+## toward the mouse (Epic and Legendary cards shimmer with foil).
 
 signal pressed(tile: CardTile)
 signal zoomed(tile: CardTile)
@@ -16,6 +17,8 @@ var _art: TextureRect
 var _name: Label
 var _hover := false
 var _overlay: Control
+var _mat: ShaderMaterial
+var _tilt := Vector2.ZERO
 
 
 static func make(c: Dictionary, size := Vector2(150, 212)) -> CardTile:
@@ -33,6 +36,10 @@ func _ready() -> void:
 	_art = UI.texture_rect(art_tex, size - Vector2(8, 8))
 	_art.position = Vector2(4, 4)
 	add_child(_art)
+	if art_tex:
+		_mat = UI.card_material(_art.size, int(card.get("rarity", 1)))
+		_art.material = _mat
+	set_process(false)
 	if art_tex == null:
 		_name = UI.label(str(card.get("name", "?")), 18, Color.WHITE, true)
 		_name.size = size - Vector2(16, 16)
@@ -49,6 +56,7 @@ func _ready() -> void:
 	mouse_entered.connect(func():
 		_hover = true
 		hovered.emit(self)
+		set_process(_mat != null)
 		create_tween().tween_property(self, "scale", Vector2.ONE * 1.05, 0.08)
 		queue_redraw())
 	mouse_exited.connect(func():
@@ -56,6 +64,19 @@ func _ready() -> void:
 		create_tween().tween_property(self, "scale", Vector2.ONE, 0.1)
 		queue_redraw())
 	set_dimmed(dimmed)
+
+
+func _process(delta: float) -> void:
+	var target := Vector2.ZERO
+	if _hover:
+		var m := ((get_local_mouse_position() - size / 2) / (size / 2)).clamp(-Vector2.ONE, Vector2.ONE)
+		target = Vector2(-m.x, m.y) * 12.0
+	_tilt = _tilt.lerp(target, 1.0 - exp(-12.0 * delta))
+	_mat.set_shader_parameter("y_rot", _tilt.x)
+	_mat.set_shader_parameter("x_rot", _tilt.y)
+	_mat.set_shader_parameter("glare", clampf(_tilt.length() / 12.0, 0.0, 1.0))
+	if not _hover and _tilt.length() < 0.05:
+		set_process(false)
 
 
 func set_dimmed(v: bool) -> void:

@@ -31,6 +31,7 @@ const RED := Color("e63946")
 const GOLD := Color("f4d35e")
 const GREEN := Color("3ddc84")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
+const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
@@ -65,7 +66,7 @@ var _press_pos := Vector2.ZERO
 var _dragging := false
 var _menu: Control = null
 var _direct_btn: Button = null
-var _attack_line: Line2D = null
+var _arrow: AttackArrow              # the curved targeting arrow
 var _dim_rect: ColorRect = null
 var _match_id := ""
 var _cards_played := 0
@@ -75,6 +76,15 @@ var _online := false      # a server-run match (Game.duel_setup.online)
 var _awaiting := false    # sent a move, waiting for the server's answer
 var _over := {}           # mp:over from the server
 var _clock_left := 0.0
+var _post: ColorRect                # full-screen hit effects (shaders/post.gdshader)
+var _post_mat: ShaderMaterial
+var _post_fx := {"aberration": 0.0, "wave_strength": 0.0, "impact": 0.0}
+var _danger := 0.0                  # 0..1, the player's Morale is low
+var _cam_tw: Tween
+var _streak_tex: Texture2D
+var _strike_at := Vector2.INF       # where the last clash landed (damage flies from there)
+var _strike_time := 0.0              # game time of that clash
+var _game_time := 0.0
 
 var _font: SystemFont
 var _dot: Texture2D
@@ -114,6 +124,11 @@ func _ready() -> void:
 	_build_phase_bar()
 	_build_turn_box()
 	_play_music()
+
+	_build_post()
+	_arrow = AttackArrow.new()
+	_arrow.z_index = 60
+	fx.add_child(_arrow)
 
 	_dim_rect = ColorRect.new()
 	_dim_rect.color = Color(0, 0, 0, 0)
@@ -285,11 +300,21 @@ func _hide_net_banner() -> void:
 
 
 func _process(delta: float) -> void:
+	_game_time += delta
 	if _shake > 0.3:
 		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 		_shake = lerpf(_shake, 0.0, minf(1.0, delta * 9.0))
 	else:
 		camera.offset = Vector2.ZERO
+	_update_post()
+	_update_aim()
+	if _ui.has("detail_art"):
+		# The featured card floats gently, catching the light
+		var tm := Time.get_ticks_msec() / 1000.0
+		var m: ShaderMaterial = _ui.detail_art.material
+		m.set_shader_parameter("y_rot", sin(tm * 0.7) * 7.0)
+		m.set_shader_parameter("x_rot", cos(tm * 0.55) * 4.0)
+		m.set_shader_parameter("glare", 0.35 + 0.25 * sin(tm * 0.7))
 	if not _valid.is_empty():
 		queue_redraw()
 	if _dragging and _press:
@@ -627,19 +652,25 @@ func _ev_summon(ev: Dictionary) -> void:
 		await v.move_to(target, 1.0, v.home_rot, 0.3).finished
 		_ring(target, Color(0.6, 0.7, 1.0), 0.7)
 	else:
-		var heavy: bool = c.authority >= 6
+		var heavy: bool = c.authority >= 6 or int(c.get("rarity", 1)) >= 5
 		_show_detail(c)
 		if heavy:
-			_dim(0.55, 0.2)
-			_splash_name(c.name, BLUE if side == "player" else RED)
-		if not v.face_up:
+			_dim(0.6, 0.2)
+			if not v.face_up:
+				v.flip(true)
+			await _showcase(v, c, BLUE if side == "player" else RED)
+		elif not v.face_up:
 			v.flip(true)
 		var rise := Vector2(0, -70 if side == "player" else 70)
-		await v.move_to(target + rise, 1.75, 0.0, 0.4 if heavy else 0.24).finished
-		await _wait(0.24 if heavy else 0.05)
-		await v.move_to(target, 1.0, 0.0, 0.11, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+		await v.move_to(target + rise, 1.75, 0.0, 0.3 if heavy else 0.24).finished
+		if heavy:
+			_cam_focus(target, 1.07, 0.3)
+		await _wait(0.16 if heavy else 0.05)
+		await v.move_to(target, 1.0, 0.0, 0.1, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+		v.kick(Vector2(0, 1 if side == "player" else -1), 16.0)
 		await _impact(target, heavy)
 		if heavy:
+			_cam_reset(0.45)
 			_dim(0.0, 0.35)
 	v.busy = false
 	v.z_index = 10
@@ -687,26 +718,11 @@ func _ev_attack(ev: Dictionary) -> void:
 	if v == null:
 		return
 	var tpos := _target_pos(DuelState.other(side), ev.target)
-	_clear_attack_line()
-	var line := Line2D.new()
-	line.points = PackedVector2Array([v.home, tpos])
-	line.width = 0.0
-	line.default_color = Color(RED, 0.85)
-	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	line.end_cap_mode = Line2D.LINE_CAP_ROUND
-	line.material = _add_mat
-	var head := Polygon2D.new()
-	head.polygon = PackedVector2Array([Vector2(26, 0), Vector2(-14, -18), Vector2(-14, 18)])
-	head.color = RED
-	head.position = tpos
-	head.rotation = (tpos - v.home).angle()
-	line.add_child(head)
-	fx.add_child(line)
-	_attack_line = line
-	create_tween().tween_property(line, "width", 10.0, 0.15)
+	_arrow.show_attack(v.home, tpos, RED)
 	Sfx.play("whoosh", 0.7)
 	v.z_index = 430
 	v.move_to(v.home, 1.15, v.home_rot, 0.16)
+	v.kick(-(tpos - v.home), 10.0)
 	_float_text(v.home + Vector2(0, 110 if side == "player" else -110), "BRAWL!", GOLD, 34)
 	await _wait(0.35)
 
@@ -738,6 +754,8 @@ func _ev_ambush(ev: Dictionary) -> void:
 	await v.move_to(center, 1.9, 0.0, 0.25, Tween.TRANS_BACK).finished
 	_ring(center, RED, 1.7)
 	_burst(center, RED, 36, 520)
+	_shockwave(center, 0.7)
+	_post_pulse("aberration", 9.0, 0.35)
 	_float_text(center + Vector2(0, -200), "AMBUSH!", RED, 64)
 	await _wait(0.8)
 	await _to_gutter(v, side)
@@ -762,23 +780,49 @@ func _ev_clash(ev: Dictionary) -> void:
 		_float_text(d.home, "%s %d" % [ev.vs, ev.def], RED if ev.vs == "ATK" else BLUE, 44)
 	elif direct:
 		_float_text(tpos + Vector2(0, -60 if foe == "opponent" else 60), "DIRECT ATTACK", RED, 44)
-	await _wait(0.42)
+	# A big swing: direct hits, hits on a leader, and attacks that clearly overpower the target
+	var big: bool = direct or ev.target == DuelState.LEADER or int(ev.att) - int(ev.def) >= 800
+	await _wait(0.36)
 	a.stop_moving()
 	var dir := (tpos - a.home).normalized()
-	Sfx.play("whoosh")
-	var t := create_tween()
-	t.tween_property(a, "position", a.home - dir * 36, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(a, "position", a.home.lerp(tpos, 0.8), 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	# Wind-up: rear back toward the camera while the view leans in
+	Sfx.play("riser", 1.0 if big else 1.15, -4.0)
+	_cam_focus(a.home.lerp(tpos, 0.5), 1.08 if big else 1.04, 0.32)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 54, 0.24)
+	t.tween_property(a, "scale", Vector2.ONE * 1.32, 0.24)
 	await t.finished
+	await _wait(0.07)
+	# Strike
+	Sfx.play("whoosh", 1.3)
+	t = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	t.tween_property(a, "position", a.home.lerp(tpos, 0.8), 0.09)
+	t.tween_property(a, "scale", Vector2.ONE * 1.12, 0.09)
+	await t.finished
+	# Contact
+	_strike_at = tpos
+	_strike_time = _game_time
 	Sfx.play("hit", 0.85 if direct else 1.0)
-	shake(22.0 if direct else 13.0)
+	Sfx.play("boom", 1.0 if big else 1.25, 0.0 if big else -5.0)
+	shake(26.0 if big else 14.0)
+	_shockwave(tpos, 1.0 if big else 0.55)
+	_post_pulse("aberration", 14.0 if big else 6.0, 0.4)
+	_sparks(tpos, dir, Color(1, 0.86, 0.5), 46 if big else 26)
 	_burst(tpos, Color(1, 0.85, 0.45), 30, 560)
-	_ring(tpos, Color.WHITE, 1.3)
+	_ring(tpos, Color.WHITE, 1.6 if big else 1.3)
+	a.kick(-dir, 18.0)
 	if d:
 		d.flash()
-	await _hit_stop(0.08)
+		d.kick(dir, 34.0 if big else 26.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (34.0 if big else 20.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	await _hit_stop(0.11 if big else 0.07)
 	_clear_attack_line()
-	a.go_home(0.25)
+	_cam_reset(0.4)
+	a.go_home(0.28)
 	await _wait(0.2)
 	a.z_index = 10
 
@@ -796,7 +840,10 @@ func _ev_downed(ev: Dictionary) -> void:
 	v.downed = true
 	v.home_rot = PI / 2
 	Sfx.play("down")
-	shake(6)
+	Sfx.play("boom", 1.5, -8.0)
+	shake(8)
+	v.kick(Vector2(0, -1 if ev.side == "player" else 1), 20.0)
+	_shockwave(v.home, 0.35)
 	_stamp(v.home, "DOWNED", RED)
 	await v.move_to(v.home, 1.0, PI / 2, 0.3, Tween.TRANS_BACK).finished
 	v.z_index = 10
@@ -813,13 +860,19 @@ func _ev_ko(ev: Dictionary) -> void:
 	v.z_index = 440
 	v.flash()
 	Sfx.play("ko")
-	shake(15)
+	Sfx.play("boom", 0.9)
+	shake(18)
+	_shockwave(v.position, 0.8)
+	_post_pulse("aberration", 10.0, 0.35)
 	_burst(v.position, Color(1.0, 0.45, 0.15), 44, 650, 0.8)
 	_burst(v.position, Color.WHITE, 18, 350, 0.5)
+	_sparks(v.position, Vector2.UP, Color(1.0, 0.6, 0.25), 30, 180.0)
 	_stamp(v.position, "K.O.", Color(1, 0.35, 0.2))
-	await _hit_stop(0.06)
-	var t := create_tween()
+	v.kick(Vector2(randf_range(-1, 1), -1), 40.0)
+	await _hit_stop(0.07)
+	var t := create_tween().set_parallel()
 	t.tween_property(v, "rotation", v.rotation + randf_range(-0.6, 0.6), 0.16)
+	t.tween_property(v, "scale", Vector2.ONE * 1.12, 0.16)
 	await t.finished
 	await _to_gutter(v, side)
 
@@ -828,10 +881,19 @@ func _ev_damage(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var amount: int = ev.amount
 	var p: Dictionary = _panels[side]
-	Sfx.play("damage")
-	shake(clampf(amount / 60.0, 8.0, 28.0))
-	_set_morale(side, ev.morale)
+	var lethal: bool = int(ev.morale) <= 0
 	var root: Control = p.root
+	if _strike_at != Vector2.INF and _game_time - _strike_time < 2.5:
+		await _comet(_strike_at, root.position + root.size / 2, RED if side == "player" else GOLD)
+		_strike_at = Vector2.INF
+	Sfx.play("damage")
+	Sfx.play("boom", 0.8 if lethal else 1.0, 0.0 if lethal or amount >= 1000 else -6.0)
+	shake(clampf(amount / 60.0, 8.0, 28.0) * (1.4 if lethal else 1.0))
+	_set_morale(side, ev.morale)
+	if lethal:
+		_finisher(_panels[side].root)
+	elif side == "player" and int(ev.morale) <= DuelState.START_MORALE / 4:
+		Sfx.play("heartbeat", 1.0, -2.0)
 	_float_text(root.position + root.size / 2 + Vector2(0, 40 if side == "opponent" else -40),
 		"-%d" % amount, RED, 72)
 	if side == "player":
@@ -859,7 +921,9 @@ func _ev_promote(ev: Dictionary) -> void:
 	v.downed = false
 	await v.swap_to(c, 0.36)
 	_ring(pos, GOLD, 1.8)
-	shake(10)
+	_shockwave(pos, 0.7)
+	Sfx.play("boom", 1.2, -4.0)
+	shake(12)
 	_show_detail(c)
 	_float_text(pos + Vector2(0, -175 if side == "player" else 175), "PROMOTED!", GOLD, 58)
 	v.home = pos
@@ -925,20 +989,14 @@ func _ev_move(ev: Dictionary) -> void:
 	var to := slot_pos(side, ev.to)
 	v.home = to
 	Sfx.play("whoosh", 1.3)
-	if _attack_line and is_instance_valid(_attack_line):
-		_attack_line.set_point_position(0, to)
+	_arrow.from = to
 	_burst(v.position, BLUE, 12, 220, 0.4, 0.0)
 	await v.move_to(to, v.scale.x, v.home_rot, 0.22, Tween.TRANS_BACK).finished
 	_float_text(to + Vector2(0, -110 if side == "player" else 110), "LANE SHIFT", BLUE, 30)
 
 
 func _ev_retarget(ev: Dictionary) -> void:
-	if _attack_line and is_instance_valid(_attack_line):
-		var tpos := _target_pos(DuelState.other(ev.side), ev.target)
-		_attack_line.set_point_position(1, tpos)
-		var head: Polygon2D = _attack_line.get_child(0)
-		head.position = tpos
-		head.rotation = (tpos - _attack_line.get_point_position(0)).angle()
+	_arrow.to = _target_pos(DuelState.other(ev.side), ev.target)
 	var be: CardView = field[DuelState.other(ev.side)].get(ev.target)
 	if be:
 		_ring(be.home, BLUE, 1.4)
@@ -1014,7 +1072,11 @@ func _ev_leader_down(ev: Dictionary) -> void:
 	v.z_index = 440
 	v.flash()
 	Sfx.play("ko", 0.8)
-	shake(20)
+	Sfx.play("boom", 0.75)
+	shake(22)
+	_shockwave(v.position, 1.0)
+	_impact_frame(0.07)
+	_post_pulse("aberration", 14.0, 0.45)
 	_burst(v.position, Color(1.0, 0.45, 0.15), 50, 700, 0.9)
 	_stamp(v.position, "LEADER DOWN", RED)
 	await _hit_stop(0.1)
@@ -1182,6 +1244,11 @@ func _hit_stop(seconds: float) -> void:
 func _impact(pos: Vector2, heavy: bool) -> void:
 	Sfx.play("heavy" if heavy else "slam", randf_range(0.95, 1.05))
 	shake(24.0 if heavy else 8.0)
+	_shockwave(pos, 0.9 if heavy else 0.35)
+	if heavy:
+		Sfx.play("boom", 0.85)
+		_post_pulse("aberration", 12.0, 0.45)
+		_impact_frame(0.05)
 	_ring(pos, GOLD if heavy else Color(0.85, 0.9, 1.0), 2.2 if heavy else 1.2)
 	_burst(pos + Vector2(0, CARD.y / 2 - 10), Color(0.75, 0.7, 0.65), 26 if heavy else 14, 380.0, 0.5, 900.0)
 	if heavy:
@@ -1270,12 +1337,225 @@ func _screen_flash(color: Color, alpha: float) -> void:
 
 
 func _clear_attack_line() -> void:
-	if _attack_line and is_instance_valid(_attack_line):
-		var l := _attack_line
-		var t := create_tween()
-		t.tween_property(l, "modulate:a", 0.0, 0.15)
-		t.tween_callback(l.queue_free)
-	_attack_line = null
+	_arrow.hide_arrow()
+
+
+## While the player aims an attack, the arrow follows the mouse and locks onto valid targets.
+func _update_aim() -> void:
+	if _mode != "target" or not field.player.has(_selected_slot):
+		if _arrow.visible and not _playing:
+			_arrow.hide_arrow()
+		return
+	var m := get_global_mouse_position()
+	var end := m
+	var snapped := false
+	var slot := _slot_at("opponent", m)
+	if slot >= 0 and _valid.has("opponent:%d" % slot):
+		end = slot_pos("opponent", slot)
+		snapped = true
+	elif leaders.has("opponent") and leaders.opponent.glow > 0.0 and leaders.opponent.hit(m):
+		end = leaders.opponent.home
+		snapped = true
+	_arrow.aim(field.player[_selected_slot].home, end, RED if snapped else GOLD, snapped)
+
+
+# ── Screen effects and camera ────────────────────────────────────────────────
+
+func _build_post() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 10
+	add_child(layer)
+	_post = ColorRect.new()
+	_post.size = Vector2(1920, 1080)
+	_post.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_post_mat = ShaderMaterial.new()
+	_post_mat.shader = preload("res://shaders/post.gdshader")
+	_post.material = _post_mat
+	_post.visible = false
+	layer.add_child(_post)
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	var streak := GradientTexture2D.new()
+	streak.gradient = g
+	streak.fill_from = Vector2(0.5, 0.0)
+	streak.fill_to = Vector2(0.5, 1.0)
+	streak.width = 6
+	streak.height = 48
+	_streak_tex = streak
+
+
+func _update_post() -> void:
+	if duel and _panels.has("player"):
+		var low: bool = duel.winner == "" and _panels.player.shown <= DuelState.START_MORALE / 4.0
+		_danger = move_toward(_danger, 1.0 if low else 0.0, get_process_delta_time() * 1.5)
+	var beat := 0.0
+	if _danger > 0.0:
+		var ph := fmod(Time.get_ticks_msec() / 1000.0, 1.1)
+		beat = _danger * (0.22 + 0.2 * exp(-ph * 9.0) + 0.12 * exp(-maxf(ph - 0.2, 0.0) * 9.0) * float(ph > 0.2))
+	_post_mat.set_shader_parameter("danger", beat)
+	for k in _post_fx:
+		_post_mat.set_shader_parameter(k, _post_fx[k])
+	_post.visible = beat > 0.002 or _post_fx.values().any(func(x): return x > 0.002)
+
+
+## Spike a post effect and let it fall back to zero.
+func _post_pulse(param: String, peak: float, seconds: float) -> void:
+	_post_fx[param] = maxf(_post_fx[param], peak)
+	var t := create_tween()
+	t.tween_method(func(x: float): _post_fx[param] = x, _post_fx[param], 0.0, seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _screen_uv(world: Vector2) -> Vector2:
+	return (get_viewport().get_canvas_transform() * world) / get_viewport().get_visible_rect().size
+
+
+## A ripple of distortion racing out from a point.
+func _shockwave(world: Vector2, strength: float) -> void:
+	_post_mat.set_shader_parameter("wave_center", _screen_uv(world))
+	_post_fx.wave_strength = strength
+	var t := create_tween().set_parallel()
+	t.tween_method(func(r: float): _post_mat.set_shader_parameter("wave_radius", r), 0.02, 0.75, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(x: float): _post_fx.wave_strength = x, strength, 0.0, 0.55)
+
+
+## Damage made visible: a glowing bolt flies from the point of impact to a Morale plate.
+func _comet(from: Vector2, to_screen: Vector2, color: Color) -> void:
+	var to := get_viewport().get_canvas_transform().affine_inverse() * to_screen
+	var head := Sprite2D.new()
+	head.texture = _dot
+	head.material = _add_mat
+	head.modulate = color.lerp(Color.WHITE, 0.5)
+	head.scale = Vector2.ONE * 3.0
+	head.position = from
+	fx.add_child(head)
+	var trail := CPUParticles2D.new()
+	trail.amount = 40
+	trail.lifetime = 0.3
+	trail.local_coords = false
+	trail.texture = _dot
+	trail.material = _add_mat
+	trail.gravity = Vector2.ZERO
+	trail.spread = 180.0
+	trail.initial_velocity_max = 60.0
+	trail.scale_amount_min = 0.5
+	trail.scale_amount_max = 1.4
+	var g := Gradient.new()
+	g.set_color(0, color)
+	g.set_color(1, Color(color, 0.0))
+	trail.color_ramp = g
+	head.add_child(trail)
+	trail.scale = Vector2.ONE / head.scale
+	Sfx.play("whoosh", 1.6, -4.0)
+	var ctrl := from.lerp(to, 0.5) + (to - from).orthogonal().normalized() * 140.0
+	var t := create_tween()
+	t.tween_method(func(k: float): head.position = from.lerp(ctrl, k).lerp(ctrl.lerp(to, k), k), 0.0, 1.0, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await t.finished
+	_burst(to, color, 30, 500, 0.5, 0.0)
+	_ring(to, color.lerp(Color.WHITE, 0.4), 1.4)
+	trail.emitting = false
+	head.modulate.a = 0.0
+	get_tree().create_timer(0.4).timeout.connect(head.queue_free)
+
+
+## A big card's entrance: it rises to centre stage in front of turning light rays, holds for a
+## beat so its art and foil can be seen, and then the caller slams it into its slot.
+func _showcase(v: CardView, c: Dictionary, color: Color) -> void:
+	var center := Vector2(1080, DIVIDER_Y)
+	var rays := Node2D.new()
+	rays.position = center
+	rays.z_index = 415
+	rays.material = _add_mat
+	rays.modulate.a = 0.0
+	rays.scale = Vector2.ONE * 0.3
+	rays.draw.connect(func():
+		for i in 16:
+			var a := i * TAU / 16.0
+			var w := 0.07 if i % 2 == 0 else 0.04
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 1100.0, Vector2.from_angle(a + w) * 1100.0]),
+				PackedColorArray([Color(color.lerp(Color.WHITE, 0.4), 0.45), Color(color, 0.0), Color(color, 0.0)])))
+	cards_layer.add_child(rays)
+	var t := create_tween().set_parallel()
+	t.tween_property(rays, "modulate:a", 1.0, 0.25)
+	t.tween_property(rays, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(rays, "rotation", 0.5, 1.3)
+	t.chain().tween_property(rays, "modulate:a", 0.0, 0.3)
+	t.chain().tween_callback(rays.queue_free)
+	Sfx.play("riser", 0.7)
+	_splash_name(str(c.get("name", "")), color)
+	await v.move_to(center, 2.5, 0.0, 0.34, Tween.TRANS_BACK).finished
+	v.kick(Vector2(1, -0.4), 18.0)
+	_ring(center, color.lerp(Color.WHITE, 0.3), 2.6)
+	_burst(center, color.lerp(Color.WHITE, 0.5), 40, 600, 0.9, -200.0)
+	_post_pulse("aberration", 6.0, 0.5)
+	Sfx.play("effect", 0.7, -2.0)
+	await _wait(0.6)
+
+
+## A split-second stark black-and-white frame at the moment of contact (real time).
+func _impact_frame(seconds: float) -> void:
+	_post_fx.impact = 1.0
+	await get_tree().create_timer(seconds, true, false, true).timeout
+	_post_fx.impact = 0.0
+
+
+## Lean the camera toward a point and zoom in a little.
+func _cam_focus(world: Vector2, zoom: float, seconds: float) -> void:
+	if _cam_tw and _cam_tw.is_valid():
+		_cam_tw.kill()
+	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_cam_tw.tween_property(camera, "position", Vector2(960, 540).lerp(world, 0.22), seconds)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE * zoom, seconds)
+
+
+func _cam_reset(seconds: float) -> void:
+	if _cam_tw and _cam_tw.is_valid():
+		_cam_tw.kill()
+	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_cam_tw.tween_property(camera, "position", Vector2(960, 540), seconds)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, seconds)
+
+
+## Fast streaks of light thrown out along the direction of a hit.
+func _sparks(pos: Vector2, dir: Vector2, color: Color, amount: int, spread := 38.0) -> void:
+	var p := CPUParticles2D.new()
+	p.position = pos
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = amount
+	p.lifetime = 0.38
+	p.direction = dir.normalized()
+	p.spread = spread
+	p.initial_velocity_min = 700.0
+	p.initial_velocity_max = 1600.0
+	p.damping_min = 1800.0
+	p.damping_max = 2600.0
+	p.gravity = Vector2.ZERO
+	p.particle_flag_align_y = true
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.4
+	p.texture = _streak_tex
+	p.material = _add_mat
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1))
+	g.add_point(0.25, color)
+	g.set_color(g.get_point_count() - 1, Color(color, 0.0))
+	p.color_ramp = g
+	fx.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(0.8).timeout.connect(p.queue_free)
+
+
+## The blow that ends the match: time slows, the screen whites out, the loser's plate shatters.
+func _finisher(panel: Control) -> void:
+	var at := panel.position + panel.size / 2
+	_impact_frame(0.12)
+	_post_pulse("aberration", 18.0, 1.2)
+	_shockwave(get_viewport().get_canvas_transform().affine_inverse() * at, 1.4)
+	_screen_flash(Color.WHITE, 0.6)
+	Engine.time_scale = 0.3
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	Engine.time_scale = 1.0
 
 
 # ── Text, banners and callouts ───────────────────────────────────────────────
@@ -1461,6 +1741,7 @@ func _build_detail() -> void:
 	art.size = Vector2(340, 482)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.material = UI.card_material(art.size)
 	p.add_child(art)
 	var title := _label(30, Color.WHITE, true)
 	title.position = Vector2(20, 506)
@@ -1509,6 +1790,7 @@ func _show_detail(c: Dictionary, live_stats := []) -> void:
 		return
 	var tex := CardDB.art(str(c.get("art_url", c.get("id", ""))))
 	_ui.detail_art.texture = tex if tex else CardDB.back()
+	_ui.detail_art.material.set_shader_parameter("foil", 1.0 if tex and int(c.get("rarity", 1)) >= 4 else 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
 	var parts: Array = [TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
 	if c.get("subtype") is String:
@@ -1949,6 +2231,10 @@ func _update_hover() -> void:
 	if v != _hovered:
 		var old := _hovered
 		_hovered = v
+		if old and is_instance_valid(old):
+			old.hovered = false
+		if v:
+			v.hovered = true
 		if old and is_instance_valid(old) and old in hand.player and old != _selected:
 			_layout_hand("player")
 		if v and v in hand.player and _mode != "place":

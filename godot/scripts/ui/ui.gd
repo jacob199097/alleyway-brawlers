@@ -159,6 +159,16 @@ static func tex(path: String) -> Texture2D:
 	return t
 
 
+## The 3D card shader (shaders/card.gdshader) set up for a TextureRect of this size.
+## Tilt it with set_shader_parameter("y_rot" / "x_rot"); rarity 4+ gets holographic foil.
+static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/card.gdshader")
+	m.set_shader_parameter("quad_size", size)
+	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
+	return m
+
+
 static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> TextureRect:
 	var r := TextureRect.new()
 	r.texture = t

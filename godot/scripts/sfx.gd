@@ -187,3 +187,28 @@ func _r_defeat() -> AudioStream:
 			if t0 > 0.0:
 				v += sin(TAU * notes[i] * t0) * exp(-t0 * 1.8) * 0.18
 		return v)
+
+
+## Sub-bass thump layered under big hits: a falling sine with soft clipping, felt more than heard.
+func _r_boom() -> AudioStream:
+	return _render(0.9, func(t, st):
+		var body := _sweep(st, lerpf(95.0, 32.0, minf(t / 0.35, 1.0))) * exp(-t * 4.5)
+		var crack := _noise(st, 0.7) * exp(-t * 60.0) * 0.5
+		return tanh((body * 1.6 + crack) * 1.4) * 0.85)
+
+
+## Rising rush of air before a strike.
+func _r_riser() -> AudioStream:
+	return _render(0.32, func(t, st):
+		var k: float = t / 0.32
+		return _noise(st, lerpf(0.03, 0.6, k)) * k * k * 0.75 + sin(TAU * lerpf(200.0, 520.0, k) * t) * k * 0.08)
+
+
+## Two low thuds (lub-dub) for when the player's Morale is low.
+func _r_heartbeat() -> AudioStream:
+	return _render(0.6, func(t, st):
+		var v := 0.0
+		for t0 in [t, t - 0.2]:
+			if t0 > 0.0:
+				v += sin(TAU * 55.0 * t0) * exp(-t0 * 18.0)
+		return tanh(v * 1.5) * 0.8)

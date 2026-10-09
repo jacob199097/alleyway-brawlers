@@ -2,8 +2,12 @@ class_name CardView
 extends Node2D
 ## One card on screen: art or card back, a glow outline, and an ATK/DEF badge on the field.
 ## Holds no rules state; the duel screen updates it from event snapshots.
+## The art is drawn with shaders/card.gdshader, so the card has real 3D tilt: it leans toward
+## the mouse when hovered, into its motion when it flies, recoils when hit, and flips in 3D.
 
 const SIZE := Vector2(124, 175)   # field size; hand and zoom views scale the node
+const MAX_TILT := 24.0            # degrees
+static var _shader: Shader = preload("res://shaders/card.gdshader")
 
 var card: Dictionary = {}
 var uid := -1
@@ -18,6 +22,8 @@ var home := Vector2.ZERO
 var home_rot := 0.0
 var home_scale := 1.0
 var busy := false   # flying / animating: ignore hover and layout
+var hovered := false            # lean toward the mouse
+var rest_tilt := Vector2.ZERO   # resting lean in screen space: (turn, lean back), degrees
 
 var _body := Node2D.new()   # flips (scale.x) independently of the node's own scale
 var _front := Sprite2D.new()
@@ -26,6 +32,12 @@ var _fallback: Label
 var _badge: RichTextLabel
 var _stats := []
 var _tw: Tween
+var _mat := ShaderMaterial.new()
+var _tilt := Vector2.ZERO        # current (y_rot, x_rot) in the card's own frame
+var _kick := Vector2.ZERO        # recoil from hits, decays
+var _flip_deg := 0.0             # extra turn while flipping over
+var _flash := 0.0
+var _last_pos := Vector2.INF
 
 
 func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
@@ -33,6 +45,9 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	add_child(_body)
 	_body.add_child(_back)
 	_body.add_child(_front)
+	_mat.shader = _shader
+	_front.material = _mat
+	_back.material = _mat
 	_back.texture = CardDB.back()
 	_fit(_back)
 
@@ -87,32 +102,41 @@ func set_face(up: bool) -> void:
 	face_up = up
 	_front.visible = up and _front.texture != null
 	_back.visible = not up
+	_mat.set_shader_parameter("foil", 1.0 if up and int(card.get("rarity", 1)) >= 4 else 0.0)
 	if _fallback:
 		_fallback.visible = up and _front.texture == null
 	queue_redraw()
 
 
-## Turn the card over (awaitable).
-func flip(up: bool, duration := 0.24) -> void:
+## Turn the card over in 3D (awaitable).
+func flip(up: bool, duration := 0.3) -> void:
 	if up == face_up:
 		return
 	Sfx.play("flip", randf_range(0.9, 1.15))
-	var t := create_tween()
-	t.tween_property(_body, "scale:x", 0.0, duration / 2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	t.tween_callback(set_face.bind(up))
-	t.tween_property(_body, "scale:x", 1.0, duration / 2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	await t.finished
+	await _turn_over(set_face.bind(up), duration, Tween.TRANS_SINE)
 
 
-## Squash the card edge-on, swap what it shows, and open it again (used by promotion).
-func swap_to(c: Dictionary, duration := 0.3) -> void:
-	var t := create_tween()
-	t.tween_property(_body, "scale:x", 0.0, duration / 2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	t.tween_callback(func():
+## Turn the card edge-on, swap what it shows, and turn it back (used by promotion).
+func swap_to(c: Dictionary, duration := 0.36) -> void:
+	await _turn_over(func():
 		set_card(c)
-		set_face(true))
-	t.tween_property(_body, "scale:x", 1.0, duration / 2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		set_face(true), duration, Tween.TRANS_BACK)
+
+
+func _turn_over(at_edge: Callable, duration: float, settle: Tween.TransitionType) -> void:
+	var t := create_tween()
+	t.tween_property(self, "_flip_deg", 90.0, duration * 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		at_edge.call()
+		_flip_deg = -90.0)
+	t.tween_property(self, "_flip_deg", 0.0, duration * 0.55).from(-90.0).set_trans(settle).set_ease(Tween.EASE_OUT)
 	await t.finished
+
+
+## Recoil from a hit travelling in direction `dir` (screen space): the struck edge is pushed away.
+func kick(dir: Vector2, degrees := 22.0) -> void:
+	var d := dir.normalized().rotated(-rotation)
+	_kick += Vector2(d.x, -d.y) * degrees
 
 
 ## Tween to a position/scale/rotation, replacing any move already running (awaitable via .finished).
@@ -137,15 +161,9 @@ func stop_moving() -> void:
 
 ## A quick white hit-flash over the card.
 func flash() -> void:
-	var r := ColorRect.new()
-	r.size = SIZE
-	r.position = -SIZE / 2
-	r.color = Color(1, 1, 1, 0.85)
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.add_child(r)
+	_flash = 0.9
 	var t := create_tween()
-	t.tween_property(r, "color:a", 0.0, 0.28)
-	t.tween_callback(r.queue_free)
+	t.tween_property(self, "_flash", 0.0, 0.3)
 
 
 func stats() -> Array:
@@ -206,7 +224,8 @@ func _badge_wanted() -> bool:
 	return show_badge and not busy and (badge_text != "" or not _stats.is_empty()) and (face_up or side == "player")
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_tilt(delta)
 	if _badge.visible != _badge_wanted():
 		_update_badge()
 	if _badge.visible:
@@ -214,6 +233,27 @@ func _process(_delta: float) -> void:
 		var half_h: float = (SIZE.x if sideways else SIZE.y) * scale.y / 2.0
 		_badge.global_position = global_position + Vector2(-_badge.size.x / 2.0, half_h - 12.0)
 		_badge.z_index = z_index + 1
+
+
+func _update_tilt(delta: float) -> void:
+	var pos := global_position
+	var vel := Vector2.ZERO if _last_pos == Vector2.INF or delta <= 0.0 else (pos - _last_pos) / delta
+	_last_pos = pos
+	# Screen-space lean: the leading edge drags back as the card flies, plus any resting lean
+	var screen := rest_tilt + Vector2(clampf(-vel.x * 0.012, -MAX_TILT, MAX_TILT), clampf(vel.y * 0.012, -MAX_TILT, MAX_TILT))
+	# ...turned into the card's own frame (a sideways DEF card leans the same way on screen)
+	var w := Vector2(screen.y, screen.x).rotated(-rotation)
+	var target := Vector2(w.y, w.x) + _kick
+	if hovered and not busy:
+		var m := (to_local(get_global_mouse_position()) / (SIZE / 2.0)).clamp(-Vector2.ONE, Vector2.ONE)
+		target += Vector2(-m.x, m.y) * 14.0
+	target = target.clamp(-Vector2.ONE * MAX_TILT * 1.5, Vector2.ONE * MAX_TILT * 1.5)
+	_tilt = _tilt.lerp(target, 1.0 - exp(-14.0 * delta))
+	_kick = _kick.lerp(Vector2.ZERO, 1.0 - exp(-7.0 * delta))
+	_mat.set_shader_parameter("y_rot", _tilt.x + _flip_deg)
+	_mat.set_shader_parameter("x_rot", _tilt.y)
+	_mat.set_shader_parameter("glare", clampf(_tilt.length() / 16.0, 0.0, 1.0))
+	_mat.set_shader_parameter("flash", _flash)
 
 
 func _draw() -> void:
