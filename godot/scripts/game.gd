@@ -62,9 +62,11 @@ func _ready() -> void:
 	layer.layer = 100
 	add_child(layer)
 	_fade = ColorRect.new()
-	_fade.color = Color(0, 0, 0, 0)
 	_fade.size = Vector2(1920, 1080)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var wipe := ShaderMaterial.new()
+	wipe.shader = preload("res://shaders/wipe.gdshader")
+	_fade.material = wipe
 	layer.add_child(_fade)
 	_fps = Label.new()
 	_fps.position = Vector2(1840, 4)
@@ -93,14 +95,21 @@ func go(screen: String) -> void:
 	if _going:
 		return
 	_going = true
+	# A slanted panel sweeps across, the scene changes behind it, and it sweeps on off
+	var wipe: ShaderMaterial = _fade.material
+	_fade.mouse_filter = Control.MOUSE_FILTER_STOP   # no clicks while switching
+	Sfx.play("whoosh", 1.15, -8.0)
 	var t := create_tween()
-	t.tween_property(_fade, "color:a", 1.0, 0.16)
+	t.tween_method(func(p: float): wipe.set_shader_parameter("progress", p), 0.0, 1.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	await t.finished
 	Engine.time_scale = 1.0
 	get_tree().change_scene_to_file(SCREENS[screen])
 	await get_tree().process_frame
 	_going = false
-	create_tween().tween_property(_fade, "color:a", 0.0, 0.22)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t = create_tween()
+	t.tween_method(func(p: float): wipe.set_shader_parameter("progress", p), 1.0, 2.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_callback(func(): wipe.set_shader_parameter("progress", 0.0))
 
 
 # ── Session ──────────────────────────────────────────────────────────────────

@@ -10,6 +10,23 @@ func _enter_tree() -> void:
 	theme = UI.theme()
 	position = Vector2.ZERO
 	size = Vector2(1920, 1080)
+	_intro.call_deferred()
+
+
+## Entrance: the screen settles in from a slight zoom while its pieces fade up one after
+## another (the full-screen background is already there).
+func _intro() -> void:
+	pivot_offset = size / 2
+	scale = Vector2.ONE * 1.025
+	create_tween().tween_property(self, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var delay := 0.0
+	for c in get_children():
+		# Skip the background, and anything already fading in on its own (alpha below 1)
+		if not c is CanvasItem or not c.visible or c.modulate.a < 0.99 or (c is Control and c.size.x >= 1900.0):
+			continue
+		c.modulate.a = 0.0
+		c.create_tween().tween_property(c, "modulate:a", 1.0, 0.3).set_delay(delay)
+		delay = minf(delay + 0.04, 0.4)
 
 
 func _unhandled_input(e: InputEvent) -> void:

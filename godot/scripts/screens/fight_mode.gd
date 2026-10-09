@@ -51,8 +51,7 @@ func _card(m: Dictionary, at: Vector2) -> void:
 	v.add_child(t)
 	var s := UI.label(m.sub, 20, UI.MUTED)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	s.autowrap_mode = TextServer.AUTOWRAP_WORD
-	s.custom_minimum_size = Vector2(400, 90)
+	s.custom_minimum_size = Vector2(400, 64)
 	v.add_child(s)
 	var art := Control.new()
 	art.custom_minimum_size = Vector2(400, 400)
@@ -65,12 +64,26 @@ func _card(m: Dictionary, at: Vector2) -> void:
 		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		art.add_child(icon)
+		if not locked:
+			# A neon sign: glowing outline and a slow pulse
+			icon.label_settings.outline_color = Color(col, 0.6)
+			icon.label_settings.outline_size = 18
+			var pulse := icon.create_tween().set_loops()
+			pulse.tween_property(icon, "modulate", Color(1.25, 1.25, 1.25), 1.2).set_trans(Tween.TRANS_SINE)
+			pulse.tween_property(icon, "modulate", Color.WHITE, 1.2).set_trans(Tween.TRANS_SINE)
 	if locked:
 		var l := UI.label("🔒  " + str(m.lock_text).to_upper(), 24, UI.MUTED, true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(l)
 	else:
 		v.add_child(UI.button("SELECT", _start.bind(m.id), Vector2(400, 70), col))
+		# The whole tile lifts toward you on hover
+		p.pivot_offset = Vector2(220, 380)
+		p.mouse_entered.connect(func():
+			p.create_tween().tween_property(p, "scale", Vector2.ONE * 1.03, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+		p.mouse_exited.connect(func():
+			if not p.get_global_rect().has_point(p.get_global_mouse_position()):
+				p.create_tween().tween_property(p, "scale", Vector2.ONE, 0.15))
 
 
 func _rank_art(parent: Control) -> void:

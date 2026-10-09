@@ -30,9 +30,15 @@ func _ready() -> void:
 	art.scale = Vector2.ONE * 0.6
 	art.modulate.a = 0.0
 	add_child(art)
+	if won:
+		_rays(ART_POS + ART_SIZE * Vector2(0.5, 0.32))
+		move_child(art, -1)
 	var t := create_tween().set_parallel()
 	t.tween_property(art, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_property(art, "modulate:a", 1.0, 0.25)
+	var bob := create_tween().set_loops()
+	bob.tween_property(art, "position:y", ART_POS.y - 8, 1.6).set_trans(Tween.TRANS_SINE).set_delay(0.4)
+	bob.tween_property(art, "position:y", ART_POS.y, 1.6).set_trans(Tween.TRANS_SINE)
 	if art.texture == null:
 		var l := UI.label("VICTORY" if won else "DEFEAT", 160, UI.GOLD if won else UI.RED, true)
 		l.size = ART_SIZE
@@ -103,6 +109,8 @@ func _outcome_panel(d: Dictionary, won: bool) -> void:
 		var val := UI.label(str(s[1]), 36, s[2], true)
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		c.add_child(val)
+		if s[1] is int or s[1] is float:
+			_count(val, int(s[1]), "%d", 0.7, 0.35)
 		stats.add_child(c)
 	v.add_child(HSeparator.new())
 	var cap := UI.label("XP EARNED", 16, UI.MUTED)
@@ -156,7 +164,9 @@ func _mvp_panel(mvp: Dictionary) -> void:
 	n.autowrap_mode = TextServer.AUTOWRAP_WORD
 	n.custom_minimum_size = Vector2(280, 0)
 	info.add_child(n)
-	info.add_child(UI.label("%d" % int(mvp.get("damage", 0)), 56, Color.WHITE, true))
+	var dmg := UI.label("0", 56, Color.WHITE, true)
+	info.add_child(dmg)
+	_count(dmg, int(mvp.get("damage", 0)), "%d", 0.9, 0.6)
 	info.add_child(UI.label("MORALE DEALT", 18, UI.MUTED, true))
 
 
@@ -188,8 +198,18 @@ func _submit(d: Dictionary) -> void:
 
 func _show_rewards(rw: Dictionary) -> void:
 	var xp := UI.xp_progress({"level": rw.get("newLevel", Game.player.get("level", 1)), "xp": rw.get("newXp", 0)})
-	_xp_label.text = "+%d XP" % int(rw.get("xpEarned", 0))
-	create_tween().tween_property(_xp_fill, "size:x", 500.0 * xp.pct, 0.8).set_delay(0.4).set_trans(Tween.TRANS_QUAD)
+	_count(_xp_label, int(rw.get("xpEarned", 0)), "+%d XP", 0.8, 0.4)
+	var bar := create_tween()
+	bar.tween_interval(0.4)
+	if rw.get("leveledUp", false):
+		# Fill to the top, flash, and roll over into the new level
+		bar.tween_property(_xp_fill, "size:x", 500.0, 0.5).set_trans(Tween.TRANS_QUAD)
+		bar.tween_callback(func():
+			Sfx.play("promote", 1.1)
+			_xp_fill.color = Color.WHITE
+			_xp_fill.create_tween().tween_property(_xp_fill, "color", UI.BLUE, 0.4)
+			_xp_fill.size.x = 0.0)
+	bar.tween_property(_xp_fill, "size:x", 500.0 * xp.pct, 0.7).set_trans(Tween.TRANS_QUAD)
 	var lines := ["+%d Karat" % int(rw.get("karatEarned", 0))]
 	if rw.get("dailyCapReached", false):
 		lines.append("Daily reward limit reached")
@@ -198,8 +218,55 @@ func _show_rewards(rw: Dictionary) -> void:
 	if rw.get("leveledUp", false):
 		lines.append("→ Level %d!" % int(rw.newLevel))
 	_rewards.text = "\n".join(lines)
+	_rewards.visible_ratio = 0.0
+	var reveal := create_tween()
+	reveal.tween_interval(1.0)
+	reveal.tween_callback(func(): Sfx.play("effect", 1.4, -6.0))
+	reveal.tween_property(_rewards, "visible_ratio", 1.0, 0.5)
 	if rw.get("rankChanged", false):
 		_rank_up(str(rw.get("newRank", "")))
+
+
+## Roll a number up to its final value, ticking as it goes.
+func _count(l: Label, to: int, fmt: String, secs: float, delay: float) -> void:
+	l.text = fmt % 0
+	if to == 0:
+		return
+	var last := [-1]
+	var t := create_tween()
+	t.tween_interval(delay)
+	t.tween_method(func(x: float):
+		var v := int(round(x))
+		l.text = fmt % v
+		var step := int(x / maxf(1.0, to / 12.0))
+		if step != last[0]:
+			last[0] = step
+			Sfx.play("click", 1.8 + 0.4 * x / to, -14.0), 0.0, float(to), secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_callback(func():
+		l.pivot_offset = l.size / 2
+		var pop := l.create_tween()
+		pop.tween_property(l, "scale", Vector2.ONE * 1.15, 0.08)
+		pop.tween_property(l, "scale", Vector2.ONE, 0.15))
+
+
+## Slowly turning rays of light behind the victory art.
+func _rays(center: Vector2) -> void:
+	var rays := Node2D.new()
+	rays.position = center
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	rays.material = m
+	rays.draw.connect(func():
+		for i in 18:
+			var a := i * TAU / 18.0
+			var w := 0.06 if i % 2 == 0 else 0.035
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 900.0, Vector2.from_angle(a + w) * 900.0]),
+				PackedColorArray([Color(1, 0.85, 0.4, 0.28), Color(1, 0.7, 0.2, 0.0), Color(1, 0.7, 0.2, 0.0)])))
+	add_child(rays)
+	rays.modulate.a = 0.0
+	create_tween().tween_property(rays, "modulate:a", 1.0, 0.6)
+	var spin := create_tween().set_loops()
+	spin.tween_property(rays, "rotation", TAU, 60.0).from(0.0)
 
 
 func _rank_up(rank: String) -> void:

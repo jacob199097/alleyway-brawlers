@@ -18,6 +18,8 @@ const TITLES := [[1, "Street Prospect"], [5, "Alley Runner"], [10, "Corner Hustl
 	[40, "Underboss"], [45, "Syndicate Kingpin"], [50, "King of the Streets"]]
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 
+const LivingBackground := preload("res://scripts/ui/living_bg.gd")
+
 static var _font: SystemFont
 static var _theme: Theme
 static var _tex := {}
@@ -37,9 +39,9 @@ static func theme() -> Theme:
 	th.default_font_size = 20
 	th.set_stylebox("panel", "Panel", box(INK, Color(1, 1, 1, 0.12), 2, 10))
 	th.set_stylebox("panel", "PanelContainer", box(INK, Color(1, 1, 1, 0.12), 2, 10))
-	th.set_stylebox("normal", "Button", box(Color("1c2040"), Color(BLUE, 0.7), 2, 8))
-	th.set_stylebox("hover", "Button", box(Color("28305e"), GOLD, 2, 8))
-	th.set_stylebox("pressed", "Button", box(Color("12162e"), GOLD, 2, 8))
+	th.set_stylebox("normal", "Button", _shadowed(box(Color("1c2040"), Color(BLUE, 0.7), 2, 8)))
+	th.set_stylebox("hover", "Button", _glow(box(Color("28305e"), GOLD, 2, 8), GOLD))
+	th.set_stylebox("pressed", "Button", _glow(box(Color("12162e"), GOLD, 2, 8), GOLD, 0.5))
 	th.set_stylebox("disabled", "Button", box(Color("0d0f1e"), Color(1, 1, 1, 0.1), 2, 8))
 	th.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	th.set_color("font_color", "Button", Color.WHITE)
@@ -69,6 +71,38 @@ static func theme() -> Theme:
 	th.set_stylebox("scroll", "VScrollBar", box(Color(1, 1, 1, 0.05), Color(0, 0, 0, 0), 0, 4))
 	_theme = th
 	return th
+
+
+## A soft drop shadow under a box.
+static func _shadowed(sb: StyleBoxFlat) -> StyleBoxFlat:
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0, 4)
+	return sb
+
+
+## A neon glow around a box, in its accent colour.
+static func _glow(sb: StyleBoxFlat, color: Color, strength := 1.0) -> StyleBoxFlat:
+	sb.shadow_color = Color(color, 0.32 * strength)
+	sb.shadow_size = int(16 * strength)
+	return sb
+
+
+## Hover and press feel for any button: it grows a touch and ticks on hover, squashes on
+## press, and springs back on release.
+static func juice(b: BaseButton) -> void:
+	b.resized.connect(func(): b.pivot_offset = b.size / 2)
+	b.pivot_offset = b.size / 2
+	var to := func(s: float, secs: float):
+		var t := b.create_tween()
+		t.tween_property(b, "scale", Vector2.ONE * s, secs).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	b.mouse_entered.connect(func():
+		if not b.disabled:
+			Sfx.play("click", 1.7, -16.0)
+			to.call(1.04, 0.12))
+	b.mouse_exited.connect(func(): to.call(1.0, 0.14))
+	b.button_down.connect(func(): to.call(0.95, 0.06))
+	b.button_up.connect(func(): to.call(1.04 if b.is_hovered() else 1.0, 0.18))
 
 
 static func box(bg: Color, border: Color, width := 2, radius := 10) -> StyleBoxFlat:
@@ -104,8 +138,9 @@ static func button(text: String, on_press: Callable, size := Vector2(240, 56), a
 	b.text = text
 	b.custom_minimum_size = size
 	if accent != BLUE:
-		b.add_theme_stylebox_override("normal", box(accent.darkened(0.7), accent, 2, 8))
-		b.add_theme_stylebox_override("hover", box(accent.darkened(0.55), GOLD, 2, 8))
+		b.add_theme_stylebox_override("normal", _shadowed(box(accent.darkened(0.7), accent, 2, 8)))
+		b.add_theme_stylebox_override("hover", _glow(box(accent.darkened(0.55), GOLD, 2, 8), accent))
+	juice(b)
 	b.pressed.connect(func():
 		Sfx.play("click")
 		on_press.call())
@@ -144,7 +179,12 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 
 static func panel(accent := Color(1, 1, 1, 0.12), bg := INK) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", box(bg, accent, 2, 12))
+	var sb := box(bg, accent, 2, 12)
+	if accent.a > 0.5:
+		_glow(sb, accent, 0.7)
+	else:
+		_shadowed(sb)
+	p.add_theme_stylebox_override("panel", sb)
 	return p
 
 
@@ -180,15 +220,9 @@ static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> Texture
 	return r
 
 
-## Full-screen background art with a dark veil.
+## Full-screen background art with a dark veil, brought to life (see living_bg.gd).
 static func background(parent: Control, path := "menu_background.png", dim := 0.55) -> void:
-	var bg := texture_rect(tex(path), Vector2(1920, 1080), true)
-	parent.add_child(bg)
-	var veil := ColorRect.new()
-	veil.color = Color(0, 0, 0, dim)
-	veil.size = Vector2(1920, 1080)
-	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(veil)
+	parent.add_child(LivingBackground.new().setup(tex(path), dim))
 
 
 ## Screen title centred at the top.
@@ -216,7 +250,12 @@ static func toast(parent: Control, msg: String, color := BLUE) -> void:
 	parent.add_child(p)
 	var sz := p.get_combined_minimum_size()
 	p.position = Vector2(960 - sz.x / 2, 1080 - 150)
+	p.modulate.a = 0.0
 	var t := p.create_tween()
+	t.set_parallel()
+	t.tween_property(p, "modulate:a", 1.0, 0.18)
+	t.tween_property(p, "position:y", p.position.y, 0.28).from(p.position.y + 40).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.set_parallel(false)
 	t.tween_interval(2.2)
 	t.tween_property(p, "modulate:a", 0.0, 0.4)
 	t.tween_callback(p.queue_free)
@@ -255,6 +294,13 @@ static func dialog(parent: Control, heading: String, text: String, buttons: Arra
 	p.reset_size()
 	var sz := p.get_combined_minimum_size()
 	p.position = (Vector2(1920, 1080) - sz) / 2
+	p.pivot_offset = sz / 2
+	veil.modulate.a = 0.0
+	p.scale = Vector2.ONE * 0.9
+	var t := veil.create_tween().set_parallel()
+	t.tween_property(veil, "modulate:a", 1.0, 0.15)
+	t.tween_property(p, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Sfx.play("phase", 0.8, -8.0)
 	return veil
 
 
