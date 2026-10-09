@@ -514,6 +514,8 @@ func _play(ev: Dictionary) -> void:
 	match ev.type:
 		"draw":
 			await _ev_draw(ev)
+		"mulligan":
+			await _ev_mulligan(ev)
 		"turn":
 			await _ev_turn(ev)
 		"phase":
@@ -601,6 +603,29 @@ func _ev_draw(ev: Dictionary) -> void:
 		await _wait(0.09)
 	else:
 		await t.finished
+
+
+## A redrawn opening hand: the cards sweep back into the deck (the new ones arrive as draws).
+func _ev_mulligan(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var mine := side == "player"
+	Sfx.play("whoosh", 0.9)
+	_float_text(Vector2(1080, DIVIDER_Y), "NEW HAND" if mine else "OPPONENT REDRAWS", BLUE if mine else RED, 40)
+	var views: Array = hand[side].duplicate()
+	hand[side].clear()
+	for v in views:
+		if v == _hovered:
+			_hovered = null
+		v.busy = true
+		v.z_index = 400
+		if v.face_up:
+			v.flip(false)
+		var t := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(v, "position", pile_pos(side, "deck"), 0.3)
+		t.tween_property(v, "scale", Vector2.ONE, 0.3)
+		t.chain().tween_callback(v.queue_free)
+		await _wait(0.05)
+	await _wait(0.35)
 
 
 func _ev_turn(ev: Dictionary) -> void:

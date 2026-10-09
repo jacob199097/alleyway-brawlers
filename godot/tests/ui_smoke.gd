@@ -26,7 +26,11 @@ func _prompt_check() -> void:
 		get_tree().quit(1)
 		return
 	var d: DuelState = duel_screen.duel
-	while duel_screen._playing or d.active != "player" or d.phase != "deployment":
+	while duel_screen._playing or d.active != "player" or d.phase != "deployment" or not d.pending.is_empty():
+		# The opening-hand (mulligan) prompt comes first: answer it through its buttons
+		if not duel_screen._playing and d.pending.get("side") == "player" and duel_screen._mode == "choose":
+			prompts[d.pending.key] = prompts.get(d.pending.key, 0) + 1
+			_first_enabled_button(duel_screen._menu).pressed.emit()
 		await get_tree().process_frame
 	var answered: Array = []
 	d._ask("player", "test", "Pick one", {}, [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
@@ -40,7 +44,7 @@ func _prompt_check() -> void:
 	_first_enabled_button(duel_screen._menu).pressed.emit()
 	_check(answered == ["a"], "prompt answer reaches the rules")
 	_check(d.pending.is_empty(), "prompt cleared")
-	prompts["test"] = 1
+	prompts["test"] = prompts.get("test", 0) + 1
 
 
 func _run() -> void:

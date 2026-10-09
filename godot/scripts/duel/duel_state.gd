@@ -18,6 +18,7 @@ const START_MORALE := 6000
 const MAX_AUTHORITY := 15
 const HAND_LIMIT := 9
 const OPENING_HAND := 5
+const SECOND_PLAYER_AUTHORITY := 1 # going second: extra Authority on your first turn only
 const LEADER_DEFEAT_PENALTY := 1000
 const FRONT := [0, 1, 2, 3, 4]   # character slots
 const BACK := [5, 6, 7, 8, 9]    # ambush slots
@@ -40,6 +41,7 @@ var _uid := 0
 var _asks: Array = []        # prompts queued behind `pending`
 var _in_answer := false      # prompts raised while answering one go first
 var _new_asks: Array = []
+var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 
 
 ## decks/hideouts: {"player": [card ids], "opponent": [...]}; leaders: {"player": id, ...}
@@ -49,6 +51,7 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 	else:
 		rng.randomize()
 	active = first
+	_fixed_order = seed_value == -1
 	for side in ["player", "opponent"]:
 		var deck: Array = []
 		for id in decks[side]:
@@ -255,7 +258,9 @@ func start() -> void:
 	for i in OPENING_HAND:
 		_draw(active, true)
 		_draw(other(active), true)
-	_begin_turn()
+	# Each player may redraw their opening hand once, first player first; then turn 1 begins
+	var first := active
+	_ask_mulligan(first, func(): _ask_mulligan(other(first), _begin_turn))
 	_flush_asks()
 
 
@@ -867,8 +872,27 @@ func _begin_turn() -> void:
 		s.authority_max = mini(MAX_AUTHORITY, s.authority_max + 1)
 		s.authority = s.authority_max
 		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": 1})
+	# Going second is a disadvantage (in CPU mirror matches the first player won ~70%);
+	# one extra Authority on that player's first turn brings it close to even
+	if turn == 2 and SECOND_PLAYER_AUTHORITY > 0:
+		s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY
+		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": SECOND_PLAYER_AUTHORITY})
 	if turn > 1:
 		_draw(active)
+	# A Downed character stays down for a full round (the opponent gets one turn to finish it
+	# off), then gets back up in DEF position at the start of its owner's turn. It can't
+	# switch back to ATK until the turn after.
+	for e in characters(active):
+		if not e.card.downed:
+			e.card.erase("down_turns")
+		elif int(e.card.get("down_turns", 0)) >= 1:
+			e.card.downed = false
+			e.card.erase("down_turns")
+			e.card.position = "def"
+			e.card.position_turn = turn
+			_emit("stand", {"side": active, "slot": e.slot, "card": e.card.duplicate(true)})
+		else:
+			e.card.down_turns = 1
 	# King's Test survivors may promote at the start of their owner's next turn
 	for e in characters(active):
 		if e.card.get("kings_test", false):
@@ -950,6 +974,32 @@ func _ask_lane(side: String, c: Dictionary, from: int, lanes: Array, prompt: Str
 			sides[side].field[at] = c
 			_emit("move", {"side": side, "from": from, "to": at, "card": c.duplicate(true)})
 		then.call(at))
+
+
+## Opening hand: keep it, or shuffle it back and draw the same number again (once).
+## The suggested choice comes first: redraw when nothing in hand is cheap enough to play early.
+func _ask_mulligan(side: String, then: Callable) -> void:
+	var keep := {"id": "keep", "label": "KEEP THIS HAND"}
+	var redraw := {"id": "redraw", "label": "REDRAW: SHUFFLE BACK AND DRAW %d" % sides[side].hand.size()}
+	var cheap: bool = sides[side].hand.any(func(c): return c.cardType == "gang_member" and int(c.authority) <= 2)
+	_ask(side, "mulligan", "Your opening hand. Keep it, or shuffle it back and draw a new one?", {},
+		[keep, redraw] if cheap else [redraw, keep], func(choice: String):
+			if choice == "redraw":
+				_mulligan(side)
+			then.call())
+
+
+func _mulligan(side: String) -> void:
+	var s: Dictionary = sides[side]
+	var n: int = s.hand.size()
+	for c in s.hand:
+		s.deck.push_front(c)   # to the bottom: draws come off the back
+	s.hand.clear()
+	if not _fixed_order:
+		_shuffle(s.deck)
+	_emit("mulligan", {"side": side, "count": n})
+	for i in n:
+		_draw(side, true)
 
 
 func _ask_discard(side: String, count: int, then: Callable) -> void:

@@ -17,6 +17,7 @@ export const START_MORALE = 6000;
 export const MAX_AUTHORITY = 15;
 export const HAND_LIMIT = 9;
 export const OPENING_HAND = 5;
+export const SECOND_PLAYER_AUTHORITY = 1; // going second: extra Authority on your first turn only
 export const LEADER_DEFEAT_PENALTY = 1000;
 export const FRONT = [0, 1, 2, 3, 4];
 export const BACK = [5, 6, 7, 8, 9];
@@ -85,6 +86,7 @@ export class DuelState {
         this._asks = [];
         this._inAnswer = false;
         this._newAsks = [];
+        this._fixedOrder = seed === -1; // never shuffle (tests compare engines)
         for (const side of ['player', 'opponent']) {
             const deck = decks[side].map(spec => this.makeCard(spec));
             if (seed !== -1) shuffle(deck);
@@ -234,7 +236,9 @@ export class DuelState {
             this._draw(this.active, true);
             this._draw(other(this.active), true);
         }
-        this._beginTurn();
+        // Each player may redraw their opening hand once, first player first; then turn 1 begins
+        const first = this.active;
+        this._askMulligan(first, () => this._askMulligan(other(first), () => this._beginTurn()));
         this._flushAsks();
     }
 
@@ -857,7 +861,27 @@ export class DuelState {
             s.authority = s.authority_max;
             this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: 1 });
         }
+        // Going second is a disadvantage; one extra Authority on that player's first turn
+        if (this.turn === 2 && SECOND_PLAYER_AUTHORITY > 0) {
+            s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY;
+            this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: SECOND_PLAYER_AUTHORITY });
+        }
         if (this.turn > 1) this._draw(this.active);
+        // A Downed character stays down for a full round, then gets back up in DEF position
+        // at the start of its owner's turn (no switching to ATK until the turn after)
+        for (const e of this.characters(this.active)) {
+            if (!e.card.downed) {
+                delete e.card.down_turns;
+            } else if (toInt(e.card.down_turns) >= 1) {
+                e.card.downed = false;
+                delete e.card.down_turns;
+                e.card.position = 'def';
+                e.card.position_turn = this.turn;
+                this._emit('stand', { side: this.active, slot: e.slot, card: clone(e.card) });
+            } else {
+                e.card.down_turns = 1;
+            }
+        }
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {
                 delete e.card.kings_test;
@@ -937,6 +961,29 @@ export class DuelState {
             }
             then(at);
         });
+    }
+
+    // Opening hand: keep it, or shuffle it back and draw the same number again (once).
+    // The suggested choice comes first: redraw when nothing in hand is cheap enough to play early.
+    _askMulligan(side, then) {
+        const keep = { id: 'keep', label: 'KEEP THIS HAND' };
+        const redraw = { id: 'redraw', label: `REDRAW: SHUFFLE BACK AND DRAW ${this.sides[side].hand.length}` };
+        const cheap = this.sides[side].hand.some(c => c.cardType === 'gang_member' && toInt(c.authority) <= 2);
+        this._ask(side, 'mulligan', 'Your opening hand. Keep it, or shuffle it back and draw a new one?', {},
+            cheap ? [keep, redraw] : [redraw, keep], (choice) => {
+                if (choice === 'redraw') this._mulligan(side);
+                then();
+            });
+    }
+
+    _mulligan(side) {
+        const s = this.sides[side];
+        const n = s.hand.length;
+        for (const c of s.hand) s.deck.unshift(c); // to the bottom: draws come off the back
+        s.hand = [];
+        if (!this._fixedOrder) shuffle(s.deck);
+        this._emit('mulligan', { side, count: n });
+        for (let i = 0; i < n; i++) this._draw(side, true);
     }
 
     _askDiscard(side, count, then) {
