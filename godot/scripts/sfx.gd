@@ -15,6 +15,7 @@ var _next := 0
 func _ready() -> void:
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
+		p.bus = "SFX"
 		add_child(p)
 		_players.append(p)
 

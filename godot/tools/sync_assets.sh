@@ -4,9 +4,12 @@ set -e
 here=$(cd "$(dirname "$0")" && pwd)
 src="$here/../../client/assets"
 dst="$here/../assets"
-mkdir -p "$dst/cards"
-cp "$src"/cards/*.png "$dst/cards/"
-for f in card_back.png duel_background.png profile_001.png profile_002.png duel_theme.mp3; do
-    cp "$src/$f" "$dst/"
+for dir in cards ranks; do
+    mkdir -p "$dst/$dir"
+    cp "$src/$dir"/*.png "$dst/$dir/"
+done
+# Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)
+for f in "$src"/*.png "$src"/*.mp3; do
+    [ "$(basename "$f")" = "Cropped_Frame.png" ] || cp "$f" "$dst/"
 done
 echo "Assets synced to $dst"

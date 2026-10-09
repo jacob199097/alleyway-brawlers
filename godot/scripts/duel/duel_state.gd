@@ -71,8 +71,15 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		}
 
 
-func make_card(id: String) -> Dictionary:
+## `spec` is a card id, or {id, ...} with server-side stats (name, authority, attack, defense,
+## rarity) that override the rules data.
+func make_card(spec) -> Dictionary:
+	var id: String = str(spec.id) if spec is Dictionary else str(spec)
 	var c: Dictionary = CardDB.get_card(id).duplicate(true)
+	if spec is Dictionary:
+		for key in spec:
+			if key != "id":
+				c[key] = spec[key]
 	_uid += 1
 	c.uid = _uid
 	c.id = id

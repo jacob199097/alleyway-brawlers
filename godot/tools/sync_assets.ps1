@@ -4,9 +4,11 @@ $ErrorActionPreference = 'Stop'
 $src = Join-Path $PSScriptRoot '..\..\client\assets'
 $dst = Join-Path $PSScriptRoot '..\assets'
 
-New-Item -ItemType Directory -Force (Join-Path $dst 'cards') | Out-Null
-Copy-Item (Join-Path $src 'cards\*.png') (Join-Path $dst 'cards') -Force
-foreach ($f in 'card_back.png', 'duel_background.png', 'profile_001.png', 'profile_002.png', 'duel_theme.mp3') {
-    Copy-Item (Join-Path $src $f) $dst -Force
+foreach ($dir in 'cards', 'ranks') {
+    New-Item -ItemType Directory -Force (Join-Path $dst $dir) | Out-Null
+    Copy-Item (Join-Path $src "$dir\*.png") (Join-Path $dst $dir) -Force
 }
+# Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)
+Get-ChildItem $src -File | Where-Object { $_.Extension -in '.png', '.mp3' -and $_.Name -ne 'Cropped_Frame.png' } |
+    Copy-Item -Destination $dst -Force
 Write-Host "Assets synced to $((Resolve-Path $dst).Path)"

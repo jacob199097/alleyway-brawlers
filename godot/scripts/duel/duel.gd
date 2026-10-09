@@ -66,6 +66,10 @@ var _menu: Control = null
 var _direct_btn: Button = null
 var _attack_line: Line2D = null
 var _dim_rect: ColorRect = null
+var _match_id := ""
+var _cards_played := 0
+var _damage_log := {}     # "side:uid" -> {card, owner, damage}
+var _last_hit := {}
 
 var _font: SystemFont
 var _dot: Texture2D
@@ -90,8 +94,11 @@ func _ready() -> void:
 	if ResourceLoader.exists("res://assets/duel_background.png"):
 		$BackLayer/Background.texture = load("res://assets/duel_background.png")
 	_build_detail()
-	_build_panel("player", $HUD/UI/PlayerPanel, "YOU", "profile_001")
-	_build_panel("opponent", $HUD/UI/OppPanel, "CPU", "profile_002")
+	var me := Game.player
+	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
+		str(me.get("avatar_url", "profile_001")),
+		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.player_title(int(me.get("level", 1))).to_upper()])
+	_build_panel("opponent", $HUD/UI/OppPanel, "CPU", "profile_002", "CPU OPPONENT")
 	_build_phase_bar()
 	_build_turn_box()
 	_play_music()
@@ -104,8 +111,15 @@ func _ready() -> void:
 	_dim_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_layer.add_child(_dim_rect)
 
+	# The player's saved deck from Fight Mode (Game.duel_setup); the CPU uses the starter deck.
 	var setup := DuelAI.test_setup()
-	duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, "player")
+	var chosen: Dictionary = Game.duel_setup
+	if chosen.has("deck"):
+		setup.decks.player = chosen.deck
+		setup.hideouts.player = chosen.get("hideout", [])
+		setup.leaders.player = chosen.get("leader", "")
+	duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, str(chosen.get("first", "player")))
+	_start_match_session(chosen.get("ranked", false))
 	for side in ["player", "opponent"]:
 		var l = duel.sides[side].leader
 		if l != null:
@@ -262,7 +276,37 @@ func _after_events() -> void:
 		_player_ready()
 
 
+## Solo matches run here, so the server issues a session that the post-match screen
+## completes to get rewards (the server decides what a session can pay out).
+func _start_match_session(ranked: bool) -> void:
+	if Game.offline or Game.player.is_empty() or "player" in ai_sides:
+		return
+	var r := await Api.request("POST", "/api/match/start", {"ranked": ranked})
+	if r.ok and r.data is Dictionary:
+		_match_id = str(r.data.get("matchId", ""))
+
+
+## Bookkeeping for the post-match screen: cards the player played and morale dealt per card.
+func _track(ev: Dictionary) -> void:
+	match ev.type:
+		"summon", "set", "hustle":
+			if ev.side == "player":
+				_cards_played += 1
+		"clash":
+			var v: CardView = field[ev.side].get(ev.from)
+			_last_hit = {"side": ev.side, "card": v.card if v else {}}
+		"damage":
+			if not _last_hit.is_empty() and _last_hit.side != ev.side and not _last_hit.card.is_empty():
+				var key := "%s:%s" % [_last_hit.side, _last_hit.card.get("uid", 0)]
+				var entry: Dictionary = _damage_log.get(key, {"card": _last_hit.card, "owner": _last_hit.side, "damage": 0})
+				entry.damage += int(ev.amount)
+				_damage_log[key] = entry
+		"attack", "turn":
+			_last_hit = {}
+
+
 func _play(ev: Dictionary) -> void:
+	_track(ev)
 	match ev.type:
 		"draw":
 			await _ev_draw(ev)
@@ -823,6 +867,10 @@ func _ev_game_over(ev: Dictionary) -> void:
 	overlay.add_child(title)
 	create_tween().tween_property(title, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	shake(18)
+	if not "player" in ai_sides:
+		await _wait(1.6)
+		_finish_match(won)
+		return
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 30)
 	row.position = Vector2(960 - 290, 600)
@@ -833,6 +881,24 @@ func _ev_game_over(ev: Dictionary) -> void:
 		b.pressed.connect(_on_menu_choice.bind(label))
 		row.add_child(b)
 	overlay.add_child(row)
+
+
+## Hand the result (and a snapshot of the board for the background) to the post-match screen.
+func _finish_match(won: bool) -> void:
+	var mvp := {}
+	for key in _damage_log:
+		if mvp.is_empty() or _damage_log[key].damage > mvp.damage:
+			mvp = _damage_log[key]
+	var snap: Texture2D = null
+	if DisplayServer.get_name() != "headless":
+		snap = ImageTexture.create_from_image(get_viewport().get_texture().get_image())
+	Game.match_result = {
+		"result": "win" if won else "loss",
+		"player_morale": duel.sides.player.morale, "opponent_morale": duel.sides.opponent.morale,
+		"turns": duel.turn, "cards_played": _cards_played, "mvp": mvp,
+		"match_id": _match_id, "snapshot": snap,
+	}
+	Game.go("post_match")
 
 
 # ── View helpers ─────────────────────────────────────────────────────────────
@@ -1275,7 +1341,7 @@ func _show_detail(c: Dictionary, live_stats := []) -> void:
 	_ui.detail_text.text = body
 
 
-func _build_panel(side: String, p: Panel, display_name: String, avatar: String) -> void:
+func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String) -> void:
 	var accent := BLUE if side == "player" else RED
 	p.add_theme_stylebox_override("panel", _box(INK, accent, 2, 10))
 	var av := TextureRect.new()
@@ -1292,7 +1358,7 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String) 
 	n.position = Vector2(92, 10)
 	p.add_child(n)
 	var sub := _label(14, accent)
-	sub.text = "LV 1  ·  ROOKIE" if side == "player" else "CPU OPPONENT"
+	sub.text = subtitle
 	sub.position = Vector2(92, 46)
 	p.add_child(sub)
 	var cap := _label(13, Color(0.55, 0.57, 0.7))
@@ -1441,7 +1507,9 @@ func _play_music() -> void:
 	var stream: AudioStream = load(path)
 	if stream is AudioStreamMP3:
 		stream.loop = true
+	Game.stop_music()
 	var music := AudioStreamPlayer.new()
+	music.bus = "Music"
 	music.stream = stream
 	music.volume_db = -14.0
 	add_child(music)
@@ -2047,7 +2115,7 @@ func _toggle_menu() -> void:
 	title.text = "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for label in ["RESUME", "REMATCH", "QUIT"]:
+	for label in ["RESUME", "SETTINGS", "LEAVE DUEL"]:
 		var b := Button.new()
 		b.text = label
 		b.custom_minimum_size = Vector2(320, 60)
@@ -2063,6 +2131,12 @@ func _on_menu_choice(choice: String) -> void:
 	match choice:
 		"RESUME":
 			_toggle_menu()
+		"SETTINGS":
+			_toggle_menu()
+			SettingsPanel.open(overlay, false)
+		"LEAVE DUEL":
+			UI.dialog(overlay, "LEAVE THE DUEL?", "You'll lose this match's progress and get no rewards.", [
+				["LEAVE", func(): Game.go("main_menu"), RED], ["STAY", func(): pass]])
 		"REMATCH":
 			Engine.time_scale = 1.0
 			get_tree().reload_current_scene()
