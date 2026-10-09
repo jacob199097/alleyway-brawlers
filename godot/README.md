@@ -34,8 +34,25 @@ If a card changes in `shared/cards.js`, regenerate the card data with
 | Profile, Mailbox, Social | Avatar and stats; read and delete mail; friends, requests and chat history. |
 | Settings | Volume, window mode, resolution, v-sync, FPS cap, FPS counter, and the server address. |
 
-Right-click any card to zoom it. Live chat and challenges need the realtime connection, which
-arrives with online play.
+Right-click any card to zoom it.
+
+## Online play
+- **Casual Brawl** puts you in the online queue against another player. It uses your active
+  deck and doesn't change Rank Points. You can also **Challenge** an online friend from Social.
+  Live chat is there too.
+- **The server runs every online match.** `backend/socket/onlineMatch.js` uses
+  `shared/duel/DuelState.js`, a JavaScript copy of `scripts/duel/duel_state.gd`. Clients only
+  send moves. Each player gets the events they're allowed to see: not the opponent's hand, deck
+  or face-down cards. The server records the result and pays the rewards.
+- **Timeouts.** Whoever has to act has 90 seconds; after that the server makes a safe move for
+  them. If a player disconnects, they have 45 seconds to come back before losing. Reconnecting
+  resumes the match.
+- `scripts/net.gd` is the realtime connection: a small Socket.io client over a WebSocket.
+- If you change the rules in either engine, change the other too, then check they still match:
+  ```
+  godot --headless --path godot --script res://tests/export_golden.gd -- golden.json 100
+  node shared/duel/engine.test.mjs golden.json
+  ```
 
 ## Duel controls
 | Action | Input |
@@ -76,6 +93,12 @@ memory. Start it, then run the screenshot tour, or point **Settings → Server**
 ```
 node godot/tests/mock_server.mjs
 godot --path godot res://tests/screens_tour.tscn -- <folder for screenshots>
+```
+The fake server also runs the real online-match service. Two test players can queue and play
+each other; add `--drop` to one to test reconnecting, or `--concede` to test conceding.
+```
+godot --headless --fixed-fps 60 --path godot res://tests/online_bot.tscn -- a@test http://127.0.0.1:3999 --autoplay
+godot --headless --fixed-fps 60 --path godot res://tests/online_bot.tscn -- b@test http://127.0.0.1:3999 --autoplay
 ```
 
 ## Notes

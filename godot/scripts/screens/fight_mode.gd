@@ -17,7 +17,7 @@ func _ready() -> void:
 	var level := int(Game.player.get("level", 1))
 	var modes := [
 		{"id": "casual", "title": "CASUAL BRAWL", "color": UI.BLUE,
-			"sub": "Quick match vs CPU · No Rank Points at stake\n(online play coming soon)",
+			"sub": "Online vs another player\nNo Rank Points at stake",
 			"locked": Game.offline, "lock_text": "Needs the server"},
 		{"id": "ranked", "title": "RANKED BRAWL", "color": UI.GOLD,
 			"sub": "Ranked vs CPU · earn Rank Points" if level >= 5 else "Unlocks at Level 5 (you are Lv %d)" % level,
@@ -99,6 +99,9 @@ func _start(mode: String) -> void:
 	if Game.offline:
 		Game.duel_setup = {"mode": mode}
 		Game.go("rps")
+		return
+	if mode == "casual":
+		Game.go("matchmaking")
 		return
 	_starting = true
 	var spin := UI.spinner(self, Vector2(960, 980), "LOADING YOUR DECK…")

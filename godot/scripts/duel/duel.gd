@@ -31,6 +31,7 @@ const RED := Color("e63946")
 const GOLD := Color("f4d35e")
 const GREEN := Color("3ddc84")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
+const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 const PHASE_NAMES := {"deployment": "DEPLOYMENT", "brawl": "BRAWL", "regroup": "REGROUP"}
@@ -70,6 +71,10 @@ var _match_id := ""
 var _cards_played := 0
 var _damage_log := {}     # "side:uid" -> {card, owner, damage}
 var _last_hit := {}
+var _online := false      # a server-run match (Game.duel_setup.online)
+var _awaiting := false    # sent a move, waiting for the server's answer
+var _over := {}           # mp:over from the server
+var _clock_left := 0.0
 
 var _font: SystemFont
 var _dot: Texture2D
@@ -98,7 +103,14 @@ func _ready() -> void:
 	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
 		str(me.get("avatar_url", "profile_001")),
 		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.player_title(int(me.get("level", 1))).to_upper()])
-	_build_panel("opponent", $HUD/UI/OppPanel, "CPU", "profile_002", "CPU OPPONENT")
+	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
+	if online_start.is_empty():
+		_build_panel("opponent", $HUD/UI/OppPanel, "CPU", "profile_002", "CPU OPPONENT")
+	else:
+		var opp: Dictionary = online_start.get("opponent", {})
+		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
+			str(opp.get("avatar_url", "profile_002")) if opp.get("avatar_url") else "profile_002",
+			"LV %d  ·  ONLINE" % int(opp.get("level", 1)))
 	_build_phase_bar()
 	_build_turn_box()
 	_play_music()
@@ -111,6 +123,10 @@ func _ready() -> void:
 	_dim_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_layer.add_child(_dim_rect)
 
+	if not online_start.is_empty():
+		_setup_online(online_start)
+		return
+
 	# The player's saved deck from Fight Mode (Game.duel_setup); the CPU uses the starter deck.
 	var setup := DuelAI.test_setup()
 	var chosen: Dictionary = Game.duel_setup
@@ -120,20 +136,152 @@ func _ready() -> void:
 		setup.leaders.player = chosen.get("leader", "")
 	duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, str(chosen.get("first", "player")))
 	_start_match_session(chosen.get("ranked", false))
-	for side in ["player", "opponent"]:
-		var l = duel.sides[side].leader
-		if l != null:
-			var v := _new_view(l, side, true)
-			v.position = pile_pos(side, "leader")
-			v.home = v.position
-			v.badge_text = _influence_text(l.influence)
-			v.show_badge = true
-			leaders[side] = v
+	_make_leader_views()
 	counts = duel._counts()
 	_refresh_hud()
 	duel.start()
 	_queue.append_array(duel.take_events())
 	_pump()
+
+
+func _make_leader_views() -> void:
+	for side in ["player", "opponent"]:
+		var l = duel.sides[side].leader
+		if l != null and duel.sides[side].get("leader_state", "dormant") == "dormant":
+			var v := _new_view(l, side, true)
+			v.position = pile_pos(side, "leader")
+			v.home = v.position
+			v.badge_text = _influence_text(int(l.get("influence", l.get("base_defense", 0))))
+			v.show_badge = true
+			leaders[side] = v
+
+
+# ── Online matches ───────────────────────────────────────────────────────────
+# The server runs the rules (backend/socket/onlineMatch.js). This screen mirrors the board it
+# sends (duel.load_view), animates its events, and sends the player's moves as actions.
+
+func _setup_online(start: Dictionary) -> void:
+	_online = true
+	ai_sides = []
+	_match_id = str(start.get("matchId", ""))
+	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
+	duel.load_view(start.get("view", {}))
+	_make_leader_views()
+	counts = duel._counts()
+	if start.get("resync", false):
+		_build_from_view()
+	_refresh_hud()
+	_ui.clock = _label(22, GOLD, true)
+	_ui.clock.position = Vector2(150, 96)
+	$HUD/UI/TurnBox.add_child(_ui.clock)
+	Net.opened.connect(_on_net_opened)
+	Net.closed.connect(_on_net_closed)
+	_after_events()
+
+
+## Rejoining a match (reconnect or correction): lay the board out straight from the view.
+func _build_from_view() -> void:
+	for side in ["player", "opponent"]:
+		var s: Dictionary = duel.sides[side]
+		for c in s.hand:
+			var hv := _new_view(c, side, side == "player")
+			hand[side].append(hv)
+		_layout_hand(side)
+		for v in hand[side]:
+			v.position = v.home
+			v.scale = Vector2.ONE * v.home_scale
+		for slot in 10:
+			var c = s.field[slot]
+			if c == null:
+				continue
+			var v := _new_view(c, side, not c.get("face_down", false))
+			v.position = slot_pos(side, slot)
+			v.home = v.position
+			v.home_rot = PI / 2 if slot < 5 and (c.get("position") == "def" or c.get("downed", false)) else 0.0
+			v.rotation = v.home_rot
+			v.downed = c.get("downed", false)
+			v.z_index = 10
+			if slot < 5:
+				v.show_badge = true
+				if c.has("attack"):
+					v.set_stats(int(c.attack), int(c.defense), int(c.get("base_attack", c.attack)), int(c.get("base_defense", c.defense)))
+			field[side][slot] = v
+		var p: Dictionary = _panels[side]
+		p.shown = float(s.morale)
+		p.morale.text = str(int(s.morale))
+		p.bar.size.x = p.bar.get_parent().size.x * clampf(float(s.morale) / DuelState.START_MORALE, 0.0, 1.0)
+	_ui.turn_num.text = "TURN %d" % duel.turn
+	_ui.turn_who.text = "YOUR TURN" if duel.active == "player" else "OPPONENT'S TURN"
+	_set_phase_ui(duel.phase)
+
+
+func _on_net_event(name: String, data) -> void:
+	if not data is Dictionary or str(data.get("matchId", _match_id)) != _match_id:
+		return
+	match name:
+		"mp:update":
+			duel.load_view(data.view)
+			_awaiting = false
+			_clock_left = ONLINE_TURN_SECS
+			_queue.append_array(data.events)
+			_pump()
+		"mp:over":
+			_over = data
+			if str(data.get("reason", "")) != "morale" and _mode != "over":
+				_mode = "over"
+				_cancel_interaction()
+				var won: bool = data.get("result") == "win"
+				var why: String = {"concede": "CONCEDED", "disconnect": "DISCONNECTED"}.get(str(data.reason), "LEFT")
+				_sweep_banner(("OPPONENT " if won else "YOU ") + why, GOLD if won else RED)
+				await _wait(1.6)
+				_finish_match(won)
+		"mp:opponent":
+			if data.get("status") == "disconnected":
+				_show_net_banner("OPPONENT DISCONNECTED — THEY HAVE %ds TO RETURN" % int(data.get("graceSecs", 45)))
+			else:
+				_hide_net_banner()
+				UI.toast(overlay, "Your opponent is back.", BLUE)
+
+
+## Net calls this when the server (re)sends the whole match, e.g. after a reconnect.
+func on_online_start(_data: Dictionary) -> void:
+	Engine.time_scale = 1.0
+	get_tree().reload_current_scene()
+
+
+func on_online_error(message: String) -> void:
+	_awaiting = false
+	UI.toast(overlay, message, RED)
+
+
+func _on_net_opened() -> void:
+	_hide_net_banner()
+	Net.send("mp:resync")
+
+
+func _on_net_closed() -> void:
+	if _mode != "over":
+		_show_net_banner("CONNECTION LOST — RECONNECTING…")
+
+
+func _show_net_banner(text: String) -> void:
+	if not _ui.has("net"):
+		var p := PanelContainer.new()
+		p.add_theme_stylebox_override("panel", _box(Color(0.25, 0.02, 0.05, 0.92), RED, 2, 10))
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var l := _label(24, Color.WHITE, true)
+		p.add_child(l)
+		overlay.add_child(p)
+		_ui.net = p
+	_ui.net.get_child(0).text = text
+	_ui.net.visible = true
+	_ui.net.reset_size()
+	_ui.net.position = Vector2(1080 - _ui.net.size.x / 2, 236)
+
+
+func _hide_net_banner() -> void:
+	if _ui.has("net"):
+		_ui.net.visible = false
 
 
 func _process(delta: float) -> void:
@@ -146,6 +294,15 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if _dragging and _press:
 		_press.position = _press.position.lerp(get_global_mouse_position(), minf(1.0, delta * 25.0))
+	if _online:
+		while not Net.inbox.is_empty():
+			var msg: Array = Net.inbox.pop_front()
+			_on_net_event(msg[0], msg[1])
+		# Whoever has to act has ONLINE_TURN_SECS before the server plays a safe move for them
+		if duel.winner == "" and _mode != "over" and _ui.has("clock"):
+			_clock_left = maxf(0.0, _clock_left - delta)
+			_ui.clock.text = "⏱ %d" % ceili(_clock_left)
+			_ui.clock.label_settings.font_color = RED if _clock_left < 15.0 else GOLD
 
 
 # ── Board geometry ───────────────────────────────────────────────────────────
@@ -238,6 +395,14 @@ func _draw_zone_label(p: Vector2, text: String) -> void:
 # ── Event playback ───────────────────────────────────────────────────────────
 
 func _act(side: String, action: Dictionary) -> bool:
+	if _online:
+		# The server applies the move and sends back what happened (mp:update)
+		if _awaiting or side != "player" or not Net.send("mp:action", {"matchId": _match_id, "action": action}):
+			return false
+		_awaiting = true
+		_clear_highlights()
+		_update_next_btn()
+		return true
 	if not duel.do_action(side, action):
 		return false
 	_queue.append_array(duel.take_events())
@@ -263,6 +428,20 @@ func _after_events() -> void:
 	if duel.winner != "":
 		return
 	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
+	if _online:
+		if side == "player" and not _awaiting and "--autoplay" in OS.get_cmdline_user_args():
+			# Test bot (tests/online_bot.tscn): the CPU plays this side's moves through the server
+			await _wait(0.25)
+			if not _playing and not _awaiting:
+				var a := DuelAI.choose(duel, "player")
+				if not a.is_empty():
+					_act("player", a)
+		elif side == "player" and not _awaiting:
+			_player_ready()
+		else:
+			_clear_highlights()
+			_update_next_btn()
+		return
 	if side in ai_sides:
 		_update_next_btn()
 		await _wait(0.4)
@@ -365,8 +544,8 @@ func _play(ev: Dictionary) -> void:
 		"leader_down":
 			await _ev_leader_down(ev)
 		"prompt":
-			if ev.side in ai_sides:
-				_float_text(Vector2(1080, DIVIDER_Y), "CPU IS DECIDING…", Color(1, 1, 1, 0.8), 30)
+			if ev.side == "opponent" or ev.side in ai_sides:
+				_float_text(Vector2(1080, DIVIDER_Y), "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…", Color(1, 1, 1, 0.8), 30)
 				await _wait(0.35)
 
 
@@ -898,6 +1077,18 @@ func _finish_match(won: bool) -> void:
 		"turns": duel.turn, "cards_played": _cards_played, "mvp": mvp,
 		"match_id": _match_id, "snapshot": snap,
 	}
+	if _online:
+		# The server records the match and sends the rewards (mp:over)
+		var waited := 0.0
+		while _over.is_empty() and waited < 10.0:
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+		Game.match_result.online = true
+		Game.match_result.match_id = ""
+		Game.match_result.reason = str(_over.get("reason", "morale"))
+		Game.match_result.rewards = _over.get("rewards")
+		if _over.has("result"):
+			Game.match_result.result = _over.result
 	Game.go("post_match")
 
 
@@ -1474,7 +1665,7 @@ func _update_next_btn() -> void:
 		return
 	var b: Button = _ui.next
 	var mine := duel.active == "player" and not "player" in ai_sides
-	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty()
+	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
 	if not mine:
 		b.text = "OPPONENT'S TURN"
 	else:
@@ -1784,7 +1975,7 @@ func _on_press() -> void:
 	if _mode == "menu":
 		_cancel_and_refresh()
 		return
-	if _playing:
+	if _playing or _awaiting:
 		return
 	match _mode:
 		"choose":
@@ -2047,7 +2238,7 @@ func _show_direct_button(slot: int) -> void:
 
 
 func _on_next() -> void:
-	if _playing or "player" in ai_sides or not duel.can_act("player"):
+	if _playing or _awaiting or "player" in ai_sides or not duel.can_act("player"):
 		return
 	_cancel_interaction()
 	Sfx.play("click")
@@ -2115,7 +2306,7 @@ func _toggle_menu() -> void:
 	title.text = "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for label in ["RESUME", "SETTINGS", "LEAVE DUEL"]:
+	for label in ["RESUME", "SETTINGS", "CONCEDE" if _online else "LEAVE DUEL"]:
 		var b := Button.new()
 		b.text = label
 		b.custom_minimum_size = Vector2(320, 60)
@@ -2134,6 +2325,10 @@ func _on_menu_choice(choice: String) -> void:
 		"SETTINGS":
 			_toggle_menu()
 			SettingsPanel.open(overlay, false)
+		"CONCEDE":
+			_toggle_menu()
+			UI.dialog(overlay, "CONCEDE THE MATCH?", "Your opponent wins and the match is recorded as a loss.", [
+				["CONCEDE", func(): Net.send("mp:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
 		"LEAVE DUEL":
 			UI.dialog(overlay, "LEAVE THE DUEL?", "You'll lose this match's progress and get no rewards.", [
 				["LEAVE", func(): Game.go("main_menu"), RED], ["STAY", func(): pass]])

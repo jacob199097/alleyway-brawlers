@@ -81,6 +81,11 @@ func _outcome_panel(d: Dictionary, won: bool) -> void:
 	v.add_theme_constant_override("separation", 14)
 	p.add_child(v)
 	var reason := "Opponent's Morale reduced to 0" if won else "Your Morale reduced to 0"
+	match str(d.get("reason", "")):
+		"concede":
+			reason = "Your opponent conceded" if won else "You conceded"
+		"disconnect":
+			reason = "Your opponent left the match" if won else "You were disconnected"
 	var r := UI.label(reason, 26, Color.WHITE, true)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
@@ -157,6 +162,14 @@ func _mvp_panel(mvp: Dictionary) -> void:
 
 ## Rewards are decided by the server (solo-match session from match/start).
 func _submit(d: Dictionary) -> void:
+	if d.get("online", false):
+		# Online matches are recorded by the server, which sends the rewards with the result
+		if d.get("rewards") is Dictionary:
+			_show_rewards(d.rewards)
+		else:
+			_xp_label.text = "+0 XP"
+			_rewards.text = "Rewards not recorded"
+		return
 	if Game.offline or str(d.get("match_id", "")) == "":
 		_xp_label.text = "+0 XP"
 		_rewards.text = "Offline — rewards not recorded" if Game.offline else "Rewards not recorded"
@@ -170,7 +183,10 @@ func _submit(d: Dictionary) -> void:
 		_xp_label.text = "+0 XP"
 		_rewards.text = r.error if r.error != "" else "Rewards not recorded"
 		return
-	var rw: Dictionary = r.data.rewards
+	_show_rewards(r.data.rewards)
+
+
+func _show_rewards(rw: Dictionary) -> void:
 	var xp := UI.xp_progress({"level": rw.get("newLevel", Game.player.get("level", 1)), "xp": rw.get("newXp", 0)})
 	_xp_label.text = "+%d XP" % int(rw.get("xpEarned", 0))
 	create_tween().tween_property(_xp_fill, "size:x", 500.0 * xp.pct, 0.8).set_delay(0.4).set_trans(Tween.TRANS_QUAD)

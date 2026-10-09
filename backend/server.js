@@ -27,6 +27,9 @@ const jwt          = require('jsonwebtoken');
 const { pool }                  = require('./db/pool');
 const { registerMatchmaking, createMatch, isInMatch, loadDeckPool } = require('./socket/matchmaker');
 const { registerDuelHandler }   = require('./socket/duelHandler');
+const { createOnlineService, loadSetupFromDb, loadProfileFromDb } = require('./socket/onlineMatch');
+const { resolveMatch }          = require('./economy/postMatch');
+const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 
 // ── REST routes ───────────────────────────────────────────────────────────────
 const authRoutes    = require('./routes/auth');
@@ -87,6 +90,15 @@ io.use((socket, next) => {
     }
 });
 
+// ── Online matches (server-authoritative rules, socket/onlineMatch.js) ───────
+const online = createOnlineService(io, {
+    loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
+    loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
+    resolveMatch,
+    incrementDailyQuest,
+    recordDailyWin,
+});
+
 // ── Socket connections ────────────────────────────────────────────────────────
 // Outstanding friend challenges: "fromId:toId" → expiry timestamp
 const pendingChallenges = new Map();
@@ -109,6 +121,7 @@ io.on('connection', (socket) => {
     // Register feature handlers
     registerMatchmaking(socket, io, playerData);
     registerDuelHandler(socket, io, playerData);
+    online.register(socket, playerData);
 
     // ── Direct challenge (friend invite) ────────────────────────────────────
     socket.on('challenge:send', ({ targetPlayerId } = {}) => {

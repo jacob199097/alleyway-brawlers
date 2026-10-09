@@ -1,9 +1,11 @@
 // A fake game server for testing the Godot menus without the real backend or a database.
 // Same routes and response shapes as backend/routes/*; state lives in memory only.
 //   node godot/tests/mock_server.mjs [port]      (default 3999)
-// Then set Settings → Server → http://127.0.0.1:3999 and log in with any email/password.
+// Then set Settings → Server → http://127.0.0.1:3999 and log in with any email/password
+// (each email is its own account). Online matches run on the real backend/socket/onlineMatch.js.
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
 
 const port = Number(process.argv[2] || 3999);
@@ -17,12 +19,23 @@ const cards = Object.values(CARD_CATALOG).map(c => ({
 const byId = new Map(cards.map(c => [c.id, c]));
 const inventory = new Map(cards.map(c => [c.id, 3]));
 
-const player = {
-    id: randomUUID(), username: 'Tester', email: 'test@example.com', karat: 1200, contraband: 300,
-    level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
-    avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: 'lion_pride',
-    created_at: new Date().toISOString(), collection_pct: 100,
-};
+// One account per email; the token names the account. `player` is whoever made the request.
+const players = new Map();   // token → player
+function loginAs(email) {
+    const token = `mock-token:${email}`;
+    if (!players.has(token)) {
+        const name = email.split('@')[0];
+        players.set(token, {
+            id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
+            contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
+            avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: 'lion_pride',
+            created_at: new Date().toISOString(), collection_pct: 100, token,
+        });
+    }
+    return players.get(token);
+}
+let player = loginAs('test@example.com');
+const byPlayerId = (id) => [...players.values()].find(p => p.id === id);
 
 // Starter deck: Lv.1 characters and effects, up to 40 cards, King Roan as leader
 const deckCards = new Map();
@@ -69,7 +82,11 @@ function deckSummary(d) {
 
 const routes = {
     'GET /health': () => [200, { status: 'ok' }],
-    'POST /api/auth/login': (b) => b.email && b.password ? [200, { token: 'mock-token', player }] : [400, { error: 'email and password are required.' }],
+    'POST /api/auth/login': (b) => {
+        if (!b.email || !b.password) return [400, { error: 'email and password are required.' }];
+        const p = loginAs(String(b.email).toLowerCase());
+        return [200, { token: p.token, player: p }];
+    },
     'POST /api/auth/register': () => [201, { pending: true, message: 'Account created.' }],
     'POST /api/auth/forgot-password': () => [200, { success: true }],
     'GET /api/profile/me': () => [200, player],
@@ -129,7 +146,14 @@ const routes = {
     'POST /api/mail/read-all': () => { mail.forEach(m => m.read_at ??= new Date().toISOString()); return [200, { success: true }]; },
     'POST /api/mail/:id/read': (_b, id) => { const m = mail.find(x => x.id === id); if (m) m.read_at ??= new Date().toISOString(); return [200, { success: true }]; },
     'DELETE /api/mail/:id': (_b, id) => { const i = mail.findIndex(x => x.id === id); if (i >= 0) mail.splice(i, 1); return [200, { success: true }]; },
-    'GET /api/social/friends': () => [200, friends],
+    // Every other account that has logged in is a friend too, so challenges can be tested
+    'GET /api/social/friends': () => [200, [
+        ...[...players.values()].filter(p => p.id !== player.id).map(p => ({
+            friendship_id: `f-${p.id}`, status: 'accepted', friend_id: p.id, friend_username: p.username,
+            friend_avatar: p.avatar_url, is_online: online.has(p.id), level: p.level,
+        })),
+        ...friends,
+    ]],
     'POST /api/social/friends/request': (b) => b.targetUsername === 'nobody' ? [404, { error: 'Player not found.' }] : [200, { success: true }],
     'PATCH /api/social/friends/:id/accept': (_b, id) => { const f = friends.find(x => x.friendship_id === id); if (f) f.status = 'accepted'; return [200, { success: true }]; },
     'GET /api/social/messages/:id': (_b, id) => [200, [
@@ -159,7 +183,7 @@ function route(method, path) {
     return null;
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
     let raw = '';
     req.on('data', d => raw += d);
     req.on('end', () => {
@@ -167,10 +191,86 @@ http.createServer((req, res) => {
         const handler = route(req.method, path);
         let body = {};
         try { body = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
-        const authed = path.startsWith('/api/auth') || path === '/health' || req.headers.authorization === 'Bearer mock-token';
+        const me = players.get(String(req.headers.authorization || '').replace(/^Bearer /, ''));
+        if (me) player = me;
+        const authed = path.startsWith('/api/auth') || path === '/health' || !!me;
         const [code, data] = !handler ? [404, { error: 'Not found.' }] : !authed ? [401, { error: 'Unauthorized.' }] : handler(body);
         res.writeHead(code, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(data));
         console.log(req.method, path, code);
     });
-}).listen(port, () => console.log(`Mock server on http://127.0.0.1:${port}`));
+});
+
+// ── Realtime: the real online-match service, with in-memory data instead of Postgres ──
+const require = createRequire(import.meta.url);
+const { Server } = require('../../backend/node_modules/socket.io');
+const { createOnlineService } = require('../../backend/socket/onlineMatch.js');
+const { nextForm } = await import('../../shared/duel/DuelState.js');
+
+const io = new Server(server, { cors: { origin: '*' } });
+const online = new Set();   // player ids with a socket
+io.use((socket, next) => {
+    const p = players.get(socket.handshake.auth?.token);
+    if (!p) return next(new Error('Invalid or expired token.'));
+    socket.playerData = { playerId: p.id, username: p.username };
+    next();
+});
+
+const spec = (c) => ({ id: c.art_url, name: c.name, authority: c.authority, attack: c.attack ?? 0, defense: c.defense ?? 0, rarity: c.rarity });
+const service = createOnlineService(io, {
+    onAction(match, seat, action, ok) {
+        const st = match.state;
+        console.log(`ACT t${st.turn} ${seat} ${JSON.stringify(action)} ${ok ? 'ok' : 'REFUSED'} morale ${st.sides.player.morale}/${st.sides.opponent.morale}`);
+    },
+    async loadSetup() {
+        const d = decks.find(x => x.is_active) || decks[0];
+        const deck = [];
+        for (const [cid, copies] of d.cards) for (let i = 0; i < copies; i++) deck.push(spec(byId.get(cid)));
+        if (deck.length !== 40) return { error: 'You need a complete 40-card deck to play online.' };
+        const hideout = [];
+        const seen = new Set();
+        for (const [cid] of d.cards) {
+            let next = nextForm(byId.get(cid).art_url);
+            while (next && !seen.has(next)) {
+                seen.add(next);
+                const owned = cards.find(c => c.art_url === next);
+                if (owned) for (let i = 0; i < 3; i++) hideout.push(spec(owned));
+                next = nextForm(next);
+            }
+        }
+        return { deck, hideout, leader: d.leader_card_id ? byId.get(d.leader_card_id).art_url : '' };
+    },
+    async loadProfile(playerId) {
+        const p = byPlayerId(playerId);
+        return { username: p.username, level: p.level, avatar_url: p.avatar_url };
+    },
+    async resolveMatch({ winnerId, p1Id, p2Id }) {
+        const out = {};
+        for (const id of [p1Id, p2Id]) {
+            const p = byPlayerId(id);
+            const win = id === winnerId;
+            p.xp += win ? 100 : 20; p.karat += win ? 50 : 10; p[win ? 'wins' : 'losses']++;
+            out[id] = { outcome: win ? 'win' : 'loss', karatEarned: win ? 50 : 10, xpEarned: win ? 100 : 20,
+                firstWinBonus: false, newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false,
+                newRank: p.rank, rankChanged: false, rankPointDelta: 0 };
+        }
+        console.log('MATCH OVER winner', byPlayerId(winnerId)?.username ?? 'none');
+        return out;
+    },
+});
+io.on('connection', (socket) => {
+    const { playerId, username } = socket.playerData;
+    online.add(playerId);
+    console.log('socket connected', username);
+    service.register(socket, socket.playerData);
+    socket.on('chat:message', ({ toPlayerId, body } = {}) => {
+        for (const s of io.sockets.sockets.values()) {
+            if (s.playerData.playerId === toPlayerId) s.emit('chat:message', { fromPlayerId: playerId, fromUsername: username, body });
+        }
+    });
+    socket.on('disconnect', () => {
+        if (![...io.sockets.sockets.values()].some(s => s.playerData.playerId === playerId)) online.delete(playerId);
+    });
+});
+
+server.listen(port, () => console.log(`Mock server on http://127.0.0.1:${port}`));

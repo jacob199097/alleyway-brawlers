@@ -11,6 +11,7 @@ const SCREENS := {
 	"main_menu": "res://scenes/main_menu.tscn",
 	"fight_mode": "res://scenes/fight_mode.tscn",
 	"rps": "res://scenes/rps.tscn",
+	"matchmaking": "res://scenes/matchmaking.tscn",
 	"duel": "res://scenes/duel.tscn",
 	"post_match": "res://scenes/post_match.tscn",
 	"shop": "res://scenes/shop.tscn",
@@ -110,9 +111,11 @@ func sign_in(token: String, profile: Dictionary, email: String) -> void:
 	offline = false
 	last_email = email
 	_save_session()
+	Net.connect_to_server()
 
 
 func sign_out() -> void:
+	Net.disconnect_from_server()
 	Api.token = ""
 	player = {}
 	offline = false
@@ -132,6 +135,7 @@ func refresh_player() -> bool:
 	var r := await Api.request("GET", "/api/profile/me")
 	if r.ok:
 		player = r.data
+		Net.connect_to_server()
 	return r.ok
 
 

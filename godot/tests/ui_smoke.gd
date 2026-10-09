@@ -17,6 +17,14 @@ func _ready() -> void:
 
 ## Raise a prompt for the player and answer it through the on-screen buttons.
 func _prompt_check() -> void:
+	for i in 300:
+		if duel_screen.get("duel") != null:
+			break
+		await get_tree().process_frame
+	if duel_screen.get("duel") == null:
+		push_error("UI smoke failed: the duel screen didn't load")
+		get_tree().quit(1)
+		return
 	var d: DuelState = duel_screen.duel
 	while duel_screen._playing or d.active != "player" or d.phase != "deployment":
 		await get_tree().process_frame

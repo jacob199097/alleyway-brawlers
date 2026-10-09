@@ -98,6 +98,8 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
 
         for (const { playerId, outcome } of assignments) {
             const reward = REWARDS[outcome];
+            // Casual and friendly matches don't move Rank Points
+            const rankDelta = matchMeta.ranked === false ? 0 : reward.rankPoints;
 
             const { rows } = await client.query(
                 `SELECT karat, xp, level, rank_points, wins, losses, draws, first_win_date
@@ -127,7 +129,7 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
             const newXp      = p.xp + xpEarned;
             const newLevel   = calcLevel(newXp);
             const newKarat   = p.karat + reward.karat;
-            const newRankPts = p.rank_points + reward.rankPoints;
+            const newRankPts = p.rank_points + rankDelta;
             const { tier: newRank, points: clampedRankPts } = calcRank(newRankPts);
 
             const newWins   = p.wins   + (outcome === 'win'  ? 1 : 0);
@@ -165,7 +167,7 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                 leveledUp:      newLevel > p.level,
                 newRank,
                 rankChanged:    newRank !== p.rank,
-                rankPointDelta: reward.rankPoints,
+                rankPointDelta: rankDelta,
                 matchId,
             };
         }

@@ -135,9 +135,9 @@ The canvas is fixed at 844×390 (about 19.5:9), and 28 files hard-code `const W 
   desktop build, and update `APP_BASE_URL`/`APP_CLIENT_URL` in `backend/.env`.
 - Lock CORS (`backend/server.js` uses `cors()` and Socket.io `origin: '*'`) to the web origin and
   the `app://` origin.
-- Multiplayer: `MatchmakingScene` isn't reachable from any menu, and the server doesn't track
-  hands or draw order (only per-match deck pools). Make it server-authoritative before you enable
-  online play.
+- Multiplayer: online matches are server-authoritative for the Godot client
+  (`backend/socket/onlineMatch.js` runs `shared/duel/DuelState.js`; see `godot/README.md`).
+  The Phaser client's old `MatchmakingScene`/`duel:*` prototype is still unreachable.
 - Builds: electron-builder `nsis` installer for testing, plus the unpacked directory for the
   Steam depot (SteamPipe). Code-sign the exe to avoid SmartScreen warnings.
 

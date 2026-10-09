@@ -20,6 +20,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 Sfx="*res://scripts/sfx.gd"
 Api="*res://scripts/api.gd"
 Game="*res://scripts/game.gd"
+Net="*res://scripts/net.gd"
 
 [display]
 

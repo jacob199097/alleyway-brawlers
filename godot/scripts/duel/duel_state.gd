@@ -44,7 +44,7 @@ var _new_asks: Array = []
 
 ## decks/hideouts: {"player": [card ids], "opponent": [...]}; leaders: {"player": id, ...}
 func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first := "player", seed_value := 0) -> void:
-	if seed_value != 0:
+	if seed_value > 0:
 		rng.seed = seed_value
 	else:
 		rng.randomize()
@@ -53,7 +53,8 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		var deck: Array = []
 		for id in decks[side]:
 			deck.append(make_card(id))
-		_shuffle(deck)
+		if seed_value != -1:   # -1 keeps the given order (tests compare engines)
+			_shuffle(deck)
 		var hideout: Array = []
 		for id in hideouts.get(side, []):
 			hideout.append(make_card(id))
@@ -96,6 +97,20 @@ func make_card(spec) -> Dictionary:
 	c.deployed_turn = 0
 	c.mods = []   # temporary buffs/debuffs: {atk, def, until_turn}
 	return c
+
+
+## Online play: mirror the board the server sent (from this player's side; the opponent's hand,
+## deck and face-down cards are stubs), so the screen can ask the usual questions —
+## can_summon, attack_targets, pending — without running the rules locally.
+func load_view(v: Dictionary) -> void:
+	turn = int(v.get("turn", 1))
+	active = str(v.get("active", "player"))
+	phase = str(v.get("phase", "upkeep"))
+	winner = str(v.get("winner", ""))
+	pending = v.get("pending", {}) if v.get("pending") is Dictionary else {}
+	sides = v.get("sides", {})
+	_asks.clear()
+	_new_asks.clear()
 
 
 static func other(side: String) -> String:
@@ -352,7 +367,7 @@ func _use_ability(side: String, slot: int) -> bool:
 	var maya: Dictionary = card_at(side, slot)
 	maya.ability_turn = turn
 	var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
-	allies.sort_custom(func(a, b): return _attack_value(a.card) > _attack_value(b.card))
+	allies.sort_custom(_strongest_first)
 	_ask_target(side, "maya_buff", "Maya Lv.3: choose a LIONS ally to gain +400 ATK / +400 DEF", maya,
 		allies, side, func(e: Dictionary):
 			e.card.mods.append({"atk": 400, "def": 400, "until_turn": turn})
@@ -617,7 +632,7 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 						e.card.mods.append({"def": -500, "until_turn": turn})
 	if key in ["hunter_lv2", "hunter_lv3"]:
 		var standing := characters(foe).filter(func(e): return not e.card.downed)
-		standing.sort_custom(func(a, b): return _attack_value(a.card) > _attack_value(b.card))
+		standing.sort_custom(_strongest_first)
 		_ask_target(side, "hunter_down", "%s KO: choose an enemy character to Down" % att.name, att,
 			standing, foe, func(e: Dictionary):
 				e.card.downed = true
@@ -676,14 +691,14 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
 			var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
-			allies.sort_custom(func(a, b): return _attack_value(a.card) > _attack_value(b.card))
+			allies.sort_custom(_strongest_first)
 			_ask_target(side, "lieutenant", "Pride Lieutenant: choose a LIONS ally to gain +500 ATK", c,
 				allies, side, func(e: Dictionary):
 					e.card.mods.append({"atk": 500, "until_turn": turn})
 					_effect(side, c, "%s gains +500 ATK this turn" % e.card.name, slot))
 		"brutus_enter":
 			var foes := characters(foe)
-			foes.sort_custom(func(a, b): return _attack_value(a.card) > _attack_value(b.card))
+			foes.sort_custom(_strongest_first)
 			_ask_target(side, "brutus", "Brutus: choose an enemy character to lose 700 ATK", c,
 				foes, foe, func(e: Dictionary):
 					e.card.mods.append({"atk": -700, "until_turn": turn + 1})
@@ -766,7 +781,7 @@ func _check_awaken(side: String) -> void:
 		else:
 			taken.append({"id": str(slot), "label": "REPLACE %s" % str(c.name).to_upper(), "side": side, "slot": slot,
 				"value": _attack_value(c)})
-	taken.sort_custom(func(a, b): return a.value < b.value)
+	taken.sort_custom(func(a, b): return a.value < b.value or (a.value == b.value and a.slot < b.slot))
 	options.append_array(empties)
 	options.append_array(taken)
 	options.append({"id": "wait", "label": "STAY DORMANT FOR NOW"})
@@ -832,7 +847,7 @@ func _recalc() -> void:
 					df += 400
 			c.attack = maxi(0, atk)
 			c.defense = maxi(0, df)
-			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense]
+			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down]
 	_emit("stats", {"values": values})
 
 
@@ -1045,7 +1060,7 @@ func _has_striver(side: String) -> bool:
 
 func _downed_lions(side: String) -> Array:
 	var out := characters(side).filter(func(e): return e.card.downed and is_lion(e.card))
-	out.sort_custom(func(a, b): return _attack_value(a.card) > _attack_value(b.card))
+	out.sort_custom(_strongest_first)
 	return out
 
 
@@ -1053,7 +1068,7 @@ func _promotable_strivers(side: String) -> Array:
 	var out := characters(side).filter(func(e): return is_lion(e.card) and e.card.get("subtype") == "striver" \
 		and not e.card.downed and not e.card.face_down and not sides[side].promoted.has(e.slot) \
 		and CardDB.next_form(e.card.id) != "")
-	out.sort_custom(func(a, b): return int(a.card.level) > int(b.card.level))
+	out.sort_custom(func(a, b): return int(a.card.level) > int(b.card.level) or (int(a.card.level) == int(b.card.level) and a.slot < b.slot))
 	return out
 
 
@@ -1099,6 +1114,13 @@ func _adjacent_lion(side: String, slot: int) -> bool:
 		if adj in FRONT and is_lion(card_at(side, adj)):
 			return true
 	return false
+
+
+## Sort entries strongest first; ties go to the lower lane so every engine orders them the same.
+static func _strongest_first(a: Dictionary, b: Dictionary) -> bool:
+	var va := _attack_value(a.card)
+	var vb := _attack_value(b.card)
+	return va > vb or (va == vb and a.slot < b.slot)
 
 
 static func _attack_value(c: Dictionary) -> int:

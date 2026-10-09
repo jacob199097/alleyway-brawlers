@@ -1,6 +1,6 @@
 extends Screen
 ## Social club: friends, requests, add a friend, and chat history.
-## Live chat and challenges use the realtime connection, which arrives with online play.
+## Challenges and live chat go over the realtime connection (Net).
 
 var _list: VBoxContainer
 var _search: LineEdit
@@ -82,9 +82,14 @@ func _row(f: Dictionary) -> Control:
 			else:
 				UI.toast(self, r.error, UI.RED), Vector2(200, 56), UI.GREEN))
 	else:
-		var vs := UI.button("⚔ CHALLENGE", func(): pass, Vector2(220, 56), UI.RED)
-		vs.disabled = true
-		vs.tooltip_text = "Challenges arrive with online play"
+		var online: bool = f.get("is_online", false)
+		var vs := UI.button("⚔ CHALLENGE", func():
+			if Net.send("mp:challenge", {"targetPlayerId": f.friend_id}):
+				UI.toast(self, "Challenge sent to %s — waiting for them to accept." % f.friend_username, UI.GOLD)
+			else:
+				UI.toast(self, "Not connected to the server.", UI.RED), Vector2(220, 56), UI.RED)
+		vs.disabled = not online
+		vs.tooltip_text = "" if online else "%s is offline" % f.friend_username
 		row.add_child(vs)
 		row.add_child(UI.button("💬 CHAT", _open_chat.bind(f), Vector2(180, 56)))
 	return p
@@ -130,13 +135,36 @@ func _open_chat(f: Dictionary) -> void:
 	input_row.add_theme_constant_override("separation", 12)
 	col.add_child(input_row)
 	var edit := LineEdit.new()
-	edit.placeholder_text = "Live chat arrives with online play"
-	edit.editable = false
+	edit.placeholder_text = "Message…"
+	edit.max_length = 500
 	edit.custom_minimum_size = Vector2(1000, 56)
 	input_row.add_child(edit)
-	var send := UI.button("SEND", func(): pass, Vector2(140, 56))
-	send.disabled = true
-	input_row.add_child(send)
+	var add_line := func(body: String, mine: bool):
+		var l := UI.label(body, 22, UI.BLUE if mine else Color.WHITE)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if mine else HORIZONTAL_ALIGNMENT_LEFT
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l.custom_minimum_size = Vector2(1120, 0)
+		lines.add_child(l)
+		await get_tree().process_frame
+		scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+	var send_msg := func():
+		var body := edit.text.strip_edges()
+		if body == "":
+			return
+		if not Net.send("chat:message", {"toPlayerId": f.friend_id, "body": body}):
+			UI.toast(self, "Not connected to the server.", UI.RED)
+			return
+		edit.text = ""
+		add_line.call(body, true)
+	edit.text_submitted.connect(func(_t): send_msg.call())
+	input_row.add_child(UI.button("SEND", send_msg, Vector2(140, 56)))
+	# Live messages from this friend while the chat is open
+	var listener := func(name: String, data):
+		if name == "chat:message" and data is Dictionary and data.get("fromPlayerId") == f.friend_id:
+			add_line.call(str(data.get("body", "")), false)
+	Net.event.connect(listener)
+	_chat.tree_exiting.connect(func(): Net.event.disconnect(listener))
+	edit.grab_focus()
 	var r := await Api.request("GET", "/api/social/messages/%s" % f.friend_id)
 	if not r.ok:
 		lines.add_child(UI.label(r.error, 22, UI.RED))
@@ -144,9 +172,4 @@ func _open_chat(f: Dictionary) -> void:
 	if r.data.is_empty():
 		lines.add_child(UI.label("No messages yet.", 22, UI.MUTED))
 	for m in r.data:
-		var mine: bool = m.get("sender_id") != f.friend_id
-		var l := UI.label(str(m.get("body", "")), 22, UI.BLUE if mine else Color.WHITE)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if mine else HORIZONTAL_ALIGNMENT_LEFT
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD
-		l.custom_minimum_size = Vector2(1120, 0)
-		lines.add_child(l)
+		add_line.call(str(m.get("body", "")), m.get("sender_id") != f.friend_id)
