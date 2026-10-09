@@ -174,6 +174,11 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 	b.pressed.connect(func():
 		Sfx.play("click")
 		on_press.call())
+	# Neon signs flicker now and then, each on its own rhythm
+	var flicker := b.create_tween().set_loops()
+	flicker.tween_interval(randf_range(3.0, 9.0))
+	for a in [0.55, 1.0, 0.7, 1.0, 0.85, 1.0]:
+		flicker.tween_property(b, "self_modulate:a", a, randf_range(0.03, 0.07))
 	return b
 
 
@@ -364,7 +369,25 @@ static func card_zoom(parent: Control, c: Dictionary) -> void:
 			veil.queue_free())
 	var art := texture_rect(card_art(c) if card_art(c) else CardDB.back(), Vector2(520, 736))
 	art.position = Vector2(400, 172)
+	var rarity_ := int(c.get("rarity", 1)) if c.get("rarity") != null else 1
+	var mat := card_material(art.size, rarity_)
+	art.material = mat
 	veil.add_child(art)
+	# The big card tilts toward the mouse and catches the light
+	var tilt := [Vector2.ZERO]
+	veil.gui_input.connect(func(e):
+		if e is InputEventMouseMotion:
+			var m: Vector2 = ((e.position - art.position - art.size / 2) / (art.size / 2)).clamp(-Vector2.ONE, Vector2.ONE)
+			tilt[0] = Vector2(-m.x, m.y) * 14.0
+			mat.set_shader_parameter("y_rot", tilt[0].x)
+			mat.set_shader_parameter("x_rot", tilt[0].y)
+			mat.set_shader_parameter("glare", clampf(tilt[0].length() / 12.0, 0.0, 1.0)))
+	art.pivot_offset = art.size / 2
+	art.scale = Vector2.ONE * 0.85
+	art.create_tween().tween_property(art, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var swing := art.create_tween()
+	swing.tween_method(func(d: float): mat.set_shader_parameter("y_rot", d), -35.0, 0.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Sfx.play("flip", 0.9, -4.0)
 	var info := VBoxContainer.new()
 	info.position = Vector2(980, 230)
 	info.custom_minimum_size = Vector2(560, 0)

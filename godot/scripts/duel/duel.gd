@@ -1732,6 +1732,7 @@ func _callout(c: Dictionary, text: String, side: String) -> void:
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.texture = CardDB.art(str(c.get("art_url", c.get("id", "")))) if not c.is_empty() else null
+	art.visible = art.texture != null   # no art slot when the prompt is not about a card
 	row.add_child(art)
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1843,7 +1844,8 @@ func _show_detail(c: Dictionary, live_stats := []) -> void:
 
 func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String) -> void:
 	var accent := BLUE if side == "player" else RED
-	p.add_theme_stylebox_override("panel", _box(INK, accent, 2, 10))
+	# Player plates glow in their side's colour
+	p.add_theme_stylebox_override("panel", UI._glow(_box(INK, accent, 2, 10), accent, 0.8))
 	var av := TextureRect.new()
 	av.position = Vector2(14, 14)
 	av.size = Vector2(64, 64)
@@ -2047,6 +2049,9 @@ func _box(bg: Color, border: Color, width: int, radius: int) -> StyleBoxFlat:
 	sb.content_margin_right = 14
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0, 4)
 	return sb
 
 
@@ -2145,6 +2150,7 @@ func _show_choice(p: Dictionary) -> void:
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var c: Dictionary = p.get("card", {})
 	art.texture = CardDB.art(str(c.get("art_url", c.get("id", "")))) if not c.is_empty() else null
+	art.visible = art.texture != null   # no art slot when the prompt is not about a card
 	row.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)

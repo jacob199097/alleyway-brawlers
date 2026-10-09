@@ -21,6 +21,7 @@ func _ready() -> void:
 	_build_center()
 	_build_right()
 	_build_quests()
+	_intro()
 	if Game.offline:
 		var l := UI.label("OFFLINE  ·  vs CPU with the starter deck  ·  nothing is saved", 22, UI.PURPLE, true)
 		l.size = Vector2(1920, 30)

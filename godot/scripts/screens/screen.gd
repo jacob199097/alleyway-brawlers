@@ -4,6 +4,7 @@ extends Control
 ## Esc returns to `back_to` (when set and no dialog is open).
 
 var back_to := ""
+var _settled := false
 
 
 func _enter_tree() -> void:
@@ -15,10 +16,13 @@ func _enter_tree() -> void:
 
 ## Entrance: the screen settles in from a slight zoom while its pieces fade up one after
 ## another (the full-screen background is already there).
+## Screens that build their content after a server request call it again once it's built.
 func _intro() -> void:
-	pivot_offset = size / 2
-	scale = Vector2.ONE * 1.025
-	create_tween().tween_property(self, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if not _settled:
+		_settled = true
+		pivot_offset = size / 2
+		scale = Vector2.ONE * 1.025
+		create_tween().tween_property(self, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var delay := 0.0
 	for c in get_children():
 		# Skip the background, and anything already fading in on its own (alpha below 1)
