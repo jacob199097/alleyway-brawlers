@@ -21,7 +21,9 @@ If a card changes in `shared/cards.js`, regenerate the card data with
 |---|---|
 | See a card's details | Hover over it |
 | Play a card | Click it in your hand for options, or drag it onto a slot |
-| Attack | In the Brawl phase, click a glowing character, then click a target |
+| Attack | In the Brawl phase, click a glowing character, then click a target. When the enemy front row is empty, attack directly, or click their dormant leader to hit its Influence |
+| Character actions | Click your character to change its position, promote it (Maya) or use its ability (Maya Lv.3) |
+| Card prompts | Effects that say "you may" or "choose" open a panel. Click an option, or click a highlighted card |
 | Next phase | **Space** / **Enter**, or the button on the right |
 | Cancel | Right-click |
 | Menu | **Esc** |

@@ -25,7 +25,10 @@ func _init() -> void:
 				break
 			steps += 1
 		for e in d.take_events():
-			counts[e.type] = counts.get(e.type, 0) + 1
+			var key: String = e.type
+			if e.type == "prompt":
+				key = "prompt:" + str(e.get("key", e.kind))
+			counts[key] = counts.get(key, 0) + 1
 		wins[d.winner] += 1
 		turns += d.turn
 	print("games: %d  player wins: %d  opponent wins: %d  unfinished: %d  avg turns: %.1f  refused: %d"

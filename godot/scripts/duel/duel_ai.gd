@@ -37,9 +37,12 @@ static func choose(d: DuelState, side: String) -> Dictionary:
 	if d.winner != "":
 		return {}
 	if not d.pending.is_empty():
-		if d.pending.side == side and d.pending.kind == "discard":
+		if d.pending.side != side:
+			return {}
+		if d.pending.kind == "discard":
 			return {"kind": "discard", "uid": _weakest(d.sides[side].hand).uid}
-		return {}
+		# Prompts list their options best-first for the deciding side
+		return {"kind": "choose", "option": d.pending.options[0].id}
 	if d.active != side:
 		return {}
 	var a := {}
@@ -59,6 +62,12 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 	for c in s.hand:
 		if d.can_hustle(side, c):
 			return {"kind": "hustle", "uid": c.uid}
+	# Stand up a defender that now out-muscles everything the opponent shows
+	var threat := _threat(d, side)
+	for e in d.characters(side):
+		var c: Dictionary = e.card
+		if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
+			return {"kind": "position", "slot": e.slot}
 
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
 	if not free.is_empty():
@@ -67,10 +76,6 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 			if d.can_summon(side, c, free[0]) and (best == null or c.base_attack > best.base_attack):
 				best = c
 		if best != null:
-			var threat := 0
-			for e in d.characters(DuelState.other(side)):
-				if e.card.position == "atk" and not e.card.downed and not e.card.face_down:
-					threat = maxi(threat, e.card.attack)
 			var pos := "atk" if best.base_attack >= threat else "def"
 			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": pos}
 
@@ -85,13 +90,22 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 
 static func _brawl(d: DuelState, side: String) -> Dictionary:
 	var foe := DuelState.other(side)
+	# Maya Lv.3 buffs an ally before the punches start
+	for slot in DuelState.FRONT:
+		if d.can_use_ability(side, slot):
+			return {"kind": "ability", "slot": slot}
 	for slot in DuelState.FRONT:
 		if not d.can_attack_with(side, slot):
 			continue
 		var att: Dictionary = d.card_at(side, slot)
 		var targets := d.attack_targets(side)
-		if targets == [-1]:
-			return {"kind": "attack", "from": slot, "target": -1}
+		if DuelState.DIRECT in targets:
+			# Knock out a dormant leader when one hit does it (−1000 morale and no Dormant bonus);
+			# otherwise go for the opponent's morale
+			var leader = d.sides[foe].leader
+			if DuelState.LEADER in targets and att.attack >= leader.influence:
+				return {"kind": "attack", "from": slot, "target": DuelState.LEADER}
+			return {"kind": "attack", "from": slot, "target": DuelState.DIRECT}
 		var best := -1
 		var best_score := 0.0
 		for t in targets:
@@ -111,6 +125,15 @@ static func _brawl(d: DuelState, side: String) -> Dictionary:
 		if best >= 0:
 			return {"kind": "attack", "from": slot, "target": best}
 	return {}
+
+
+## The strongest face-up attacker the opponent shows.
+static func _threat(d: DuelState, side: String) -> int:
+	var threat := 0
+	for e in d.characters(DuelState.other(side)):
+		if e.card.position == "atk" and not e.card.downed and not e.card.face_down:
+			threat = maxi(threat, e.card.attack)
+	return threat
 
 
 static func _weakest(hand: Array) -> Dictionary:

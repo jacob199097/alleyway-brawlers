@@ -6,6 +6,7 @@ extends Node
 var duel_screen: Node
 var summons := 0
 var attacks := 0
+var prompts := {}
 
 
 func _ready() -> void:
@@ -14,20 +15,50 @@ func _ready() -> void:
 	_run()
 
 
+## Raise a prompt for the player and answer it through the on-screen buttons.
+func _prompt_check() -> void:
+	var d: DuelState = duel_screen.duel
+	while duel_screen._playing or d.active != "player" or d.phase != "deployment":
+		await get_tree().process_frame
+	var answered: Array = []
+	d._ask("player", "test", "Pick one", {}, [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+		func(o): answered.append(o))
+	d._flush_asks()
+	duel_screen._queue.append_array(d.take_events())
+	duel_screen._pump()
+	while duel_screen._playing:
+		await get_tree().process_frame
+	_check(duel_screen._mode == "choose", "prompt panel shown")
+	_first_enabled_button(duel_screen._menu).pressed.emit()
+	_check(answered == ["a"], "prompt answer reaches the rules")
+	_check(d.pending.is_empty(), "prompt cleared")
+	prompts["test"] = 1
+
+
 func _run() -> void:
+	await _prompt_check()
 	var frames := 0
-	while frames < 60 * 600 and (summons < 3 or attacks < 2):
+	while frames < 60 * 1800 and (summons < 6 or attacks < 6):
 		await get_tree().process_frame
 		frames += 1
 		var d: DuelState = duel_screen.duel
 		if d == null or d.winner != "":
 			break
-		if duel_screen._playing or d.active != "player":
+		if duel_screen._playing:
 			continue
-		if not d.pending.is_empty():
-			_check(duel_screen._mode == "discard", "discard prompt shown")
-			var v: CardView = duel_screen.hand.player[0]
-			duel_screen._act("player", {"kind": "discard", "uid": v.uid})
+		if not d.pending.is_empty() and d.pending.side == "player":
+			if d.pending.kind == "discard":
+				_check(duel_screen._mode == "discard", "discard prompt shown")
+				var v: CardView = duel_screen.hand.player[0]
+				duel_screen._act("player", {"kind": "discard", "uid": v.uid})
+			else:
+				_check(duel_screen._mode == "choose", "effect prompt shown")
+				var btn := _first_enabled_button(duel_screen._menu)
+				_check(btn != null, "prompt has buttons")
+				prompts[d.pending.key] = prompts.get(d.pending.key, 0) + 1
+				btn.pressed.emit()
+			continue
+		if d.active != "player":
 			continue
 		if duel_screen._mode != "idle":
 			continue
@@ -40,7 +71,7 @@ func _run() -> void:
 					duel_screen._on_next()
 			_:
 				duel_screen._on_next()
-	print("UI smoke: summons %d, attacks %d, turn %d" % [summons, attacks, duel_screen.duel.turn])
+	print("UI smoke: summons %d, attacks %d, turn %d, prompts answered %s" % [summons, attacks, duel_screen.duel.turn, prompts])
 	get_tree().quit(0 if summons >= 1 else 1)
 
 

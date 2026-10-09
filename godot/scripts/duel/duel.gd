@@ -112,6 +112,8 @@ func _ready() -> void:
 			var v := _new_view(l, side, true)
 			v.position = pile_pos(side, "leader")
 			v.home = v.position
+			v.badge_text = _influence_text(l.influence)
+			v.show_badge = true
 			leaders[side] = v
 	counts = duel._counts()
 	_refresh_hud()
@@ -155,6 +157,8 @@ func pile_pos(side: String, pile: String) -> Vector2:
 
 
 func _target_pos(side: String, slot: int) -> Vector2:
+	if slot == DuelState.LEADER:
+		return pile_pos(side, "leader")
 	return slot_pos(side, slot) if slot >= 0 else Vector2(1080, ROWS[side][0])
 
 
@@ -304,6 +308,22 @@ func _play(ev: Dictionary) -> void:
 			await _notice(ev.text)
 		"game_over":
 			await _ev_game_over(ev)
+		"move":
+			await _ev_move(ev)
+		"retarget":
+			_ev_retarget(ev)
+		"position":
+			await _ev_position(ev)
+		"awaken":
+			await _ev_awaken(ev)
+		"leader_hit":
+			await _ev_leader_hit(ev)
+		"leader_down":
+			await _ev_leader_down(ev)
+		"prompt":
+			if ev.side in ai_sides:
+				_float_text(Vector2(1080, DIVIDER_Y), "CPU IS DECIDING…", Color(1, 1, 1, 0.8), 30)
+				await _wait(0.35)
 
 
 func _ev_draw(ev: Dictionary) -> void:
@@ -507,12 +527,16 @@ func _ev_clash(ev: Dictionary) -> void:
 	if a == null:
 		_clear_attack_line()
 		return
-	var direct: bool = ev.target < 0
-	var d: CardView = null if direct else field[foe].get(ev.target)
+	var direct: bool = ev.target == DuelState.DIRECT
+	var d: CardView = null
+	if ev.target == DuelState.LEADER:
+		d = leaders.get(foe)
+	elif ev.target >= 0:
+		d = field[foe].get(ev.target)
 	var tpos := _target_pos(foe, ev.target)
 	_float_text(a.home, str(ev.att), GOLD, 54)
 	if d:
-		_float_text(d.home, "%s %d" % [ev.vs, ev.def], BLUE if ev.vs == "DEF" else RED, 44)
+		_float_text(d.home, "%s %d" % [ev.vs, ev.def], RED if ev.vs == "ATK" else BLUE, 44)
 	elif direct:
 		_float_text(tpos + Vector2(0, -60 if foe == "opponent" else 60), "DIRECT ATTACK", RED, 44)
 	await _wait(0.42)
@@ -616,10 +640,10 @@ func _ev_promote(ev: Dictionary) -> void:
 	_show_detail(c)
 	_float_text(pos + Vector2(0, -175 if side == "player" else 175), "PROMOTED!", GOLD, 58)
 	v.home = pos
-	v.home_rot = 0.0
+	v.home_rot = PI / 2 if c.position == "def" else 0.0
 	v.home_scale = 1.0
 	await _wait(0.5)
-	await v.move_to(pos, 1.0, 0.0, 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+	await v.move_to(pos, 1.0, v.home_rot, 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 	await _impact(pos, false)
 	v.busy = false
 	v.z_index = 10
@@ -666,6 +690,116 @@ func _ev_stats(ev: Dictionary) -> void:
 			if v:
 				var s: Array = vals[slot]
 				v.set_stats(s[0], s[1], s[2], s[3])
+
+
+func _ev_move(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(ev.from)
+	if v == null:
+		return
+	field[side].erase(ev.from)
+	field[side][ev.to] = v
+	var to := slot_pos(side, ev.to)
+	v.home = to
+	Sfx.play("whoosh", 1.3)
+	if _attack_line and is_instance_valid(_attack_line):
+		_attack_line.set_point_position(0, to)
+	_burst(v.position, BLUE, 12, 220, 0.4, 0.0)
+	await v.move_to(to, v.scale.x, v.home_rot, 0.22, Tween.TRANS_BACK).finished
+	_float_text(to + Vector2(0, -110 if side == "player" else 110), "LANE SHIFT", BLUE, 30)
+
+
+func _ev_retarget(ev: Dictionary) -> void:
+	if _attack_line and is_instance_valid(_attack_line):
+		var tpos := _target_pos(DuelState.other(ev.side), ev.target)
+		_attack_line.set_point_position(1, tpos)
+		var head: Polygon2D = _attack_line.get_child(0)
+		head.position = tpos
+		head.rotation = (tpos - _attack_line.get_point_position(0)).angle()
+	var be: CardView = field[DuelState.other(ev.side)].get(ev.target)
+	if be:
+		_ring(be.home, BLUE, 1.4)
+		be.flash()
+
+
+func _ev_position(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	if v == null:
+		return
+	var c: Dictionary = ev.card
+	v.set_card(c)
+	v.home_rot = PI / 2 if c.position == "def" else 0.0
+	if not v.face_up:
+		v.flip(true)
+	Sfx.play("set", 1.2)
+	_float_text(v.home + Vector2(0, -110 if ev.side == "player" else 110),
+		"DEF POSITION" if c.position == "def" else "ATK POSITION", BLUE if c.position == "def" else GOLD, 30)
+	await v.move_to(v.home, 1.0, v.home_rot, 0.28, Tween.TRANS_BACK).finished
+
+
+func _ev_awaken(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var slot: int = ev.slot
+	var c: Dictionary = ev.card
+	var v: CardView = leaders.get(side)
+	leaders.erase(side)
+	if v == null:
+		v = _new_view(c, side, true)
+		v.position = pile_pos(side, "leader")
+	v.badge_text = ""
+	v.set_card(c)
+	field[side][slot] = v
+	var target := slot_pos(side, slot)
+	v.home = target
+	v.home_rot = 0.0
+	v.home_scale = 1.0
+	v.busy = true
+	v.z_index = 440
+	_show_detail(c)
+	_dim(0.6, 0.25)
+	Sfx.play("promote", 0.8)
+	_light_column(v.position)
+	_splash_name("%s AWAKENS" % c.name, GOLD)
+	await v.move_to(v.position + Vector2(0, -40 if side == "player" else 40), 1.6, 0.0, 0.4, Tween.TRANS_BACK).finished
+	await _wait(0.3)
+	await v.move_to(target + Vector2(0, -60 if side == "player" else 60), 1.9, 0.0, 0.3).finished
+	await v.move_to(target, 1.0, 0.0, 0.12, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+	await _impact(target, true)
+	_dim(0.0, 0.35)
+	v.busy = false
+	v.z_index = 10
+	v.show_badge = true
+
+
+func _ev_leader_hit(ev: Dictionary) -> void:
+	var v: CardView = leaders.get(ev.side)
+	if v == null:
+		return
+	v.badge_text = _influence_text(ev.influence)
+	_float_text(v.home + Vector2(0, -40), "-%d" % ev.amount, RED, 56)
+	Sfx.play("damage", 1.2)
+	await _wait(0.35)
+
+
+func _ev_leader_down(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = leaders.get(side)
+	leaders.erase(side)
+	if v == null:
+		return
+	v.badge_text = ""
+	v.z_index = 440
+	v.flash()
+	Sfx.play("ko", 0.8)
+	shake(20)
+	_burst(v.position, Color(1.0, 0.45, 0.15), 50, 700, 0.9)
+	_stamp(v.position, "LEADER DOWN", RED)
+	await _hit_stop(0.1)
+	await _to_gutter(v, side)
+
+
+static func _influence_text(influence: int) -> String:
+	return "[center][color=#ffd86b]INFLUENCE %d[/color][/center]" % influence
 
 
 func _ev_game_over(ev: Dictionary) -> void:
@@ -1274,7 +1408,7 @@ func _update_next_btn() -> void:
 		return
 	var b: Button = _ui.next
 	var mine := duel.active == "player" and not "player" in ai_sides
-	b.disabled = not mine or duel.winner != ""
+	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty()
 	if not mine:
 		b.text = "OPPONENT'S TURN"
 	else:
@@ -1401,11 +1535,14 @@ func _player_ready() -> void:
 		return
 	if not duel.pending.is_empty():
 		if duel.pending.side == "player":
-			_mode = "discard"
-			_show_prompt("Choose %d card%s to discard" % [duel.pending.count, "" if duel.pending.count == 1 else "s"])
-			for v in hand.player:
-				v.glow_color = RED
-				v.glow = 0.8
+			if duel.pending.kind == "discard":
+				_mode = "discard"
+				_show_prompt(duel.pending.prompt)
+				for v in hand.player:
+					v.glow_color = RED
+					v.glow = 0.8
+			else:
+				_show_choice(duel.pending)
 		return
 	_hide_prompt()
 	if duel.active != "player":
@@ -1416,15 +1553,61 @@ func _player_ready() -> void:
 			if _playable(v.card):
 				v.glow_color = GREEN
 				v.glow = 0.75
-		for slot in field.player:
-			if duel.can_promote("player", slot):
-				field.player[slot].glow_color = GOLD
-				field.player[slot].glow = 0.9
-	elif duel.phase == "brawl":
-		for slot in field.player:
-			if duel.can_attack_with("player", slot):
-				field.player[slot].glow_color = GOLD
-				field.player[slot].glow = 0.9
+	for slot in field.player:
+		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
+			or duel.can_use_ability("player", slot)
+		if ready:
+			field.player[slot].glow_color = GOLD
+			field.player[slot].glow = 0.9
+
+
+## A prompt from a card effect: buttons for each option, and the cards it refers to light up
+## (click one of those to choose it too).
+func _show_choice(p: Dictionary) -> void:
+	_cancel_interaction()
+	_mode = "choose"
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), GOLD, 3, 12))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	box.add_child(row)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(124, 175)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var c: Dictionary = p.get("card", {})
+	art.texture = CardDB.art(str(c.get("art_url", c.get("id", "")))) if not c.is_empty() else null
+	row.add_child(art)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	row.add_child(col)
+	var title := _label(22, Color.WHITE, true)
+	title.text = p.prompt
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD
+	title.custom_minimum_size = Vector2(420, 0)
+	col.add_child(title)
+	for o in p.options:
+		var b := Button.new()
+		b.text = o.label
+		b.custom_minimum_size = Vector2(420, 44)
+		b.pressed.connect(_pick.bind(str(o.id)))
+		col.add_child(b)
+		if o.has("slot"):
+			_valid["%s:%d" % [o.side, o.slot]] = GOLD
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	_menu = box
+	Sfx.play("effect", 1.3, -6.0)
+	queue_redraw()
+
+
+func _pick(option: String) -> void:
+	Sfx.play("click")
+	_cancel_interaction()
+	_act("player", {"kind": "choose", "option": option})
 
 
 func _playable(c: Dictionary) -> bool:
@@ -1444,6 +1627,8 @@ func _clear_highlights() -> void:
 	for side in field:
 		for slot in field[side]:
 			field[side][slot].glow = 0.0
+	for side in leaders:
+		leaders[side].glow = 0.0
 	_valid.clear()
 	queue_redraw()
 
@@ -1534,6 +1719,15 @@ func _on_press() -> void:
 	if _playing:
 		return
 	match _mode:
+		"choose":
+			for side in ["player", "opponent"]:
+				var slot := _slot_at(side, m)
+				if slot >= 0 and _valid.has("%s:%d" % [side, slot]):
+					for o in duel.pending.get("options", []):
+						if o.get("side") == side and o.get("slot") == slot:
+							_pick(str(o.id))
+							return
+			return
 		"discard":
 			var hv := _hand_view_at(m)
 			if hv:
@@ -1548,7 +1742,10 @@ func _on_press() -> void:
 			return
 		"target":
 			var slot := _slot_at("opponent", m)
-			if _valid.has("opponent:%d" % slot):
+			var leader: CardView = leaders.get("opponent")
+			if leader and leader.glow > 0.0 and leader.hit(m):
+				slot = DuelState.LEADER
+			if _valid.has("opponent:%d" % slot) or slot == DuelState.LEADER:
 				var from := _selected_slot
 				_cancel_interaction()
 				_act("player", {"kind": "attack", "from": from, "target": slot})
@@ -1578,30 +1775,61 @@ func _on_release() -> void:
 			_open_hand_menu(v)
 
 
+## Click your own character: attack right away when that's the only option, otherwise a menu
+## (attack, change position, promote, ability).
 func _on_field_click(slot: int) -> void:
 	var v: CardView = field.player[slot]
-	if duel.can_attack_with("player", slot):
-		_clear_highlights()
-		_mode = "target"
-		_selected_slot = slot
-		v.glow_color = GOLD
-		v.glow = 1.2
-		var targets := duel.attack_targets("player")
-		if targets == [-1]:
-			_show_direct_button(slot)
-		else:
-			for t in targets:
-				_valid["opponent:%d" % t] = RED
+	var c := v.card
+	var opts: Array = []
+	var can_attack := duel.can_attack_with("player", slot)
+	if can_attack:
+		opts.append(["ATTACK", true, _begin_target.bind(slot)])
+	if duel.can_change_position("player", slot):
+		var to_def: bool = duel.card_at("player", slot).position == "atk"
+		opts.append(["CHANGE TO DEF" if to_def else "CHANGE TO ATK  (FLIP FACE-UP)" if duel.card_at("player", slot).face_down else "CHANGE TO ATK",
+			true, _field_action.bind({"kind": "position", "slot": slot})])
+	if duel.can_promote("player", slot):
+		opts.append(["PROMOTE", true, _field_action.bind({"kind": "promote", "slot": slot})])
+	if duel.can_use_ability("player", slot):
+		opts.append(["BUFF A LIONS ALLY  (+400 / +400)", true, _field_action.bind({"kind": "ability", "slot": slot})])
+	if opts.is_empty():
+		return
+	if opts.size() == 1 and can_attack:
+		_begin_target(slot)
+		return
+	_clear_highlights()
+	_mode = "menu"
+	v.glow_color = GOLD
+	v.glow = 1.2
+	opts.append(["CANCEL", true, _cancel_and_refresh])
+	_menu = _make_menu(opts, "", v.home + Vector2(0, -CARD.y / 2 - 12))
+
+
+func _field_action(action: Dictionary) -> void:
+	_cancel_interaction()
+	_act("player", action)
+
+
+func _begin_target(slot: int) -> void:
+	_cancel_interaction()
+	_clear_highlights()
+	_mode = "target"
+	_selected_slot = slot
+	field.player[slot].glow_color = GOLD
+	field.player[slot].glow = 1.2
+	var targets := duel.attack_targets("player")
+	for t in targets:
+		if t >= 0:
+			_valid["opponent:%d" % t] = RED
+	if DuelState.DIRECT in targets:
+		_show_direct_button(slot)
+	if DuelState.LEADER in targets and leaders.has("opponent"):
+		leaders.opponent.glow_color = RED
+		leaders.opponent.glow = 1.0
+		_show_prompt("Attack directly, or click the dormant leader to hit its Influence")
+	else:
 		_show_prompt("Choose a target  ·  right-click to cancel")
-		queue_redraw()
-	elif duel.can_promote("player", slot):
-		_mode = "menu"
-		_menu = _make_menu([
-			["PROMOTE", true, func():
-				_cancel_interaction()
-				_act("player", {"kind": "promote", "slot": slot})],
-			["CANCEL", true, _cancel_and_refresh],
-		], "", v.home + Vector2(0, -CARD.y / 2 - 12))
+	queue_redraw()
 
 
 func _open_hand_menu(v: CardView) -> void:

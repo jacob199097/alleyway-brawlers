@@ -12,6 +12,7 @@ var face_up := false
 var downed := false: set = set_downed
 var show_badge := false: set = set_show_badge
 var glow := 0.0: set = set_glow
+var badge_text := "": set = set_badge_text   # replaces the ATK/DEF badge (e.g. a leader's Influence)
 var glow_color := Color("f4d35e")
 var home := Vector2.ZERO
 var home_rot := 0.0
@@ -182,6 +183,9 @@ func _update_badge() -> void:
 	_badge.visible = _badge_wanted()
 	if not _badge.visible:
 		return
+	if badge_text != "":
+		_badge.text = badge_text
+		return
 	var atk_col := _stat_color(_stats[0], _stats[2], "ffd86b")
 	var def_col := _stat_color(_stats[1], _stats[3], "9ddcff")
 	var tag := "[color=#ff5a5a]DOWNED[/color]  " if downed else ""
@@ -199,7 +203,7 @@ static func _stat_color(v: int, base: int, normal: String) -> String:
 
 ## Shown on the field, hidden while flying, and never for the opponent's face-down cards.
 func _badge_wanted() -> bool:
-	return show_badge and not busy and not _stats.is_empty() and (face_up or side == "player")
+	return show_badge and not busy and (badge_text != "" or not _stats.is_empty()) and (face_up or side == "player")
 
 
 func _process(_delta: float) -> void:
@@ -226,3 +230,8 @@ func _draw() -> void:
 func _fit(s: Sprite2D) -> void:
 	if s.texture:
 		s.scale = SIZE / s.texture.get_size()
+
+
+func set_badge_text(v: String) -> void:
+	badge_text = v
+	_update_badge()
