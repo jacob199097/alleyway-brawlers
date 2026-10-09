@@ -1,0 +1,39 @@
+; Engine configuration file.
+; Edit through Project > Project Settings in the Godot editor where possible.
+
+config_version=5
+
+[application]
+
+config/name="Alleyway Brawlers"
+config/description="Godot client trial: the duel board (see godot/README.md)."
+run/main_scene="res://scenes/duel.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+Sfx="*res://scripts/sfx.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[importer_defaults]
+
+texture={
+"compress/high_quality": true,
+"compress/mode": 2,
+"mipmaps/generate": true
+}
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=3
+environment/defaults/default_clear_color=Color(0.03, 0.03, 0.07, 1)

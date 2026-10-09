@@ -1,0 +1,5 @@
+# Godot cache
+.godot/
+
+# Art and audio are copied from client/assets by tools/sync_assets (not stored twice in git)
+assets/

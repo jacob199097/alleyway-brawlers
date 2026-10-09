@@ -106,6 +106,13 @@ The canvas is fixed at 844×390 (about 19.5:9), and 28 files hard-code `const W 
 > **Phases 5 and 6 are paused** until more work is done on the game itself. Phases 1–4 are
 > complete. Don't start them until this note is removed.
 
+> **Godot trial (Oct 2026).** `godot/` holds a Godot 4.7 port of the duel board, to compare
+> against the Phaser client. It contains the rules as pure data with events, the CPU player,
+> and the animated desktop duel screen; see `godot/README.md`. The Electron decision above
+> stands unless the trial is adopted. If it is, Phase 5 moves to GodotSteam, and the rules in
+> `godot/scripts/duel/duel_state.gd` (or a server port of them) become the authority for
+> online matches.
+
 ## Phase 5 — Steam integration (`desktop/steam.js`, `steamworks.js`)
 1. **Login with Steam.** The client calls `getAuthTicketForWebApi('alleyway')` and posts it to a new
    `POST /api/auth/steam`. The server verifies it with

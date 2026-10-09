@@ -1,6 +1,8 @@
 # AlleyWay Brawlers
 
 - `client/` — Phaser 3 + Vite game client (web/mobile; desktop build planned via Electron).
+- `godot/` — Godot 4.7 trial port of the duel (see `godot/README.md`); art is synced from
+  `client/assets`, card data exported from `shared/cards.js`.
 - `backend/` — Node/Express/Socket.io + Postgres. Runs on the Linux server (192.168.0.200) as the
   `alleyway-backend` systemd service; it is the authority for auth, economy, matches and decks.
   Never move reward/currency/card logic into the client.
