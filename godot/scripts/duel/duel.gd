@@ -1478,11 +1478,9 @@ func _showcase(v: CardView, c: Dictionary, color: Color) -> void:
 	var t := create_tween().set_parallel()
 	t.tween_property(rays, "modulate:a", 1.0, 0.25)
 	t.tween_property(rays, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	t.tween_property(rays, "rotation", 0.5, 1.3)
-	t.chain().tween_property(rays, "modulate:a", 0.0, 0.3)
-	t.chain().tween_callback(rays.queue_free)
+	t.tween_property(rays, "rotation", 0.35, 0.95)
 	Sfx.play("riser", 0.7)
-	_splash_name(str(c.get("name", "")), color)
+	_splash_name(str(c.get("name", "")), color, center.y + 265.0)
 	await v.move_to(center, 2.5, 0.0, 0.34, Tween.TRANS_BACK).finished
 	v.kick(Vector2(1, -0.4), 18.0)
 	_ring(center, color.lerp(Color.WHITE, 0.3), 2.6)
@@ -1490,6 +1488,10 @@ func _showcase(v: CardView, c: Dictionary, color: Color) -> void:
 	_post_pulse("aberration", 6.0, 0.5)
 	Sfx.play("effect", 0.7, -2.0)
 	await _wait(0.6)
+	# Rays fade as the card leaves centre stage
+	var out := create_tween()
+	out.tween_property(rays, "modulate:a", 0.0, 0.25)
+	out.tween_callback(rays.queue_free)
 
 
 ## A split-second stark black-and-white frame at the moment of contact (real time).
@@ -1669,11 +1671,11 @@ func _sweep_banner(text: String, color: Color) -> void:
 	await t.finished
 
 
-func _splash_name(card_name: String, color: Color) -> void:
+func _splash_name(card_name: String, color: Color, y := DIVIDER_Y) -> void:
 	var l := _label(84, Color.WHITE, true)
 	l.text = card_name.to_upper()
 	l.size = Vector2(1200, 110)
-	l.position = Vector2(1080 - 600, DIVIDER_Y - 55)
+	l.position = Vector2(1080 - 600, y - 55)
 	l.pivot_offset = l.size / 2
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
