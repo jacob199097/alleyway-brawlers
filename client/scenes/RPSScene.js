@@ -1,4 +1,4 @@
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 
 /**
  * Rock Paper Scissors — determines who goes first.
@@ -58,7 +58,7 @@ export class RPSScene extends Phaser.Scene {
         const reg = o => { this._uiObjs.push(o); return o; };
 
         // Title
-        reg(this.add.text(W / 2, 26, 'SCISSORS · PAPER · ROCK', {
+        reg(this.add.text(W / 2, VIEW_TOP + 34, 'SCISSORS · PAPER · ROCK', {
             fontSize: '18px', fontFamily: 'Arial Black', color: '#f4d35e',
             stroke: '#000000', strokeThickness: 4,
         }).setOrigin(0.5));
@@ -207,7 +207,7 @@ export class RPSScene extends Phaser.Scene {
         else if (playerWon){ resultText = "YOU WIN! 🎉"; resultColor = '#4cc9f0'; }
         else               { resultText = "CPU WINS!";   resultColor = '#e63946'; }
 
-        const banner = this.add.text(W / 2, 48, resultText, {
+        const banner = this.add.text(W / 2, VIEW_TOP + 58, resultText, {
             fontSize: '26px', fontFamily: 'Arial Black', color: resultColor,
             stroke: '#000000', strokeThickness: 5,
         }).setOrigin(0.5).setScale(0).setAlpha(0);
@@ -216,7 +216,7 @@ export class RPSScene extends Phaser.Scene {
         this.cameras.main.shake(200, 0.007);
 
         if (isDraw) {
-            this.add.text(W / 2, H - 30, `Round ${this._round} is a draw — throwing again...`, {
+            this.add.text(W / 2, VIEW_BOTTOM - 34, `Round ${this._round} is a draw — throwing again...`, {
                 fontSize: '9px', color: '#888888',
             }).setOrigin(0.5);
 
@@ -237,7 +237,7 @@ export class RPSScene extends Phaser.Scene {
             const cpuGoesFist = Math.random() < 0.5;
             const cpuDecision = cpuGoesFist ? 'first' : 'second';
             const firstPlayer = cpuGoesFist ? 'opponent' : 'player';
-            this.add.text(W / 2, H - 52, `CPU chooses to go ${cpuDecision}!`, {
+            this.add.text(W / 2, VIEW_BOTTOM - 60, `CPU chooses to go ${cpuDecision}!`, {
                 fontSize: '11px', fontFamily: 'Arial Black', color: '#e63946',
                 stroke: '#000000', strokeThickness: 2,
             }).setOrigin(0.5).setAlpha(0).setDepth(10);
@@ -250,7 +250,7 @@ export class RPSScene extends Phaser.Scene {
     }
 
     _showPositionChoice(winner) {
-        const cy = H - 56;
+        const cy = VIEW_BOTTOM - 62;
 
         this.add.text(W / 2, cy - 20, 'You won! Choose your starting position:', {
             fontSize: '11px', fontFamily: 'Arial Black', color: '#f4d35e',

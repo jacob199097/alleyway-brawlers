@@ -1,4 +1,5 @@
 import { SettingsManager, OPTIONS } from '../utils/SettingsManager.js';
+import { Sfx } from '../utils/Sfx.js';
 import { isDesktop } from '../utils/Platform.js';
 
 import { W, H } from '../utils/Layout.js';
@@ -369,7 +370,7 @@ export class SettingsScene extends Phaser.Scene {
     _throttledSfxPreview() {
         if (this._sfxCooldown) return;
         this._sfxCooldown = true;
-        try { this.sound.play('sfx_card_play', { volume: SettingsManager.sfxVolume }); } catch (_) {}
+        Sfx.play(this, 'sfx_card_play');
         this.time.delayedCall(400, () => { this._sfxCooldown = false; });
     }
 

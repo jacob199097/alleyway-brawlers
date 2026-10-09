@@ -21,6 +21,9 @@ export const BASE_H = 390;                       // the height scenes were origi
 export const H      = isDesktop ? 475 : BASE_H;  // 844×475 ≈ 16:9
 export const EXTRA_H = H - BASE_H;               // 85 on desktop, 0 on web
 
+/** Duel card / field-slot size. The 16:9 board is taller, so its cards are larger. */
+export const DUEL_CARD = EXTRA_H ? { w: 76, h: 90 } : { w: 64, h: 76 };
+
 /** A y from the 390-tall design, kept centred in the taller world. */
 export const midY = (y) => y + EXTRA_H / 2;
 

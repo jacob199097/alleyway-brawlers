@@ -1,3 +1,5 @@
+import { CARD_CATALOG } from '../../shared/cards.js';
+import { buildSmallCardTextures } from '../utils/CardTextures.js';
 import { SettingsManager } from '../utils/SettingsManager.js';
 import { VIEW_H } from '../utils/Layout.js';
 
@@ -88,23 +90,14 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('rank_sovereign',   'assets/ranks/Sovereign.png');
         this.load.image('rank_undisputed',  'assets/ranks/undisputed.png');
         this.load.image('title_alleyway', 'assets/title_alleyway.png');
-        this.load.spritesheet('fx_attack',  'assets/fx/attack.png',  { frameWidth: 128, frameHeight: 128 });
-        this.load.spritesheet('fx_destroy', 'assets/fx/destroy.png', { frameWidth: 128, frameHeight: 128 });
-        this.load.spritesheet('fx_ambush',  'assets/fx/ambush.png',  { frameWidth: 128, frameHeight: 128 });
-        this.load.spritesheet('fx_direct',  'assets/fx/direct.png',  { frameWidth: 256, frameHeight: 128 });
-        this.load.audio('sfx_card_play', 'assets/audio/card_play.mp3');
-        this.load.audio('sfx_attack',    'assets/audio/attack.mp3');
-        this.load.audio('sfx_destroy',   'assets/audio/destroy.mp3');
-        this.load.audio('sfx_victory',   'assets/audio/victory.mp3');
-        this.load.audio('sfx_defeat',    'assets/audio/defeat.mp3');
-        this.load.audio('bgm_duel',      'assets/audio/bgm_duel.mp3');
-        this.load.audio('bgm_menu',      'assets/audio/bgm_menu.mp3');
         this.load.audio('bgm_main_menu', 'assets/main_menu_theme_loop.mp3');
         this.load.audio('bgm_duel_theme', 'assets/duel_theme.mp3');
     }
 
     create() {
         this._defineAnimations();
+        // Smooth small copies of the card art for the board, hand and grids
+        buildSmallCardTextures(this, [...Object.keys(CARD_CATALOG), 'card_back']);
         if (!this.scene.isActive('VideoBackgroundScene')) {
             this.scene.launch('VideoBackgroundScene');
             this.scene.sendToBack('VideoBackgroundScene');

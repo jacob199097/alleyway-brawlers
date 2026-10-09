@@ -11,6 +11,7 @@
 import { DuelScene }    from './DuelScene.js';
 import { CardObject }   from '../cards/CardObject.js';
 import { SocketClient } from '../network/SocketClient.js';
+import { Sfx }          from '../utils/Sfx.js';
 
 export class MultiplayerDuelScene extends DuelScene {
 
@@ -208,7 +209,7 @@ export class MultiplayerDuelScene extends DuelScene {
         const myReward = payload.rewards?.[this._myPlayerId];
 
         this.bgm?.stop();
-        this.sound.play(iWon ? 'sfx_victory' : 'sfx_defeat');
+        Sfx.play(this, iWon ? 'sfx_victory' : 'sfx_defeat');
 
         this.time.delayedCall(1500, () => {
             this.scene.start('PostMatchScene', {

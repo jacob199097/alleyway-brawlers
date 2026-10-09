@@ -2,6 +2,7 @@ import { RARITY_COLOR, RARITY_LABEL } from '../cards/RarityConfig.js';
 import { showCardZoom }               from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
 import { H } from '../utils/Layout.js';
+import { cardTex } from '../utils/CardTextures.js';
 
 const W = 844;
 
@@ -324,14 +325,25 @@ export class CardLibraryScene extends Phaser.Scene {
     // ── Data fetch ────────────────────────────────────────────────────────────
 
     _fetchCollection() {
-        apiFetch('/api/collection/my')
+        apiFetch('/api/profile/inventory')
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json();
         })
-        .then(data => {
+        .then(rows => {
             this._hideSpinner();
-            this._collection = Array.isArray(data) ? data : [];
+            // Inventory rows → library entries (cardId is the art/texture key)
+            this._collection = (Array.isArray(rows) ? rows : []).map(r => ({
+                cardId:     r.art_url,
+                name:       r.name,
+                clan:       r.clan_tag || r.clan,
+                rarity:     r.rarity,
+                cardType:   r.card_type,
+                subtype:    r.subtype,
+                effectText: r.effect_text,
+                count:      r.quantity,
+                isNew:      false,
+            }));
             this._filtered   = [...this._collection];
             this._totalTxt.setText(`${this._collection.length} cards`);
             // Start with ALL active
@@ -378,7 +390,7 @@ export class CardLibraryScene extends Phaser.Scene {
             // Card art image
             const texKey = card.cardId;
             if (texKey && this.textures.exists(texKey)) {
-                const img = this.add.image(lx, ly - 6, texKey)
+                const img = this.add.image(lx, ly - 6, cardTex(this, texKey))
                     .setDisplaySize(CARD_W - 4, CARD_H - 18);
                 this._gridContainer.add(img);
             } else {
@@ -454,10 +466,6 @@ export class CardLibraryScene extends Phaser.Scene {
     // ── Mark All Seen ─────────────────────────────────────────────────────────
 
     _markAllSeen() {
-        apiFetch('/api/collection/mark-seen', {
-            method:  'POST',
-        }).catch(() => {}); // ignore errors per spec
-
         // Remove all NEW badges from the grid
         for (const badge of this._newBadges) {
             for (const obj of badge.objects) {

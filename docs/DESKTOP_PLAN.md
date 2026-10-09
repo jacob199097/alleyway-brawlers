@@ -87,12 +87,24 @@ The canvas is fixed at 844×390 (about 19.5:9), and 28 files hard-code `const W 
   safe areas, anchors), one scene at a time: Main Menu → Duel → Deck Builder → Shop → the rest.
   `DuelScene.js` (~6k lines) is the biggest. Keep both aspect ratios working through `Layout`
   instead of forking scenes.
+- **3c (16:9 duel):** the duel fills the whole 844×475 world on desktop (`fullLayout = true`)
+  instead of centring the 390-tall board. Cards and slots grow from 64×76 to 76×90
+  (`Layout.DUEL_CARD`, shared with `CardObject`), and the rows, divider, profile boxes and the
+  taller hand strip are derived from them in `DuelScene.js`. Web geometry is unchanged.
+- **3d (PC duel layout):** on desktop the duel uses a PC card-game layout: hovered-card
+  detail panel (left), opponent plate (top-right), player plate (bottom-left), flat hand
+  row, deck/hideout/gutter piles with counts, turn counter. Menus anchor titles to the top
+  edge and buttons to the bottom edge of the 16:9 view. Card art is drawn from smoothly
+  downsampled copies (`utils/CardTextures.js`) so it stays sharp at desktop sizes.
 
 ## Phase 4 — Mouse & keyboard
 - Hover: card highlight and tooltip. Right-click or hold to zoom a card (`utils/CardZoom.js`).
 - Shortcuts: Space/Enter = next phase, Esc = pause/settings menu, 1–9 = select a hand card,
   F11 = toggle fullscreen, Tab = show the graveyard/zone tooltip. Make them rebindable later.
 - Show a cursor theme. Hide touch-only hints on desktop.
+
+> **Phases 5 and 6 are paused** until more work is done on the game itself. Phases 1–4 are
+> complete. Don't start them until this note is removed.
 
 ## Phase 5 — Steam integration (`desktop/steam.js`, `steamworks.js`)
 1. **Login with Steam.** The client calls `getAuthTicketForWebApi('alleyway')` and posts it to a new

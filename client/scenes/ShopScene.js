@@ -1,7 +1,7 @@
 import { RARITY_LABEL, RARITY_COLOR } from '../cards/RarityConfig.js';
 import { attachHoldZoom, showCardZoom } from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -30,11 +30,11 @@ export class ShopScene extends Phaser.Scene {
     }
 
     _buildHeader() {
-        this.add.text(W / 2, 18, 'CARD PACKS', {
+        this.add.text(W / 2, VIEW_TOP + 26, 'CARD PACKS', {
             fontSize: '14px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5);
 
-        this._karatText = this.add.text(W / 2, 36, '', {
+        this._karatText = this.add.text(W / 2, VIEW_TOP + 48, '', {
             fontSize: '11px', color: '#f4d35e',
         }).setOrigin(0.5);
         this._refreshKarat();
@@ -44,7 +44,7 @@ export class ShopScene extends Phaser.Scene {
         const packs   = Object.entries(PACK_META);
         const panelW  = W - 40;
         // Cap card size so two packs don't fill the entire panel
-        const cardW   = Math.min(140, Math.floor(panelW / packs.length) - 8);
+        const cardW   = Math.min(140 + Math.round(EXTRA_H * 0.4), Math.floor(panelW / packs.length) - 8);
         const spacing = Math.min(220, panelW / packs.length);
         const cardH   = Math.round(cardW * 1.6);   // maintain ~booster aspect ratio
         const startX  = W / 2 - ((packs.length - 1) * spacing) / 2;
@@ -56,7 +56,7 @@ export class ShopScene extends Phaser.Scene {
     }
 
     _buildContrabandButton() {
-        const x = W - 90, y = H - 56;
+        const x = W - 90, y = VIEW_BOTTOM - 56;
         const w = 160, h = 38;
         const bg = this.add.rectangle(x, y, w, h, 0x6a0d8a)
             .setStrokeStyle(2, 0xe040fb).setInteractive({ useHandCursor: true });
@@ -478,9 +478,9 @@ export class ShopScene extends Phaser.Scene {
     }
 
     _buildBackButton() {
-        const btn = this.add.rectangle(40, H - 18, 72, 28, 0x333355)
+        const btn = this.add.rectangle(40, VIEW_BOTTOM - 24, 72, 28, 0x333355)
             .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
-        this.add.text(40, H - 18, '← BACK', {
+        this.add.text(40, VIEW_BOTTOM - 24, '← BACK', {
             fontSize: '10px', fontFamily: 'Arial Black', color: '#fff',
         }).setOrigin(0.5).setDepth(1);
         btn.on('pointerup', () => this.scene.start('MainMenuScene'));
@@ -492,7 +492,7 @@ export class ShopScene extends Phaser.Scene {
     }
 
     _showToast(msg, color = '#e63946') {
-        const t = this.add.text(W / 2, H - 20, msg, {
+        const t = this.add.text(W / 2, VIEW_BOTTOM - 24, msg, {
             fontSize: '13px', color, backgroundColor: '#000000',
             padding: { x: 10, y: 6 },
         }).setOrigin(0.5).setDepth(100);

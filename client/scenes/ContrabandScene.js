@@ -1,5 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 const W = 844;
 const H = 390;
 
@@ -20,11 +20,11 @@ export class ContrabandScene extends Phaser.Scene {
     create() {
         this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.7);
 
-        this.add.text(W / 2, 22, 'PURCHASE CONTRABAND', {
+        this.add.text(W / 2, VIEW_TOP + 28, 'PURCHASE CONTRABAND', {
             fontSize: '16px', fontFamily: 'Arial Black', color: '#e040fb',
         }).setOrigin(0.5);
 
-        this._cbText = this.add.text(W / 2, 42, '', {
+        this._cbText = this.add.text(W / 2, VIEW_TOP + 50, '', {
             fontSize: '11px', color: '#e040fb',
         }).setOrigin(0.5);
         this._refreshContrabandLabel();
@@ -105,16 +105,16 @@ export class ContrabandScene extends Phaser.Scene {
     }
 
     _buildBackButton() {
-        const btn = this.add.rectangle(40, H - 18, 72, 28, 0x333355)
+        const btn = this.add.rectangle(40, VIEW_BOTTOM - 24, 72, 28, 0x333355)
             .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
-        this.add.text(40, H - 18, '← BACK', {
+        this.add.text(40, VIEW_BOTTOM - 24, '← BACK', {
             fontSize: '10px', fontFamily: 'Arial Black', color: '#ffffff',
         }).setOrigin(0.5).setDepth(1);
         btn.on('pointerup', () => this.scene.start('ShopScene'));
     }
 
     _showToast(msg, color = '#e63946') {
-        const t = this.add.text(W / 2, H - 20, msg, {
+        const t = this.add.text(W / 2, VIEW_BOTTOM - 24, msg, {
             fontSize: '13px', color, backgroundColor: '#000000',
             padding: { x: 10, y: 6 },
         }).setOrigin(0.5).setDepth(100);

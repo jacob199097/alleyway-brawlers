@@ -1,7 +1,7 @@
 /**
  * DUEL SCENE (single-player / local AI duel)
  * ─────────────────────────────────────────────────────────────────────────────
- * Board layout (landscape 844 × 390):
+ * Board layout (landscape 844 × 390 on web; desktop is 844 × 475 with larger cards — see ROW_Y):
  *
  *   ┌────────────────────────────────────────────────────────────────┐
  *   │  Opponent Morale bar                                [844 wide] │ y≈13
@@ -26,25 +26,51 @@ import { Graphics } from '../utils/Graphics.js';
 import { showCardZoom }   from '../utils/CardZoom.js';
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch, TAP_VERB } from '../utils/Platform.js';
-import { VIEW_TOP, VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
+import { W, H, EXTRA_H, DUEL_CARD } from '../utils/Layout.js';
+import { CARD_CATALOG } from '../../shared/cards.js';
+import { Sfx } from '../utils/Sfx.js';
+import { cardTex } from '../utils/CardTextures.js';
 
-const W = 844;
-const H = 390;
+// The board fills the whole world: 844×390 on web, 844×475 (16:9) on desktop, where the
+// cards, rows and hand strip are scaled up to use the extra height.
 
 // Slot geometry (portrait-ish cards; roughly matches Yu-Gi-Oh aspect)
-const SLOT_W   = 64;
-const SLOT_H   = 76;   // slightly reduced to give the hand strip more room
-const SLOT_GAP = 7;
+const SLOT_W   = DUEL_CARD.w;   // 64 web, 76 desktop
+const SLOT_H   = DUEL_CARD.h;   // 76 web, 90 desktop
+const SLOT_GAP = EXTRA_H ? 8 : 7;
 
 // Hand cards render at the same size as field cards (no scale offset)
 const HAND_SCALE = 1.0;
 
-// Row y-centres (absolute) — 78px spacing (SLOT_H=76 + 2px gap) leaves 68px for hand strip
+// Row y-centres (absolute) — SLOT_H + 2px spacing from a 10px top margin; the rest of the
+// height below the player back row is the hand strip
+const ROW_PITCH = SLOT_H + 2;
 const ROW_Y = {
-    opp_back:  48,
-    opp_front: 126,
-    pl_front:  204,
-    pl_back:   282,
+    opp_back:  10 + SLOT_H / 2,                  // 48 web, 55 desktop
+    opp_front: 10 + SLOT_H / 2 + ROW_PITCH,
+    pl_front:  10 + SLOT_H / 2 + ROW_PITCH * 2,
+    pl_back:   10 + SLOT_H / 2 + ROW_PITCH * 3,  // 282 web, 331 desktop
+};
+// Centre divider + phase hotbar, halfway between the front rows (165 web)
+const DIVIDER_Y = (ROW_Y.opp_front + ROW_Y.pl_front) / 2;
+// Hand strip: starts 2px below the back row and runs to the bottom edge
+const HAND_TOP  = ROW_Y.pl_back + SLOT_H / 2 + 2;                // 322 web, 378 desktop
+const HAND_Y    = HAND_TOP + (EXTRA_H ? SLOT_H / 2 + 2 : 32);    // card centre: 354 web, 425 desktop
+// Profile boxes (left margin) sit either side of the divider
+const PROFILE_H     = 150;
+const OPP_PROFILE_Y = DIVIDER_Y + 7 - PROFILE_H;                 // 22 web
+const PL_PROFILE_Y  = DIVIDER_Y + 3;                             // 168 web
+
+// Desktop (16:9) uses a PC card-game layout: card detail panel on the left, opponent info
+// top-right, player info bottom-left, flat hand row, piles with counts, turn counter.
+const DESKTOP = EXTRA_H > 0;
+const DT = {
+    detail:   { x: 6,   y: 8,   w: 118, h: 368 },   // hovered-card detail panel
+    oppPanel: { x: 718, y: 8,   w: 120, h: 92 },
+    plPanel:  { x: 6,   y: 384, w: 204, h: 86 },
+    turnBox:  { x: 744, y: 404, w: 94,  h: 66 },
+    handSpan: 404,                                   // max width of the hand row
+    handCX:   W / 2 + 8,
 };
 
 // Turn timer
@@ -56,8 +82,8 @@ export class DuelScene extends Phaser.Scene {
 
     constructor() {
         super('DuelScene');
-        // 390-tall board centred in the 16:9 desktop view; full-screen layers span VIEW_TOP..VIEW_BOTTOM
-        this.fullLayout = 'center';
+        // Board laid out against Layout.H — fills the 16:9 desktop view (utils/Layout.js)
+        this.fullLayout = true;
     }
 
     // ── Phaser lifecycle ──────────────────────────────────────────────────────
@@ -232,12 +258,154 @@ export class DuelScene extends Phaser.Scene {
         const oppWins   = this._opponentWins   ?? null;
         const oppLosses = this._opponentLosses ?? null;
 
-        this._oppProfileBox = this._makeProfileBox(4, 22,  oppName, oppLevel, oppAvatar, 'opponent', oppTitle, oppWins, oppLosses);
-        this._plProfileBox  = this._makeProfileBox(4, 168, myName,  myLevel,  myAvatar,  'player',   myTitle,  myWins, myLosses);
+        if (DESKTOP) {
+            this._oppProfileBox = this._makeInfoPanel(DT.oppPanel, oppName, oppLevel, oppAvatar, 'opponent', oppTitle);
+            this._plProfileBox  = this._makeInfoPanel(DT.plPanel,  myName,  myLevel,  myAvatar,  'player',   myTitle);
+            this._buildDetailPanel();
+            return;
+        }
+        this._oppProfileBox = this._makeProfileBox(4, OPP_PROFILE_Y, oppName, oppLevel, oppAvatar, 'opponent', oppTitle, oppWins, oppLosses);
+        this._plProfileBox  = this._makeProfileBox(4, PL_PROFILE_Y,  myName, myLevel,  myAvatar,  'player',   myTitle,  myWins, myLosses);
+    }
+
+    /**
+     * Desktop player plate (PC card-game style): avatar, name, morale counter + bar, authority.
+     * Morale changes count up/down; a hit shakes the plate and flashes it red.
+     */
+    _makeInfoPanel(box, name, level, avatarKey, owner, title) {
+        const { x, y, w, h } = box;
+        const accent  = owner === 'player' ? 0x4cc9f0 : 0xe63946;
+        const css     = owner === 'player' ? '#4cc9f0' : '#e63946';
+        const wide    = w > 150;
+        const c = this.add.container(x, y).setDepth(12);
+
+        const bg = this.add.rectangle(0, 0, w, h, 0x0a0a1a, 0.9).setOrigin(0).setStrokeStyle(2, accent, 0.9);
+        const band = this.add.rectangle(2, 2, w - 4, 18, accent, 0.18).setOrigin(0);
+        c.add([bg, band]);
+
+        const av = wide ? 40 : 26;
+        const avKey = avatarKey && this.textures.exists(avatarKey) ? avatarKey : null;
+        const avatar = avKey
+            ? this.add.image(6 + av / 2, 24 + av / 2, avKey).setDisplaySize(av, av)
+            : this.add.rectangle(6 + av / 2, 24 + av / 2, av, av, 0x222233);
+        const avFrame = this.add.rectangle(6 + av / 2, 24 + av / 2, av, av).setStrokeStyle(1, accent, 0.9);
+        c.add([avatar, avFrame]);
+
+        c.add(this.add.text(6, 11, name.toUpperCase().slice(0, wide ? 14 : 10), {
+            fontSize: '9px', fontFamily: 'Arial Black', color: '#ffffff',
+        }).setOrigin(0, 0.5));
+        if (level != null) {
+            c.add(this.add.text(w - 6, 11, `LV ${level}`, {
+                fontSize: '7px', fontFamily: 'Arial Black', color: css,
+            }).setOrigin(1, 0.5));
+        }
+
+        // Morale counter
+        const mx = 12 + av;
+        c.add(this.add.text(mx, 24, wide ? `MORALE  ·  ${title || ''}` : 'MORALE', {
+            fontSize: '6px', fontFamily: 'Arial Black', color: '#888899',
+        }));
+        const moraleText = this.add.text(w - 8, 32, '6000', {
+            fontSize: wide ? '24px' : '19px', fontFamily: 'Impact, "Arial Black", sans-serif',
+            color: '#ffffff', stroke: css, strokeThickness: 2,
+        }).setOrigin(1, 0);
+        c.add(moraleText);
+
+        const barX = 6, barY = h - 20, barW = w - 12;
+        c.add(this.add.rectangle(barX, barY, barW, 6, 0x262633).setOrigin(0, 0.5));
+        const barFill = this.add.rectangle(barX, barY, barW, 6, accent).setOrigin(0, 0.5);
+        c.add(barFill);
+
+        c.add(this.add.text(6, h - 9, 'AUTHORITY', {
+            fontSize: '6px', fontFamily: 'Arial Black', color: '#888899',
+        }).setOrigin(0, 0.5));
+        const authText = this.add.text(w - 6, h - 9, '1/1', {
+            fontSize: '9px', fontFamily: 'Arial Black', color: '#f4d35e',
+        }).setOrigin(1, 0.5);
+        c.add(authText);
+        if (owner === 'player')   this._plAuthText  = authText;
+        if (owner === 'opponent') this._oppAuthText = authText;
+
+        const flash = this.add.rectangle(0, 0, w, h, 0xff2a2a, 0).setOrigin(0);
+        c.add(flash);
+
+        let shown = 6000;
+        const counter = { v: 6000 };
+        return {
+            container: c,
+            update: (val) => {
+                const target = Math.max(0, val);
+                if (target === shown) return;
+                const hurt = target < shown;
+                shown = target;
+                this.tweens.killTweensOf(counter);
+                this.tweens.add({
+                    targets: counter, v: target, duration: 650, ease: 'Cubic.Out',
+                    onUpdate: () => moraleText.setText(Math.round(counter.v).toString()),
+                });
+                this.tweens.add({ targets: barFill, width: barW * (target / 6000), duration: 650, ease: 'Power2' });
+                moraleText.setColor(target <= 1500 ? '#ff6b6b' : '#ffffff');
+                if (hurt) {
+                    this._sfx('sfx_damage');
+                    flash.setAlpha(0.45);
+                    this.tweens.add({ targets: flash, alpha: 0, duration: 420, ease: 'Power2' });
+                    this.tweens.add({ targets: c, x: x + 4, duration: 45, yoyo: true, repeat: 3, onComplete: () => c.setX(x) });
+                }
+            },
+        };
+    }
+
+    /** Desktop: large preview + text of the card under the mouse (fed by utils/DesktopInput.js). */
+    _buildDetailPanel() {
+        const { x, y, w, h } = DT.detail;
+        const c = this.add.container(x, y).setDepth(12);
+        c.add(this.add.rectangle(0, 0, w, h, 0x07070f, 0.88).setOrigin(0).setStrokeStyle(1, 0x3a3a55, 0.9));
+        const imgW = w - 8, imgH = Math.round(imgW * 1492 / 1054);
+        const frame = this.add.rectangle(w / 2, 4 + imgH / 2, imgW, imgH, 0x12121e).setStrokeStyle(1, 0x2a2a40);
+        const hint  = this.add.text(w / 2, 4 + imgH / 2, 'Hover a card\nto inspect it', {
+            fontSize: '8px', fontFamily: 'Arial Black', color: '#555570', align: 'center',
+        }).setOrigin(0.5);
+        const name = this.add.text(6, imgH + 10, '', {
+            fontSize: '9px', fontFamily: 'Arial Black', color: '#f4d35e', wordWrap: { width: w - 12 },
+        });
+        const meta = this.add.text(6, imgH + 24, '', {
+            fontSize: '6px', fontFamily: 'Arial Black', color: '#9ddcff', wordWrap: { width: w - 12 },
+        });
+        const stats = this.add.text(6, imgH + 34, '', {
+            fontSize: '8px', fontFamily: 'Impact, "Arial Black", sans-serif', color: '#ffffff',
+        });
+        const body = this.add.text(6, imgH + 48, '', {
+            fontSize: '6px', fontFamily: 'Verdana, sans-serif', color: '#ccccdd', lineSpacing: 1,
+            wordWrap: { width: w - 12 },
+        });
+        c.add([frame, hint, name, meta, stats, body]);
+        this._detail = { c, frame, hint, name, meta, stats, body, img: null, imgW, imgH, w };
+    }
+
+    /** Called by DesktopInput when the hovered card changes (null = nothing hovered). */
+    onCardHover(cardData) {
+        const d = this._detail;
+        if (!d || !cardData || cardData === d.shown) return;
+        d.shown = cardData;
+        d.img?.destroy();
+        const key = cardData.art_url && this.textures.exists(cardData.art_url) ? cardData.art_url
+                  : (cardData.id && this.textures.exists(cardData.id) ? cardData.id : null);
+        d.img = key ? this.add.image(d.w / 2, 4 + d.imgH / 2, cardTex(this, key)).setDisplaySize(d.imgW, d.imgH) : null;
+        if (d.img) d.c.addAt(d.img, 2);
+        d.hint.setVisible(!d.img);
+
+        const type = { gang_member: 'GANG MEMBER', leader: 'LEADER', hustle: 'HUSTLE', ambush: 'AMBUSH' }[cardData.cardType] || '';
+        const sub  = cardData.cardType === 'gang_member' && cardData.subtype ? ` · LV${cardData.level || 1} ${cardData.subtype.toUpperCase()}` : '';
+        d.name.setText(cardData.name || '');
+        d.meta.setText(`${type}${sub} · AUTH ${cardData.authority ?? 0}`);
+        const unit = cardData.cardType === 'gang_member' || cardData.cardType === 'leader';
+        d.stats.setText(unit ? `ATK ${cardData.attack ?? 0}   DEF ${cardData.defense ?? 0}` : '');
+        d.body.setY(d.stats.y + (unit ? 14 : 0));
+        d.body.setText(cardData.effectText || '');
     }
 
     _makeProfileBox(x, y, name, level, avatarKey, owner, title, wins, losses) {
-        const BOX_W = 108, BOX_H = 150;
+        const BOX_W = 108, BOX_H = PROFILE_H;
         const accent = owner === 'player' ? 0x4cc9f0 : 0xe63946;
 
         // Background panel
@@ -317,10 +485,10 @@ export class DuelScene extends Phaser.Scene {
 
     _buildBoard() {
         // Background
-        this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, VIEW_H);
+        this.add.image(W / 2, H / 2, 'duel_background').setDisplaySize(W, H);
 
         // A subtle dark overlay tones the board down for readability
-        this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x04060c, 0.25).setDepth(0);
+        this.add.rectangle(W / 2, H / 2, W, H, 0x04060c, 0.25).setDepth(0);
 
         // Glowing center divider with fade-out edges
         this._buildCenterDivider();
@@ -341,7 +509,7 @@ export class DuelScene extends Phaser.Scene {
 
     _buildCenterDivider() {
         // Triple-stacked lines for a glowing look
-        const y = 165;
+        const y = DIVIDER_Y;
         this.add.rectangle(W / 2, y,     W,        8, 0xe63946, 0.08).setDepth(1);
         this.add.rectangle(W / 2, y,     W,        4, 0xe63946, 0.28).setDepth(1);
         this.add.rectangle(W / 2, y,     W - 40,   1, 0xff6b7a, 0.95).setDepth(1);
@@ -427,7 +595,7 @@ export class DuelScene extends Phaser.Scene {
             const backLayers = [];
             for (let i = 2; i >= 0; i--) {
                 const layer = hasBack
-                    ? this.add.image(i, i, 'card_back').setDisplaySize(ZONE_W - i * 2, ZONE_H - i * 2)
+                    ? this.add.image(i, i, cardTex(this, 'card_back')).setDisplaySize(ZONE_W - i * 2, ZONE_H - i * 2)
                     : this.add.rectangle(i, i, ZONE_W - i * 2, ZONE_H - i * 2, 0x12122a, 0.9)
                           .setStrokeStyle(1, colour, 0.7);
                 if (hasBack) layer.texture?.setFilter?.(1);
@@ -443,6 +611,13 @@ export class DuelScene extends Phaser.Scene {
                 topImg = this.add.rectangle(0, 0, ZONE_W, ZONE_H, 0x000000, 0).setVisible(false);
                 stack.add(topImg);
             }
+
+            // Desktop: big card count on the pile (PC card-game style)
+            const countText = DESKTOP ? this.add.text(0, 2, '', {
+                fontSize: '24px', fontFamily: 'Impact, "Arial Black", sans-serif',
+                color: '#ffffff', stroke: '#000000', strokeThickness: 5,
+            }).setOrigin(0.5) : null;
+            if (countText) stack.add(countText);
 
             // Faint label (above for player zones, below for opponent zones near top edge)
             const lblY = labelBelow ? ZONE_H / 2 + 8 : -ZONE_H / 2 - 8;
@@ -466,7 +641,7 @@ export class DuelScene extends Phaser.Scene {
             hit.on('pointerout',  () => hideTip());
             hit.on('pointerup',   () => onClick?.());
 
-            return { stack, lbl, hit, x, y, label, getTopCard, topImg, hideoutLike, backLayers };
+            return { stack, lbl, hit, x, y, label, getTopCard, topImg, hideoutLike, backLayers, countText };
         };
 
         // ── Deck piles — right end of player back row, left end of opp back row ──
@@ -518,6 +693,23 @@ export class DuelScene extends Phaser.Scene {
             return { container: c, countText: cnt };
         };
 
+        if (DESKTOP) {
+            // Full piles one slot further out: hideout (card backs) and gutter (top card face-up)
+            const plHid  = makePile(plLeadX - STEP,  plY,  'HIDEOUT', 0xf4d35e, { onClick: () => this._openHideoutSearch('player') });
+            const plGut  = makePile(plDeckX + STEP,  plY,  'GUTTER',  0x888888, { onClick: () => this._openGutterSearch('player'),   getTopCard: true });
+            const oppHid = makePile(oppDeckX - STEP, oppY, 'HIDEOUT', 0xf4d35e, { labelBelow: true,
+                onClick: () => this._showFloatingText(oppDeckX - STEP, oppY + 60, 'OPP HIDEOUT (PRIVATE)', '#aaaacc') });
+            const oppGut = makePile(oppLeadX + STEP, oppY, 'GUTTER',  0x888888, { labelBelow: true, getTopCard: true,
+                onClick: () => this._openGutterSearch('opponent') });
+            setHover(plHid, 'hideout', 'player');   setHover(oppHid, 'hideout', 'opponent');
+            setHover(plGut, 'gutter', 'player');    setHover(oppGut, 'gutter', 'opponent');
+            this._piles = { plDeck, oppDeck, plHid, oppHid, plGut, oppGut };
+            this._buildLeaderZone('player',   plLeadX,  plY);
+            this._buildLeaderZone('opponent', oppLeadX, oppY);
+            this._refreshZoneCounts();
+            return;
+        }
+
         // Player: hideout LEFT, gutter RIGHT — inline with deck/leader at back-row y
         const plHid = makePill(pillX_pl,   plY, 'HIDEOUT', 0xf4d35e, () => this._openHideoutSearch('player'));
         const plGut = makePill(pillX_pl_r, plY, 'GUTTER',  0x888888, () => this._openGutterSearch('player'));
@@ -550,18 +742,22 @@ export class DuelScene extends Phaser.Scene {
         this.add.rectangle(x, y - LH / 2 + 2, LW - 4, 1, 0xffffff, 0.15).setDepth(depth);
 
         // State badge — below for player, above for opponent
-        const badgeY = owner === 'player' ? y + LH / 2 + 8 : y - LH / 2 - 8;
+        // Desktop: state + influence sit on a strip inside the bottom of the zone (the board
+        // touches the top edge and the hand strip, so there's no room outside it)
+        const badgeY = DESKTOP ? y + LH / 2 - 15
+                     : owner === 'player' ? y + LH / 2 + 8 : y - LH / 2 - 8;
+        if (DESKTOP) this.add.rectangle(x, y + LH / 2 - 11, LW - 4, 20, 0x05050c, 0.82).setDepth(depth + 2);
         const stateBadge = this.add.text(x, badgeY, '', {
-            fontSize: '6px', fontFamily: 'Impact, "Arial Narrow", sans-serif',
+            fontSize: DESKTOP ? '7px' : '6px', fontFamily: 'Impact, "Arial Narrow", sans-serif',
             color: '#888888',
-        }).setOrigin(0.5).setDepth(depth + 1);
+        }).setOrigin(0.5).setDepth(depth + 3);
 
         // Influence tracker — below state badge for player, above it for opponent
-        const infY = owner === 'player' ? badgeY + 9 : badgeY - 9;
+        const infY = DESKTOP ? badgeY + 9 : owner === 'player' ? badgeY + 9 : badgeY - 9;
         const influenceBadge = this.add.text(x, infY, '', {
             fontSize: '7px', fontFamily: 'Arial Black', color: '#ffd166',
             stroke: '#000', strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(depth + 1);
+        }).setOrigin(0.5).setDepth(depth + 3);
 
         // Leader card image (if leader exists)
         const leader = this.state[owner]?.leader;
@@ -570,7 +766,7 @@ export class DuelScene extends Phaser.Scene {
             const artKey = (leader.art_url && this.textures.exists(leader.art_url)) ? leader.art_url
                          : (this.textures.exists(leader.id) ? leader.id : null);
             if (artKey) {
-                cardImg = this.add.image(x, y, artKey)
+                cardImg = this.add.image(x, y, cardTex(this, artKey))
                     .setDisplaySize(LW - 4, LH - 4).setDepth(depth + 1);
                 cardImg.texture?.setFilter?.(1);
             } else {
@@ -617,14 +813,35 @@ export class DuelScene extends Phaser.Scene {
         // Deck piles: full makePile() objects — toggle card-back layers by count
         const syncDeck = (pile, count) => {
             pile.backLayers?.forEach(l => l.setVisible(count > 0));
+            pile.countText?.setText(count > 0 ? String(count) : '');
         };
         syncDeck(this._piles.plDeck,  this.state.player.deck.length);
         syncDeck(this._piles.oppDeck, this.state.opponent.deck.length);
 
-        // Pill buttons: { container, countText } — just update the number
-        const syncPill = (pill, count) => {
-            pill.countText?.setText(String(count));
+        // Pill buttons (web) or piles (desktop) — update the number; desktop gutter shows its top card
+        const syncPill = (pill, count, top = null) => {
+            if (!pill.backLayers) { pill.countText?.setText(String(count)); return; }
+            syncDeck(pill, count);
+            if (!pill.getTopCard) return;
+            const key = top && (top.art_url || top.id);
+            if (pill._topKey === key) return;
+            pill._topKey = key;
+            pill._topArt?.destroy();
+            pill._topArt = null;
+            if (key && this.textures.exists(key)) {
+                pill._topArt = this.add.image(0, 0, cardTex(this, key)).setDisplaySize(SLOT_W - 2, SLOT_H - 2);
+                pill.stack.addAt(pill._topArt, pill.stack.getIndex(pill.countText));
+                pill.backLayers.forEach(l => l.setVisible(false));
+            }
         };
+        if (DESKTOP) {
+            const top = s => s.gutter[s.gutter.length - 1];
+            syncPill(this._piles.plHid,  this.state.player.hideout.length);
+            syncPill(this._piles.oppHid, this.state.opponent.hideout.length);
+            syncPill(this._piles.plGut,  this.state.player.gutter.length,   top(this.state.player));
+            syncPill(this._piles.oppGut, this.state.opponent.gutter.length, top(this.state.opponent));
+            return;
+        }
         syncPill(this._piles.plHid,  this.state.player.hideout.length);
         syncPill(this._piles.oppHid, this.state.opponent.hideout.length);
         syncPill(this._piles.plGut,  this.state.player.gutter.length);
@@ -656,7 +873,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.82).setDepth(80).setInteractive());   // modal: block input beneath
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.82).setDepth(80).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 420, 260, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(81));
         reg(this.add.text(W / 2, H / 2 - 112, title, {
@@ -679,7 +896,7 @@ export class DuelScene extends Phaser.Scene {
 
             const artKey = c.art_url && this.textures.exists(c.art_url) ? c.art_url : null;
             if (artKey) {
-                reg(this.add.image(x, y, artKey).setDisplaySize(cw, ch).setDepth(83));
+                reg(this.add.image(x, y, cardTex(this, artKey)).setDisplaySize(cw, ch).setDepth(83));
             } else {
                 reg(this.add.text(x, y, c.name || '?', {
                     fontSize: '6px', fontFamily: 'Arial Black', color: '#ffffff',
@@ -766,7 +983,7 @@ export class DuelScene extends Phaser.Scene {
         const gap    = 3;
         const totalW = phases.length * btnW + (phases.length - 1) * gap;
         const startX = (W - totalW) / 2;
-        const btnY   = 165;   // sit centred on the divider line
+        const btnY   = DIVIDER_Y;   // sit centred on the divider line
 
         // Hotbar track (slim dark pill behind the buttons)
         this.add.rectangle(W / 2, btnY, totalW + 14, btnH + 6, 0x04060c, 0.92)
@@ -807,19 +1024,19 @@ export class DuelScene extends Phaser.Scene {
     // ── Hand area (scrollable horizontal strip) ───────────────────────────────
 
     _buildHandArea() {
-        // Fan-arc hand: cards centred at handY; maskTop sits 2px below back-row bottom (282+38=320).
-        // 68px strip (322–390) gives comfortable room to see and tap cards.
-        const handY   = 354;
-        const maskTop = 322;
+        // Fan-arc hand: cards centred at handY; maskTop sits 2px below the back-row bottom.
+        // 68px strip on web (322–390), 97px on desktop (378–475).
+        const handY   = HAND_Y;
+        const maskTop = HAND_TOP;
 
         // Visual hand-area background to clearly separate the hand from the field
-        this.add.rectangle(W / 2, maskTop + (VIEW_BOTTOM - maskTop) / 2, W, VIEW_BOTTOM - maskTop, 0x020408, 0.72)
+        this.add.rectangle(W / 2, maskTop + (H - maskTop) / 2, W, H - maskTop, 0x020408, 0.72)
             .setDepth(5);
         this.add.rectangle(W / 2, maskTop, W, 2, 0x4cc9f0, 0.35).setDepth(5);
 
         this._handContainer = this.add.container(0, handY).setDepth(6);
         const maskShape = this.add.graphics();
-        maskShape.fillRect(0, maskTop, W, VIEW_BOTTOM - maskTop);
+        maskShape.fillRect(0, maskTop, W, H - maskTop);
         this._handContainer.setMask(maskShape.createGeometryMask());
         maskShape.setVisible(false);
         this._handMaskShape = maskShape;
@@ -832,6 +1049,12 @@ export class DuelScene extends Phaser.Scene {
     // MD-mobile-style fan: tight overlap, pronounced arc, outer cards rotated & dipped.
     _handCardTransform(index, total) {
         if (total === 0) return { x: W / 2 - 40, y: 0, angle: 0 };
+
+        // Desktop: straight row, overlapping only when the hand outgrows the strip
+        if (DESKTOP) {
+            const gap = total > 1 ? Math.min(SLOT_W + 8, (DT.handSpan - SLOT_W) / (total - 1)) : 0;
+            return { x: DT.handCX - ((total - 1) * gap) / 2 + index * gap, y: 0, angle: 0 };
+        }
 
         // Gap shrinks as hand fills — heavy overlap at large counts (like Master Duel mobile)
         const NAT_GAP = SLOT_W + 6;  // 70px — no overlap, comfortable
@@ -857,6 +1080,17 @@ export class DuelScene extends Phaser.Scene {
         return { x, y, angle };
     }
 
+    /** The hand is clipped to its strip unless something (hover lift, draw flight) needs the whole screen. */
+    _setHandMaskOpen(reason, open) {
+        this._handMaskOpeners = this._handMaskOpeners || new Set();
+        if (open) this._handMaskOpeners.add(reason); else this._handMaskOpeners.delete(reason);
+        const m = this._handMaskShape;
+        if (!m) return;
+        m.clear();
+        if (this._handMaskOpeners.size) m.fillRect(0, 0, W, H);
+        else m.fillRect(0, this._handMaskTop, W, H - this._handMaskTop);
+    }
+
     // Kept for compat — some legacy call-sites use this directly
     _handCardX(index, total) {
         return this._handCardTransform(index, total).x;
@@ -866,10 +1100,10 @@ export class DuelScene extends Phaser.Scene {
 
     _buildTurnIndicator() {
         // Positioned at right side of screen, above the combat log panel
-        // Combat log panel top is at H/2 - 63 = 132; place banner just above it
+        // Combat log panel top is at H/2 - 63; place banner just above it
         const BTN_W = 22, LW = 152, LH = 126;
         const panelCX = W - BTN_W - LW / 2;   // ≈ 746
-        const panelTopY = H / 2 - LH / 2;     // ≈ 132
+        const panelTopY = H / 2 - LH / 2;     // 132 web, ≈ 175 desktop
         this._turnBanner = this.add.container(panelCX, panelTopY - 14).setDepth(12);
         const chip = this.add.rectangle(0, 0, LW - 8, 18, 0x04060c, 0.9)
             .setStrokeStyle(1, 0xf4d35e, 0.8);
@@ -877,6 +1111,18 @@ export class DuelScene extends Phaser.Scene {
             fontSize: '7px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5);
         this._turnBanner.add([chip, this._turnText]);
+
+        if (DESKTOP) {
+            const { x, y, w, h } = DT.turnBox;
+            const box = this.add.container(x, y).setDepth(12);
+            box.add(this.add.rectangle(0, 0, w, h, 0x0a0a1a, 0.9).setOrigin(0).setStrokeStyle(2, 0xf4d35e, 0.8));
+            box.add(this.add.text(w / 2, 14, 'TURN', { fontSize: '10px', fontFamily: 'Arial Black', color: '#9ddcff' }).setOrigin(0.5));
+            this._turnCounterText = this.add.text(w / 2, 40, '1', {
+                fontSize: '28px', fontFamily: 'Impact, "Arial Black", sans-serif', color: '#ffffff',
+                stroke: '#000000', strokeThickness: 3,
+            }).setOrigin(0.5);
+            box.add(this._turnCounterText);
+        }
 
         this._buildTurnTimer();
         this._buildActionButtons();
@@ -890,7 +1136,7 @@ export class DuelScene extends Phaser.Scene {
 
     _buildTurnTimer() {
         const TW = 64, TH = 22;
-        this._timerContainer = this.add.container(42, 300).setDepth(13).setVisible(false);
+        this._timerContainer = this.add.container(DESKTOP ? W - 76 : 42, DESKTOP ? ROW_Y.pl_back - 34 : PL_PROFILE_Y + 132).setDepth(13).setVisible(false);
 
         this._timerBg = this.add.rectangle(0, 0, TW, TH, 0x04060c, 0.95)
             .setStrokeStyle(1, 0x4cc9f0, 0.85);
@@ -996,7 +1242,7 @@ export class DuelScene extends Phaser.Scene {
     _buildActionButtons() {
         // NEXT PHASE pill — sits on the right side of the phase hotbar
         this._nextBtn = this._makePillButton({
-            x: W - 76, y: 312, w: 80, h: 22,
+            x: W - 76, y: ROW_Y.pl_back + 30, w: 80, h: 22,
             label: 'NEXT ▶',
             fill: 0x1c2040, stroke: 0x4cc9f0, textColor: '#4cc9f0',
             onTap: () => this._advancePhase(),
@@ -1004,7 +1250,7 @@ export class DuelScene extends Phaser.Scene {
 
         // END TURN pill — above the NEXT button, more prominent red tone
         this._endTurnBtn = this._makePillButton({
-            x: W - 76, y: 284, w: 80, h: 20,
+            x: W - 76, y: ROW_Y.pl_back + 2, w: 80, h: 20,
             label: 'END TURN',
             fill: 0x3b1020, stroke: 0xe63946, textColor: '#ffa7b0',
             onTap: () => this._onEndTurnTap(),
@@ -1016,7 +1262,7 @@ export class DuelScene extends Phaser.Scene {
     _buildCancelButton() {
         // Cancel floating pill shown only while an attacker is selected
         this._cancelBtn = this._makePillButton({
-            x: 60, y: 165, w: 86, h: 22,
+            x: DESKTOP ? W - 96 : 60, y: DIVIDER_Y, w: 86, h: 22,
             label: '✕ CANCEL',
             fill: 0x2a0a12, stroke: 0xff6b7a, textColor: '#ff6b7a',
             onTap: () => this._deselectAll(),
@@ -1109,6 +1355,7 @@ export class DuelScene extends Phaser.Scene {
             this._addCardToHandDisplay(cardData);
         } else {
             this._refreshOppHandDisplay();
+            this._playOppDrawFlight();
         }
         this._refreshDeckCountDisplay(owner);
         this._refreshZoneCounts();
@@ -1128,9 +1375,9 @@ export class DuelScene extends Phaser.Scene {
         this._oppHandSprites = [];
 
         const count = this.state.opponent.hand.length;
-        const cw    = 22;
-        const ch    = 28;
-        const gap   = 3;
+        const cw    = DESKTOP ? 30 : 22;
+        const ch    = DESKTOP ? 40 : 28;
+        const gap   = DESKTOP ? 4 : 3;
         const totalW = count * cw + (count - 1) * gap;
         const startX = (W - totalW) / 2 + cw / 2;
 
@@ -1138,7 +1385,7 @@ export class DuelScene extends Phaser.Scene {
             const x = startX + i * (cw + gap);
             let spr;
             if (this.textures.exists('card_back')) {
-                spr = this.add.image(x, 0, 'card_back').setDisplaySize(cw, ch);
+                spr = this.add.image(x, 0, cardTex(this, 'card_back')).setDisplaySize(cw, ch);
             } else {
                 spr = this.add.rectangle(x, 0, cw, ch, 0x2a2a3e)
                     .setStrokeStyle(1, 0x6a0572, 0.7);
@@ -1172,50 +1419,106 @@ export class DuelScene extends Phaser.Scene {
         this._handContainer.add(cardObj.container);
         this._handCards.push(cardObj);
 
-        // _reflowHand will set the final x/y/angle. Do a quick bounce from
-        // the entry y=80 so the card visually "slides in" from below.
+        // _reflowHand sets every card's home x/y/angle; the new card then flies in from the deck.
         this._reflowHand();
+        this._playDrawFlight(cardObj);
+    }
 
-        // Bounce draw-in: card starts slightly below its home position
-        cardObj.container.y = 80;
+    /** Stagger for back-to-back draws (opening hand, Corner Deal) so cards fly in one by one. */
+    _nextDrawDelay() {
+        const now = performance.now();
+        const at  = Math.max(now, (this._lastDrawAt || 0) + 120);
+        this._lastDrawAt = at;
+        return at - now;
+    }
+
+    /** Player draw: the card leaves the deck pile face-down, flips mid-flight and lands in the hand. */
+    _playDrawFlight(cardObj) {
+        const c    = cardObj.container;
+        const deck = this._piles?.plDeck;
+        this.tweens.killTweensOf(c);   // the reflow tween would fight the flight
+        if (!SettingsManager.animationsEnabled || !deck) {
+            c.setPosition(cardObj._homeX, 80);
+            this.tweens.add({ targets: c, y: cardObj._homeY, duration: 260, ease: 'Back.Out' });
+            return;
+        }
+        const delay = this._nextDrawDelay();
+        cardObj._drawing = true;
+        c.setPosition(deck.x, deck.y - this._handContainer.y).setAngle(0).setScale(0.9, 0.9).setVisible(false);
+        cardObj.flipFaceDown();
+        this._setHandMaskOpen('draw', true);
+
+        const land = () => {
+            cardObj._drawing = false;
+            if (c.active && (c.x !== cardObj._homeX || c.y !== cardObj._homeY)) {
+                this.tweens.add({ targets: c, x: cardObj._homeX, y: cardObj._homeY, angle: cardObj._homeAngle || 0, duration: 140 });
+            }
+            if (!this._handCards?.some(h => h._drawing && h.container.active)) this._setHandMaskOpen('draw', false);
+        };
         this.tweens.add({
-            targets:  cardObj.container,
-            y,
-            duration: 260,
-            ease:     'Back.Out',
+            targets: c, delay, duration: 420, ease: 'Cubic.Out', scaleY: 1,
+            x: { getEnd: () => cardObj._homeX },
+            y: { getEnd: () => cardObj._homeY },
+            onStart: () => { c.setVisible(true); this._sfx('sfx_draw'); },
+            onComplete: land,
+            onStop: land,
+        });
+        // Flip face-up halfway through the flight
+        this.tweens.add({
+            targets: c, scaleX: 0, delay: delay + 120, duration: 120, ease: 'Sine.In',
+            onComplete: () => {
+                cardObj.flipFaceUp();
+                this.tweens.add({ targets: c, scaleX: 1, duration: 140, ease: 'Sine.Out' });
+            },
+            onStop: () => { cardObj.flipFaceUp(); c.setScale(1); },
+        });
+    }
+
+    /** Opponent draw: a card back slides from their deck to the newest slot of their hand row. */
+    _playOppDrawFlight() {
+        const deck = this._piles?.oppDeck;
+        const target = this._oppHandSprites?.[this._oppHandSprites.length - 1];
+        if (!SettingsManager.animationsEnabled || !deck || !target) return;
+        const delay = this._nextDrawDelay();
+        target.setVisible(false);
+        const ghost = this.add.image(deck.x, deck.y, cardTex(this, 'card_back'))
+            .setDisplaySize(target.displayWidth, target.displayHeight).setDepth(11).setVisible(false);
+        this.tweens.add({
+            targets: ghost, delay, duration: 380, ease: 'Cubic.Out',
+            x: target.x, y: this._oppHandContainer.y + target.y,
+            onStart: () => { ghost.setVisible(true); this._sfx('sfx_draw', { pitch: 0.9, volume: 0.7 }); },
+            onComplete: () => { ghost.destroy(); if (target.active) target.setVisible(true); },
         });
     }
 
     _hoverHandCard(cardObj) {
         if (cardObj === this._pendingHandCard) return;
-        if (!this._handCards.includes(cardObj)) return;
+        if (!this._handCards.includes(cardObj) || cardObj._drawing) return;
         this._hoveredHandCard = cardObj;
         // Expand mask so the lifted card clears the back-row zone boundary
-        this._handMaskShape?.clear();
-        this._handMaskShape?.fillRect(0, VIEW_TOP, W, VIEW_H);
+        this._setHandMaskOpen('hover', true);
         cardObj.container.setDepth(45);
         this.tweens.killTweensOf(cardObj.container);
         this.tweens.add({
             targets:  cardObj.container,
-            y:        (cardObj._homeY ?? 0) - 32,
+            y:        (cardObj._homeY ?? 0) - (DESKTOP ? 40 : 32),
             angle:    0,
-            scaleX:   1.12,
-            scaleY:   1.12,
+            scaleX:   DESKTOP ? 1.2 : 1.12,
+            scaleY:   DESKTOP ? 1.2 : 1.12,
             duration: 110,
             ease:     'Power2.Out',
         });
     }
 
     _unhoverHandCard(cardObj) {
-        if (cardObj === this._pendingHandCard) return;
+        if (cardObj === this._pendingHandCard || cardObj._drawing) return;
         // Card may have already been deployed — bail out if it's no longer in the hand.
         // Without this guard, a pointerout fired after deployment would tween the card
         // back to y≈0 in scene coordinates (top of canvas = opponent's side).
         if (!this._handCards.includes(cardObj)) return;
         if (this._hoveredHandCard === cardObj) this._hoveredHandCard = null;
         // Restore mask once card settles back into the strip
-        this._handMaskShape?.clear();
-        this._handMaskShape?.fillRect(0, this._handMaskTop, W, VIEW_BOTTOM - this._handMaskTop);
+        this._setHandMaskOpen('hover', false);
         cardObj.container.setDepth(1);
         this.tweens.killTweensOf(cardObj.container);
         this.tweens.add({
@@ -1232,6 +1535,7 @@ export class DuelScene extends Phaser.Scene {
     // ── Tap-to-deploy (hand → field) ─────────────────────────────────────────
 
     _onHandCardTapped(cardObj) {
+        if (cardObj._drawing) return;   // still flying in from the deck
         // Discard mode: tapping a hand card discards it
         if (this._discardMode) {
             this._discardMode = false;
@@ -1287,7 +1591,7 @@ export class DuelScene extends Phaser.Scene {
             this._handContainer.x + cardObj.container.x,
             80, W - 80
         );
-        const cy = 290;   // above the hand strip
+        const cy = HAND_TOP - 32;   // above the hand strip
 
         reg(this.add.rectangle(cx, cy, 168, 70, 0x0d0d2a, 0.97)
             .setStrokeStyle(1, 0xf4d35e, 0.9).setDepth(60));
@@ -1342,7 +1646,7 @@ export class DuelScene extends Phaser.Scene {
                     this._playHustle('player', cardObj);
                 },
                 disabledAction: disMsg
-                    ? () => this._showFloatingText(W / 2, 290, disMsg, '#ff3b4e')
+                    ? () => this._showFloatingText(W / 2, HAND_TOP - 32, disMsg, '#ff3b4e')
                     : null,
             });
         } else if (type === 'ambush') {
@@ -1352,7 +1656,7 @@ export class DuelScene extends Phaser.Scene {
                 enabled:        canPlay,
                 action:         () => this._beginSlotSelect('set'),
                 disabledAction: canPlay ? null
-                    : () => this._showFloatingText(W / 2, 290, 'Not enough authority!', '#ff3b4e'),
+                    : () => this._showFloatingText(W / 2, HAND_TOP - 32, 'Not enough authority!', '#ff3b4e'),
             });
         }
 
@@ -1583,7 +1887,9 @@ export class DuelScene extends Phaser.Scene {
         cardObj.enableZoom(false);
         this._attachFieldTap(cardObj, slot);
 
-        // Remove from hand array + reflow
+        // Remove from the hand (state + visuals) + reflow
+        const handIdx = this.state.player.hand.indexOf(cardObj.cardData);
+        if (handIdx !== -1) this.state.player.hand.splice(handIdx, 1);
         this._handCards = this._handCards.filter(c => c !== cardObj);
         this._reflowHand();
 
@@ -1620,7 +1926,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.7).setDepth(60).setInteractive());   // modal: block input beneath
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(60).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 260, 120, 0x0d0d2a)
             .setStrokeStyle(2, 0x4cc9f0).setDepth(61));
         reg(this.add.text(W / 2, H / 2 - 40, `DEPLOY ${cardData.name?.toUpperCase() || ''}`, {
@@ -1707,7 +2013,7 @@ export class DuelScene extends Phaser.Scene {
         const layer = this.add.container(0, 0).setDepth(55);
 
         // Dim the board
-        const curtain = this.add.rectangle(cx, cy, W, VIEW_H, 0x000011, 0).setDepth(54);
+        const curtain = this.add.rectangle(cx, cy, W, H, 0x000011, 0).setDepth(54);
         this.tweens.add({ targets: curtain, alpha: 0.65, duration: 200 });
 
         // Cyan glow ring in center
@@ -1737,7 +2043,7 @@ export class DuelScene extends Phaser.Scene {
         const artKey = cardData.art_url || cardData.id || null;
         let cardImg = null;
         if (artKey && this.textures.exists(artKey)) {
-            cardImg = this.add.image(cx, cy, artKey).setDisplaySize(110, 154).setDepth(57);
+            cardImg = this.add.image(cx, cy, cardTex(this, artKey)).setDisplaySize(110, 154).setDepth(57);
             // Capture the display-size scale before zeroing so tween restores it correctly
             const tScaleX = cardImg.scaleX;
             const tScaleY = cardImg.scaleY;
@@ -1779,6 +2085,7 @@ export class DuelScene extends Phaser.Scene {
             }
 
             this.cameras.main.shake(200, 0.008);
+            this._sfx('sfx_effect');
 
             // Hold then fade out
             this.time.delayedCall(900, () => {
@@ -1895,6 +2202,7 @@ export class DuelScene extends Phaser.Scene {
             // card is popped up, the hovered card is rising; both must be left alone.
             if (cardObj === this._pendingHandCard) return;
             if (cardObj === this._hoveredHandCard)  return;
+            if (cardObj._drawing)                   return;   // settles at its new home when it lands
 
             this.tweens.killTweensOf(cardObj.container);
             this.tweens.add({
@@ -1929,6 +2237,9 @@ export class DuelScene extends Phaser.Scene {
                 : `OPPONENT TURN  ·  ${phase.toUpperCase()}`
         );
         this._turnText.setColor(isPlayerTurn ? '#4cc9f0' : '#e63946');
+        if (phase === 'upkeep') this._turnBannerSweep(isPlayerTurn);
+        else this._phaseFlash(phase);
+        this._refreshZoneCounts();
         if (this._turnBanner?.list?.[0]) {
             this._turnBanner.list[0].setStrokeStyle(1, isPlayerTurn ? 0x4cc9f0 : 0xe63946, 0.8);
         }
@@ -1972,7 +2283,7 @@ export class DuelScene extends Phaser.Scene {
             case 'brawl':
                 // No attacking on turn 1 (YuGiOh rule)
                 if (this.state.turn === 1) {
-                    this._showFloatingText(W / 2, 155, 'NO ATTACKS ON TURN 1', '#aaaacc');
+                    this._showFloatingText(W / 2, DIVIDER_Y - 10, 'NO ATTACKS ON TURN 1', '#aaaacc');
                     this.time.delayedCall(700, () => this._startPhase('regroup'));
                     return;
                 }
@@ -2158,7 +2469,7 @@ export class DuelScene extends Phaser.Scene {
         const py     = above < 14 ? below : above;
 
         // Tap-shield to dismiss when tapping outside
-        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
             .setDepth(69).setInteractive();
         shield.on('pointerdown', () => this._closeCardActionMenu());
 
@@ -2274,7 +2585,7 @@ export class DuelScene extends Phaser.Scene {
         const objs = [];
 
         // Full-screen shield — absorbs all input so only our overlays are tappable
-        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
             .setDepth(47).setInteractive();
         objs.push(shield);
 
@@ -2331,7 +2642,7 @@ export class DuelScene extends Phaser.Scene {
             return c && c.clanTag === 'lion' && !c.downed;
         });
         if (!validSlots.length) {
-            this._showFloatingText(W / 2, 200, 'MAYA LV.3: No valid target!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'MAYA LV.3: No valid target!', '#aaaacc');
             return;
         }
         this._beginTargeting(validSlots, 0x4cc9f0, 'MAYA: Pick a LIONS target  (+400 ATK / +400 DEF)', (slot) => {
@@ -2353,7 +2664,7 @@ export class DuelScene extends Phaser.Scene {
             return c && c.subtype === 'striver' && c.promotesTo && !c.downed;
         });
         if (!validSlots.length) {
-            this._showFloatingText(W / 2, 200, 'BLOOD SCENT: No valid Striver!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'BLOOD SCENT: No valid Striver!', '#aaaacc');
             return;
         }
         this._beginTargeting(validSlots, 0xe63946, 'BLOOD SCENT: Pick a Striver to grant promo-ready', (slot) => {
@@ -2373,7 +2684,7 @@ export class DuelScene extends Phaser.Scene {
             return c && c !== lt && c.clanTag === 'lion' && !c.downed;
         });
         if (!validSlots.length) {
-            this._showFloatingText(W / 2, 200, 'LIEUTENANT: No valid target!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'LIEUTENANT: No valid target!', '#aaaacc');
             return;
         }
         this._beginTargeting(validSlots, 0x4cc9f0, 'LIEUTENANT: Pick a LIONS ally (+500 ATK)', (slot) => {
@@ -2394,7 +2705,7 @@ export class DuelScene extends Phaser.Scene {
                 return c && !c.downed && c.cardType === 'gang_member';
             });
         if (!targetSlots.length) {
-            this._showFloatingText(W / 2, 200, 'BRUTUS: No valid target!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'BRUTUS: No valid target!', '#aaaacc');
             return;
         }
         this._beginTargeting(targetSlots, 0xe63946, 'BRUTUS: Pick an enemy to debuff (-700 ATK)', (slot) => {
@@ -2414,7 +2725,7 @@ export class DuelScene extends Phaser.Scene {
             return c && c.downed && c.clanTag === 'lion';
         });
         if (!validSlots.length) {
-            this._showFloatingText(W / 2, 200, 'LION RESCUE: No downed LIONS!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'LION RESCUE: No downed LIONS!', '#aaaacc');
             return;
         }
         this._beginTargeting(validSlots, 0x4cc9f0, 'LION RESCUE: Pick a downed LIONS to revive', (slot) => {
@@ -2527,7 +2838,7 @@ export class DuelScene extends Phaser.Scene {
             this.effectBus.trigger('on_downed', { card: c, owner: defOwner });
         });
         if (swept > 0) {
-            this._showFloatingText(W / 2, 180, `SOVEREIGN: ${swept} ENEMY${swept > 1 ? 'S' : ''} DOWNED!`, '#f4d35e');
+            this._showFloatingText(W / 2, DIVIDER_Y + 15, `SOVEREIGN: ${swept} ENEMY${swept > 1 ? 'S' : ''} DOWNED!`, '#f4d35e');
             this._sfx('sfx_destroy');
             this._recalcDownedBonuses();
         }
@@ -2570,7 +2881,7 @@ export class DuelScene extends Phaser.Scene {
     _debtCollectorDiscard(defOwner) {
         const hand = this.state[defOwner].hand;
         if (!hand?.length) {
-            this._showFloatingText(W / 2, 200, 'DEBT COLLECTOR: No cards to discard!', '#aaaacc');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, 'DEBT COLLECTOR: No cards to discard!', '#aaaacc');
             return;
         }
         if (defOwner === 'opponent') {
@@ -2578,10 +2889,10 @@ export class DuelScene extends Phaser.Scene {
             const idx    = Math.floor(Math.random() * hand.length);
             const card   = hand.splice(idx, 1)[0];
             this.state[defOwner].gutter.push(card);
-            this._showFloatingText(W / 2, 200, `DEBT COLLECTOR: Opp discards ${card.name}!`, '#e63946');
-            this._updateHandDisplay?.('opponent');
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, `DEBT COLLECTOR: Opp discards ${card.name}!`, '#e63946');
+            this._refreshOppHandDisplay();
         } else {
-            this._showFloatingText(W / 2, 190, 'DEBT COLLECTOR: You must discard 1 card!', '#e63946');
+            this._showFloatingText(W / 2, DIVIDER_Y + 25, 'DEBT COLLECTOR: You must discard 1 card!', '#e63946');
             this._promptDiscard?.(defOwner);
         }
     }
@@ -2613,7 +2924,7 @@ export class DuelScene extends Phaser.Scene {
                     const slot = rows.find(s => s.slotIndex === tgt.i);
                     slot?.cardObject?.setDowned?.();
                     if (slot) slot.setSize(SLOT_H + 8, SLOT_H + 8);
-                    this._showFloatingText(W / 2, 200, `HUNTER: ${tgt.c.name} DOWNED!`, '#ff6b35');
+                    this._showFloatingText(W / 2, DIVIDER_Y + 35, `HUNTER: ${tgt.c.name} DOWNED!`, '#ff6b35');
                     this.effectBus.trigger('on_downed', { card: tgt.c, owner: defOwner });
                     this._recalcDownedBonuses();
                 }
@@ -2782,7 +3093,7 @@ export class DuelScene extends Phaser.Scene {
         result.promotedCardId  = attCard.promotesTo;
         result.promotingSlot   = attackerSlotIdx;
         result.promotingOwner  = attackerOwner;
-        this._showFloatingText(W / 2, 200, 'BLOOD SCENT: PROMOTED!', '#e63946');
+        this._showFloatingText(W / 2, DIVIDER_Y + 35, 'BLOOD SCENT: PROMOTED!', '#e63946');
     }
 
     _declareDirectAttack(attackerSlot) {
@@ -2849,7 +3160,7 @@ export class DuelScene extends Phaser.Scene {
     }
 
     _showDirectAttackButton(attackerSlot, leaderAlive = false) {
-        const by = 162;
+        const by = DIVIDER_Y - 3;
         const bx = leaderAlive ? W / 2 - 70 : W / 2;
         const bg = this.add.rectangle(bx, by, 130, 22, 0x1a0008, 0.95)
             .setStrokeStyle(1, 0xe63946, 1).setDepth(20);
@@ -3053,8 +3364,8 @@ export class DuelScene extends Phaser.Scene {
         // ── Faction-tinted curtain ────────────────────────────────────────────
         const bgColor  = isLion  ? 0x08060 : isViper ? 0x010806 : 0x000000;
         const vigColor = isLion  ? 0x1a0e00 : isViper ? 0x011a06 : 0x0d000d;
-        const curtain  = this.add.rectangle(W/2, H/2, W, VIEW_H, bgColor,  0).setDepth(60);
-        const vignette = this.add.rectangle(W/2, H/2, W, VIEW_H, vigColor, 0).setDepth(60);
+        const curtain  = this.add.rectangle(W/2, H/2, W, H, bgColor,  0).setDepth(60);
+        const vignette = this.add.rectangle(W/2, H/2, W, H, vigColor, 0).setDepth(60);
         layer.add([curtain, vignette]);
         this.tweens.add({ targets: curtain,  alpha: 0.84, duration: 160 });
         this.tweens.add({ targets: vignette, alpha: 0.40, duration: 160 });
@@ -3845,7 +4156,7 @@ export class DuelScene extends Phaser.Scene {
         this._showFloatingText(slot.x, slot.y - 40, '★ PROMOTED!', '#f4d35e');
         this._pulseSlot(slot, 0xf4d35e, 700);
         this._logCombat(`★ PROMOTE: ${promotedData?.name ?? '?'}`, '#ffd86b');
-        this._sfx('sfx_card_play');
+        this._sfx('sfx_promote');
 
         if (owner === 'player') {
             // Short delay so the player can see the flash before the modal appears
@@ -3934,7 +4245,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (obj) => { els.push(obj); return obj; };
         const cleanup = () => els.forEach(e => e.destroy());
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.72).setDepth(60).setInteractive());   // modal: block input beneath
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.72).setDepth(60).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 270, 135, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(61));
 
@@ -3980,7 +4291,7 @@ export class DuelScene extends Phaser.Scene {
         const reg = (o) => { els.push(o); return o; };
         const tossed = new Set();
 
-        reg(this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.78).setDepth(70).setInteractive());   // modal: block input beneath
+        reg(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.78).setDepth(70).setInteractive());   // modal: block input beneath
         reg(this.add.rectangle(W / 2, H / 2, 320, 200, 0x0d0d2a)
             .setStrokeStyle(2, 0xf4d35e).setDepth(71));
         reg(this.add.text(W / 2, H / 2 - 82, 'MULLIGAN', {
@@ -4006,7 +4317,7 @@ export class DuelScene extends Phaser.Scene {
             const artKey = card.art_url && this.textures.exists(card.art_url) ? card.art_url : null;
             let artEl;
             if (artKey) {
-                artEl = reg(this.add.image(x, y, artKey).setDisplaySize(cw, ch).setDepth(73));
+                artEl = reg(this.add.image(x, y, cardTex(this, artKey)).setDisplaySize(cw, ch).setDepth(73));
             } else {
                 artEl = reg(this.add.text(x, y, card.name || '?', {
                     fontSize: '6px', fontFamily: 'Arial Black', color: '#ffffff',
@@ -4375,7 +4686,7 @@ export class DuelScene extends Phaser.Scene {
             : (this.textures.exists(leaderData.id) ? leaderData.id : null);
 
         const ghost = artKey
-            ? this.add.image(zoneX, zoneY, artKey)
+            ? this.add.image(zoneX, zoneY, cardTex(this, artKey))
                 .setDisplaySize(SLOT_W - 4, SLOT_H - 4)
                 .setDepth(60)
                 .setAlpha(0.9)
@@ -4460,7 +4771,7 @@ export class DuelScene extends Phaser.Scene {
             this._exitResolving();
         };
 
-        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
             .setDepth(SHIELD_DEPTH).setInteractive();
         objs.push(shield);
 
@@ -4497,6 +4808,8 @@ export class DuelScene extends Phaser.Scene {
                 const weakest = hand.reduce((a, b) => (a.attack || 0) < (b.attack || 0) ? a : b);
                 const idx = hand.indexOf(weakest);
                 this.state.opponent.gutter.push(hand.splice(idx, 1)[0]);
+                this._refreshOppHandDisplay();
+                this._refreshZoneCounts();
             }
             return;
         }
@@ -4523,7 +4836,7 @@ export class DuelScene extends Phaser.Scene {
         };
 
         // Full-screen shield blocks board input. Sits below the elevated hand.
-        const shield = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.001)
+        const shield = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.001)
             .setDepth(SHIELD_DEPTH).setInteractive();
         objs.push(shield);
 
@@ -4681,7 +4994,7 @@ export class DuelScene extends Phaser.Scene {
             this._spawnSparks(cx, cy,  8, 0xffae00, 30);
             this._spawnEmbers(cx, cy,  6, 0xffa500);
             this.cameras.main.shake(140, 0.012);   // bass thump
-            try { this.sound.play('sfx_card_play', { volume: SettingsManager.sfxVolume * 1.1, detune: -350, rate: 0.85 }); } catch {}
+            this._sfx('sfx_card_play', { pitch: 0.8, volume: 1.1 });
 
         } else if (clan === 'viper_clan' || clan === 'viper' || clan === 'vipers') {
             // Green venom mist — drifting up, hiss SFX
@@ -4701,7 +5014,7 @@ export class DuelScene extends Phaser.Scene {
             }
             this._spawnSparks(cx, cy, 8, 0x66ff99, 32);
             this.cameras.main.shake(70, 0.006);    // sharper, lighter
-            try { this.sound.play('sfx_card_play', { volume: SettingsManager.sfxVolume * 0.9, detune: 300, rate: 1.18 }); } catch {}
+            this._sfx('sfx_card_play', { pitch: 1.2, volume: 0.9 });
         }
     }
 
@@ -5047,6 +5360,121 @@ export class DuelScene extends Phaser.Scene {
         });
     }
 
+    // ── Impact layer: effect call-outs, turn/phase banners ───────────────────
+
+    /**
+     * Announce a card effect ("BRUTUS: NEXT LION +300 ATK!"): a call-out panel with the card's
+     * art slides across the board and the card's slot pulses. Call-outs queue so several
+     * effects resolving together stay readable.
+     */
+    _effectToast(text, color = '#f4d35e') {
+        const name = String(text).split(':')[0].trim().toUpperCase();
+        const all  = Object.values(CARD_CATALOG);
+        const card = all.find(c => c.name.toUpperCase() === name) || all.find(c => c.name.toUpperCase().includes(name));
+        this._effectQueue = this._effectQueue || [];
+        this._effectQueue.push({ text, color, card });
+        if (!this._effectBusy) this._nextEffectToast();
+
+        // Pulse the slot of a matching card on the field
+        for (const owner of ['player', 'opponent']) {
+            this.state?.[owner]?.field.forEach((c, idx) => {
+                if (c && card && c.name === card.name) {
+                    const slot = this._findSlotByIndex(owner, idx);
+                    if (slot) this._pulseSlot(slot, Phaser.Display.Color.HexStringToColor(color).color, 600);
+                }
+            });
+        }
+    }
+
+    _nextEffectToast() {
+        const item = this._effectQueue?.shift();
+        if (!item) { this._effectBusy = false; return; }
+        this._effectBusy = true;
+        if (!SettingsManager.animationsEnabled) {
+            this._showFloatingText(W / 2, DIVIDER_Y + 35, item.text, item.color);
+            this.time.delayedCall(500, () => this._nextEffectToast());
+            return;
+        }
+        this._sfx('sfx_effect');
+        const accent = Phaser.Display.Color.HexStringToColor(item.color).color;
+        const PW = DESKTOP ? 360 : 300, PH = DESKTOP ? 62 : 52;
+        const cy = DIVIDER_Y - (DESKTOP ? 56 : 46);
+        const c  = this.add.container(W / 2 - 60, cy).setDepth(75).setAlpha(0);
+        c.add(this.add.rectangle(0, 0, PW, PH, 0x05050c, 0.94).setStrokeStyle(2, accent, 1));
+        c.add(this.add.rectangle(-PW / 2 + 3, 0, 4, PH - 6, accent, 1));
+        let textX = -PW / 2 + 14;
+        const artKey = item.card && this.textures.exists(item.card.id) ? item.card.id : null;
+        if (artKey) {
+            const ih = PH - 8, iw = Math.round(ih * 1054 / 1492);
+            c.add(this.add.image(-PW / 2 + 12 + iw / 2, 0, cardTex(this, artKey)).setDisplaySize(iw, ih));
+            textX += iw + 6;
+        }
+        const [head, ...rest] = String(item.text).split(':');
+        c.add(this.add.text(textX, -PH / 2 + 8, head.trim(), {
+            fontSize: DESKTOP ? '13px' : '11px', fontFamily: 'Impact, "Arial Black", sans-serif',
+            color: item.color, stroke: '#000000', strokeThickness: 3,
+        }));
+        c.add(this.add.text(textX, -PH / 2 + (DESKTOP ? 28 : 24), (rest.join(':').trim() || 'EFFECT ACTIVATED'), {
+            fontSize: DESKTOP ? '10px' : '9px', fontFamily: 'Arial Black', color: '#ffffff',
+            wordWrap: { width: PW / 2 - textX - 8 },
+        }));
+        // Sweep in, hold, sweep out
+        this.tweens.add({ targets: c, x: W / 2, alpha: 1, duration: 200, ease: 'Cubic.Out' });
+        const shine = this.add.rectangle(W / 2 - PW / 2, cy, 18, PH, 0xffffff, 0.35).setDepth(76);
+        this.tweens.add({ targets: shine, x: W / 2 + PW / 2, alpha: 0, duration: 420, delay: 160, onComplete: () => shine.destroy() });
+        this.time.delayedCall(1150, () => {
+            this.tweens.add({ targets: c, x: W / 2 + 60, alpha: 0, duration: 180, ease: 'Cubic.In',
+                onComplete: () => { c.destroy(); this._nextEffectToast(); } });
+        });
+    }
+
+    /** Big full-width sweep for the start of a turn ("YOUR TURN" / "OPPONENT'S TURN"). */
+    _turnBannerSweep(isPlayerTurn) {
+        this._turnCounterText?.setText(String(this.state.turn));
+        if (!SettingsManager.animationsEnabled) return;
+        this._sfx('sfx_turn');
+        const color = isPlayerTurn ? 0x4cc9f0 : 0xe63946;
+        const css   = isPlayerTurn ? '#4cc9f0' : '#e63946';
+        const y = H / 2;
+        const band = this.add.rectangle(W / 2, y, W, DESKTOP ? 64 : 52, 0x000000, 0.75).setDepth(77).setScale(1, 0);
+        const edgeT = this.add.rectangle(W / 2, y - (DESKTOP ? 32 : 26), W, 2, color, 1).setDepth(77).setAlpha(0);
+        const edgeB = this.add.rectangle(W / 2, y + (DESKTOP ? 32 : 26), W, 2, color, 1).setDepth(77).setAlpha(0);
+        const title = this.add.text(-200, y - 6, isPlayerTurn ? 'YOUR TURN' : "OPPONENT'S TURN", {
+            fontSize: DESKTOP ? '30px' : '24px', fontFamily: 'Impact, "Arial Black", sans-serif',
+            color: '#ffffff', stroke: css, strokeThickness: 4,
+        }).setOrigin(0.5).setDepth(78);
+        const sub = this.add.text(W + 200, y + (DESKTOP ? 20 : 16), `TURN ${this.state.turn}`, {
+            fontSize: '10px', fontFamily: 'Arial Black', color: css,
+        }).setOrigin(0.5).setDepth(78);
+        this.tweens.add({ targets: band, scaleY: 1, duration: 140, ease: 'Cubic.Out' });
+        this.tweens.add({ targets: [edgeT, edgeB], alpha: 1, duration: 140 });
+        this.tweens.add({ targets: title, x: W / 2, duration: 260, ease: 'Back.Out' });
+        this.tweens.add({ targets: sub,   x: W / 2, duration: 300, ease: 'Back.Out' });
+        this.time.delayedCall(900, () => {
+            this.tweens.add({ targets: [title], x: W + 250, duration: 220, ease: 'Cubic.In' });
+            this.tweens.add({ targets: [sub], x: -250, duration: 220, ease: 'Cubic.In' });
+            this.tweens.add({ targets: [band, edgeT, edgeB], alpha: 0, duration: 260,
+                onComplete: () => [band, edgeT, edgeB, title, sub].forEach(o => o.destroy()) });
+        });
+    }
+
+    /** Quick phase name flash on the divider ("BRAWL PHASE"). */
+    _phaseFlash(phase) {
+        if (!SettingsManager.animationsEnabled) return;
+        const label = { deployment: 'DEPLOY PHASE', brawl: 'BRAWL PHASE', regroup: 'REGROUP PHASE', end: 'END PHASE' }[phase];
+        if (!label) return;
+        this._sfx('sfx_phase');
+        const isPlayerTurn = this.state.activePlayer === 'player';
+        const t = this.add.text(W / 2, DIVIDER_Y - 22, label, {
+            fontSize: DESKTOP ? '18px' : '14px', fontFamily: 'Impact, "Arial Black", sans-serif',
+            color: '#ffffff', stroke: isPlayerTurn ? '#1b6f8f' : '#8f1b2a', strokeThickness: 4,
+            letterSpacing: 2,
+        }).setOrigin(0.5).setDepth(74).setAlpha(0).setScale(1.4);
+        this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 160, ease: 'Cubic.Out',
+            onComplete: () => this.tweens.add({ targets: t, alpha: 0, y: t.y - 10, delay: 450, duration: 260,
+                onComplete: () => t.destroy() }) });
+    }
+
     // ── Deciding banner — shown when a player is making an interactive choice ──
 
     _showDecidingBanner(side = 'player') {
@@ -5089,6 +5517,7 @@ export class DuelScene extends Phaser.Scene {
      * @param {object} ambushCard
      */
     _playAmbushReveal(ambushSlot, ambushCard, onComplete) {
+        this._sfx('sfx_ambush');
         if (!SettingsManager.animationsEnabled) {
             ambushSlot.cardObject?.flipFaceUp?.();
             onComplete?.();
@@ -5102,7 +5531,7 @@ export class DuelScene extends Phaser.Scene {
         const layer = this.add.container(0, 0).setDepth(55);
 
         // Dim the board
-        const curtain = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0).setDepth(54);
+        const curtain = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(54);
         this.tweens.add({ targets: curtain, alpha: 0.6, duration: 200 });
 
         // Glow ring around card
@@ -5254,7 +5683,7 @@ export class DuelScene extends Phaser.Scene {
         data = { ...data, soloMatchId: this._soloMatchId, cardsPlayed: this._playerCardsPlayed };
 
         // Dim overlay — keep DuelScene partially visible as background behind the result screen
-        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0).setDepth(998);
+        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(998);
 
         // Apply blur to the duel camera if postFX is supported (Phaser 3.60+)
         if (SettingsManager.postFx) {
@@ -5562,7 +5991,7 @@ export class DuelScene extends Phaser.Scene {
         const be = this.state.player.field[beSlot.slotIndex];
         this._enterResolving();
 
-        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.65)
+        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)
             .setDepth(80).setInteractive();
         const PW = 290, PH = 124;
         const px = W / 2, py = H / 2;
@@ -5607,7 +6036,7 @@ export class DuelScene extends Phaser.Scene {
     _showAmbushPromptModal(card, callback) {
 
         // Dim overlay — blocks all input beneath
-        const overlay = this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.65)
+        const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65)
             .setDepth(80).setInteractive();
 
         const PW = 280, PH = 120;
@@ -5677,281 +6106,14 @@ export class DuelScene extends Phaser.Scene {
 
     // ── Settings-aware audio helper ───────────────────────────────────────────
 
-    _sfx(key) {
-        if (this.cache.audio.exists(key)) {
-            this.sound.play(key, { volume: SettingsManager.sfxVolume });
-        }
+    _sfx(key, opts) {
+        Sfx.play(this, key, opts);
     }
 
     shutdown() {
         this.bgm?.stop();
     }
 }
-
-// ── Shared card catalog — promoted forms are looked up here ──────────────────
-export const CARD_CATALOG = {
-    // ── LIONS: Eric (Striver chain) ──────────────────────────────────────────
-    'eric_lv1': {
-        id: 'eric_lv1', name: 'Eric', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 1, attack: 700, defense: 600, tributeCost: 0, rarity: 1, level: 1,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'lion_clan_bonus', promotesTo: 'eric_lv2',
-        art_url: 'eric_lv1',
-        flavourText: "I don't follow footsteps. I leave my own.",
-        effectText: 'When this card sends an opponent\'s character to the Gutter: You can PROMOTE this card.',
-    },
-    'eric_lv2': {
-        id: 'eric_lv2', name: 'Eric Lv.2', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 1600, defense: 1300, tributeCost: 0, rarity: 2, level: 2,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'lion_clan_bonus', promotesTo: 'eric_lv3',
-        art_url: 'eric_lv2',
-        flavourText: "I don't follow footsteps. I leave my own.",
-        effectText: 'When this card sends an opponent\'s character to the Gutter: You can PROMOTE this card.',
-    },
-    'eric_lv3': {
-        id: 'eric_lv3', name: 'Eric Lv.3', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 8, attack: 2600, defense: 2000, tributeCost: 0, rarity: 3, level: 3,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'eric_lv3_draw', promotesTo: null,
-        art_url: 'eric_lv3',
-        flavourText: "I don't follow footsteps. I leave my own.",
-        effectText: 'When this card sends an opponent\'s character to the Gutter: Draw 1 card.\nAt the start of your turn: gains +100 ATK for each other LIONS card you control.',
-    },
-
-    // ── LIONS: Maya (Striver chain) ──────────────────────────────────────────
-    'maya_lv1': {
-        id: 'maya_lv1', name: 'Maya', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 2, attack: 900, defense: 500, tributeCost: 0, rarity: 1, level: 1,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'lion_clan_bonus', promotesTo: 'maya_lv2',
-        art_url: 'maya_lv1', ability: 'maya_promote', abilityOnlyPromote: true,
-        flavourText: "Loyalty isn't given. It's earned in the streets.",
-        effectText: 'If you control another LIONS card with equal or higher Authority, you can PROMOTE this card.',
-    },
-    'maya_lv2': {
-        id: 'maya_lv2', name: 'Maya Lv.2', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 2000, defense: 1500, tributeCost: 0, rarity: 2, level: 2,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'lion_clan_bonus', promotesTo: 'maya_lv3',
-        art_url: 'maya_lv2', ability: 'maya_promote', abilityOnlyPromote: true,
-        flavourText: "Loyalty isn't given. It's earned in the streets.",
-        effectText: 'At the start of your turn: if you control another LIONS card with equal or higher Authority, you can PROMOTE this card.',
-    },
-    'maya_lv3': {
-        id: 'maya_lv3', name: 'Maya Lv.3', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 9, attack: 2900, defense: 2500, tributeCost: 0, rarity: 3, level: 3,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'maya_lv3_buff', promotesTo: null,
-        art_url: 'maya_lv3',
-        flavourText: "Loyalty isn't given. It's earned in the streets.",
-        effectText: 'Once per turn: Choose 1 other LIONS card. It gains +400 ATK and +400 DEF until end of turn.',
-        ability: 'maya_buff',
-    },
-
-    // ── LIONS: Brawlers & Heavies ────────────────────────────────────────────
-    'pride_runner': {
-        id: 'pride_runner', name: 'Pride Runner', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 2, attack: 1000, defense: 500, tributeCost: 0, rarity: 1, level: 1,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'pride_runner_adjacency', promotesTo: null,
-        art_url: 'pride_runner',
-        flavourText: "One lion hunts. Two lions own the street.",
-        effectText: 'While adjacent to another LIONS character, this card gains +400 ATK.',
-    },
-    'lion_grunt': {
-        id: 'lion_grunt', name: 'Lion Grunt', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 1, attack: 700, defense: 500, tributeCost: 0, rarity: 1, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'lion_grunt_synergy', promotesTo: null,
-        art_url: 'lion_grunt',
-        flavourText: "A lone lion prowls. A pack owns the block.",
-        effectText: 'If you control another LIONS character, this card gains +300 ATK.',
-    },
-    'block_enforcer': {
-        id: 'block_enforcer', name: 'Block Enforcer', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 3, attack: 1300, defense: 1500, tributeCost: 0, rarity: 2, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'block_enforcer_redirect', promotesTo: null,
-        art_url: 'block_enforcer',
-        flavourText: "We hold the line. You handle the lion.",
-        effectText: 'Once per turn, when an allied LIONS would be targeted in a brawl, you may have this card become the target instead.', // redirect is passive/auto
-    },
-    'goldfang': {
-        id: 'goldfang', name: 'Goldfang', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 4, attack: 1700, defense: 1400, tributeCost: 0, rarity: 2, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'goldfang_attacker', promotesTo: null,
-        art_url: 'goldfang',
-        flavourText: "They hide behind defense. I break it, then I break them.",
-        effectText: 'If this card attacks a defending character, it gains +500 ATK during that brawl.',
-    },
-    'pride_lieutenant': {
-        id: 'pride_lieutenant', name: 'Pride Lieutenant', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 2300, defense: 1900, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'pride_lieutenant_deploy', promotesTo: null,
-        art_url: 'pride_lieutenant',
-        flavourText: "Strength is nothing without your people.",
-        effectText: 'When deployed: One other LIONS card gains +500 ATK until end of turn.',
-    },
-    'pride_mentor': {
-        id: 'pride_mentor', name: 'Pride Mentor', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 2100, defense: 1800, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'pride_mentor_draw', promotesTo: null,
-        art_url: 'pride_mentor',
-        flavourText: "Strength gets respect. Survival earns wisdom.",
-        effectText: 'Once per turn, when a LIONS Striver PROMOTES, draw 2 cards.',
-    },
-    'brutus': {
-        id: 'brutus', name: 'Brutus', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 8, attack: 2800, defense: 2500, tributeCost: 0, rarity: 4, level: 1,
-        subtype: 'heavy', clanTag: 'lion', effectKey: 'brutus_enter', promotesTo: null,
-        art_url: 'brutus',
-        flavourText: "Strength leads. Loyalty follows. We finish.",
-        effectText: 'When this enters the grid: Choose 1 enemy character; it loses 700 ATK until the end of your opponent\'s next turn.\nWhen this defeats an opponent\'s character: Your next LIONS attacker this turn gains +300 ATK.',
-    },
-
-    // ── LIONS: Hunter (Striver chain) ────────────────────────────────────────
-    'hunter_lv1': {
-        id: 'hunter_lv1', name: 'Hunter', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 1, attack: 800, defense: 400, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'hunter_lv1', promotesTo: null,
-        art_url: 'hunter_lv1',
-        flavourText: "The hunt never ends. Only the hunted changes.",
-        effectText: 'When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a Downed character: PROMOTE this card.',
-    },
-    'hunter_lv2': {
-        id: 'hunter_lv2', name: 'Hunter Lv.2', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 1900, defense: 1000, tributeCost: 0, rarity: 3, level: 2,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'hunter_lv2', promotesTo: null,
-        art_url: 'hunter_lv2',
-        flavourText: "The hunt never ends. Only the hunted changes.",
-        effectText: 'When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: PROMOTE this card.',
-    },
-    'hunter_lv3': {
-        id: 'hunter_lv3', name: 'Hunter Lv.3', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 9, attack: 2700, defense: 1900, tributeCost: 0, rarity: 3, level: 3,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'hunter_lv3', promotesTo: null,
-        art_url: 'hunter_lv3',
-        flavourText: "The hunt never ends. Only the hunted changes.",
-        effectText: 'When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: It may attack again this turn.',
-    },
-
-    // ── LIONS: Viper (Striver chain) ─────────────────────────────────────────
-    'viper_lv1': {
-        id: 'viper_lv1', name: 'Viper', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 2, attack: 1100, defense: 600, tributeCost: 0, rarity: 1, level: 1,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'viper_lv1', promotesTo: null,
-        art_url: 'viper_lv1',
-        flavourText: "Fast, precise, silent. They never see me twice.",
-        effectText: 'When this card Downs a character: PROMOTE this card.',
-    },
-    'viper_lv2': {
-        id: 'viper_lv2', name: 'Viper Lv.2', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 5, attack: 2000, defense: 1200, tributeCost: 0, rarity: 1, level: 2,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'viper_lv2', promotesTo: null,
-        art_url: 'viper_lv2',
-        flavourText: "Fast, precise, silent. They never see me twice.",
-        effectText: 'When this card attacks: You may move it to an adjacent lane before the Brawl.\nWhen this card Downs a character: PROMOTE this card.',
-    },
-    'viper_lv3': {
-        id: 'viper_lv3', name: 'Viper Lv.3', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 9, attack: 2600, defense: 1800, tributeCost: 0, rarity: 1, level: 3,
-        subtype: 'striver', clanTag: 'lion', effectKey: 'viper_lv3', promotesTo: null,
-        art_url: 'viper_lv3',
-        flavourText: "Fast, precise, silent. They never see me twice.",
-        effectText: 'When this card attacks: You may move it to an adjacent lane before the Brawl.\nWhen this card KOs a character: You may move this card to an adjacent lane.\nWhen this card KOs a Downed character: It may attack again this turn.',
-    },
-
-    // ── LIONS: Additional Brawlers & Heavies ─────────────────────────────────
-    'debt_collector': {
-        id: 'debt_collector', name: 'Debt Collector', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 3, attack: 1400, defense: 700, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'debt_collector', promotesTo: null,
-        art_url: 'debt_collector',
-        flavourText: "Everyone pays. It's just a matter of when.",
-        effectText: 'When this card Downs a character by battle: Your opponent discards 1 card.',
-    },
-    'bulwark': {
-        id: 'bulwark', name: 'Bulwark', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 6, attack: 2300, defense: 2600, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'heavy', clanTag: 'lion', effectKey: 'bulwark', promotesTo: null,
-        art_url: 'bulwark',
-        flavourText: "The wall doesn't move. The wall doesn't break.",
-        effectText: 'This card cannot be moved by enemy effects.\nWhile this card is in play: Adjacent allies gain +400 DEF.\nWhen this card is attacked: The attacking character loses 300 ATK during that Brawl.',
-    },
-    'mauler': {
-        id: 'mauler', name: 'Mauler', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 6, attack: 2300, defense: 2000, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'heavy', clanTag: 'lion', effectKey: 'mauler', promotesTo: null,
-        art_url: 'mauler',
-        flavourText: "Down doesn't mean done. Until I say it does.",
-        effectText: 'This card deals +500 ATK when attacking a Downed character.\nWhen this card KOs a Downed character: All enemy characters in adjacent lanes take -500 DEF this turn.',
-    },
-    'kingpin': {
-        id: 'kingpin', name: 'Kingpin', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 4, attack: 1800, defense: 1000, tributeCost: 0, rarity: 4, level: 1,
-        subtype: 'brawler', clanTag: 'lion', effectKey: 'kingpin', promotesTo: null,
-        art_url: 'kingpin',
-        flavourText: "When they're down, I take everything.",
-        effectText: 'While your opponent controls a Downed character: This card gains +400 ATK.',
-    },
-    'sovereign': {
-        id: 'sovereign', name: 'Sovereign', clan: 'iron_saints', cardType: 'gang_member',
-        authority: 10, attack: 2900, defense: 1800, tributeCost: 0, rarity: 5, level: 1,
-        subtype: 'heavy', clanTag: 'lion', effectKey: 'sovereign', promotesTo: null,
-        art_url: 'sovereign',
-        flavourText: "Bow or break.",
-        effectText: 'When this card enters play: All enemy characters with 1500 DEF or less become Downed.\nWhile your opponent controls a Downed character: This card gains +600 ATK.',
-    },
-
-    // ── LIONS: Leader ────────────────────────────────────────────────────────
-    'king_roan': {
-        id: 'king_roan', name: 'King Roan', clan: 'iron_saints', cardType: 'leader',
-        authority: 10, attack: 3000, defense: 3000, tributeCost: 0, rarity: 3, level: 1,
-        subtype: 'heavy', clanTag: 'lion', effectKey: 'king_roan_leader', promotesTo: null,
-        art_url: 'king_roan',
-        flavourText: "A lion doesn't ask for respect. He earns it. Then he takes more.",
-        effectText: 'DORMANT: While Dormant, all LIONS characters you control gain +300 ATK with 2 or more LIONS on field.\nAWAKEN: When you control 4+ LIONS characters OR your total Authority is 10+.',
-        awakenCondition: { lions: 4, authorityThreshold: 10 },
-    },
-
-    // ── LIONS: Ambush cards ──────────────────────────────────────────────────
-    'lion_ambush': {
-        id: 'lion_ambush', name: "Lion's Ambush", clan: 'iron_saints', cardType: 'ambush',
-        authority: 2, tributeCost: 0, rarity: 2,
-        clanTag: 'lion', effectKey: 'lion_ambush',
-        art_url: 'lion_ambush',
-        effectText: 'Play when an opponent declares an attack. If they attack a LIONS character, that attacker loses 1000 ATK during this brawl.',
-    },
-    'no_witnesses': {
-        id: 'no_witnesses', name: 'No Witnesses', clan: 'iron_saints', cardType: 'ambush',
-        authority: 3, tributeCost: 0, rarity: 3,
-        clanTag: 'lion', effectKey: 'no_witnesses_ambush',
-        art_url: 'no_witnesses',
-        effectText: 'When an opponent brawls a LIONS character: Down the attacking character and negate their attack.',
-    },
-    'kings_test': {
-        id: 'kings_test', name: "King's Test", clan: 'iron_saints', cardType: 'ambush',
-        authority: 3, tributeCost: 0, rarity: 3,
-        clanTag: 'lion', effectKey: 'kings_test',
-        art_url: 'kings_test',
-        effectText: 'When a LIONS Striver would be destroyed in battle: Negate that destruction. If it survives, you may PROMOTE it at the start of your next turn.',
-    },
-
-    // ── LIONS: Hustle cards ──────────────────────────────────────────────────
-    'corner_deal': {
-        id: 'corner_deal', name: 'Corner Deal', clan: 'iron_saints', cardType: 'hustle',
-        authority: 2, tributeCost: 0, rarity: 1,
-        clanTag: 'lion', effectKey: 'corner_deal',
-        art_url: 'corner_deal',
-        effectText: 'Draw 2 cards, then discard 1 card. If you control a Striver, you do not discard.',
-    },
-    'blood_scent': {
-        id: 'blood_scent', name: 'Blood Scent', clan: 'iron_saints', cardType: 'hustle',
-        authority: 3, tributeCost: 0, rarity: 2,
-        clanTag: 'lion', effectKey: 'blood_scent',
-        art_url: 'blood_scent',
-        effectText: 'Choose 1 LIONS Striver you control; its PROMOTE condition is treated as fulfilled this turn.',
-    },
-    'lion_rescue': {
-        id: 'lion_rescue', name: 'Lion Rescue', clan: 'iron_saints', cardType: 'hustle',
-        authority: 2, tributeCost: 0, rarity: 1,
-        clanTag: 'lion', effectKey: 'lion_rescue',
-        art_url: 'lion_rescue',
-        effectText: 'Choose 1 Downed LIONS character; Stand it.',
-    },
-};
 
 // ── Test deck factory (used when no real deck is passed) ──────────────────────
 function _buildTestDeck(owner) {

@@ -1,5 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 /**
  * Mailbox — system messages, rewards, news.
  * Two-pane layout: list on the left, full message on the right.
@@ -17,15 +17,15 @@ export class MailboxScene extends Phaser.Scene {
     create() {
         this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.7);
 
-        this.add.text(W / 2, 22, 'MAILBOX', {
+        this.add.text(W / 2, VIEW_TOP + 28, 'MAILBOX', {
             fontSize: '16px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5);
 
         // Left column — message list
         const listX  = 12;
-        const listY  = 50;
+        const listY  = VIEW_TOP + 56;
         const listW  = 320;
-        const listH  = H - listY - 60;
+        const listH  = VIEW_BOTTOM - listY - 58;
         this.add.rectangle(listX + listW / 2, listY + listH / 2, listW, listH, 0x101030, 0.95)
             .setStrokeStyle(2, 0x4cc9f0, 0.6);
 
@@ -50,16 +50,16 @@ export class MailboxScene extends Phaser.Scene {
     }
 
     _buildBackButton() {
-        const btn = this.add.rectangle(40, H - 22, 72, 28, 0x333355)
+        const btn = this.add.rectangle(40, VIEW_BOTTOM - 26, 72, 28, 0x333355)
             .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
-        this.add.text(40, H - 22, '← BACK', {
+        this.add.text(40, VIEW_BOTTOM - 26, '← BACK', {
             fontSize: '10px', fontFamily: 'Arial Black', color: '#ffffff',
         }).setOrigin(0.5).setDepth(1);
         btn.on('pointerup', () => this.scene.start('MainMenuScene'));
     }
 
     _buildReadAllButton() {
-        const x = W - 80, y = H - 22;
+        const x = W - 80, y = VIEW_BOTTOM - 26;
         const btn = this.add.rectangle(x, y, 130, 28, 0x1a3a4a)
             .setStrokeStyle(1, 0x4cc9f0).setInteractive({ useHandCursor: true });
         this.add.text(x, y, 'MARK ALL READ', {

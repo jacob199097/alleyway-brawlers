@@ -1,5 +1,9 @@
 -- ============================================================
 -- TURF WAR TACTICS — PostgreSQL Schema
+-- Creates a fresh database with every table and column the backend uses
+-- (the migrate_*.sql files are folded in). Then load the card set:
+--   psql -d turf_war -f db/schema.sql
+--   psql -d turf_war -f db/seed_cards.sql
 -- ============================================================
 
 -- EXTENSIONS
@@ -10,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "citext";   -- case-insensitive text for username
 -- ENUMERATIONS
 -- ============================================================
 
-CREATE TYPE card_type   AS ENUM ('gang_member', 'hustle', 'ambush');
+CREATE TYPE card_type   AS ENUM ('gang_member', 'hustle', 'ambush', 'leader');
 CREATE TYPE rank_tier   AS ENUM (
     'rookie', 'street_tough', 'enforcer', 'underboss', 'kingpin', 'legend'
 );
@@ -56,8 +60,18 @@ CREATE TABLE players (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_login      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_online       BOOLEAN     NOT NULL DEFAULT FALSE,
-    socket_id       TEXT                                  -- current socket.io connection
+    socket_id       TEXT,                                 -- current socket.io connection
+    chosen_clan     TEXT,                                 -- 'lion_pride' | 'viper_clan', set once at onboarding
+
+    -- Email verification + password reset
+    email_verified      BOOLEAN     NOT NULL DEFAULT FALSE,
+    email_token         TEXT,
+    reset_token         TEXT,
+    reset_token_expires TIMESTAMPTZ
 );
+
+CREATE INDEX idx_players_email_token ON players (email_token) WHERE email_token IS NOT NULL;
+CREATE INDEX idx_players_reset_token ON players (reset_token) WHERE reset_token IS NOT NULL;
 
 -- XP thresholds per level (levels 1-50). Stored separately for easy tuning.
 CREATE TABLE level_thresholds (
@@ -85,6 +99,9 @@ CREATE TABLE cards (
     name            TEXT        NOT NULL UNIQUE,
     clan            pack_type   NOT NULL,                 -- which clan this card belongs to
     card_type       card_type   NOT NULL,
+    clan_tag        TEXT,                                 -- short clan key used by card effects ('lion')
+    subtype         TEXT,                                 -- 'striver' | 'brawler' | 'heavy'
+    level           SMALLINT,                             -- promotion level (1-3) for Strivers
 
     -- Gang Member only (NULL for hustles/ambushes)
     authority       SMALLINT    CHECK (authority BETWEEN 1 AND 12),
@@ -132,6 +149,7 @@ CREATE TABLE decks (
     player_id       UUID        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     name            TEXT        NOT NULL DEFAULT 'My Deck',
     is_active       BOOLEAN     NOT NULL DEFAULT FALSE,   -- the deck selected for matchmaking
+    leader_card_id  UUID        REFERENCES cards(id),     -- optional leader, kept out of the 40
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -232,29 +250,65 @@ CREATE INDEX idx_messages_conversation
     ON messages(LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id), sent_at DESC);
 
 -- ============================================================
--- SAMPLE SEED DATA (cards)
+-- MAILBOX (system messages, quest rewards, news)
 -- ============================================================
 
--- Rarity scale: 1=Common  2=Uncommon  3=Rare  4=Epic  5=Legendary
-INSERT INTO cards (name, clan, card_type, authority, attack, defense, tribute_cost, rarity, effect_text, flavour_text)
-VALUES
-    -- Lions (Iron Saints)
-    ('Eric',        'iron_saints', 'gang_member', 2, 1400, 300, 0, 1,
-     '[Lion Synergy] +300 ATK with 2+ Lions face-up. Promote: Destroy 1 opposing Character by battle.',
-     '"He moves before you finish thinking."'),
-    ('Eric Lv.2',   'iron_saints', 'gang_member', 5, 2200, 600, 0, 2,
-     '[Lion Synergy] +300 ATK with 2+ Lions face-up. Promote: Destroy 2 opposing Characters by battle.',
-     '"The second form is where the real damage starts."'),
-    ('Eric Lv.3',   'iron_saints', 'gang_member', 8, 2900, 800, 0, 3,
-     'On Promote to LV3: Send all non-Lion Characters with ATK lower than this card''s ATK to The Gutter.',
-     '"Nobody left standing."'),
+CREATE TABLE player_mail (
+    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id       UUID        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    sender          TEXT        NOT NULL DEFAULT 'AlleyWay Brawlers',
+    subject         TEXT        NOT NULL,
+    body            TEXT        NOT NULL,
+    read_at         TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-    ('Randy',       'iron_saints', 'gang_member', 1, 1200, 900, 0, 1,
-     'Promote: Destroy 1 opposing Character by battle.',
-     '"You can''t put him down."'),
-    ('Randy Lv.2',  'iron_saints', 'gang_member', 4, 2000, 1300, 0, 2,
-     'Promote: Destroy 1 opposing Character by battle.',
-     '"Getting harder to kill with every hit."'),
-    ('Randy Lv.3',  'iron_saints', 'gang_member', 7, 2600, 2000, 0, 3,
-     'While face-up, opposing Characters cannot target your LV1 Lion Strivers for attacks.',
-     '"Step to me. I''m right here."');
+CREATE INDEX idx_mail_player ON player_mail (player_id, created_at DESC);
+
+-- ============================================================
+-- QUESTS
+-- ============================================================
+
+CREATE TABLE player_daily_quests (
+    player_id   UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    quest_id    TEXT NOT NULL,
+    quest_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+    progress    INTEGER NOT NULL DEFAULT 0,
+    claimed     BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (player_id, quest_id, quest_date)
+);
+
+CREATE TABLE player_quest_claims (
+    player_id   UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    quest_id    TEXT NOT NULL,
+    claimed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (player_id, quest_id)
+);
+
+-- ============================================================
+-- SERVER AUTHORITY
+--   solo_matches   — server-issued sessions for AI matches, so rewards can only
+--                    be claimed once per real match
+--   payment_grants — one row per payment already redeemed
+-- ============================================================
+
+CREATE TABLE solo_matches (
+    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id       UUID        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    ranked          BOOLEAN     NOT NULL DEFAULT FALSE,
+    started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at    TIMESTAMPTZ,
+    outcome         TEXT        CHECK (outcome IN ('win', 'loss', 'draw', 'abandoned')),
+    rewarded        BOOLEAN     NOT NULL DEFAULT FALSE
+);
+CREATE INDEX idx_solo_matches_player ON solo_matches (player_id, started_at DESC);
+
+CREATE TABLE payment_grants (
+    payment_intent_id TEXT        PRIMARY KEY,
+    player_id         UUID        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    bundle_id         TEXT        NOT NULL,
+    contraband        INTEGER     NOT NULL CHECK (contraband > 0),
+    granted_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX player_packs_player_pack_key ON player_packs (player_id, pack_type);

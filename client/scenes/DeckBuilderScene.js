@@ -2,6 +2,7 @@ import { RARITY_COLOR }            from '../cards/RarityConfig.js';
 import { showCardZoom }            from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
 import { H } from '../utils/Layout.js';
+import { cardTex } from '../utils/CardTextures.js';
 
 const W = 844;
 
@@ -283,7 +284,7 @@ export class DeckBuilderScene extends Phaser.Scene {
             // Card artwork — added after bg so it renders on top
             const texKey = item.art_url || item.image_key || item.id;
             if (texKey && this.textures.exists(texKey)) {
-                const img = this.add.image(lx, ly - 8, texKey)
+                const img = this.add.image(lx, ly - 8, cardTex(this, texKey))
                     .setDisplaySize(CARD_W - 4, CARD_H - 18)
                     .setAlpha(dimmed ? 0.4 : 1);
                 toAdd.push(img);
@@ -688,7 +689,7 @@ export class DeckBuilderScene extends Phaser.Scene {
         if (this._leaderCard) {
             const tex = this._leaderCard.art_url || this._leaderCard.id;
             if (tex && this.textures.exists(tex)) {
-                const img = this.add.image(pcx, pcy, tex).setDisplaySize(pSize - 4, pSize - 4);
+                const img = this.add.image(pcx, pcy, cardTex(this, tex)).setDisplaySize(pSize - 4, pSize - 4);
                 this._leaderSlotObjs.push(img);
             }
             const nameTxt = this.add.text(pcx + pSize / 2 + 8, py + ph / 2 - 4,
@@ -766,7 +767,7 @@ export class DeckBuilderScene extends Phaser.Scene {
                     .setStrokeStyle(2, stroke).setDepth(202)
                     .setInteractive({ useHandCursor: true }));
                 if (lc.art_url && this.textures.exists(lc.art_url)) {
-                    reg(this.add.image(lx, ly - 8, lc.art_url)
+                    reg(this.add.image(lx, ly - 8, cardTex(this, lc.art_url))
                         .setDisplaySize(tileW - 6, tileH - 24).setDepth(203));
                 }
                 reg(this.add.text(lx, ly + tileH / 2 - 8, lc.name, {

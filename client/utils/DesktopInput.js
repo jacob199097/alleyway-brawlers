@@ -176,6 +176,7 @@ function setHover(target) {
     if (!target) return;
 
     const { scene } = target;
+    scene.onCardHover?.(target.cardData);   // e.g. the duel's card detail panel
     const outline = scene.add.rectangle(0, 0, 10, 10).setStrokeStyle(2, 0xf4d35e, 1).setDepth(150);
     // Follow the card every frame (hand cards lift and rotate on hover)
     const follow = () => {

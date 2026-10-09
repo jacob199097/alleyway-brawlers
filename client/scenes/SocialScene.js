@@ -5,7 +5,7 @@
 
 import { SocketClient } from '../network/SocketClient.js';
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -19,14 +19,14 @@ export class SocialScene extends Phaser.Scene {
     create() {
         this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000).setAlpha(0.6);
 
-        this.add.text(W / 2, 36, 'SOCIAL CLUB', {
+        this.add.text(W / 2, VIEW_TOP + 40, 'SOCIAL CLUB', {
             fontSize: '22px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5);
 
         this._buildAddFriendInput();
         this._buildFriendsList();
 
-        this._makeBtn(W / 2, H - 45, '← BACK', () => this.scene.start('MainMenuScene'), 0x333355);
+        this._makeBtn(W / 2, VIEW_BOTTOM - 45, '← BACK', () => this.scene.start('MainMenuScene'), 0x333355);
 
         // Listen for incoming challenges while on this screen
         SocketClient.on('challenge:received', ({ fromPlayerId, fromUsername }) => {
@@ -103,20 +103,20 @@ export class SocialScene extends Phaser.Scene {
 
             // Action buttons
             if (isPending) {
-                this._makeBtn(330, y, '✓', () => {
+                this._makeBtn(W - 60, y, '✓', () => {
                     apiFetch(`/api/social/friends/${f.friendship_id}/accept`, {
                         method: 'PATCH',
                     }).then(() => this.scene.restart());
                 }, 0x2d6a4f);
             } else {
                 // VS Challenge
-                this._makeBtn(300, y - 10, '⚔', () => {
+                this._makeBtn(W - 110, y, '⚔', () => {
                     SocketClient.emit('challenge:send', { targetPlayerId: f.friend_id });
                     this._toast(`Challenge sent to ${f.friend_username}!`);
                 }, 0xe63946);
 
                 // Chat
-                this._makeBtn(345, y - 10, '💬', () => {
+                this._makeBtn(W - 60, y, '💬', () => {
                     this._openChat(f.friend_id, f.friend_username);
                 }, 0x457b9d);
             }
@@ -207,7 +207,7 @@ export class SocialScene extends Phaser.Scene {
     }
 
     _toast(msg, color = '#4cc9f0') {
-        const t = this.add.text(W / 2, H - 80, msg, {
+        const t = this.add.text(W / 2, VIEW_BOTTOM - 80, msg, {
             fontSize: '12px', color, backgroundColor: '#000',
             padding: { x: 8, y: 5 },
         }).setOrigin(0.5).setDepth(50);

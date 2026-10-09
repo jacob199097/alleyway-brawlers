@@ -12,9 +12,11 @@
 
 import Phaser from 'phaser';
 import { showCardZoom, attachHoldZoom } from '../utils/CardZoom.js';
+import { DUEL_CARD } from '../utils/Layout.js';
+import { cardTex } from '../utils/CardTextures.js';
 
-const CARD_W = 64;
-const CARD_H = 76;
+const CARD_W = DUEL_CARD.w;   // matches the duel's field slots
+const CARD_H = DUEL_CARD.h;
 
 export class CardObject extends Phaser.Events.EventEmitter {
 
@@ -84,7 +86,7 @@ export class CardObject extends Phaser.Events.EventEmitter {
         // Render the whole image at card size — no overlays, no chrome.
         const artKey = CardObject._resolveArtKey(this.scene, this.cardData);
         if (artKey) {
-            this._art = this.scene.add.image(0, 0, artKey).setDisplaySize(CARD_W, CARD_H);
+            this._art = this.scene.add.image(0, 0, cardTex(this.scene, artKey)).setDisplaySize(CARD_W, CARD_H);
             // Force LINEAR filtering so up-/down-scaling stays smooth
             this._art.texture?.setFilter?.(1);
         } else {
@@ -108,7 +110,7 @@ export class CardObject extends Phaser.Events.EventEmitter {
 
     _makeBackImage() {
         if (this.scene.textures.exists('card_back')) {
-            const img = this.scene.add.image(0, 0, 'card_back').setDisplaySize(CARD_W, CARD_H);
+            const img = this.scene.add.image(0, 0, cardTex(this.scene, 'card_back')).setDisplaySize(CARD_W, CARD_H);
             img.texture?.setFilter?.(1);
             return img;
         }

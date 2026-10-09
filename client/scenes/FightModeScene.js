@@ -1,5 +1,6 @@
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { loadDuelDeck } from '../utils/DeckLoader.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 const W = 844;
 const H = 390;
 
@@ -42,11 +43,25 @@ export class FightModeScene extends Phaser.Scene {
 
     _gateStart(action) {
         // Block duel start unless the active deck has the full 40 cards.
-        if (this._activeDeckSize >= 40) { action(); return; }
-        const msg = this._activeDeckName
-            ? `Active deck "${this._activeDeckName}" has ${this._activeDeckSize}/40 cards. Edit your deck before starting.`
-            : 'No active deck — open the Deck Editor and build a 40-card deck first.';
-        this._showDeckGate(msg);
+        if (this._activeDeckSize < 40) {
+            const msg = this._activeDeckName
+                ? `Active deck "${this._activeDeckName}" has ${this._activeDeckSize}/40 cards. Edit your deck before starting.`
+                : 'No active deck — open the Deck Editor and build a 40-card deck first.';
+            this._showDeckGate(msg);
+            return;
+        }
+        if (this._starting) return;
+        this._starting = true;
+        // Play with the saved deck (and its leader + promoted forms in the hideout)
+        loadDuelDeck()
+            .then(deck => {
+                if (!deck) throw new Error('no deck');
+                action({ playerDeck: deck.playerDeck, playerHideout: deck.playerHideout });
+            })
+            .catch(() => {
+                this._starting = false;
+                this._showDeckGate('Could not load your deck from the server. Check your connection and try again.');
+            });
     }
 
     _showDeckGate(msg) {
@@ -84,15 +99,15 @@ export class FightModeScene extends Phaser.Scene {
         } else {
             this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x080818);
         }
-        this.add.rectangle(W / 2, 0, W, 3, 0x4cc9f0).setOrigin(0.5, 0);
+        this.add.rectangle(W / 2, VIEW_TOP, W, 3, 0x4cc9f0).setOrigin(0.5, 0);
     }
 
     _buildTitle() {
-        this.add.text(W / 2, 22, 'SELECT BATTLE MODE', {
+        this.add.text(W / 2, VIEW_TOP + 28, 'SELECT BATTLE MODE', {
             fontSize: '20px', fontFamily: 'Arial Black', color: '#ffffff',
             stroke: '#000000', strokeThickness: 3,
         }).setOrigin(0.5);
-        this.add.rectangle(W / 2, 36, 260, 2, 0x4cc9f0).setOrigin(0.5);
+        this.add.rectangle(W / 2, VIEW_TOP + 44, 260, 2, 0x4cc9f0).setOrigin(0.5);
     }
 
     _buildModeCards(player) {
@@ -100,18 +115,18 @@ export class FightModeScene extends Phaser.Scene {
             {
                 id: 'casual',
                 title: 'CASUAL BRAWL',
-                sub: 'Multiplayer · No RP at stake',
+                sub: 'Quick match vs CPU · No RP at stake (online play coming soon)',
                 color: 0x4cc9f0,
                 locked: false,
-                action: () => this._gateStart(() => this.scene.start('RPSScene', { duelData: { isAI: true } })),
+                action: () => this._gateStart(deck => this.scene.start('RPSScene', { duelData: { isAI: true, ...deck } })),
             },
             {
                 id: 'ranked',
                 title: 'RANKED BRAWL',
-                sub: player.level >= 5 ? 'Earn Rank Points & climb the ladder' : `Unlocks at Level 5 (you are Lv ${player.level || 1})`,
+                sub: player.level >= 5 ? 'Ranked vs CPU · earn Rank Points' : `Unlocks at Level 5 (you are Lv ${player.level || 1})`,
                 color: 0xf4d35e,
                 locked: (player.level || 1) < 5,
-                action: () => this._gateStart(() => this.scene.start('RPSScene', { duelData: { isAI: true, ranked: true } })),
+                action: () => this._gateStart(deck => this.scene.start('RPSScene', { duelData: { isAI: true, ranked: true, ...deck } })),
             },
             {
                 id: 'cpu',
@@ -119,12 +134,12 @@ export class FightModeScene extends Phaser.Scene {
                 sub: 'Practice against the AI',
                 color: 0x9b59b6,
                 locked: false,
-                action: () => this._gateStart(() => this.scene.start('RPSScene', { duelData: { isAI: true } })),
+                action: () => this._gateStart(deck => this.scene.start('RPSScene', { duelData: { isAI: true, ...deck } })),
             },
         ];
 
         const cardW  = 228;
-        const cardH  = 280;
+        const cardH  = 280 + Math.round(EXTRA_H * 0.6);   // taller cards in the 16:9 view
         const gap    = 18;
         const totalW = modes.length * cardW + (modes.length - 1) * gap;
         const startX = (W - totalW) / 2 + cardW / 2;
@@ -273,7 +288,7 @@ export class FightModeScene extends Phaser.Scene {
     }
 
     _buildBackBtn() {
-        const btn = this.add.text(36, H - 18, '← BACK', {
+        const btn = this.add.text(40, VIEW_BOTTOM - 22, '← BACK', {
             fontSize: '10px', fontFamily: 'Arial Black', color: '#888888',
             backgroundColor: '#111122', padding: { x: 8, y: 4 },
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });

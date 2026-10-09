@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
         server: {
             host:  '0.0.0.0',
             port:  5173,
+            // Card rules live in ../shared (also loaded by the backend)
+            fs:    { allow: ['..'] },
             proxy: {
                 '/api':       target,
                 '/socket.io': { target, ws: true },

@@ -1,5 +1,5 @@
 import { apiFetch } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 /**
  * Shown after first login when the player has not yet picked their starting
  * clan. Two big tiles — Lions and Vipers — and a CONFIRM button. Calls the
@@ -38,7 +38,7 @@ export class ClanSelectScene extends Phaser.Scene {
         // Sit on top of the menu video background
         this.add.rectangle(W / 2, H / 2, W, VIEW_H, 0x000000, 0.6);
 
-        this.add.text(W / 2, 28, 'CHOOSE YOUR CLAN', {
+        this.add.text(W / 2, VIEW_TOP + 34, 'CHOOSE YOUR CLAN', {
             fontSize: '18px', fontFamily: 'Arial Black', color: '#f4d35e',
             stroke: '#000', strokeThickness: 4,
         }).setOrigin(0.5);
@@ -96,7 +96,7 @@ export class ClanSelectScene extends Phaser.Scene {
     }
 
     _buildConfirmButton() {
-        const x = W / 2, y = H - 30;
+        const x = W / 2, y = VIEW_BOTTOM - 34;
         this._confirmBtn = this.add.rectangle(x, y, 200, 36, 0x1a3a1a)
             .setStrokeStyle(2, 0x4caf50).setInteractive({ useHandCursor: true })
             .setAlpha(0.4);
@@ -140,7 +140,7 @@ export class ClanSelectScene extends Phaser.Scene {
     }
 
     _toast(msg, color) {
-        const t = this.add.text(W / 2, H - 60, msg, {
+        const t = this.add.text(W / 2, VIEW_BOTTOM - 64, msg, {
             fontSize: '11px', color, backgroundColor: '#000', padding: { x: 10, y: 6 },
         }).setOrigin(0.5).setDepth(100);
         this.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 400,

@@ -2,6 +2,7 @@ import { showCardZoom } from '../utils/CardZoom.js';
 import { apiFetch } from '../utils/Platform.js';
 import { SettingsManager } from '../utils/SettingsManager.js';
 import { VIEW_BOTTOM, VIEW_H } from '../utils/Layout.js';
+import { cardTex } from '../utils/CardTextures.js';
 
 const W = 844;
 const H = 390;
@@ -154,7 +155,7 @@ export class PostMatchScene extends Phaser.Scene {
         const cardX = cx - 36, cardY = PY + 32 + CH / 2;
 
         if (mvp.artKey && this.textures.exists(mvp.artKey)) {
-            const img = this.add.image(cardX, cardY, mvp.artKey)
+            const img = this.add.image(cardX, cardY, cardTex(this, mvp.artKey))
                 .setDisplaySize(CW, CH).setDepth(12)
                 .setInteractive({ useHandCursor: true });
             img.cardZoomData = { ...mvp, id: mvp.artKey, art_url: mvp.artKey };

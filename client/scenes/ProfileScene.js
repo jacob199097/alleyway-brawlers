@@ -1,6 +1,6 @@
 import { getPlayerTitle } from '../utils/PlayerTitle.js';
 import { apiFetch, TAP_VERB } from '../utils/Platform.js';
-import { VIEW_H } from '../utils/Layout.js';
+import { VIEW_H, VIEW_TOP, VIEW_BOTTOM, EXTRA_H } from '../utils/Layout.js';
 
 const W = 844;
 const H = 390;
@@ -46,7 +46,7 @@ export class ProfileScene extends Phaser.Scene {
         gfx.lineStyle(2, 0x4cc9f0, 1);
         gfx.strokeCircle(iconX, iconY, iconR + 2);
 
-        this.add.text(lx, 118, `${TAP_VERB.toUpperCase()} ICON TO CHANGE`, {
+        this.add.text(lx, 152, `${TAP_VERB.toUpperCase()} ICON TO CHANGE`, {
             fontSize: '7px', color: '#555577',
         }).setOrigin(0.5);
 
@@ -54,13 +54,13 @@ export class ProfileScene extends Phaser.Scene {
         this._buildIconSelector(lx, p.avatar_url || 'profile_001');
 
         // Name / title / rank
-        this.add.text(lx, 152, p.username, {
+        this.add.text(lx, 176, p.username, {
             fontSize: '20px', fontFamily: 'Arial Black', color: '#f4d35e',
         }).setOrigin(0.5);
-        this.add.text(lx, 174, getPlayerTitle(p.level), {
+        this.add.text(lx, 198, getPlayerTitle(p.level), {
             fontSize: '11px', fontFamily: 'Arial Black', color: '#e63946',
         }).setOrigin(0.5);
-        this.add.text(lx, 190, p.rank.replace(/_/g, ' ').toUpperCase(), {
+        this.add.text(lx, 214, p.rank.replace(/_/g, ' ').toUpperCase(), {
             fontSize: '10px', color: '#4cc9f0',
         }).setOrigin(0.5);
 
@@ -68,18 +68,18 @@ export class ProfileScene extends Phaser.Scene {
         const xpInLevel = p.xp % Math.floor(100 * Math.pow(p.level, 1.5)) || 0;
         const xpNeeded  = Math.floor(100 * Math.pow(p.level, 1.5));
         const barW      = 240;
-        this.add.text(lx, 210, `Level ${p.level}  —  ${xpInLevel} / ${xpNeeded} XP`, {
+        this.add.text(lx, 234, `Level ${p.level}  —  ${xpInLevel} / ${xpNeeded} XP`, {
             fontSize: '10px', color: '#cccccc',
         }).setOrigin(0.5);
-        this.add.rectangle(lx, 226, barW, 8, 0x1a1a3a).setOrigin(0.5);
-        this.add.rectangle(lx - barW / 2, 226, barW * Math.min(1, xpInLevel / xpNeeded), 8, 0x4cc9f0).setOrigin(0, 0.5);
+        this.add.rectangle(lx, 250, barW, 8, 0x1a1a3a).setOrigin(0.5);
+        this.add.rectangle(lx - barW / 2, 250, barW * Math.min(1, xpInLevel / xpNeeded), 8, 0x4cc9f0).setOrigin(0, 0.5);
 
-        this.add.text(lx, 244, `${p.rank_points} Rank Points`, {
+        this.add.text(lx, 268, `${p.rank_points} Rank Points`, {
             fontSize: '10px', color: '#888888',
         }).setOrigin(0.5);
 
         if (p.profile_bio) {
-            this.add.text(lx, 264, `"${p.profile_bio}"`, {
+            this.add.text(lx, 288, `"${p.profile_bio}"`, {
                 fontSize: '9px', color: '#888888', wordWrap: { width: 300 }, align: 'center',
             }).setOrigin(0.5);
         }
@@ -110,7 +110,7 @@ export class ProfileScene extends Phaser.Scene {
             }).setOrigin(0.5);
         });
 
-        this._makeBtn(lx, H - 30, '← BACK', () => this.scene.start('MainMenuScene'));
+        this._makeBtn(lx, VIEW_BOTTOM - 34, '← BACK', () => this.scene.start('MainMenuScene'));
     }
 
     _buildIconSelector(cx, currentKey) {
