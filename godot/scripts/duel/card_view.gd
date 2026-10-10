@@ -42,6 +42,7 @@ var _badge: RichTextLabel
 var _stats := []
 var _tw: Tween
 var _mat := ShaderMaterial.new()
+var _back_mat: ShaderMaterial = null   # the back's own material when its galaxy turns
 var _tilt := Vector2.ZERO        # current (y_rot, x_rot) in the card's own frame
 var _kick := Vector2.ZERO        # recoil from hits, decays
 var _flip_deg := 0.0             # extra turn while flipping over
@@ -86,6 +87,18 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	set_card(c)
 	set_face(up)
 	return self
+
+
+## Show a different card back (a clan's own); spin = its galaxy turns.
+func set_back(tex: Texture2D, spin := false) -> void:
+	if tex and tex != _back.texture:
+		_back.texture = tex
+		_fit(_back)
+	if spin and _back_mat == null:
+		_back_mat = _mat.duplicate()
+		_back_mat.set_shader_parameter("galaxy", 1.0)
+		_back_mat.set_shader_parameter("foil", 0.0)
+		_back.material = _back_mat
 
 
 func set_card(c: Dictionary) -> void:
@@ -263,10 +276,12 @@ func _update_tilt(delta: float) -> void:
 	target = target.clamp(-Vector2.ONE * MAX_TILT * 1.5, Vector2.ONE * MAX_TILT * 1.5)
 	_tilt = _tilt.lerp(target, 1.0 - exp(-14.0 * delta))
 	_kick = _kick.lerp(Vector2.ZERO, 1.0 - exp(-7.0 * delta))
-	_mat.set_shader_parameter("y_rot", _tilt.x + _flip_deg)
-	_mat.set_shader_parameter("x_rot", _tilt.y)
-	_mat.set_shader_parameter("glare", clampf(_tilt.length() / 16.0, 0.0, 1.0))
-	_mat.set_shader_parameter("flash", _flash)
+	for m in [_mat, _back_mat]:
+		if m:
+			m.set_shader_parameter("y_rot", _tilt.x + _flip_deg)
+			m.set_shader_parameter("x_rot", _tilt.y)
+			m.set_shader_parameter("glare", clampf(_tilt.length() / 16.0, 0.0, 1.0))
+			m.set_shader_parameter("flash", _flash)
 
 
 func _draw() -> void:

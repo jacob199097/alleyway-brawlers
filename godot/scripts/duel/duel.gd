@@ -548,7 +548,7 @@ func _draw_pile(side: String, pile: String) -> void:
 		_draw_zone_label(p, pile.to_upper())
 		return
 	var layers := mini(4, ceili(n / 8.0))
-	var back := CardDB.back()
+	var back := _back_for(side)
 	for i in layers:
 		var off := Vector2(-i * 2.0, -i * 3.0)
 		var r := Rect2(p - CARD / 2 + off, CARD)
@@ -1506,7 +1506,18 @@ func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
 	v.setup(c, side, up)
+	v.set_back(_back_for(side), CardDB.back_spins(_clan_of(side)))
 	return v
+
+
+## A side's cards wear its leader's clan back (CardDB.back), e.g. the Nebula back.
+func _back_for(side: String) -> Texture2D:
+	return CardDB.back(_clan_of(side))
+
+
+func _clan_of(side: String) -> String:
+	var leader = duel.sides[side].get("leader") if duel != null else null
+	return str(leader.get("clanTag", "")) if leader is Dictionary else ""
 
 
 func _take_from_hand(side: String, uid: int, c: Dictionary) -> CardView:

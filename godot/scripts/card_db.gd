@@ -62,5 +62,18 @@ static func art(id: String) -> Texture2D:
 	return tex
 
 
-static func back() -> Texture2D:
+## The card back: a clan's own (assets/card_back_<clan tag>.png, e.g. card_back_nebula.png) when
+## there is one, otherwise the standard back.
+## Clan backs whose galaxy turns (shaders/card.gdshader, galaxy).
+const SPINNING_BACKS := ["nebula"]
+
+
+static func back_spins(clan: String) -> bool:
+	return clan in SPINNING_BACKS and ResourceLoader.exists("res://assets/card_back_%s.png" % clan)
+
+
+static func back(clan := "") -> Texture2D:
+	var own := "res://assets/card_back_%s.png" % clan
+	if clan != "" and ResourceLoader.exists(own):
+		return load(own)
 	return load("res://assets/card_back.png") if ResourceLoader.exists("res://assets/card_back.png") else null
