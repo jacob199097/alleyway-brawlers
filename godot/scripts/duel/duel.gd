@@ -35,6 +35,11 @@ const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
 const Keywords := preload("res://scripts/keywords.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
+## Emotes in online matches against players (keys match EMOTES in backend/socket/onlineMatch.js)
+const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"], ["thinking", "Hmm…"],
+	["oops", "Oops!"], ["hurry", "Your move…"], ["gotcha", "Gotcha!"], ["gg", "GG"]]
+const EMOTE_GAP_MS := 2600
+const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 const PHASE_NAMES := {"deployment": "DEPLOYMENT", "brawl": "BRAWL", "regroup": "REGROUP"}
@@ -76,6 +81,11 @@ var _cards_played := 0
 var _damage_log := {}     # "side:uid" -> {card, owner, damage}
 var _last_hit := {}
 var _online := false      # a server-run match (Game.duel_setup.online)
+var _replay := {}         # watching a recorded match: {start, updates, over, complete}
+var _replay_next := 0     # next update to play
+var _replay_wait := 0.0
+var _emote_ready_at := 0
+var _emotes_muted := false
 var _awaiting := false    # sent a move, waiting for the server's answer
 var _over := {}           # mp:over from the server
 var _clock_left := 0.0
@@ -198,12 +208,140 @@ func _setup_online(start: Dictionary) -> void:
 	if start.get("resync", false):
 		_build_from_view()
 	_refresh_hud()
+	if Game.duel_setup.has("replay"):
+		_setup_replay(Game.duel_setup.replay)
+		return
+	if not str(start.get("mode", "")).begins_with("cpu"):
+		_build_emote_button()
 	_ui.clock = _label(22, GOLD, true)
 	_ui.clock.position = Vector2(150, 96)
 	$HUD/UI/TurnBox.add_child(_ui.clock)
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	_after_events()
+
+
+# ── Replays (routes/replays.js on the server rebuilds what you saw) ─────────
+
+func _setup_replay(r: Dictionary) -> void:
+	_replay = r
+	_over = r.get("over", {})
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 12)
+	bar.position = Vector2(820, 36)
+	bar.z_index = 30
+	var tag := _label(28, GOLD, true)
+	tag.text = "▶ REPLAY"
+	bar.add_child(tag)
+	var speed := UI.button("SPEED 1×", func(): pass, Vector2(150, 44), BLUE)
+	speed.pressed.connect(func():
+		Engine.time_scale = {1.0: 2.0, 2.0: 4.0}.get(Engine.time_scale, 1.0)
+		speed.text = "SPEED %d×" % int(Engine.time_scale))
+	bar.add_child(speed)
+	bar.add_child(UI.button("EXIT", func(): Game.go("profile"), Vector2(120, 44), RED))
+	ui.add_child(bar)
+	if not r.get("complete", true):
+		UI.toast(overlay, "This replay is from an older version of the game, so it stops early.", GOLD)
+	_after_events()
+
+
+## Feed the recorded updates one at a time, waiting for each to finish animating.
+func _step_replay(delta: float) -> void:
+	if _playing or not _queue.is_empty() or _mode == "over":
+		return
+	var updates: Array = _replay.get("updates", [])
+	if _replay_next >= updates.size():
+		if _mode != "over":
+			_on_net_event("mp:over", _over)   # a concede or disconnect ends without a game_over event
+			if _mode != "over":
+				_mode = "over"
+				_sweep_banner("END OF REPLAY", GOLD)
+				_finish_match(false)
+		return
+	_replay_wait -= delta
+	if _replay_wait > 0.0:
+		return
+	_replay_wait = REPLAY_GAP
+	_on_net_event("mp:update", updates[_replay_next])
+	_replay_next += 1
+
+
+# ── Emotes ───────────────────────────────────────────────────────────────────
+
+func _build_emote_button() -> void:
+	var b := UI.button("EMOTE", _toggle_emote_menu, Vector2(130, 48), BLUE)
+	b.position = Vector2(420, 1004)
+	ui.add_child(b)
+
+
+func _toggle_emote_menu() -> void:
+	if _ui.has("emotes") and is_instance_valid(_ui.emotes):
+		_ui.emotes.queue_free()
+		_ui.erase("emotes")
+		return
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(INK, BLUE, 2, 10))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	box.add_child(grid)
+	for e in EMOTES:
+		var key: String = e[0]
+		grid.add_child(UI.button(e[1], func(): _send_emote(key), Vector2(170, 46), BLUE))
+	var mute := UI.button("UNMUTE RIVAL" if _emotes_muted else "MUTE RIVAL", func():
+		_emotes_muted = not _emotes_muted
+		_toggle_emote_menu(), Vector2(170, 46), RED)
+	grid.add_child(mute)
+	ui.add_child(box)
+	box.reset_size()
+	box.position = Vector2(420, 1000 - box.get_combined_minimum_size().y - 8)
+	_ui.emotes = box
+
+
+func _send_emote(key: String) -> void:
+	if _ui.has("emotes") and is_instance_valid(_ui.emotes):
+		_ui.emotes.queue_free()
+		_ui.erase("emotes")
+	if Time.get_ticks_msec() < _emote_ready_at:
+		return
+	_emote_ready_at = Time.get_ticks_msec() + EMOTE_GAP_MS
+	Net.send("mp:emote", {"matchId": _match_id, "key": key})
+	_show_emote("player", key)
+
+
+## A speech bubble by the player's or the opponent's panel.
+func _show_emote(side: String, key: String) -> void:
+	if side == "opponent" and _emotes_muted:
+		return
+	var text := ""
+	for e in EMOTES:
+		if e[0] == key:
+			text = e[1]
+	if text == "":
+		return
+	var old: String = "emote_" + side
+	if _ui.has(old) and is_instance_valid(_ui[old]):
+		_ui[old].queue_free()
+	var bubble := PanelContainer.new()
+	var accent := BLUE if side == "player" else RED
+	bubble.add_theme_stylebox_override("panel", _box(Color(0.96, 0.96, 1.0, 0.97), accent, 3, 14))
+	var l := _label(26, Color("101020"), true)
+	l.text = text
+	bubble.add_child(l)
+	ui.add_child(bubble)
+	bubble.reset_size()
+	var sz := bubble.get_combined_minimum_size()
+	bubble.position = Vector2(40, 760 - sz.y) if side == "player" else Vector2(1896 - sz.x, 242)
+	bubble.pivot_offset = Vector2(0 if side == "player" else sz.x, sz.y if side == "player" else 0.0)
+	bubble.scale = Vector2.ONE * 0.4
+	_ui[old] = bubble
+	Sfx.play("click", 1.25 if side == "player" else 0.9)
+	var t := bubble.create_tween()
+	t.tween_property(bubble, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(2.4)
+	t.tween_property(bubble, "modulate:a", 0.0, 0.4)
+	t.tween_callback(bubble.queue_free)
 
 
 ## Rejoining a match (reconnect or correction): lay the board out straight from the view.
@@ -263,6 +401,8 @@ func _on_net_event(name: String, data) -> void:
 				_sweep_banner(("OPPONENT " if won else "YOU ") + why, GOLD if won else RED)
 				await _wait(1.6)
 				_finish_match(won)
+		"mp:emote":
+			_show_emote("opponent", str(data.get("key", "")))
 		"mp:opponent":
 			if data.get("status") == "disconnected":
 				_show_net_banner("OPPONENT DISCONNECTED — THEY HAVE %ds TO RETURN" % int(data.get("graceSecs", 45)))
@@ -334,7 +474,9 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if _dragging and _press:
 		_press.position = _press.position.lerp(get_global_mouse_position(), minf(1.0, delta * 25.0))
-	if _online:
+	if not _replay.is_empty():
+		_step_replay(delta)
+	elif _online:
 		while not Net.inbox.is_empty():
 			var msg: Array = Net.inbox.pop_front()
 			_on_net_event(msg[0], msg[1])
@@ -470,6 +612,9 @@ func _after_events() -> void:
 	if duel.winner != "":
 		return
 	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
+	if not _replay.is_empty():
+		_clear_highlights()
+		return
 	if _online:
 		if side == "player" and not _awaiting and "--autoplay" in OS.get_cmdline_user_args():
 			# Test bot (tests/online_bot.tscn): the CPU plays this side's moves through the server
@@ -1336,6 +1481,10 @@ func _finish_match(won: bool) -> void:
 		"turns": duel.turn, "cards_played": _cards_played, "mvp": mvp,
 		"match_id": _match_id, "snapshot": snap, "tutorial": _tutorial != null, "reason": _end_reason,
 	}
+	if not _replay.is_empty():
+		await _wait(1.2)
+		Game.go("profile")
+		return
 	if _online:
 		# The server records the match and sends the rewards (mp:over)
 		var waited := 0.0
@@ -2189,6 +2338,10 @@ func _update_next_btn() -> void:
 	if not _ui.has("next") or duel == null:
 		return
 	var b: Button = _ui.next
+	if not _replay.is_empty():
+		b.disabled = true   # a replay only plays back
+		b.text = "REPLAY"
+		return
 	var mine := duel.active == "player" and not "player" in ai_sides
 	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
 	if not mine:
@@ -2422,6 +2575,8 @@ func _clear_highlights() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not _replay.is_empty() and not event is InputEventMouseMotion:
+		return   # watching a replay: hovering shows cards, nothing else
 	if event is InputEventMouseMotion:
 		if _press and not _dragging and get_global_mouse_position().distance_to(_press_pos) > 14.0:
 			_start_drag()

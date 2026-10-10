@@ -35,6 +35,8 @@ const DEFAULT_SETTINGS := {
 	"tutorial_offered": false,      # the main menu has suggested it once
 }
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"
+const ErrorReport := preload("res://scripts/error_report.gd")
+const ERROR_SEND_SECS := 20.0
 
 var settings := DEFAULT_SETTINGS.duplicate()
 var player := {}            # /api/profile/me
@@ -46,6 +48,7 @@ var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var match_result := {}      # duel → post-match
 
 var _music: AudioStreamPlayer
+var _errors: ErrorReport   # sends the game's errors to the server (scripts/error_report.gd)
 var _music_path := ""
 var _fade: ColorRect
 var _fps: Label
@@ -78,6 +81,15 @@ func _ready() -> void:
 	_fps.add_theme_color_override("font_outline_color", Color.BLACK)
 	_fps.add_theme_constant_override("outline_size", 4)
 	layer.add_child(_fps)
+
+	_errors = ErrorReport.new()
+	OS.add_logger(_errors)
+	_errors.start_session()
+	var send := Timer.new()
+	send.wait_time = ERROR_SEND_SECS
+	send.autostart = true
+	send.timeout.connect(_send_error_reports)
+	add_child(send)
 
 	_load_settings()
 	for a in OS.get_cmdline_user_args():
@@ -117,6 +129,28 @@ func go(screen: String) -> void:
 	t = create_tween()
 	t.tween_method(func(p: float): wipe.set_shader_parameter("progress", p), 1.0, 2.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	t.tween_callback(func(): wipe.set_shader_parameter("progress", 0.0))
+
+
+func _exit_tree() -> void:
+	if _errors:
+		_errors.end_session()
+
+
+## Errors since the last send go to the server (backend/routes/telemetry.js).
+func _send_error_reports() -> void:
+	var batch := _errors.take()
+	if batch.is_empty():
+		return
+	if offline:
+		_errors.give_back(batch)
+		return
+	_errors.muted = true
+	var r: Dictionary = await Api.request("POST", "/api/telemetry/errors", {
+		"version": str(ProjectSettings.get_setting("application/config/version", "")),
+		"os": "%s %s" % [OS.get_name(), OS.get_version()], "errors": batch})
+	_errors.muted = false
+	if int(r.get("status", 0)) == 0:
+		_errors.give_back(batch)   # server unreachable: try again later
 
 
 # ── Session ──────────────────────────────────────────────────────────────────

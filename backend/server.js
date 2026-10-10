@@ -25,7 +25,7 @@ const cors         = require('cors');
 const jwt          = require('jsonwebtoken');
 
 const { pool }                  = require('./db/pool');
-const { createOnlineService, loadSetupFromDb, loadProfileFromDb } = require('./socket/onlineMatch');
+const { createOnlineService, loadSetupFromDb, loadProfileFromDb, replaySteps } = require('./socket/onlineMatch');
 const { resolveMatch, resolveCpuMatch } = require('./economy/postMatch');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 
@@ -38,6 +38,8 @@ const socialRoutes  = require('./routes/social');
 const matchRoutes   = require('./routes/match');
 const contentRoutes = require('./routes/content');
 const { router: downloadRoutes } = require('./routes/download');
+const telemetryRoutes = require('./routes/telemetry');
+const { saveReplay, createReplayRoutes } = require('./routes/replays');
 const { router: questRoutes } = require('./routes/quests');
 const onboardingRoutes = require('./routes/onboarding');
 const { router: mailRoutes } = require('./routes/mail');
@@ -67,6 +69,8 @@ app.use('/api/social',  socialRoutes);
 app.use('/api/match',   matchRoutes);
 app.use('/api/content', contentRoutes);   // card data and art for the desktop client
 app.use('/download',    downloadRoutes);  // Windows builds (downloads/ folder on the server)
+app.use('/api/telemetry', telemetryRoutes); // error reports from the game
+app.use('/api/replays', createReplayRoutes(replaySteps));
 app.use('/api/quests',  questRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/mail',    mailRoutes);
@@ -100,6 +104,7 @@ const online = createOnlineService(io, {
     resolveCpuMatch,
     incrementDailyQuest,
     recordDailyWin,
+    saveReplay,
 });
 
 // ── Socket connections ────────────────────────────────────────────────────────

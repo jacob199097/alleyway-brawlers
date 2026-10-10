@@ -128,7 +128,7 @@ static func normalize(v):
 
 func _on_global_event(name: String, data) -> void:
 	match name:
-		"mp:update", "mp:over", "mp:opponent":
+		"mp:update", "mp:over", "mp:opponent", "mp:emote":
 			inbox.append([name, data])
 			if inbox.size() > 500:
 				inbox.pop_front()

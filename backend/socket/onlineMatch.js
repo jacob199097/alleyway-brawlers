@@ -30,6 +30,11 @@ const TURN_SECS        = 90;    // a player who doesn't act for this long is aut
 const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
 const CHALLENGE_SECS   = 60;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
+// Emotes: a fixed list (no free text), at most one every EMOTE_GAP_MS and MAX_EMOTES a match
+const EMOTES           = ['hello', 'nice', 'wp', 'thinking', 'oops', 'hurry', 'gotcha', 'gg'];
+const EMOTE_GAP_MS     = 2500;
+const MAX_EMOTES       = 30;
+const GAME_VERSION     = (() => { try { return require('../../shared/game_version.json').latest; } catch { return ''; } })();
 
 const engine = import('../../shared/duel/DuelState.js');
 const cpu = import('../../shared/duel/DuelAI.js');
@@ -142,18 +147,25 @@ function createOnlineService(io, deps) {
     async function startMatch(a, b, mode) {
         const { DuelState } = await engine;
         const first = Math.random() < 0.5 ? 'player' : 'opponent';
-        const state = new DuelState(
-            { player: a.setup.deck, opponent: b.setup.deck },
-            { player: a.setup.hideout, opponent: b.setup.hideout },
-            { player: a.setup.leader, opponent: b.setup.leader },
-            first,
-        );
+        const seed = 1 + Math.floor(Math.random() * 2147483646);
+        const decks = { player: a.setup.deck, opponent: b.setup.deck };
+        const hideouts = { player: a.setup.hideout, opponent: b.setup.hideout };
+        const leaders = { player: a.setup.leader, opponent: b.setup.leader };
+        const state = new DuelState(decks, hideouts, leaders, first, seed);
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null,
             seats: {
                 player: { ...a, connected: true, grace: null, cardsPlayed: 0 },
                 opponent: { ...b, connected: true, grace: null, cardsPlayed: 0 },
             },
+        };
+        // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
+        match.record = {
+            id: match.id, version: GAME_VERSION, mode, seed, first,
+            decks: structuredClone(decks), hideouts: structuredClone(hideouts), leaders: structuredClone(leaders),
+            playerIds: { player: a.playerId, opponent: b.playerId },
+            profiles: { player: profileOf(match.seats.player), opponent: profileOf(match.seats.opponent) },
+            actions: [],
         };
         matches.set(match.id, match);
         byPlayer.set(a.playerId, match);
@@ -219,10 +231,12 @@ function createOnlineService(io, deps) {
         const st = match.state;
         const seat = seatToAct(st);
         if (!match.seats[seat].bot) return armTimer(match);
-        const action = choose(st, seat, match.seats[seat].level || 'normal');
+        let action = choose(st, seat, match.seats[seat].level || 'normal');
         if (!Object.keys(action).length || !st.doAction(seat, action)) {
-            if (!st.doAction(seat, { kind: 'next' })) return autoPlay(match);
+            action = { kind: 'next' };
+            if (!st.doAction(seat, action)) return autoPlay(match);
         }
+        match.record.actions.push([seat, action]);
         broadcast(match, st.takeEvents());
     }
 
@@ -234,7 +248,10 @@ function createOnlineService(io, deps) {
         let action = { kind: 'next' };
         if (p && p.kind === 'choose') action = { kind: 'choose', option: p.options[0].id };
         else if (p && p.kind === 'discard') action = { kind: 'discard', uid: st.sides[seat].hand[0].uid };
-        if (st.doAction(seat, action)) broadcast(match, st.takeEvents());
+        if (st.doAction(seat, action)) {
+            match.record.actions.push([seat, action]);
+            broadcast(match, st.takeEvents());
+        }
     }
 
     function act(playerId, matchId, action) {
@@ -251,6 +268,7 @@ function createOnlineService(io, deps) {
             emitTo(playerId, 'mp:error', { message: 'That move is not allowed right now.' });
             return sendStart(match, seat, true);
         }
+        match.record.actions.push([seat, action]);
         broadcast(match, match.state.takeEvents());
     }
 
@@ -308,6 +326,8 @@ function createOnlineService(io, deps) {
             });
         }
         console.log(`[Online] Match ${match.id} over (${reason}) — winner ${winner?.profile.username ?? 'none'}`);
+        match.record.end = { winner: winnerSeat || '', reason, turns: match.state.turn };
+        Promise.resolve(deps.saveReplay?.(match.record)).catch(err => console.error('[Online] Replay save failed:', err.message));
     }
 
     function leaveQueue(playerId) {
@@ -350,6 +370,19 @@ function createOnlineService(io, deps) {
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }
+        });
+
+        // Emotes go to the opponent only (a CPU doesn't read them)
+        socket.on('mp:emote', ({ matchId, key } = {}) => {
+            const match = byPlayer.get(me);
+            if (!match || match.id !== matchId || match.over || !EMOTES.includes(key)) return;
+            const seat = match.seats.player.playerId === me ? 'player' : 'opponent';
+            const s = match.seats[seat];
+            const now = Date.now();
+            if (now - (s.lastEmote || 0) < EMOTE_GAP_MS || (s.emotes || 0) >= MAX_EMOTES) return;
+            s.lastEmote = now;
+            s.emotes = (s.emotes || 0) + 1;
+            emitTo(match.seats[other(seat)].playerId, 'mp:emote', { matchId, key });
         });
 
         socket.on('mp:cancel', () => {
@@ -492,4 +525,36 @@ async function loadProfileFromDb(pool, playerId) {
     return rows[0] || { username: 'Player', level: 1, avatar_url: null };
 }
 
-module.exports = { createOnlineService, loadSetupFromDb, loadProfileFromDb, swapSides, viewFor, filterEvent, statsFilter };
+/**
+ * Play a recorded match again and return what `seat` saw: the mp:start message, every mp:update
+ * and the mp:over result. complete is false if today's rules refuse a recorded move (a replay
+ * from an older version of the game); it then stops there.
+ */
+async function replaySteps(rec, seat) {
+    const { DuelState } = await engine;
+    const st = new DuelState(rec.decks, rec.hideouts, rec.leaders, rec.first, rec.seed);
+    st.start();
+    // Snapshots (structuredClone): the view shares objects with the live state, which later moves change
+    const view = () => structuredClone(forSeat(viewFor(st, seat), seat));
+    const pack = (events) => ({
+        matchId: 'replay', view: view(),
+        events: structuredClone(forSeat(events.map(ev => statsFilter(filterEvent(ev, seat), seat)), seat)),
+    });
+    const start = { matchId: 'replay', mode: rec.mode, resync: false, replay: true,
+        you: rec.profiles[seat], opponent: rec.profiles[other(seat)], view: view() };
+    const updates = [pack(st.takeEvents())];
+    let complete = true;
+    for (const [s, a] of rec.actions) {
+        if (!st.doAction(s, a)) {
+            complete = false;
+            break;
+        }
+        updates.push(pack(st.takeEvents()));
+    }
+    const end = rec.end || {};
+    const over = { matchId: 'replay', reason: end.reason || 'morale', turns: end.turns || st.turn,
+        result: !end.winner ? 'draw' : end.winner === seat ? 'win' : 'loss' };
+    return { start, updates, over, complete, version: rec.version || '' };
+}
+
+module.exports = { createOnlineService, loadSetupFromDb, loadProfileFromDb, swapSides, viewFor, filterEvent, statsFilter, replaySteps };

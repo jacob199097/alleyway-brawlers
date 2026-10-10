@@ -87,9 +87,11 @@ export class DuelState {
      * @param {{player?: Array, opponent?: Array}} hideouts
      * @param {{player?: string, opponent?: string}} leaders
      * @param {string} first   'player' | 'opponent'
-     * @param {number} seed    -1 keeps the given deck order (tests); otherwise decks are shuffled
+     * @param {number} seed    -1 keeps the given deck order (tests); otherwise decks are shuffled,
+     *                         repeatably when seed > 0 (the server records it for replays)
      */
     constructor(decks, hideouts = {}, leaders = {}, first = 'player', seed = 0) {
+        this._rand = seed > 0 ? seededRandom(seed) : Math.random;
         this.turn = 1;
         this.active = first;
         this.phase = 'upkeep';
@@ -105,7 +107,7 @@ export class DuelState {
         this._fixedOrder = seed === -1; // never shuffle (tests compare engines)
         for (const side of ['player', 'opponent']) {
             const deck = decks[side].map(spec => this.makeCard(spec));
-            if (seed !== -1) shuffle(deck);
+            if (seed !== -1) shuffle(deck, this._rand);
             const hideout = (hideouts[side] || []).map(spec => this.makeCard(spec));
             const field = Array(10).fill(null);
             const leaderId = leaders[side] || '';
@@ -1550,7 +1552,7 @@ export class DuelState {
         const n = s.hand.length;
         for (const c of s.hand) s.deck.unshift(c); // to the bottom: draws come off the back
         s.hand = [];
-        if (!this._fixedOrder) shuffle(s.deck);
+        if (!this._fixedOrder) shuffle(s.deck, this._rand);
         this._emit('mulligan', { side, count: n });
         for (let i = 0; i < n; i++) this._draw(side, true);
     }
@@ -1724,9 +1726,20 @@ function promptEvent(ask) {
     return ev;
 }
 
-function shuffle(a) {
+/** mulberry32: a small repeatable random number generator (0 <= x < 1). */
+function seededRandom(seed) {
+    let t = seed >>> 0;
+    return () => {
+        t = (t + 0x6D2B79F5) >>> 0;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function shuffle(a, rand = Math.random) {
     for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rand() * (i + 1));
         [a[i], a[j]] = [a[j], a[i]];
     }
 }
