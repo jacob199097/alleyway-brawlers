@@ -119,6 +119,15 @@ Every push also runs the tests on GitHub (`.github/workflows/tests.yml`; results
 Actions tab): the server tests, the golden test that both rules engines agree, and the Godot
 smoke tests.
 
+## Balance report
+`node tools/balance.mjs --clan <clan> --games 5000` plays CPU-vs-CPU games with the real rules, each
+player with a random legal deck of the clan's cards, and lists every card: how often it's drawn and
+played, the win rate when drawn, and its **impact** (win rate when drawn minus when it stayed in the
+deck): how much drawing it helps. It flags STRONG (+8 or more), WEAK (-5 or less) and STUCK IN HAND
+(played in under a third of the games it was drawn, e.g. too expensive). `--html report.html` writes a
+sortable page to share. 5000 games take about ten seconds. The numbers describe the cards as the CPU
+plays them, so treat them as a pointer to cards worth a look, not a verdict.
+
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
 `shared/duel/DuelState.js`; the golden test checks they match).

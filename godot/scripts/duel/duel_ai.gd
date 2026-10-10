@@ -68,7 +68,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 		if d.can_promote(side, slot):
 			return {"kind": "promote", "slot": slot}
 	for c in s.hand:
-		if d.can_hustle(side, c):
+		if d.can_hustle(side, c) and _hustle_useful(d, side, c):
 			return {"kind": "hustle", "uid": c.uid}
 	var threat := _threat(d, side)
 	if level != "easy":
@@ -203,6 +203,36 @@ static func _threat(d: DuelState, side: String) -> int:
 		if e.card.position == "atk" and not e.card.downed and not e.card.face_down:
 			threat = maxi(threat, e.card.attack)
 	return threat
+
+
+## A Card Forge Hustle is worth playing now if at least one of its effects would do something
+## (buffing allies needs allies, hitting enemies needs enemies). Hand-written Hustles: always.
+static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
+	var effects: Array = c.get("effects", [])
+	if effects.is_empty():
+		return true
+	var foe := DuelState.other(side)
+	var allies := d.characters(side).filter(func(e): return not d.in_stasis(e.card))
+	var enemies := d.characters(foe).filter(func(e): return not d.in_stasis(e.card))
+	for e in effects:
+		var what := str(e.get("do", ""))
+		match str(e.get("target", "")):
+			"ally", "allies":
+				if what == "stand":
+					if allies.any(func(x): return x.card.downed):
+						return true
+				elif not allies.is_empty():
+					return true
+			"enemy", "enemies":
+				if not enemies.is_empty():
+					return true
+			_:
+				if what == "discard":
+					if not d.sides[foe].hand.is_empty():
+						return true
+				else:
+					return true
+	return false
 
 
 static func _weakest(hand: Array) -> Dictionary:

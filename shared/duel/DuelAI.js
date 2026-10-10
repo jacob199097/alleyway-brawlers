@@ -67,10 +67,35 @@ export function choose(d, side, level = 'normal') {
     return Object.keys(a).length ? a : { kind: 'next' };
 }
 
+/** Same as _hustle_useful in duel_ai.gd: a Card Forge Hustle only when one of its effects would do something. */
+function hustleUseful(d, side, c) {
+    const effects = c.effects || [];
+    if (!effects.length) return true;
+    const foe = other(side);
+    const allies = d.characters(side).filter(e => !d.inStasis(e.card));
+    const enemies = d.characters(foe).filter(e => !d.inStasis(e.card));
+    for (const e of effects) {
+        const what = String(e.do ?? '');
+        switch (String(e.target ?? '')) {
+            case 'ally': case 'allies':
+                if (what === 'stand') { if (allies.some(x => x.card.downed)) return true; }
+                else if (allies.length) return true;
+                break;
+            case 'enemy': case 'enemies':
+                if (enemies.length) return true;
+                break;
+            default:
+                if (what === 'discard') { if (d.sides[foe].hand.length) return true; }
+                else return true;
+        }
+    }
+    return false;
+}
+
 function deploy(d, side, level) {
     const s = d.sides[side];
     for (const slot of FRONT) if (d.canPromote(side, slot)) return { kind: 'promote', slot };
-    for (const c of s.hand) if (d.canHustle(side, c)) return { kind: 'hustle', uid: c.uid };
+    for (const c of s.hand) if (d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
     const t = threat(d, side);
     if (level !== 'easy') {
         // Stand up a defender that now out-muscles everything the opponent shows

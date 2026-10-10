@@ -12,7 +12,8 @@
   It is the authority for auth, economy, matches (online and CPU) and decks.
   Never move reward/currency/card logic into the client.
 - New cards come from the Card Forge: `node tools/import_forge.mjs <zip>`, then on the server
-  `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`).
+  `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data
+  (`shared/clans.js`): no code names a clan. `node tools/balance.mjs` reports how each card does.
 - Rules changes go in both engines; re-run `godot/tests/export_golden.gd` + `shared/duel/engine.test.mjs`.
 - Code is edited on both the PC and the server: `git pull` before starting, push when done.
   `node tools/deploy.mjs` pulls + restarts the server over SSH (host `alleyway`, see "Deploying" in
