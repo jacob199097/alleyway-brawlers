@@ -17,6 +17,13 @@ This:
 - regenerates `godot/data/cards.json`.
 
 The Forge is the source of truth: a card deleted in the Forge is removed on the next import.
+Character roles follow the class rules, and the importer enforces them:
+
+- **Striver**: the only role with levels (Lv.1 to Lv.3). It promotes into the card set in "Promotes to".
+- **Brawler**: standalone, always level 1, never promotes. Usually cheap, low-Authority cards.
+- **Heavy**: standalone, always level 1, high Authority. Playing one sacrifices one of your characters on
+  the field, and the Heavy takes that lane.
+
 The importer warns about problems such as a missing image, a "promotes to" card that isn't in the
 export, or two cards with the same name. The server needs unique names, so add "Lv.2" and so on.
 

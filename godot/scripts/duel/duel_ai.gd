@@ -70,6 +70,20 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 		if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
 			return {"kind": "position", "slot": e.slot}
 
+	# A Heavy is worth a sacrifice when it clearly out-muscles the weakest character we'd give up
+	var heavy = null
+	for c in s.hand:
+		if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or c.base_attack > heavy.base_attack):
+			heavy = c
+	if heavy != null:
+		var weakest = null
+		for e in d.characters(side):
+			if e.card.get("cardType") != "leader" and (weakest == null or e.card.attack < weakest.card.attack):
+				weakest = e
+		if weakest != null and heavy.base_attack >= weakest.card.attack + 800:
+			return {"kind": "summon", "uid": heavy.uid, "slot": weakest.slot, "tribute": weakest.slot,
+				"position": "atk" if heavy.base_attack >= threat else "def"}
+
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
 	if not free.is_empty():
 		var best = null

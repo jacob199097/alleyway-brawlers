@@ -226,8 +226,12 @@ func _build_steps() -> void:
 			"allow": func(a): return a.kind == "attack" and int(a.from) == _slot("player", p3) and int(a.target) == DuelState.DIRECT,
 			"done": func(): return d.phase == "brawl" and not screen._playing and _p3_attacked(),
 			"text": "Their only character is Downed, so nothing protects their Morale. [b]Direct Attack![/b]\n\nClick %s, then the [b]DIRECT ATTACK[/b] button at the top." % _n("p3")},
+		{"type": INFO, "mark": func(): return Rect2(screen.pile_pos("player", "hideout") - screen.CARD / 2, screen.CARD).grow(10),
+			"text": "Every character has a [b]class[/b]:\n• [b]Strivers[/b] start at Lv.1 and [b]PROMOTE[/b] into stronger Lv.2 and Lv.3 forms, waiting in your [b]Hideout[/b].\n• [b]Brawlers[/b] are standalone fighters, usually cheap.\n• [b]Heavies[/b] are powerful and cost a lot of Authority, and you must [b]sacrifice[/b] one of your characters to play one. The Heavy takes its lane."},
+		{"type": INFO, "mark": func(): return _view_rect(screen.leaders.get("player")),
+			"text": "Your own [b]Leader[/b] waits here, Dormant, giving its bonus. When its condition is met (it's written on the card), it [b]AWAKENS[/b]: you choose a lane and it joins the fight as a character.\n\nA Dormant leader can be attacked, like you just did to theirs, so keep it in mind."},
 		{"type": INFO, "last": true,
-			"text": "That's the basics! You'll also meet:\n• [b]Ambush[/b] cards: set face-down in your back row, they spring when you're attacked.\n• [b]Hustles[/b]: one-shot effects.\n• [b]Promotion[/b]: characters level up into stronger forms from your Hideout.\n\nNow finish them off!"},
+			"text": "That's the basics! You'll also meet:\n• [b]Ambush[/b] cards: set face-down in your back row, they spring when you're attacked.\n• [b]Hustles[/b]: one-shot effects.\n• Card effects of every kind. Hover any card to read it.\n\nNow finish them off!"},
 	]
 
 

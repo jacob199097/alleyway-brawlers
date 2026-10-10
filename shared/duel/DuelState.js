@@ -177,10 +177,27 @@ export class DuelState {
         return this.canAct(side) && ['deployment', 'regroup'].includes(this.phase);
     }
 
-    canSummon(side, c, slot) {
+    // Character classes: only Strivers PROMOTE; Heavies need one of your characters sacrificed
+    // (the Heavy takes its lane). Same rules as duel_state.gd.
+    static needsTribute(c) {
+        return c != null && c.subtype === 'heavy';
+    }
+
+    canSummon(side, c, slot, tribute = -1) {
         if (!this.canDeployNow(side) || c.cardType !== 'gang_member') return false;
-        if (!FRONT.includes(slot) || this.sides[side].field[slot] != null) return false;
-        return this.sides[side].authority >= c.authority;
+        if (!FRONT.includes(slot) || this.sides[side].authority < c.authority) return false;
+        if (DuelState.needsTribute(c)) {
+            const t = FRONT.includes(tribute) ? this.cardAt(side, tribute) : null;
+            return slot === tribute && t != null && t.cardType !== 'leader';
+        }
+        return tribute === -1 && this.sides[side].field[slot] == null;
+    }
+
+    canSummonSomewhere(side, c) {
+        for (const slot of FRONT) {
+            if (this.canSummon(side, c, slot, DuelState.needsTribute(c) ? slot : -1)) return true;
+        }
+        return false;
     }
 
     canSet(side, c, slot) {
@@ -230,7 +247,7 @@ export class DuelState {
     canPromote(side, slot) {
         if (!this.canDeployNow(side) || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
-        if (c == null || c.ability !== 'maya_promote' || c.face_down || c.downed) return false;
+        if (c == null || c.ability !== 'maya_promote' || c.face_down || c.downed || c.subtype !== 'striver') return false;
         if (this.sides[side].promoted[slot] || nextForm(c.id) === '') return false;
         return this.characters(side).some(e => e.slot !== slot && isLion(e.card) && e.card.authority >= c.authority);
     }
@@ -260,7 +277,7 @@ export class DuelState {
         if (this.winner !== '' || !a || typeof a !== 'object') return false;
         let ok = false;
         switch (a.kind) {
-            case 'summon': ok = this._summon(side, toInt(a.uid), toInt(a.slot), String(a.position ?? 'atk')); break;
+            case 'summon': ok = this._summon(side, toInt(a.uid), toInt(a.slot), String(a.position ?? 'atk'), toInt(a.tribute ?? -1)); break;
             case 'set': ok = this._setAmbush(side, toInt(a.uid), toInt(a.slot)); break;
             case 'hustle': ok = this._hustle(side, toInt(a.uid)); break;
             case 'attack': ok = this._attack(side, toInt(a.from), toInt(a.target)); break;
@@ -283,11 +300,19 @@ export class DuelState {
         return ok;
     }
 
-    _summon(side, uid, slot, position) {
+    _summon(side, uid, slot, position, tribute = -1) {
         const i = this._handIndex(side, uid);
-        if (i < 0 || !this.canSummon(side, this.sides[side].hand[i], slot)) return false;
+        if (i < 0 || !this.canSummon(side, this.sides[side].hand[i], slot, tribute)) return false;
         const c = this.sides[side].hand.splice(i, 1)[0];
         this._spend(side, c.authority);
+        if (DuelState.needsTribute(c)) {
+            const t = this.cardAt(side, tribute);
+            this.sides[side].field[tribute] = null;
+            t.downed = false;
+            t.mods = [];
+            this.sides[side].gutter.push(t);
+            this._emit('tribute', { side, slot: tribute, card: clone(t), for: clone(c) });
+        }
         c.position = position === 'def' ? 'def' : 'atk';
         c.face_down = c.position === 'def';
         c.has_attacked = false;
@@ -818,7 +843,7 @@ export class DuelState {
     _promote(side, slot, reason) {
         const s = this.sides[side];
         const old = this.cardAt(side, slot);
-        if (old == null || s.promoted[slot]) return;
+        if (old == null || s.promoted[slot] || old.subtype !== 'striver') return;   // only Strivers level up
         const toId = nextForm(old.id);
         if (toId === '') return;
         s.promoted[slot] = true;

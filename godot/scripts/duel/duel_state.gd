@@ -169,12 +169,32 @@ func can_deploy_now(side: String) -> bool:
 	return can_act(side) and phase in ["deployment", "regroup"]
 
 
-func can_summon(side: String, c: Dictionary, slot: int) -> bool:
+## Character classes: Strivers level up (only they can PROMOTE); Brawlers are standalone;
+## Heavies are standalone too, and need one of your characters sacrificed to come into play
+## (the Heavy takes its lane).
+static func needs_tribute(c) -> bool:
+	return c != null and c.get("subtype") == "heavy"
+
+
+## Summon `c` into `slot`. A Heavy names the character it sacrifices (`tribute`), and takes
+## that lane; anything else needs an empty lane and no tribute.
+func can_summon(side: String, c: Dictionary, slot: int, tribute := -1) -> bool:
 	if not can_deploy_now(side) or c.get("cardType") != "gang_member":
 		return false
-	if not slot in FRONT or sides[side].field[slot] != null:
+	if not slot in FRONT or sides[side].authority < c.authority:
 		return false
-	return sides[side].authority >= c.authority
+	if needs_tribute(c):
+		var t = card_at(side, tribute) if tribute in FRONT else null
+		return slot == tribute and t != null and t.get("cardType") != "leader"
+	return tribute == -1 and sides[side].field[slot] == null
+
+
+## Whether `c` can be summoned anywhere right now (a Heavy needs a character to sacrifice).
+func can_summon_somewhere(side: String, c: Dictionary) -> bool:
+	for slot in FRONT:
+		if can_summon(side, c, slot, slot if needs_tribute(c) else -1):
+			return true
+	return false
 
 
 func can_set(side: String, c: Dictionary, slot: int) -> bool:
@@ -234,7 +254,7 @@ func can_promote(side: String, slot: int) -> bool:
 	if not can_deploy_now(side) or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
-	if c == null or c.get("ability") != "maya_promote" or c.face_down or c.downed:
+	if c == null or c.get("ability") != "maya_promote" or c.face_down or c.downed or c.get("subtype") != "striver":
 		return false
 	if sides[side].promoted.has(slot) or CardDB.next_form(c.id) == "":
 		return false
@@ -274,7 +294,7 @@ func do_action(side: String, a: Dictionary) -> bool:
 	var ok := false
 	match a.get("kind", ""):
 		"summon":
-			ok = _summon(side, int(a.uid), int(a.slot), str(a.get("position", "atk")))
+			ok = _summon(side, int(a.uid), int(a.slot), str(a.get("position", "atk")), int(a.get("tribute", -1)))
 		"set":
 			ok = _set_ambush(side, int(a.uid), int(a.slot))
 		"hustle":
@@ -301,12 +321,19 @@ func do_action(side: String, a: Dictionary) -> bool:
 	return ok
 
 
-func _summon(side: String, uid: int, slot: int, position: String) -> bool:
+func _summon(side: String, uid: int, slot: int, position: String, tribute := -1) -> bool:
 	var i := _hand_index(side, uid)
-	if i < 0 or not can_summon(side, sides[side].hand[i], slot):
+	if i < 0 or not can_summon(side, sides[side].hand[i], slot, tribute):
 		return false
 	var c: Dictionary = sides[side].hand.pop_at(i)
 	_spend(side, c.authority)
+	if needs_tribute(c):
+		var t: Dictionary = card_at(side, tribute)
+		sides[side].field[tribute] = null
+		t.downed = false
+		t.mods = []
+		sides[side].gutter.append(t)
+		_emit("tribute", {"side": side, "slot": tribute, "card": t.duplicate(true), "for": c.duplicate(true)})
 	c.position = "def" if position == "def" else "atk"
 	c.face_down = c.position == "def"   # set in DEF = face-down, like Yu-Gi-Oh
 	c.has_attacked = false
@@ -799,7 +826,7 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 func _promote(side: String, slot: int, reason: String) -> void:
 	var s: Dictionary = sides[side]
 	var old = card_at(side, slot)
-	if old == null or s.promoted.has(slot):
+	if old == null or s.promoted.has(slot) or old.get("subtype") != "striver":   # only Strivers level up
 		return
 	var to_id := CardDB.next_form(old.id)
 	if to_id == "":

@@ -563,6 +563,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_damage(ev)
 		"heal":
 			await _ev_heal(ev)
+		"tribute":
+			await _ev_tribute(ev)
 		"bounce":
 			await _ev_bounce(ev)
 		"mill":
@@ -949,6 +951,25 @@ func _ev_damage(ev: Dictionary) -> void:
 	if side == "player":
 		_screen_flash(RED, 0.22)
 	await _wait(0.6)
+
+
+## A character is sacrificed so a Heavy can take its lane.
+func _ev_tribute(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(ev.slot)
+	field[side].erase(ev.slot)
+	if v == null:
+		return
+	v.show_badge = false
+	v.z_index = 440
+	_show_detail(ev.get("for", {}))
+	Sfx.play("down", 0.6)
+	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "SACRIFICED", Color("b388ff"), 34)
+	_burst(v.position, Color("b388ff"), 36, 420, 0.8, -250.0)
+	_light_column(v.position)
+	v.flash()
+	await _wait(0.35)
+	await _to_gutter(v, side)
 
 
 ## A card effect sends a character back to its owner's hand.
@@ -2282,7 +2303,7 @@ func _pick(option: String) -> void:
 func _playable(c: Dictionary) -> bool:
 	match c.get("cardType", ""):
 		"gang_member":
-			return DuelState.FRONT.any(func(s): return duel.can_summon("player", c, s))
+			return duel.can_summon_somewhere("player", c)
 		"ambush":
 			return DuelState.BACK.any(func(s): return duel.can_set("player", c, s))
 		"hustle":
@@ -2527,10 +2548,12 @@ func _open_hand_menu(v: CardView) -> void:
 	match c.get("cardType", ""):
 		"gang_member":
 			var ok := _playable(c)
+			var heavy := DuelState.needs_tribute(c)
 			if ok == false and reason == "":
-				reason = "No free front-row slot"
-			opts.append(["SUMMON  ·  ATK", ok, func(): _begin_place(v, "summon_atk")])
-			opts.append(["SET  ·  DEF (FACE-DOWN)", ok, func(): _begin_place(v, "summon_def")])
+				reason = "Needs one of your characters to sacrifice" if heavy else "No free front-row slot"
+			var cost := "  ·  SACRIFICE 1" if heavy else ""
+			opts.append(["SUMMON  ·  ATK" + cost, ok, func(): _begin_place(v, "summon_atk")])
+			opts.append(["SET  ·  DEF (FACE-DOWN)" + cost, ok, func(): _begin_place(v, "summon_def")])
 		"ambush":
 			var ok := _playable(c)
 			if ok == false and reason == "":
@@ -2579,6 +2602,14 @@ func _begin_place(v: CardView, kind: String) -> void:
 	_mode = "place"
 	_valid.clear()
 	var c := v.card
+	if kind != "set" and DuelState.needs_tribute(c):
+		# A Heavy takes the lane of the character it sacrifices
+		for slot in DuelState.FRONT:
+			if duel.can_summon("player", c, slot, slot):
+				_valid["player:%d" % slot] = RED
+		_show_prompt("Choose a character to sacrifice: %s takes its lane  ·  right-click to cancel" % c.name)
+		queue_redraw()
+		return
 	for slot in 10:
 		var ok := duel.can_set("player", c, slot) if kind == "set" else duel.can_summon("player", c, slot)
 		if ok:
@@ -2591,11 +2622,12 @@ func _place(slot: int) -> void:
 	var v := _selected
 	var kind := _place_kind
 	_cancel_interaction()
+	var tribute := slot if DuelState.needs_tribute(v.card) else -1
 	match kind:
 		"summon_atk":
-			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk"})
+			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tribute": tribute})
 		"summon_def":
-			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def"})
+			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def", "tribute": tribute})
 		"set":
 			_act("player", {"kind": "set", "uid": v.uid, "slot": slot})
 
@@ -2614,8 +2646,12 @@ func _start_drag() -> void:
 	create_tween().tween_property(v, "scale", Vector2.ONE * 1.1, 0.1)
 	var c := v.card
 	for slot in 10:
-		if duel.can_summon("player", c, slot) or duel.can_set("player", c, slot):
+		if DuelState.needs_tribute(c) and slot in DuelState.FRONT and duel.can_summon("player", c, slot, slot):
+			_valid["player:%d" % slot] = RED   # drop a Heavy on the character to sacrifice
+		elif duel.can_summon("player", c, slot) or duel.can_set("player", c, slot):
 			_valid["player:%d" % slot] = GREEN
+	if DuelState.needs_tribute(c):
+		_show_prompt("Drop %s on one of your characters to sacrifice it" % c.name)
 	if c.cardType == "hustle":
 		_show_prompt("Release on the board to activate")
 	queue_redraw()
@@ -2631,7 +2667,10 @@ func _end_drag() -> void:
 	var done := false
 	_valid.clear()
 	_hide_prompt()
-	if c.cardType == "gang_member" and duel.can_summon("player", c, slot):
+	if c.cardType == "gang_member" and DuelState.needs_tribute(c) and duel.can_summon("player", c, slot, slot):
+		# Dropping a Heavy on one of your characters sacrifices it
+		done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tribute": slot})
+	elif c.cardType == "gang_member" and duel.can_summon("player", c, slot):
 		done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk"})
 	elif c.cardType == "ambush" and duel.can_set("player", c, slot):
 		done = _act("player", {"kind": "set", "uid": v.uid, "slot": slot})

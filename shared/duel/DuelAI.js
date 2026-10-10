@@ -54,6 +54,21 @@ function deploy(d, side) {
             return { kind: 'position', slot: e.slot };
         }
     }
+    // A Heavy is worth a sacrifice when it clearly out-muscles the weakest character we'd give up
+    let heavy = null;
+    for (const c of s.hand) {
+        if (DuelState.needsTribute(c) && d.canSummonSomewhere(side, c) && (heavy == null || c.base_attack > heavy.base_attack)) heavy = c;
+    }
+    if (heavy != null) {
+        let weakest = null;
+        for (const e of d.characters(side)) {
+            if (e.card.cardType !== 'leader' && (weakest == null || e.card.attack < weakest.card.attack)) weakest = e;
+        }
+        if (weakest != null && heavy.base_attack >= weakest.card.attack + 800) {
+            return { kind: 'summon', uid: heavy.uid, slot: weakest.slot, tribute: weakest.slot,
+                position: heavy.base_attack >= t ? 'atk' : 'def' };
+        }
+    }
     const free = SLOT_ORDER.filter(i => s.field[i] == null);
     if (free.length) {
         let best = null;

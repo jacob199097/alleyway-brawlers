@@ -73,11 +73,26 @@ for (const [key, raw] of Object.entries(exported)) {
         c.subtype = raw.subtype || 'brawler';
         c.promotesTo = raw.promotesTo || null;
     }
+    // Class rules: only Strivers have levels and promote; a Heavy costs one sacrifice
+    if (raw.cardType === 'gang_member') {
+        if (!['striver', 'brawler', 'heavy'].includes(c.subtype)) {
+            warnings.push(`${id}: unknown role "${c.subtype}"; treated as a Brawler.`);
+            c.subtype = 'brawler';
+        }
+        if (c.subtype !== 'striver' && (c.level !== 1 || c.promotesTo)) {
+            warnings.push(`${id}: ${c.subtype}s are standalone, so its level was set to 1 and "promotes to" cleared.`);
+            c.level = 1;
+            c.promotesTo = null;
+        }
+        c.tributeCost = c.subtype === 'heavy' ? 1 : 0;
+    }
     if (raw.cardType === 'leader' && raw.awakenCondition) c.awakenCondition = raw.awakenCondition;
     cards[id] = c;
 }
 for (const c of Object.values(cards)) {
     if (c.promotesTo && !cards[c.promotesTo]) warnings.push(`${c.id}: promotes to "${c.promotesTo}", which isn't in the export.`);
+    const next = cards[c.promotesTo];
+    if (next && next.subtype !== 'striver') warnings.push(`${c.id}: promotes to "${next.id}", which isn't a Striver.`);
     if (!existsSync(join(artDir, `${c.id}.png`))) warnings.push(`${c.id}: no card image in the export.`);
 }
 const names = {};
