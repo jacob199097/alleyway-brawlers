@@ -38,6 +38,7 @@ const profileRoutes = require('./routes/profile');
 const deckRoutes    = require('./routes/deck');
 const socialRoutes  = require('./routes/social');
 const matchRoutes   = require('./routes/match');
+const contentRoutes = require('./routes/content');
 const { router: questRoutes } = require('./routes/quests');
 const onboardingRoutes = require('./routes/onboarding');
 const { router: mailRoutes } = require('./routes/mail');
@@ -65,6 +66,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/deck',    deckRoutes);
 app.use('/api/social',  socialRoutes);
 app.use('/api/match',   matchRoutes);
+app.use('/api/content', contentRoutes);   // card data and art for the desktop client
 app.use('/api/quests',  questRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/mail',    mailRoutes);

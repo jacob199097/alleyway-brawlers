@@ -33,6 +33,17 @@ drop from packs, be collected and go into decks. A new clan becomes a pack type,
 offers its pack once the clan has at least 3 cards. Pack art comes from
 `client/assets/<clan>_booster.png` (for example `nebula_booster.png`) when that file exists.
 
+**Players get the new cards automatically.** When the game starts it compares its cards with
+the server (`/api/content/manifest`) and downloads only new or changed card data and images,
+with a download screen. No new build is needed for card changes; only code changes need one.
+
+## Game versions
+`shared/game_version.json` holds `latest` (the newest Windows build) and `minimum` (older builds
+must update before playing online). When you ship a build with code changes, raise the version in
+`godot/project.godot` (`config/version`) and in that file. Put the download link in the server's
+`backend/.env` as `CLIENT_DOWNLOAD_URL=...`; the game offers it when an update is available or
+required.
+
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
 `shared/duel/DuelState.js`; the golden test checks they match).

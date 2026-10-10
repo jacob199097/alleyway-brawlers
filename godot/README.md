@@ -17,7 +17,9 @@ currency, cards, decks and match rewards.
    on the home network `http://192.168.0.200:3000` also works.
 
 If a card changes in `shared/cards.js`, regenerate the card data with
-`node godot/tools/export_cards.mjs`.
+`node godot/tools/export_cards.mjs`. Players don't need a new build for card changes: at start-up
+the game downloads new or changed cards from the server (`scripts/content_sync.gd`, with a
+download screen) and checks its version (see `docs/CARD_PIPELINE.md`).
 
 ## Screens
 | Screen | What it does |

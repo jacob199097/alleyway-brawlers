@@ -5,7 +5,7 @@ extends Node
 ##   var r := await Api.request("GET", "/api/profile/me")
 ##   if r.ok: print(r.data) else: print(r.error)
 
-const DEFAULT_URL := "http://192.168.0.200:3000"
+const DEFAULT_URL := "https://alleywaybrawlers.duckdns.org"
 const TIMEOUT := 10.0
 const METHODS := {
 	"GET": HTTPClient.METHOD_GET, "POST": HTTPClient.METHOD_POST, "PUT": HTTPClient.METHOD_PUT,
@@ -49,6 +49,20 @@ func request(method: String, path: String, body = null) -> Dictionary:
 		if error == "":
 			error = "Server error (%d)." % code
 	return {"ok": ok, "status": code, "data": data, "error": error}
+
+
+## Raw bytes from the server (card images, card data). Returns {ok, status, body: PackedByteArray}.
+func fetch(path: String, timeout := 30.0) -> Dictionary:
+	var http := HTTPRequest.new()
+	http.timeout = timeout
+	add_child(http)
+	if http.request(base_url() + path) != OK:
+		http.queue_free()
+		return {"ok": false, "status": 0, "body": PackedByteArray()}
+	var res: Array = await http.request_completed
+	http.queue_free()
+	var ok: bool = res[0] == HTTPRequest.RESULT_SUCCESS and res[1] >= 200 and res[1] < 300
+	return {"ok": ok, "status": res[1], "body": res[3]}
 
 
 func _unreachable() -> Dictionary:

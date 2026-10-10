@@ -1,9 +1,22 @@
-// Writes godot/data/cards.json from shared/cards.js (the single source of card rules data).
+// Writes godot/data/cards.json from shared/cards.js (the single source of card rules data), and
+// godot/data/content.json: fingerprints of that card data and of every card image the build
+// ships with, so the game knows which newer cards to download from the server (backend/routes/content.js).
 // Run after changing cards:  node godot/tools/export_cards.mjs
-import { writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CARD_CATALOG } from '../../shared/cards.js';
 
+const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
+const json = JSON.stringify(CARD_CATALOG, null, 1) + '\n';
 const out = fileURLToPath(new URL('../data/cards.json', import.meta.url));
-writeFileSync(out, JSON.stringify(CARD_CATALOG, null, 1) + '\n');
-console.log(`Wrote ${Object.keys(CARD_CATALOG).length} cards to ${out}`);
+writeFileSync(out, json);
+
+const artDir = fileURLToPath(new URL('../../client/assets/cards/', import.meta.url));
+const art = {};
+for (const f of readdirSync(artDir).filter(f => f.endsWith('.png')).sort()) {
+    art[f.slice(0, -4)] = sha256(readFileSync(artDir + f));
+}
+writeFileSync(fileURLToPath(new URL('../data/content.json', import.meta.url)),
+    JSON.stringify({ cards: sha256(json), art }, null, 1) + '\n');
+console.log(`Wrote ${Object.keys(CARD_CATALOG).length} cards to ${out} (and fingerprints for ${Object.keys(art).length} images)`);

@@ -183,7 +183,16 @@ function route(method, path) {
     return null;
 }
 
+let contentApp = null;   // the real backend/routes/content.js (card data and art downloads)
 const server = http.createServer((req, res) => {
+    if (req.url.startsWith('/api/content/')) {
+        if (!contentApp) {
+            contentApp = require('../../backend/node_modules/express')();
+            contentApp.use('/api/content', require('../../backend/routes/content.js'));
+        }
+        console.log(req.method, req.url.split('?')[0]);
+        return contentApp(req, res);
+    }
     let raw = '';
     req.on('data', d => raw += d);
     req.on('end', () => {
