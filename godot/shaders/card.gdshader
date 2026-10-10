@@ -13,7 +13,8 @@ uniform float glare = 0.0;
 uniform float foil = 0.0;
 uniform float flash = 0.0;     // white hit-flash
 uniform float galaxy = 0.0;
-uniform float galaxy_speed = 0.09;    // radians per second
+uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
+uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
 
 varying vec2 s;
@@ -60,14 +61,14 @@ void fragment() {
 		// Turn the swirl around the crest. The crest (a disc plus a cross of spikes) and the frame are
 		// masked by shape on both ends: they stay put, and the turning swirl never drags copies of them
 		vec2 p = vec2(uv.x, uv.y * aspect);   // card widths, centred
-		float ang = -TIME * galaxy_speed;
+		float ang = -galaxy_angle;
 		vec2 q = mat2(vec2(cos(ang), sin(ang)), vec2(-sin(ang), cos(ang))) * p;
 		vec4 spun = texture(TEXTURE, vec2(q.x, q.y / aspect) + 0.5);
 		float w = (1.0 - crest(p)) * (1.0 - crest(q)) * (1.0 - frame_mask(p, aspect)) * (1.0 - frame_mask(q, aspect));
-		col.rgb = mix(col.rgb, spun.rgb, w * galaxy);
+		col.rgb = mix(col.rgb, spun.rgb * (1.0 + 0.35 * galaxy_glow), w * galaxy);
 		float rr = length(p);
 		// The crest breathes
-		col.rgb += vec3(0.55, 0.4, 1.0) * galaxy * (0.05 + 0.07 * (0.5 + 0.5 * sin(TIME * 1.6))) * exp(-rr * rr * 60.0);
+		col.rgb += vec3(0.55, 0.4, 1.0) * galaxy * (0.05 + 0.07 * (0.5 + 0.5 * sin(TIME * 1.6))) * (1.0 + 3.0 * galaxy_glow) * exp(-rr * rr * 60.0);
 	}
 
 	// A soft diagonal band of light that slides across as the card tilts
