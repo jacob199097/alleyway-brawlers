@@ -1,0 +1,64 @@
+# Runs on every push and pull request (GitHub → Actions tab shows the results).
+#   server: online matches, Scissors Paper Rock, rematches, replays (backend/socket/*.test.cjs)
+#   godot:  both rules engines agree (golden test), plus the duel, tutorial and rules smoke tests
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Online matches and Scissors Paper Rock
+        run: node backend/socket/rps.test.cjs
+      - name: Rematches and away players
+        run: node backend/socket/rematch.test.cjs
+      - name: Replays match live play
+        run: node backend/socket/replay.test.cjs
+
+  godot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Copy art and audio into the project
+        run: sh godot/tools/sync_assets.sh
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -sSL -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+      - name: Import the project
+        run: timeout 600 ~/godot/godot --headless --path godot --import || true
+      - name: Both rules engines agree (golden test)
+        run: |
+          ~/godot/godot --headless --path godot --script res://tests/export_golden.gd -- /tmp/golden.json 25
+          node shared/duel/engine.test.mjs /tmp/golden.json
+      - name: Rules simulation
+        run: ~/godot/godot --headless --path godot --script res://tests/sim.gd
+      - name: Duel screen smoke test
+        run: timeout 600 ~/godot/godot --headless --path godot res://tests/ui_smoke.tscn
+      - name: Tutorial smoke test
+        run: timeout 600 ~/godot/godot --headless --path godot res://tests/tutorial_smoke.tscn

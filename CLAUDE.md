@@ -15,5 +15,7 @@
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`).
 - Rules changes go in both engines; re-run `godot/tests/export_golden.gd` + `shared/duel/engine.test.mjs`.
 - Code is edited on both the PC and the server: `git pull` before starting, push when done.
+  `node tools/deploy.mjs` pulls + restarts the server over SSH (host `alleyway`, see "Deploying" in
+  `docs/CARD_PIPELINE.md`); every push runs the tests (`.github/workflows/tests.yml`).
 - Game updates: small code updates ship as patches (`tools/make_patch.mjs`, `godot/scripts/patcher.gd`,
   which must stay the first autoload); see "Game versions and updates" in `docs/CARD_PIPELINE.md`.

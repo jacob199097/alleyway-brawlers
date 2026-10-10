@@ -73,7 +73,8 @@ downloads the patch (a few hundred KB), checks it and restarts into it.
    same number. Leave `minimum` and `patchBase` alone, unless old versions must stop playing online.
    Add what changed to the top of `godot/data/patch_notes.json`: players see it once ("What's new").
 2. `node tools/make_patch.mjs <Godot console exe>` writes `builds/AlleywayBrawlers-<version>-patch.pck`.
-3. Commit and push; copy the patch into `downloads/` on the server, then pull and restart there:
+3. Commit and push, then `node tools/deploy.mjs --patch` (see Deploying), or by hand: copy the patch
+   into `downloads/` on the server, then pull and restart there:
 
        scp builds/AlleywayBrawlers-<version>-patch.pck jacob199097@192.168.0.200:/opt/Turf_War/downloads/
 
@@ -90,6 +91,33 @@ somewhere else).
 
 If a patch ever stops the game from starting, the game notices on the next start, runs the full
 build's own code instead and doesn't download that patch again.
+
+## Deploying
+`node tools/deploy.mjs` updates the server from the PC: it checks everything is pushed, pulls on the
+server, restarts the backend and shows the log if that fails. Add `--patch` or `--build` to copy the
+latest patch or full build into `downloads/` first, `--sync-cards` after importing Forge cards, or
+`--logs` just to read the backend's log. It logs in with an SSH key, set up once:
+
+1. On the PC (PowerShell), make a key just for the server and an `alleyway` shortcut:
+
+       ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\alleyway_server -N '""' -C "alleyway deploy"
+       Add-Content $env:USERPROFILE\.ssh\config "`nHost alleyway`n    HostName 192.168.0.200`n    User jacob199097`n    IdentityFile ~/.ssh/alleyway_server`n    IdentitiesOnly yes"
+
+2. Put the key on the server (asks for the server password one last time):
+
+       type $env:USERPROFILE\.ssh\alleyway_server.pub | ssh jacob199097@192.168.0.200 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+
+3. On the server, let that user restart the backend without a password (and nothing else):
+
+       echo 'jacob199097 ALL=(root) NOPASSWD: /usr/bin/systemctl restart alleyway-backend, /bin/systemctl restart alleyway-backend' | sudo tee /etc/sudoers.d/alleyway-deploy
+       sudo chmod 440 /etc/sudoers.d/alleyway-deploy && sudo visudo -c
+
+`ssh alleyway` should now log straight in. To undo: delete the line from `~/.ssh/authorized_keys` on
+the server and `/etc/sudoers.d/alleyway-deploy`.
+
+Every push also runs the tests on GitHub (`.github/workflows/tests.yml`; results on the repo's
+Actions tab): the server tests, the golden test that both rules engines agree, and the Godot
+smoke tests.
 
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
