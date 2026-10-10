@@ -82,6 +82,8 @@ var _damage_log := {}     # "side:uid" -> {card, owner, damage}
 var _last_hit := {}
 var _online := false      # a server-run match (Game.duel_setup.online)
 var _replay := {}         # watching a recorded match: {start, updates, over, complete}
+var _spectating := false  # watching a friend's match live (mp:spectate): their side is "player"
+var _names := {}          # side -> name, for a spectator's texts
 var _replay_next := 0     # next update to play
 var _replay_wait := 0.0
 var _emote_ready_at := 0
@@ -137,6 +139,11 @@ func _ready() -> void:
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "profile_002", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
 	else:
+		if online_start.get("spectate", false):
+			var you: Dictionary = online_start.get("you", {})
+			_build_panel("player", $HUD/UI/PlayerPanel, str(you.get("username", "PLAYER")).to_upper().left(14),
+				str(you.get("avatar_url", "profile_001")) if you.get("avatar_url") else "profile_001",
+				"LV %d  ·  WATCHING" % int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
 			str(opp.get("avatar_url", "profile_002")) if opp.get("avatar_url") else "profile_002",
@@ -209,6 +216,8 @@ func _make_leader_views() -> void:
 func _setup_online(start: Dictionary) -> void:
 	_online = true
 	Net.rematch_inbox.clear()
+	_spectating = start.get("spectate", false)
+	_names = {"player": str(start.get("you", {}).get("username", "Player")), "opponent": str(start.get("opponent", {}).get("username", "Opponent"))}
 	ai_sides = []
 	_match_id = str(start.get("matchId", ""))
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
@@ -221,17 +230,50 @@ func _setup_online(start: Dictionary) -> void:
 	if Game.duel_setup.has("replay"):
 		_setup_replay(Game.duel_setup.replay)
 		return
-	if not str(start.get("mode", "")).begins_with("cpu"):
+	if _spectating:
+		_build_spectate_bar()
+	elif not str(start.get("mode", "")).begins_with("cpu"):
 		_build_emote_button()
 	_ui.clock = _label(22, GOLD, true)
 	_ui.clock.position = Vector2(150, 96)
 	$HUD/UI/TurnBox.add_child(_ui.clock)
 	_clock_left = float(start.get("clock", ONLINE_TURN_SECS))
-	if not start.get("resync", false):
+	if not start.get("resync", false) and not _spectating:
 		Game.alert()
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	_after_events()
+
+
+# ── Spectating (a friend's match, live) ─────────────────────────────────────
+
+func _build_spectate_bar() -> void:
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 12)
+	bar.position = Vector2(820, 36)
+	bar.z_index = 30
+	var tag := _label(28, GOLD, true)
+	tag.text = "👁 WATCHING %s" % _names.player.to_upper()
+	bar.add_child(tag)
+	bar.add_child(UI.button("STOP WATCHING", _stop_watching, Vector2(220, 44), RED))
+	ui.add_child(bar)
+
+
+func _stop_watching() -> void:
+	Net.send("mp:unspectate")
+	Game.go("social")
+
+
+## Only watching: a replay or a friend's match. Nothing can be played.
+func _watching() -> bool:
+	return _spectating or not _replay.is_empty()
+
+
+## "YOUR TURN", or the player's name for a spectator.
+func _turn_text(mine: bool) -> String:
+	if _spectating:
+		return "%s'S TURN" % str(_names.player if mine else _names.opponent).to_upper()
+	return "YOUR TURN" if mine else "OPPONENT'S TURN"
 
 
 # ── Replays (routes/replays.js on the server rebuilds what you saw) ─────────
@@ -395,10 +437,14 @@ func _log(text: String, side: String) -> void:
 
 
 func _who(side: String) -> String:
+	if _spectating:
+		return str(_names.get(side, side))
 	return "You" if side == "player" else "Opponent"
 
 
 func _whose(side: String) -> String:
+	if _spectating:
+		return "%s's" % _names.get(side, side)
 	return "Your" if side == "player" else "Opponent's"
 
 
@@ -412,7 +458,7 @@ func _log_event(ev: Dictionary) -> void:
 	var side: String = str(ev.get("side", ""))
 	match ev.type:
 		"turn":
-			_log("── TURN %d · %s ──" % [int(ev.turn), "YOU" if side == "player" else "OPPONENT"], "")
+			_log("── TURN %d · %s ──" % [int(ev.turn), _who(side).to_upper()], "")
 		"mulligan":
 			_log("%s redrew %d card(s)" % [_who(side), int(ev.get("count", 0))], side)
 		"summon":
@@ -566,7 +612,7 @@ func _build_from_view() -> void:
 	for side in ["player", "opponent"]:
 		var s: Dictionary = duel.sides[side]
 		for c in s.hand:
-			var hv := _new_view(c, side, side == "player")
+			var hv := _new_view(c, side, side == "player" and not _spectating)
 			hand[side].append(hv)
 		_layout_hand(side)
 		for v in hand[side]:
@@ -594,7 +640,7 @@ func _build_from_view() -> void:
 		p.morale.text = str(int(s.morale))
 		p.bar.size.x = p.bar.get_parent().size.x * clampf(float(s.morale) / DuelState.START_MORALE, 0.0, 1.0)
 	_ui.turn_num.text = "TURN %d" % duel.turn
-	_ui.turn_who.text = "YOUR TURN" if duel.active == "player" else "OPPONENT'S TURN"
+	_ui.turn_who.text = _turn_text(duel.active == "player")
 	_set_phase_ui(duel.phase)
 
 
@@ -617,11 +663,19 @@ func _on_net_event(name: String, data) -> void:
 				var won: bool = data.get("result") == "win"
 				var why: String = {"concede": "CONCEDED", "disconnect": "DISCONNECTED", "afk": "WENT AWAY"}.get(str(data.reason), "LEFT")
 				_log("%s %s" % ["Your opponent" if won else "You", why.to_lower()], "opponent" if won else "player")
-				_sweep_banner(("OPPONENT " if won else "YOU ") + why, GOLD if won else RED)
+				var who := ("OPPONENT " if won else "YOU ") if not _spectating else "%s " % str(_names.opponent if won else _names.player).to_upper()
+				_sweep_banner(who + why, GOLD if won else RED)
 				await _wait(1.6)
 				_finish_match(won)
 		"mp:emote":
 			_show_emote("opponent", str(data.get("key", "")))
+		"mp:spectators":
+			if not _ui.has("watchers"):
+				_ui.watchers = _label(20, Color(1, 1, 1, 0.75), true)
+				_ui.watchers.position = Vector2(1400, 1040)
+				ui.add_child(_ui.watchers)
+			var n := int(data.get("count", 0))
+			_ui.watchers.text = "" if n == 0 else "👁 %d WATCHING" % n
 		"mp:opponent":
 			if data.get("status") == "disconnected":
 				_show_net_banner("OPPONENT DISCONNECTED — THEY HAVE %ds TO RETURN" % int(data.get("graceSecs", 45)))
@@ -638,7 +692,7 @@ func _on_away(away: bool) -> void:
 	if not away:
 		_away_warned = false
 		return
-	if side == "player" and not _away_warned:
+	if side == "player" and not _away_warned and not _spectating:
 		_away_warned = true
 		Game.alert()
 		UI.toast(overlay, "A move was played for you. Keep playing, or you'll lose for being away.", RED)
@@ -810,6 +864,8 @@ func _draw_zone_label(p: Vector2, text: String) -> void:
 # ── Event playback ───────────────────────────────────────────────────────────
 
 func _act(side: String, action: Dictionary) -> bool:
+	if _watching():
+		return false   # a replay or a friend's match
 	if _tutorial and side == "player" and not _tutorial.allow(action):
 		return false
 	if _online:
@@ -845,7 +901,7 @@ func _after_events() -> void:
 	if duel.winner != "":
 		return
 	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
-	if not _replay.is_empty():
+	if _watching():
 		_clear_highlights()
 		return
 	if _online:
@@ -1004,7 +1060,7 @@ func _ev_draw(ev: Dictionary) -> void:
 		v.position = start.lerp(v.home, k) + Vector2(0, -110.0 * sin(PI * k))
 		v.scale = Vector2.ONE * lerpf(1.0, end_scale, k)
 	, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	if side == "player":
+	if side == "player" and not _spectating:
 		get_tree().create_timer(0.12).timeout.connect(func():
 			if is_instance_valid(v):
 				v.flip(true))
@@ -1044,12 +1100,12 @@ func _ev_turn(ev: Dictionary) -> void:
 	var mine: bool = ev.side == "player"
 	_cancel_interaction()
 	_ui.turn_num.text = "TURN %d" % ev.turn
-	_ui.turn_who.text = "YOUR TURN" if mine else "OPPONENT'S TURN"
+	_ui.turn_who.text = _turn_text(mine)
 	_ui.turn_who.label_settings.font_color = BLUE if mine else RED
 	Sfx.play("turn", 1.0 if mine else 0.84)
-	if mine and _replay.is_empty():
+	if mine and not _watching():
 		Game.alert(false)
-	await _sweep_banner("YOUR TURN" if mine else "OPPONENT'S TURN", BLUE if mine else RED)
+	await _sweep_banner(_turn_text(mine), BLUE if mine else RED)
 
 
 func _ev_phase(ev: Dictionary) -> void:
@@ -1677,7 +1733,7 @@ func _ev_game_over(ev: Dictionary) -> void:
 	overlay.add_child(dim)
 	create_tween().tween_property(dim, "color:a", 0.7, 0.4)
 	var title := _label(170, GOLD if won else RED, true)
-	title.text = "VICTORY" if won else "DEFEAT"
+	title.text = ("VICTORY" if won else "DEFEAT") if not _spectating else "%s WINS" % str(_names.player if won else _names.opponent).to_upper()
 	title.size = Vector2(1920, 220)
 	title.position = Vector2(0, 330)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1720,6 +1776,10 @@ func _finish_match(won: bool) -> void:
 	if not _replay.is_empty():
 		await _wait(1.2)
 		Game.go("profile")
+		return
+	if _spectating:
+		await _wait(1.5)
+		Game.go("social")
 		return
 	if _online:
 		# The server records the match and sends the rewards (mp:over)
@@ -2586,9 +2646,9 @@ func _update_next_btn() -> void:
 	if not _ui.has("next") or duel == null:
 		return
 	var b: Button = _ui.next
-	if not _replay.is_empty():
-		b.disabled = true   # a replay only plays back
-		b.text = "REPLAY"
+	if _watching():
+		b.disabled = true   # a replay or a friend's match: only watching
+		b.text = "WATCHING" if _spectating else "REPLAY"
 		return
 	var mine := duel.active == "player" and not "player" in ai_sides
 	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
@@ -2826,8 +2886,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_L:
 		_toggle_log()
 		return
-	if not _replay.is_empty() and not event is InputEventMouseMotion:
-		return   # watching a replay: hovering shows cards, nothing else
+	if _spectating and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_toggle_menu()
+		return
+	if _watching() and not event is InputEventMouseMotion:
+		return   # watching a replay or a friend's match: hovering shows cards, nothing else
 	if event is InputEventMouseMotion:
 		if _press and not _dragging and get_global_mouse_position().distance_to(_press_pos) > 14.0:
 			_start_drag()
@@ -2898,7 +2961,7 @@ func _update_hover() -> void:
 			v.move_to(Vector2(v.home.x, HAND_LIFT_Y), HOVER_SCALE, 0.0, 0.14)
 			Sfx.play("click", 1.4, -12.0)
 	if v:
-		if v.side == "opponent" and not v.face_up:
+		if not v.face_up:
 			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid})
 		else:
 			_show_detail(v.card, v.stats(), v.statuses)
@@ -3272,7 +3335,7 @@ func _toggle_menu() -> void:
 	title.text = "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for label in ["RESUME", "SETTINGS", "CONCEDE" if _online else "LEAVE DUEL"]:
+	for label in ["RESUME", "SETTINGS", "STOP WATCHING" if _spectating else "CONCEDE" if _online else "LEAVE DUEL"]:
 		var b := Button.new()
 		b.text = label
 		b.custom_minimum_size = Vector2(320, 60)
@@ -3295,6 +3358,8 @@ func _on_menu_choice(choice: String) -> void:
 			_toggle_menu()
 			UI.dialog(overlay, "CONCEDE THE MATCH?", "Your opponent wins and the match is recorded as a loss.", [
 				["CONCEDE", func(): Net.send("mp:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
+		"STOP WATCHING":
+			_stop_watching()
 		"LEAVE DUEL":
 			UI.dialog(overlay, "LEAVE THE DUEL?", "You'll lose this match's progress and get no rewards.", [
 				["LEAVE", func(): Game.go("main_menu"), RED], ["STAY", func(): pass]])

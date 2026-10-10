@@ -151,6 +151,7 @@ const routes = {
         ...[...players.values()].filter(p => p.id !== player.id).map(p => ({
             friendship_id: `f-${p.id}`, status: 'accepted', friend_id: p.id, friend_username: p.username,
             friend_avatar: p.avatar_url, is_online: online.has(p.id), level: p.level,
+            in_match: online.has(p.id) && service.isInMatch(p.id), incoming: false,
         })),
         ...friends,
     ]],

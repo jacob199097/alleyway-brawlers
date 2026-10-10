@@ -142,7 +142,7 @@ static func normalize(v):
 
 func _on_global_event(name: String, data) -> void:
 	match name:
-		"mp:update", "mp:over", "mp:opponent", "mp:emote":
+		"mp:update", "mp:over", "mp:opponent", "mp:emote", "mp:spectators":
 			inbox.append([name, data])
 			if inbox.size() > 500:
 				inbox.pop_front()
@@ -164,7 +164,7 @@ func _on_global_event(name: String, data) -> void:
 			if get_tree().current_scene and get_tree().current_scene.has_method("on_online_start"):
 				get_tree().current_scene.on_online_start(data)
 			else:
-				if data is Dictionary and data.get("resync", false):
+				if data is Dictionary and data.get("resync", false) and not data.get("spectate", false):
 					_toast("Rejoining your match…", UI.GOLD)
 				Game.go("duel")
 		"mp:challenge":

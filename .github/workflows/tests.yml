@@ -26,6 +26,8 @@ jobs:
         run: node backend/socket/rematch.test.cjs
       - name: Replays match live play
         run: node backend/socket/replay.test.cjs
+      - name: Spectators
+        run: node backend/socket/spectate.test.cjs
 
   godot:
     runs-on: ubuntu-latest

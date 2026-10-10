@@ -17,7 +17,7 @@
  *   the winner chooses to go first or second.
  *   client → server  mp:queue, mp:cancel, mp:cpu {ranked, difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
- *                    mp:resync, mp:rematch, mp:rematch_decline
+ *                    mp:resync, mp:rematch, mp:rematch_decline, mp:spectate {targetPlayerId}, mp:unspectate
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
  *                    mp:declined {byUsername}, mp:start {matchId, you, opponent, view, resync, clock},
  *                    mp:update {matchId, events, view, clock, away}, mp:opponent {status, graceSecs?},
@@ -25,6 +25,10 @@
  *                    mp:rematch_offer {fromUsername}, mp:rematch_sent, mp:rematch_declined {message}
  *   clock = seconds the player who acts next has before a safe move is played for them;
  *   away = that player was auto-played last time (so they get AWAY_SECS).
+ *
+ *   Spectators (friends of a player, mp:spectate) get mp:start {spectate: true, ...} and every
+ *   mp:update and mp:over from that player's side, with both hands and all face-down cards hidden
+ *   (viewer "spectator" owns no seat). Players get mp:spectators {count} when it changes.
  *
  * Every player sees the match from their own side: their seat is always "player".
  * Database access is passed in (createOnlineService), so tests can run it without Postgres.
@@ -144,6 +148,7 @@ function forSeat(v, seat) {
  * @param {(playerId) => Promise} [deps.recordDailyWin]
  * @param {(args) => Promise<object>} [deps.resolveCpuMatch]  {playerId, outcome, ranked, turns} → rewards
  * @param {number} [deps.turnSecs] [deps.awaySecs]  shorter move clocks (tests)
+ * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -154,6 +159,7 @@ function createOnlineService(io, deps) {
     const rpsByPlayer = new Map();   // playerId → Scissors Paper Rock session before a match
     const rematchable = new Map();   // playerId → { opp, until } after a match against a player
     const rematchAsks = new Map();   // playerId → the opponent they offered a rematch to
+    const watching = new Map();      // spectator playerId → { match, seat } (the seat they watch from)
     const busy = (id) => byPlayer.has(id) || rpsByPlayer.has(id);
 
     const emitTo = (playerId, event, data) => sockets.get(playerId)?.emit(event, data);
@@ -272,6 +278,8 @@ function createOnlineService(io, deps) {
         matches.set(match.id, match);
         byPlayer.set(a.playerId, match);
         byPlayer.set(b.playerId, match);
+        stopWatching(a.playerId);
+        stopWatching(b.playerId);
         state.start();
         const events = state.takeEvents();
         for (const seat of ['player', 'opponent']) sendStart(match, seat, false);
@@ -318,6 +326,14 @@ function createOnlineService(io, deps) {
                 view: forSeat(viewFor(match.state, seat), seat),
                 clock, away,
             });
+        }
+        if (match.spectators?.size) {
+            // What nobody's seat owns: hands, draws and face-down cards stay hidden
+            const visible = events.map(ev => statsFilter(filterEvent(ev, 'spectator'), 'spectator'));
+            const view = viewFor(match.state, 'spectator');
+            for (const [id, seat] of match.spectators) {
+                emitTo(id, 'mp:update', { matchId: match.id, events: forSeat(visible, seat), view: forSeat(view, seat), clock, away });
+            }
         }
         if (match.state.winner) finish(match, match.state.winner, match.state.endReason || 'morale');
     }
@@ -451,9 +467,43 @@ function createOnlineService(io, deps) {
             rematchAsks.delete(p);
             rematchAsks.delete(o);
         }
+        for (const [id, seat] of match.spectators || []) {
+            watching.delete(id);
+            emitTo(id, 'mp:over', {
+                matchId: match.id, reason, spectate: true,
+                result: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
+                player_morale: match.state.sides[seat].morale,
+                opponent_morale: match.state.sides[other(seat)].morale,
+                turns: match.state.turn,
+            });
+        }
+        match.spectators?.clear();
         console.log(`[Online] Match ${match.id} over (${reason}) — winner ${winner?.profile.username ?? 'none'}`);
         match.record.end = { winner: winnerSeat || '', reason, turns: match.state.turn };
         Promise.resolve(deps.saveReplay?.(match.record)).catch(err => console.error('[Online] Replay save failed:', err.message));
+    }
+
+    // ── Spectators ──
+    function spectatorStart(match, id, seat) {
+        emitTo(id, 'mp:start', {
+            matchId: match.id, mode: match.mode, resync: true, spectate: true,
+            you: profileOf(match.seats[seat]), opponent: profileOf(match.seats[other(seat)]),
+            view: forSeat(viewFor(match.state, 'spectator'), seat),
+            clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
+        });
+    }
+
+    function tellWatchers(match) {
+        const count = match.spectators?.size || 0;
+        for (const seat of ['player', 'opponent']) emitTo(match.seats[seat].playerId, 'mp:spectators', { matchId: match.id, count });
+    }
+
+    function stopWatching(id) {
+        const w = watching.get(id);
+        if (!w) return;
+        watching.delete(id);
+        w.match.spectators?.delete(id);
+        if (!w.match.over) tellWatchers(w.match);
     }
 
     /** `playerId` won't rematch: their opponent is told, and neither can ask any more. */
@@ -589,6 +639,35 @@ function createOnlineService(io, deps) {
         // Declining an offer, or leaving the results screen
         socket.on('mp:rematch_decline', () => declineRematch(me, 'Your opponent left.'));
 
+        // Watch a friend's match (players are told how many are watching)
+        socket.on('mp:spectate', async ({ targetPlayerId } = {}) => {
+            if (typeof targetPlayerId !== 'string' || targetPlayerId === me) return;
+            if (busy(me)) return socket.emit('mp:error', { message: "You can't watch while you're in a match." });
+            const match = byPlayer.get(targetPlayerId);
+            if ((!match || match.over) && rpsByPlayer.has(targetPlayerId)) {
+                return socket.emit('mp:error', { message: 'Their match is about to start. Try again in a moment.' });
+            }
+            if (!match || match.over) return socket.emit('mp:error', { message: "They aren't in a match right now." });
+            try {
+                if (deps.areFriends && !(await deps.areFriends(me, targetPlayerId))) {
+                    return socket.emit('mp:error', { message: 'You can only watch your friends.' });
+                }
+            } catch (err) {
+                return socket.emit('mp:error', { message: 'Could not check your friends list.' });
+            }
+            if (match.over) return socket.emit('mp:error', { message: 'That match just ended.' });
+            stopWatching(me);
+            leaveQueue(me);
+            const seat = match.seats.player.playerId === targetPlayerId ? 'player' : 'opponent';
+            match.spectators ||= new Map();
+            match.spectators.set(me, seat);
+            watching.set(me, { match, seat });
+            spectatorStart(match, me, seat);
+            tellWatchers(match);
+        });
+
+        socket.on('mp:unspectate', () => stopWatching(me));
+
         socket.on('mp:action', ({ matchId, action } = {}) => act(me, matchId, action));
 
         socket.on('mp:rps_pick', ({ rpsId, pick } = {}) => rpsPick(me, rpsId, pick));
@@ -606,6 +685,8 @@ function createOnlineService(io, deps) {
 
         // A client (re)connecting mid-match asks for the board again
         socket.on('mp:resync', () => {
+            const w = watching.get(me);
+            if (w && !w.match.over) return spectatorStart(w.match, me, w.seat);
             const match = byPlayer.get(me);
             if (!match) return socket.emit('mp:none', {});
             const seat = match.seats.player.playerId === me ? 'player' : 'opponent';
@@ -622,6 +703,7 @@ function createOnlineService(io, deps) {
             if (sockets.get(me) !== socket) return;   // an older connection closing
             sockets.delete(me);
             leaveQueue(me);
+            stopWatching(me);
             declineRematch(me, 'Your opponent has left.');
             const rps = rpsByPlayer.get(me);
             if (rps) rpsCancel(rps, me);

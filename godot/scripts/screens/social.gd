@@ -94,6 +94,12 @@ func _row(f: Dictionary) -> Control:
 				UI.toast(self, "Challenge sent to %s — waiting for them to accept." % f.friend_username, UI.GOLD)
 			else:
 				UI.toast(self, "Not connected to the server.", UI.RED), Vector2(220, 56), UI.RED)
+		if in_match:
+			var watch := UI.button("👁 WATCH", func():
+				if not Net.send("mp:spectate", {"targetPlayerId": f.friend_id}):
+					UI.toast(self, "Not connected to the server.", UI.RED), Vector2(180, 56), UI.GOLD)
+			watch.tooltip_text = "Watch %s's match live" % f.friend_username
+			row.add_child(watch)
 		vs.disabled = not online or in_match
 		vs.tooltip_text = "%s is offline" % f.friend_username if not online else "%s is in a match" % f.friend_username if in_match else ""
 		row.add_child(vs)

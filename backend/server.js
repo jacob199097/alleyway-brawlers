@@ -105,6 +105,9 @@ const online = createOnlineService(io, {
     incrementDailyQuest,
     recordDailyWin,
     saveReplay,
+    areFriends: async (a, b) => (await pool.query(
+        `SELECT 1 FROM friendships WHERE status = 'accepted'
+         AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0,
 });
 app.locals.online = online;   // routes/social.js: which friends are in a match
 
