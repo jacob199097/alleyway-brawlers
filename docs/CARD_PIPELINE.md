@@ -98,14 +98,14 @@ server, restarts the backend and shows the log if that fails. Add `--patch` or `
 latest patch or full build into `downloads/` first, `--sync-cards` after importing Forge cards, or
 `--logs` just to read the backend's log. It logs in with an SSH key, set up once:
 
-1. On the PC (PowerShell), make a key just for the server and an `alleyway` shortcut:
+1. On the PC (Command Prompt), make a key just for the server and an `alleyway` shortcut:
 
-       ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\alleyway_server -N '""' -C "alleyway deploy"
-       Add-Content $env:USERPROFILE\.ssh\config "`nHost alleyway`n    HostName 192.168.0.200`n    User jacob199097`n    IdentityFile ~/.ssh/alleyway_server`n    IdentitiesOnly yes"
+       ssh-keygen -t ed25519 -f %USERPROFILE%\.ssh\alleyway_server -N "" -C "alleyway deploy"
+       (echo.& echo Host alleyway& echo     HostName 192.168.0.200& echo     User jacob199097& echo     IdentityFile ~/.ssh/alleyway_server& echo     IdentitiesOnly yes) >> %USERPROFILE%\.ssh\config
 
 2. Put the key on the server (asks for the server password one last time):
 
-       type $env:USERPROFILE\.ssh\alleyway_server.pub | ssh jacob199097@192.168.0.200 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+       type %USERPROFILE%\.ssh\alleyway_server.pub | ssh jacob199097@192.168.0.200 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 
 3. On the server, let that user restart the backend without a password (and nothing else):
 
