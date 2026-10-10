@@ -22,6 +22,7 @@ func _ready() -> void:
 	ver.position = Vector2(20, 1050)
 	add_child(ver)
 	Game.play_menu_music()
+	Patcher.boot_ok()   # the game (and any patch) started fine
 	await get_tree().process_frame
 	if "--autoplay" in OS.get_cmdline_user_args():
 		Game.play_offline()
@@ -47,6 +48,10 @@ func _check_content() -> bool:
 	if probe.reachable:
 		var v: Dictionary = probe.version
 		var mine := ContentSync.game_version()
+		# A small in-place update when the server has one for this build (scripts/patcher.gd)
+		var p = v.get("patch")
+		if p is Dictionary and _can_patch(p, mine) and await _apply_patch(p):
+			return false   # restarting into the new version
 		if ContentSync.compare_versions(mine, str(v.get("minimum", "0"))) < 0:
 			return await _update_required(v, mine)
 		if ContentSync.compare_versions(mine, str(v.get("latest", "0"))) < 0:
@@ -107,12 +112,67 @@ func _update_available(v: Dictionary, mine: String) -> void:
 		OS.shell_open(url)
 
 
+# ── In-place update (patch) ──────────────────────────────────────────────────
+
+func _can_patch(p: Dictionary, mine: String) -> bool:
+	var version := str(p.get("version", ""))
+	return not OS.has_feature("editor") and ContentSync.compare_versions(mine, version) < 0 \
+		and ContentSync.compare_versions(Patcher.builtin, str(p.get("base", ""))) >= 0 \
+		and not Patcher.failed(version) and str(p.get("path", "")) != ""
+
+
+## Download the patch, check it, install it and restart. False if it couldn't be done
+## (the normal "download the new version" offer follows).
+func _apply_patch(p: Dictionary) -> bool:
+	var version := str(p.version)
+	var size := int(p.get("size", 0))
+	_status.visible = false
+	_build_panel("UPDATING TO v%s" % version, "Downloading a small update. The game restarts when it's done.", "0%")
+	var http := HTTPRequest.new()
+	http.timeout = 120.0
+	add_child(http)
+	var err := http.request(Api.base_url() + str(p.path))
+	var result: Array = []
+	http.request_completed.connect(func(r, code, _h, body): result.assign([r, code, body]))
+	while err == OK and result.is_empty():
+		var got := http.get_downloaded_bytes()
+		var total := maxi(1, size if size > 0 else http.get_body_size())
+		_bar_fill.size.x = 520.0 * clampf(float(got) / total, 0.0, 1.0)
+		_bar_label.text = "%d%%  ·  %.1f / %.1f MB" % [int(100.0 * got / total), got / 1048576.0, total / 1048576.0]
+		await get_tree().process_frame
+	http.queue_free()
+	var ok: bool = err == OK and result[0] == HTTPRequest.RESULT_SUCCESS and result[1] == 200
+	if ok:
+		var bytes: PackedByteArray = result[2]
+		var hash := HashingContext.new()
+		hash.start(HashingContext.HASH_SHA256)
+		hash.update(bytes)
+		ok = hash.finish().hex_encode() == str(p.get("sha256", "")) and Patcher.install(version, str(p.base), bytes)
+	if not ok:
+		_panel.queue_free()
+		_panel = null
+		_status.visible = true
+		UI.toast(self, "The update couldn't be downloaded. Try again later.", UI.RED)
+		return false
+	_bar_fill.size.x = 520.0
+	_bar_label.text = "RESTARTING…"
+	Sfx.play("promote", 1.2, -6.0)
+	await get_tree().create_timer(0.8).timeout
+	Patcher.restart()
+	return true
+
+
 # ── Download screen ──────────────────────────────────────────────────────────
 
 func _on_started(total: int) -> void:
 	if total <= 0:
 		return
 	_status.visible = false
+	_build_panel("NEW CARDS ARRIVING", "Getting the latest cards from the server…", "0 / %d" % total)
+
+
+## The download panel: a card that flips as cards land, a heading, a line of text and a bar.
+func _build_panel(heading: String, text: String, bar_text: String) -> void:
 	_panel = UI.panel(UI.GOLD, Color(0.03, 0.03, 0.09, 0.95))
 	_panel.custom_minimum_size = Vector2(760, 0)
 	var row := HBoxContainer.new()
@@ -129,8 +189,8 @@ func _on_started(total: int) -> void:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(col)
-	col.add_child(UI.label("NEW CARDS ARRIVING", 34, UI.GOLD, true))
-	_preview_name = UI.label("Getting the latest cards from the server…", 20, UI.MUTED)
+	col.add_child(UI.label(heading, 34, UI.GOLD, true))
+	_preview_name = UI.label(text, 20, UI.MUTED)
 	col.add_child(_preview_name)
 	var track := ColorRect.new()
 	track.color = Color(1, 1, 1, 0.1)
@@ -140,7 +200,7 @@ func _on_started(total: int) -> void:
 	_bar_fill.color = UI.GOLD
 	_bar_fill.size = Vector2(0, 18)
 	track.add_child(_bar_fill)
-	_bar_label = UI.label("0 / %d" % total, 22, Color.WHITE, true)
+	_bar_label = UI.label(bar_text, 22, Color.WHITE, true)
 	col.add_child(_bar_label)
 	add_child(_panel)
 	_panel.reset_size()

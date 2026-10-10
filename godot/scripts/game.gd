@@ -40,6 +40,8 @@ var settings := DEFAULT_SETTINGS.duplicate()
 var player := {}            # /api/profile/me
 var offline := false        # no server: CPU duels with the starter deck only, nothing is saved
 var last_email := ""
+## Developer option: run against another server without saving it (launch with -- --server=<url>)
+var server_override := ""
 var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var match_result := {}      # duel → post-match
 
@@ -78,6 +80,9 @@ func _ready() -> void:
 	layer.add_child(_fps)
 
 	_load_settings()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--server="):
+			server_override = a.trim_prefix("--server=")
 	apply_settings()
 	var session := ConfigFile.new()
 	if session.load(SESSION_PATH) == OK:

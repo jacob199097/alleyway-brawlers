@@ -16,6 +16,8 @@ var token := ""
 
 
 func base_url() -> String:
+	if Game.server_override != "":
+		return Game.server_override.strip_edges().trim_suffix("/")
 	return str(Game.settings.get("server_url", DEFAULT_URL)).strip_edges().trim_suffix("/")
 
 

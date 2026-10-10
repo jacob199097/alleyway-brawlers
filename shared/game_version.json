@@ -1,5 +1,6 @@
 {
-    "latest": "0.5.0",
-    "minimum": "0.5.0",
-    "notes": "latest: the newest Windows build. minimum: older builds must update before playing online. Raise both when you ship a build with code changes; card-only changes need neither (the game downloads new cards itself)."
+    "latest": "0.6.0",
+    "minimum": "0.6.0",
+    "patchBase": "0.6.0",
+    "notes": "latest: the newest Windows build. minimum: older builds must update before playing online. Raise both when you ship a build with code changes; card-only changes need neither (the game downloads new cards itself). patchBase: the oldest full build a patch (downloads/AlleywayBrawlers-<latest>-patch.pck) can update in place; raise it with a full build when project settings or autoloads change."
 }

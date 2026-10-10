@@ -61,15 +61,34 @@ offers its pack once the clan has at least 3 cards. Pack art comes from
 the server (`/api/content/manifest`) and downloads only new or changed card data and images,
 with a download screen. No new build is needed for card changes; only code changes need one.
 
-## Game versions
-`shared/game_version.json` holds `latest` (the newest Windows build) and `minimum` (older builds
-must update before playing online). When you ship a build with code changes, raise the version in
-`godot/project.godot` (`config/version`) and in that file. The server hosts the builds:
-copy the zip from `builds/` into the `downloads/` folder of the server's checkout (not in git), and
-`https://<server>/download` serves the newest one. The game links there when an update is available
-or required (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link somewhere else instead). From the PC:
+## Game versions and updates
+`shared/game_version.json` holds `latest` (the newest version), `minimum` (older versions must update
+before playing online) and `patchBase` (the oldest full build that can update itself in place).
+Card changes need none of this: the game downloads new cards by itself.
+
+**Small update (code and scenes only), the usual case.** Players get it inside the game: at start-up it
+downloads the patch (a few hundred KB), checks it and restarts into it.
+
+1. Raise `config/version` in `godot/project.godot` and `latest` in `shared/game_version.json` to the
+   same number. Leave `minimum` and `patchBase` alone, unless old versions must stop playing online.
+2. `node tools/make_patch.mjs <Godot console exe>` writes `builds/AlleywayBrawlers-<version>-patch.pck`.
+3. Commit and push; copy the patch into `downloads/` on the server, then pull and restart there:
+
+       scp builds/AlleywayBrawlers-<version>-patch.pck jacob@192.168.0.200:/opt/Turf_War/downloads/
+
+A patch can't change project settings (`project.godot`), the autoload list, add `class_name` scripts
+(use `preload` instead) or bring new art and audio from `assets/`. Those need a full build.
+
+**Full build.** Raise the version in both files and set `minimum` and `patchBase` to it. Export the
+"Windows Desktop" preset, zip `builds/windows` as `builds/AlleywayBrawlers-<version>-windows.zip` and
+copy it into `downloads/` on the server. `https://<server>/download` serves the newest zip, and the
+game links there when it can't patch itself (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link
+somewhere else).
 
     scp builds/AlleywayBrawlers-<version>-windows.zip jacob@192.168.0.200:/opt/Turf_War/downloads/
+
+If a patch ever stops the game from starting, the game notices on the next start, runs the full
+build's own code instead and doesn't download that patch again.
 
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and

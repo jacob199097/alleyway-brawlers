@@ -11,13 +11,14 @@ config_version=5
 [application]
 
 config/name="Alleyway Brawlers"
-config/version="0.5.0"
+config/version="0.6.0"
 config/description="Godot desktop client: menus and duel (see godot/README.md)."
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
+Patcher="*res://scripts/patcher.gd"
 Sfx="*res://scripts/sfx.gd"
 Api="*res://scripts/api.gd"
 Game="*res://scripts/game.gd"

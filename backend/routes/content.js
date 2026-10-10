@@ -8,7 +8,7 @@
  * changed cards reach players without a new build. It also tells the client which game version
  * is current (shared/game_version.json) and where to download it (CLIENT_DOWNLOAD_URL in .env).
  *
- *   GET /api/content/manifest        { contentVersion, client: {latest, minimum, downloadUrl},
+ *   GET /api/content/manifest        { contentVersion, client: {latest, minimum, downloadUrl, patch},
  *                                      cards: {hash, size}, art: { <id>: {hash, size} } }
  *   GET /api/content/cards.json      the card catalogue (shared/cards.js + Card Forge cards)
  *   GET /api/content/art/<id>.png    a card image (assets/cards)
@@ -21,6 +21,8 @@ const express = require('express');
 const fs      = require('fs');
 const path    = require('path');
 const crypto  = require('crypto');
+
+const { patchInfo } = require('./download');
 
 const router = express.Router();
 const ART_DIR      = path.join(__dirname, '../../assets/cards');
@@ -66,9 +68,13 @@ function versions() {
     try {
         v = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
     } catch { /* keep defaults */ }
+    const latest = String(v.latest || '0.0.0');
+    const patch = v.patchBase ? patchInfo(latest) : null;
     return {
-        latest: String(v.latest || '0.0.0'),
+        latest,
         minimum: String(v.minimum || '0.0.0'),
+        // An in-place update to the latest version for builds at patchBase or newer (godot/scripts/patcher.gd)
+        patch: patch ? { version: latest, base: String(v.patchBase), ...patch } : null,
         // The server hosts the builds itself (routes/download.js) unless .env points elsewhere
         downloadUrl: process.env.CLIENT_DOWNLOAD_URL
             || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download` : ''),
