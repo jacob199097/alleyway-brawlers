@@ -30,7 +30,7 @@ export function getCard(id) {
     return CARD_CATALOG[id] ? structuredClone(CARD_CATALOG[id]) : {};
 }
 
-/** The form a card promotes into: promotesTo, or the next `_lvN` card (Hunter, Viper). */
+/** The form a card promotes into: promotesTo, or the next `_lvN` card (Hunter). */
 export function nextForm(id) {
     const card = CARD_CATALOG[id];
     if (card && typeof card.promotesTo === 'string') return card.promotesTo;
@@ -475,24 +475,8 @@ export class DuelState {
             this.sides[side].brutus_bonus = 0;
             this._effect(side, att, "Brutus's momentum: +300 ATK", from);
         }
-        this._atkLaneMove(ctx);
-        return true;
-    }
-
-    _atkLaneMove(ctx) {
-        const att = ctx.att;
-        if (['viper_lv2', 'viper_lv3'].includes(att.effectKey)) {
-            const lanes = this._freeAdjacent(ctx.side, ctx.from);
-            if (lanes.length) {
-                this._askLane(ctx.side, att, ctx.from, lanes, `${att.name}: move to an adjacent lane before the brawl?`,
-                    (to) => {
-                        ctx.from = to;
-                        this._atkRedirect(ctx);
-                    });
-                return;
-            }
-        }
         this._atkRedirect(ctx);
+        return true;
     }
 
     _atkRedirect(ctx) {
@@ -777,14 +761,10 @@ export class DuelState {
         if (wasDowned) {
             if (['hunter_lv1', 'hunter_lv2'].includes(key)) {
                 this._promote(side, slot, att.name);
-            } else if (['hunter_lv3', 'viper_lv3'].includes(key)) {
+            } else if (key === 'hunter_lv3') {
                 att.has_attacked = false;
                 this._effect(side, att, `${att.name} may attack again this turn`, slot);
             }
-        }
-        if (key === 'viper_lv3') {
-            const lanes = this._freeAdjacent(side, slot);
-            if (lanes.length) this._askLane(side, att, slot, lanes, 'Viper Lv.3: move to an adjacent lane after the KO?', () => {});
         }
     }
 
@@ -793,10 +773,6 @@ export class DuelState {
             case 'brutus_enter':
                 this.sides[side].brutus_bonus = 300;
                 this._effect(side, att, 'Brutus: your next LIONS attacker gains +300 ATK', slot);
-                break;
-            case 'viper_lv1':
-            case 'viper_lv2':
-                this._promote(side, slot, att.name);
                 break;
             case 'debt_collector': {
                 const foe = other(side);
@@ -1513,26 +1489,6 @@ export class DuelState {
         });
     }
 
-    _askLane(side, c, from, lanes, prompt, then) {
-        const options = [{ id: 'stay', label: 'STAY' }];
-        for (const to of lanes) {
-            options.push({ id: String(to), label: `MOVE ${(to < from) === (side === 'player') ? 'LEFT' : 'RIGHT'}`, side, slot: to });
-        }
-        if (this._laneValue(side, c, lanes[0]) > this._laneValue(side, c, from)) {
-            options.unshift(options.splice(1, 1)[0]);
-        }
-        this._ask(side, 'lane', prompt, c, options, (choice) => {
-            let at = from;
-            if (choice !== 'stay' && this.cardAt(side, from) === c && this.cardAt(side, toInt(choice)) == null) {
-                at = toInt(choice);
-                this.sides[side].field[from] = null;
-                this.sides[side].field[at] = c;
-                this._emit('move', { side, from, to: at, card: clone(c) });
-            }
-            then(at);
-        });
-    }
-
     // Opening hand: keep it, or shuffle it back and draw the same number again (once).
     // The suggested choice comes first: redraw when nothing in hand is cheap enough to play early.
     _askMulligan(side, then) {
@@ -1667,23 +1623,6 @@ export class DuelState {
                 && !c.downed && !c.face_down && (c.redirect_turn ?? 0) !== this.turn) return e;
         }
         return null;
-    }
-
-    _freeAdjacent(side, slot) {
-        return [slot - 1, slot + 1].filter(adj => FRONT.includes(adj) && this.cardAt(side, adj) == null);
-    }
-
-    _laneValue(side, c, slot) {
-        let v = 0;
-        for (const adj of [slot - 1, slot + 1]) {
-            if (!FRONT.includes(adj)) continue;
-            const n = this.cardAt(side, adj);
-            if (n != null && n !== c) {
-                v += isLion(n) ? 1 : 0;
-                v += n.effectKey === 'bulwark' ? 2 : 0;
-            }
-        }
-        return v;
     }
 
     _adjacentLion(side, slot) {

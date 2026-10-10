@@ -20,7 +20,7 @@ CREATE TYPE rank_tier   AS ENUM (
 );
 CREATE TYPE match_result AS ENUM ('win', 'loss', 'draw');
 CREATE TYPE friend_status AS ENUM ('pending', 'accepted', 'blocked');
-CREATE TYPE pack_type    AS ENUM ('iron_saints', 'neon_serpents', 'dust_devils', 'lion_pride', 'viper_clan');
+CREATE TYPE pack_type    AS ENUM ('lion_pride');   -- Card Forge clans are added by backend/scripts/sync_cards.mjs
 
 -- ============================================================
 -- PLAYERS
@@ -61,7 +61,7 @@ CREATE TABLE players (
     last_login      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_online       BOOLEAN     NOT NULL DEFAULT FALSE,
     socket_id       TEXT,                                 -- current socket.io connection
-    chosen_clan     TEXT,                                 -- 'lion_pride' | 'viper_clan', set once at onboarding
+    chosen_clan     TEXT,                                 -- 'lion_pride', set once at onboarding
 
     -- Email verification + password reset
     email_verified      BOOLEAN     NOT NULL DEFAULT FALSE,

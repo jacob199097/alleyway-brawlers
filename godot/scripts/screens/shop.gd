@@ -6,7 +6,6 @@ extends Screen
 ## shows up with its name, and art from assets/<id>_booster.png once that file exists.
 const PACKS := [
 	{"id": "lion_pride", "label": "Lion Clan", "image": "Lion_booster.png", "color": Color("ffd166")},
-	{"id": "viper_clan", "label": "Viper Clan", "image": "Viper_booster.png", "color": Color("a5d6a7")},
 ]
 
 var _balance: Label

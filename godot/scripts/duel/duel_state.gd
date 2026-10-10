@@ -503,22 +503,8 @@ func _attack(side: String, from: int, target: int) -> bool:
 		ctx.bonus += sides[side].brutus_bonus
 		sides[side].brutus_bonus = 0
 		_effect(side, att, "Brutus's momentum: +300 ATK", from)
-	_atk_lane_move(ctx)
-	return true
-
-
-## Viper Lv.2/3: may slide to an adjacent empty lane before the brawl.
-func _atk_lane_move(ctx: Dictionary) -> void:
-	var att: Dictionary = ctx.att
-	if att.get("effectKey") in ["viper_lv2", "viper_lv3"]:
-		var lanes := _free_adjacent(ctx.side, ctx.from)
-		if not lanes.is_empty():
-			_ask_lane(ctx.side, att, ctx.from, lanes, "%s: move to an adjacent lane before the brawl?" % att.name,
-				func(to: int):
-					ctx.from = to
-					_atk_redirect(ctx))
-			return
 	_atk_redirect(ctx)
+	return true
 
 
 ## Block Enforcer: may take the hit for an allied LIONS character, once per turn.
@@ -794,13 +780,9 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 	if was_downed:
 		if key in ["hunter_lv1", "hunter_lv2"]:
 			_promote(side, slot, att.name)
-		elif key in ["hunter_lv3", "viper_lv3"]:
+		elif key == "hunter_lv3":
 			att.has_attacked = false
 			_effect(side, att, "%s may attack again this turn" % att.name, slot)
-	if key == "viper_lv3":
-		var lanes := _free_adjacent(side, slot)
-		if not lanes.is_empty():
-			_ask_lane(side, att, slot, lanes, "Viper Lv.3: move to an adjacent lane after the KO?", func(_to: int): pass)
 
 
 func _on_down(side: String, slot: int, att: Dictionary) -> void:
@@ -809,8 +791,6 @@ func _on_down(side: String, slot: int, att: Dictionary) -> void:
 		"brutus_enter":
 			sides[side].brutus_bonus = 300
 			_effect(side, att, "Brutus: your next LIONS attacker gains +300 ATK", slot)
-		"viper_lv1", "viper_lv2":
-			_promote(side, slot, att.name)
 		"debt_collector":
 			var foe := other(side)
 			if not sides[foe].hand.is_empty():
@@ -1573,24 +1553,6 @@ func _ask_target(side: String, key: String, prompt: String, source: Dictionary, 
 				cb.call(e))
 
 
-## Move a card to one of `lanes` (adjacent empty front slots), or stay.
-func _ask_lane(side: String, c: Dictionary, from: int, lanes: Array, prompt: String, then: Callable) -> void:
-	var options: Array = [{"id": "stay", "label": "STAY"}]
-	for to in lanes:
-		options.append({"id": str(to), "label": "MOVE %s" % ("LEFT" if (to < from) == (side == "player") else "RIGHT"),
-			"side": side, "slot": to})
-	if _lane_value(side, c, lanes[0]) > _lane_value(side, c, from):
-		options.push_front(options.pop_at(1))
-	_ask(side, "lane", prompt, c, options, func(choice: String):
-		var at := from
-		if choice != "stay" and card_at(side, from) == c and card_at(side, int(choice)) == null:
-			at = int(choice)
-			sides[side].field[from] = null
-			sides[side].field[at] = c
-			_emit("move", {"side": side, "from": from, "to": at, "card": c.duplicate(true)})
-		then.call(at))
-
-
 ## Opening hand: keep it, or shuffle it back and draw the same number again (once).
 ## The suggested choice comes first: redraw when nothing in hand is cheap enough to play early.
 func _ask_mulligan(side: String, then: Callable) -> void:
@@ -1758,26 +1720,6 @@ static func _enforcer_worth_it(att: Dictionary, target: Dictionary, be: Dictiona
 	var target_holds: bool = (target.defense if target.downed or target.position == "def" else target.attack) >= att.attack
 	var be_holds: bool = (be.defense if be.position == "def" else be.attack) >= att.attack
 	return target.downed or (be_holds and not target_holds)
-
-
-func _free_adjacent(side: String, slot: int) -> Array:
-	var out: Array = []
-	for adj in [slot - 1, slot + 1]:
-		if adj in FRONT and card_at(side, adj) == null:
-			out.append(adj)
-	return out
-
-
-## How much a lane helps a card: neighbours that buff it (LIONS for Pride Runner, Bulwark).
-func _lane_value(side: String, c: Dictionary, slot: int) -> int:
-	var v := 0
-	for adj in [slot - 1, slot + 1]:
-		if adj in FRONT:
-			var n = card_at(side, adj)
-			if n != null and n != c:
-				v += 1 if is_lion(n) else 0
-				v += 2 if n.get("effectKey") == "bulwark" else 0
-	return v
 
 
 func _adjacent_lion(side: String, slot: int) -> bool:

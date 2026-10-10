@@ -122,10 +122,10 @@ func _try_attack() -> bool:
 			duel_screen._cancel_interaction()
 			picked = int(key.split(":")[1])
 			acted = duel_screen._act("player", {"kind": "attack", "from": slot, "target": picked})
-		# The rules must accept the attack. (Checking has_attacked isn't enough: Viper Lv.3 may
-		# attack again after KOing a Downed character, which clears it.)
+		# The rules must accept the attack. (Checking has_attacked isn't enough: Hunter Lv.3 may
+		# attack again after a KO.)
 		var c = duel_screen.duel.sides.player.field[slot]
-		_check(acted and (c == null or c.has_attacked or c.get("effectKey") == "viper_lv3"),
+		_check(acted and (c == null or c.has_attacked or c.get("effectKey") == "hunter_lv3"),
 			"attack resolved (slot %d -> %d, acted %s, targets %s, card %s)" % [slot, picked, acted, targets, duel_screen.duel.sides.player.field[slot]])
 		attacks += 1
 		return true

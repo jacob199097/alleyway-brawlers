@@ -17,15 +17,17 @@ function getStripe() {
     return _stripe;
 }
 
-// A pack for every clan with at least 3 collectable cards (new Card Forge clans appear here
-// automatically after backend/scripts/sync_cards.mjs). Cached for a minute.
-let _packs = { at: 0, list: ['lion_pride', 'viper_clan'] };
+// A pack for every clan with at least 3 collectable cards that are in the game (in
+// shared/cards.js, which includes the Card Forge cards); retired cards left in the database
+// don't count. New Forge clans appear after backend/scripts/sync_cards.mjs. Cached for a minute.
+let _packs = { at: 0, list: ['lion_pride'] };
 async function validPacks() {
     if (Date.now() - _packs.at < 60_000) return _packs.list;
     try {
+        const { gameCardIds } = require('../economy/packOpener');
         const { rows } = await pool.query(
-            `SELECT clan::text AS clan FROM cards WHERE card_type <> 'leader'
-             GROUP BY clan HAVING COUNT(*) >= 3 ORDER BY MIN(created_at), clan`);
+            `SELECT clan::text AS clan FROM cards WHERE card_type <> 'leader' AND art_url = ANY($1)
+             GROUP BY clan HAVING COUNT(*) >= 3 ORDER BY MIN(created_at), clan`, [await gameCardIds()]);
         _packs = { at: Date.now(), list: rows.map(r => r.clan) };
     } catch (err) {
         console.error('[Shop] Could not list packs:', err.message);

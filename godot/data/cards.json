@@ -2,7 +2,7 @@
  "eric_lv1": {
   "id": "eric_lv1",
   "name": "Eric",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 1,
   "attack": 700,
@@ -21,7 +21,7 @@
  "eric_lv2": {
   "id": "eric_lv2",
   "name": "Eric Lv.2",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 5,
   "attack": 1600,
@@ -40,7 +40,7 @@
  "eric_lv3": {
   "id": "eric_lv3",
   "name": "Eric Lv.3",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 8,
   "attack": 2600,
@@ -59,7 +59,7 @@
  "maya_lv1": {
   "id": "maya_lv1",
   "name": "Maya",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 2,
   "attack": 900,
@@ -80,7 +80,7 @@
  "maya_lv2": {
   "id": "maya_lv2",
   "name": "Maya Lv.2",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 5,
   "attack": 2000,
@@ -101,7 +101,7 @@
  "maya_lv3": {
   "id": "maya_lv3",
   "name": "Maya Lv.3",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 9,
   "attack": 2900,
@@ -121,7 +121,7 @@
  "pride_runner": {
   "id": "pride_runner",
   "name": "Pride Runner",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 2,
   "attack": 1000,
@@ -140,7 +140,7 @@
  "lion_grunt": {
   "id": "lion_grunt",
   "name": "Lion Grunt",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 1,
   "attack": 700,
@@ -159,7 +159,7 @@
  "block_enforcer": {
   "id": "block_enforcer",
   "name": "Block Enforcer",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 3,
   "attack": 1300,
@@ -178,7 +178,7 @@
  "goldfang": {
   "id": "goldfang",
   "name": "Goldfang",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 4,
   "attack": 1700,
@@ -197,7 +197,7 @@
  "pride_lieutenant": {
   "id": "pride_lieutenant",
   "name": "Pride Lieutenant",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 5,
   "attack": 2300,
@@ -216,7 +216,7 @@
  "pride_mentor": {
   "id": "pride_mentor",
   "name": "Pride Mentor",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 5,
   "attack": 2100,
@@ -235,7 +235,7 @@
  "brutus": {
   "id": "brutus",
   "name": "Brutus",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 8,
   "attack": 2800,
@@ -254,7 +254,7 @@
  "hunter_lv1": {
   "id": "hunter_lv1",
   "name": "Hunter",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 1,
   "attack": 800,
@@ -273,7 +273,7 @@
  "hunter_lv2": {
   "id": "hunter_lv2",
   "name": "Hunter Lv.2",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 5,
   "attack": 1900,
@@ -292,7 +292,7 @@
  "hunter_lv3": {
   "id": "hunter_lv3",
   "name": "Hunter Lv.3",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 9,
   "attack": 2700,
@@ -308,67 +308,10 @@
   "flavourText": "The hunt never ends. Only the hunted changes.",
   "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: It may attack again this turn."
  },
- "viper_lv1": {
-  "id": "viper_lv1",
-  "name": "Viper",
-  "clan": "iron_saints",
-  "cardType": "gang_member",
-  "authority": 2,
-  "attack": 1100,
-  "defense": 600,
-  "tributeCost": 0,
-  "rarity": 1,
-  "level": 1,
-  "subtype": "striver",
-  "clanTag": "lion",
-  "effectKey": "viper_lv1",
-  "promotesTo": null,
-  "art_url": "viper_lv1",
-  "flavourText": "Fast, precise, silent. They never see me twice.",
-  "effectText": "When this card Downs a character: PROMOTE this card."
- },
- "viper_lv2": {
-  "id": "viper_lv2",
-  "name": "Viper Lv.2",
-  "clan": "iron_saints",
-  "cardType": "gang_member",
-  "authority": 5,
-  "attack": 2000,
-  "defense": 1200,
-  "tributeCost": 0,
-  "rarity": 1,
-  "level": 2,
-  "subtype": "striver",
-  "clanTag": "lion",
-  "effectKey": "viper_lv2",
-  "promotesTo": null,
-  "art_url": "viper_lv2",
-  "flavourText": "Fast, precise, silent. They never see me twice.",
-  "effectText": "When this card attacks: You may move it to an adjacent lane before the Brawl.\nWhen this card Downs a character: PROMOTE this card."
- },
- "viper_lv3": {
-  "id": "viper_lv3",
-  "name": "Viper Lv.3",
-  "clan": "iron_saints",
-  "cardType": "gang_member",
-  "authority": 9,
-  "attack": 2600,
-  "defense": 1800,
-  "tributeCost": 0,
-  "rarity": 1,
-  "level": 3,
-  "subtype": "striver",
-  "clanTag": "lion",
-  "effectKey": "viper_lv3",
-  "promotesTo": null,
-  "art_url": "viper_lv3",
-  "flavourText": "Fast, precise, silent. They never see me twice.",
-  "effectText": "When this card attacks: You may move it to an adjacent lane before the Brawl.\nWhen this card KOs a character: You may move this card to an adjacent lane.\nWhen this card KOs a Downed character: It may attack again this turn."
- },
  "debt_collector": {
   "id": "debt_collector",
   "name": "Debt Collector",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 3,
   "attack": 1400,
@@ -387,7 +330,7 @@
  "bulwark": {
   "id": "bulwark",
   "name": "Bulwark",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 6,
   "attack": 2300,
@@ -406,7 +349,7 @@
  "mauler": {
   "id": "mauler",
   "name": "Mauler",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 6,
   "attack": 2300,
@@ -425,7 +368,7 @@
  "kingpin": {
   "id": "kingpin",
   "name": "Kingpin",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 4,
   "attack": 1800,
@@ -444,7 +387,7 @@
  "sovereign": {
   "id": "sovereign",
   "name": "Sovereign",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "gang_member",
   "authority": 10,
   "attack": 2900,
@@ -463,7 +406,7 @@
  "king_roan": {
   "id": "king_roan",
   "name": "King Roan",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "leader",
   "authority": 10,
   "attack": 3000,
@@ -486,7 +429,7 @@
  "lion_ambush": {
   "id": "lion_ambush",
   "name": "Lion's Ambush",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "ambush",
   "authority": 2,
   "tributeCost": 0,
@@ -499,7 +442,7 @@
  "no_witnesses": {
   "id": "no_witnesses",
   "name": "No Witnesses",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "ambush",
   "authority": 3,
   "tributeCost": 0,
@@ -512,7 +455,7 @@
  "kings_test": {
   "id": "kings_test",
   "name": "King's Test",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "ambush",
   "authority": 3,
   "tributeCost": 0,
@@ -525,7 +468,7 @@
  "corner_deal": {
   "id": "corner_deal",
   "name": "Corner Deal",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "hustle",
   "authority": 2,
   "tributeCost": 0,
@@ -538,7 +481,7 @@
  "blood_scent": {
   "id": "blood_scent",
   "name": "Blood Scent",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "hustle",
   "authority": 3,
   "tributeCost": 0,
@@ -551,7 +494,7 @@
  "lion_rescue": {
   "id": "lion_rescue",
   "name": "Lion Rescue",
-  "clan": "iron_saints",
+  "clan": "lion_pride",
   "cardType": "hustle",
   "authority": 2,
   "tributeCost": 0,

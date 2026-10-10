@@ -3,7 +3,7 @@
 /**
  * ONBOARDING — first-time clan selection.
  * After signup the player calls POST /api/onboarding/start-clan with
- * { clan: 'lion_pride' | 'viper_clan' }. The server seeds a starter inventory
+ * { clan: 'lion_pride' }. The server seeds a starter inventory
  * matching the chosen faction and creates a default 40-card deck for the
  * player so they can immediately enter a duel.
  */
@@ -13,25 +13,25 @@ const { requireAuth } = require('./middleware');
 const { pool }       = require('../db/pool');
 const { sendMail }   = require('./mail');
 
-const VALID_CLANS = ['lion_pride', 'viper_clan'];
+const VALID_CLANS = ['lion_pride'];
 
 /**
  * Lions starter recipe.
  *   • King Roan x1   — leader (kept in inventory; not part of the 40-card main deck)
  *   • Main deck (40 cards):
- *      Maya x3, Viper x3, Pride Runner x3, Eric x3,
+ *      Maya x3, Hunter x3, Pride Runner x3, Eric x3,
  *      Pride Mentor x2, King's Test x2, Blood Scent x2, Lion Rescue x3,
  *      Corner Deal x2, No Witnesses x3, Goldfang x2, Block Enforcer x3,
  *      Lion Grunt x3, Brutus x2, Pride Lieutenant x2, Debt Collector x2
  *   • Hideout copies (in inventory only, used for promotions in-duel):
- *      Maya Lv.2 x3, Maya Lv.3 x3, Viper Lv.2 x3, Viper Lv.3 x3,
+ *      Maya Lv.2 x3, Maya Lv.3 x3, Hunter Lv.2 x3, Hunter Lv.3 x3,
  *      Eric Lv.2 x3, Eric Lv.3 x3
  */
 const LION_STARTER = {
     leader: { name: 'King Roan', copies: 1 },
     deck: [
         ['Maya',             3],
-        ['Viper',            3],
+        ['Hunter',           3],
         ['Pride Runner',     3],
         ['Eric',             3],
         ['Pride Mentor',     2],
@@ -49,14 +49,10 @@ const LION_STARTER = {
     ],
     hideout: [
         ['Maya Lv.2',  3], ['Maya Lv.3',  3],
-        ['Viper Lv.2', 3], ['Viper Lv.3', 3],
+        ['Hunter Lv.2', 3], ['Hunter Lv.3', 3],
         ['Eric Lv.2',  3], ['Eric Lv.3',  3],
     ],
 };
-
-// Vipers starter is currently a placeholder while the full Viper card pool is
-// being designed — give the player every Viper card so they can experiment.
-const VIPER_STARTER_PLACEHOLDER = true;
 
 router.post('/start-clan', requireAuth, async (req, res) => {
     const { clan } = req.body;
@@ -79,11 +75,7 @@ router.post('/start-clan', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Clan already selected.' });
         }
 
-        if (clan === 'lion_pride') {
-            await _seedLionsStarter(client, req.playerId);
-        } else if (clan === 'viper_clan') {
-            await _seedViperPlaceholder(client, req.playerId);
-        }
+        await _seedLionsStarter(client, req.playerId);
 
         await client.query(
             'UPDATE players SET chosen_clan = $1 WHERE id = $2',
@@ -93,7 +85,7 @@ router.post('/start-clan', requireAuth, async (req, res) => {
         await client.query('COMMIT');
 
         // Drop a welcome message into the player's mailbox.
-        const clanName = clan === 'lion_pride' ? 'Lions' : 'Vipers';
+        const clanName = 'Lions';
         sendMail(req.playerId, {
             subject: `Welcome to the ${clanName}`,
             body: `Welcome to AlleyWay Brawlers!\n\n` +
@@ -175,27 +167,6 @@ async function _seedLionsStarter(client, playerId) {
             `INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)`,
             [deckId, idByName[name], copies]
         );
-    }
-}
-
-async function _seedViperPlaceholder(client, playerId) {
-    // The Viper roster is still placeholder stubs; until the full Viper set
-    // exists, just grant the player one copy of each Viper card so they can
-    // build something. No starter deck is auto-created.
-    const { rows } = await client.query(
-        `SELECT id FROM cards WHERE clan = 'viper_clan'`
-    );
-    for (const r of rows) {
-        await client.query(
-            `INSERT INTO player_inventory (player_id, card_id, quantity)
-             VALUES ($1, $2, 1)
-             ON CONFLICT (player_id, card_id)
-             DO UPDATE SET quantity = player_inventory.quantity + 1`,
-            [playerId, r.id]
-        );
-    }
-    if (VIPER_STARTER_PLACEHOLDER) {
-        // Intentionally no auto-deck — Viper kit is incomplete.
     }
 }
 

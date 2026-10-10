@@ -30,12 +30,6 @@ When this card KOs a Downed character: PROMOTE this card.', 'hunter_lv2', 'hunte
     ('Hunter Lv.3', 'lion_pride', 'gang_member', 'lion', 'striver', 3, 9, 2700, 1900, 0, 3, 'When this card attacks a Downed character: +500 ATK this Brawl.
 When this card KOs a character: Choose 1 enemy character → Down it.
 When this card KOs a Downed character: It may attack again this turn.', 'hunter_lv3', 'hunter_lv3', 'The hunt never ends. Only the hunted changes.'),
-    ('Viper', 'lion_pride', 'gang_member', 'lion', 'striver', 1, 2, 1100, 600, 0, 1, 'When this card Downs a character: PROMOTE this card.', 'viper_lv1', 'viper_lv1', 'Fast, precise, silent. They never see me twice.'),
-    ('Viper Lv.2', 'lion_pride', 'gang_member', 'lion', 'striver', 2, 5, 2000, 1200, 0, 1, 'When this card attacks: You may move it to an adjacent lane before the Brawl.
-When this card Downs a character: PROMOTE this card.', 'viper_lv2', 'viper_lv2', 'Fast, precise, silent. They never see me twice.'),
-    ('Viper Lv.3', 'lion_pride', 'gang_member', 'lion', 'striver', 3, 9, 2600, 1800, 0, 1, 'When this card attacks: You may move it to an adjacent lane before the Brawl.
-When this card KOs a character: You may move this card to an adjacent lane.
-When this card KOs a Downed character: It may attack again this turn.', 'viper_lv3', 'viper_lv3', 'Fast, precise, silent. They never see me twice.'),
     ('Debt Collector', 'lion_pride', 'gang_member', 'lion', 'brawler', 1, 3, 1400, 700, 0, 3, 'When this card Downs a character by battle: Your opponent discards 1 card.', 'debt_collector', 'debt_collector', 'Everyone pays. It''s just a matter of when.'),
     ('Bulwark', 'lion_pride', 'gang_member', 'lion', 'heavy', 1, 6, 2300, 2600, 0, 3, 'This card cannot be moved by enemy effects.
 While this card is in play: Adjacent allies gain +400 DEF.

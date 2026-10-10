@@ -30,7 +30,7 @@ static func get_card(id: String) -> Dictionary:
 	return all().get(id, {})
 
 
-## The form a card promotes into: promotesTo, or the next `_lvN` card (Hunter, Viper).
+## The form a card promotes into: promotesTo, or the next `_lvN` card (Hunter).
 static func next_form(id: String) -> String:
 	var card := get_card(id)
 	if card.get("promotesTo") is String:

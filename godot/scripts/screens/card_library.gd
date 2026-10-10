@@ -72,7 +72,7 @@ func _build_filters() -> void:
 		bar.add_child(_chip("show", "owned", "OWNED"))
 		bar.add_child(_chip("show", "all", "ALL CARDS"))
 		bar.add_child(_spacer())
-	for f in [["all", "ALL CLANS"], ["lion", "LIONS"], ["viper", "VIPERS"]]:
+	for f in [["all", "ALL CLANS"], ["lion", "LIONS"]]:
 		bar.add_child(_chip("faction", f[0], f[1]))
 	bar.add_child(_spacer())
 	for k in [["all", "ANY TYPE"], ["gang_member", "UNITS"], ["hustle", "HUSTLE"], ["ambush", "AMBUSH"], ["leader", "LEADER"]]:

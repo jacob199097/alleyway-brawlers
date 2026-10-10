@@ -4,8 +4,6 @@ extends Screen
 const CLANS := [
 	{"id": "lion_pride", "label": "LIONS", "color": Color("ffd166"), "image": "lions_deck.png",
 		"blurb": "Aggressive pride that swarms the field.\nFull starter deck included."},
-	{"id": "viper_clan", "label": "VIPERS", "color": Color("a5d6a7"), "image": "vipers_deck.png",
-		"blurb": "Slippery street crew of saboteurs.\n(Roster still in development)"},
 ]
 
 var _selected := ""
@@ -26,7 +24,7 @@ func _ready() -> void:
 		var tile := Button.new()
 		tile.toggle_mode = true
 		tile.custom_minimum_size = Vector2(600, 680)
-		tile.position = Vector2(300 + i * 720, 170)
+		tile.position = Vector2(960 - CLANS.size() * 360 + 60 + i * 720, 170)   # centred, however many clans
 		add_child(tile)
 		var art := UI.texture_rect(UI.tex(c.image), Vector2(560, 448))
 		art.position = Vector2(20, 20)

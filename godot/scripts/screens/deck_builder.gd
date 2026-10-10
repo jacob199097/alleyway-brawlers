@@ -86,7 +86,7 @@ func _build_header() -> void:
 		_filter_text = t.strip_edges().to_lower()
 		_render_collection())
 	bar.add_child(search)
-	for f in [["all", "ALL"], ["lion_pride", "LIONS"], ["viper_clan", "VIPERS"]]:
+	for f in [["all", "ALL"], ["lion_pride", "LIONS"]]:
 		bar.add_child(_chip("faction", f[0], f[1]))
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(16, 0)

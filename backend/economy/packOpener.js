@@ -16,6 +16,17 @@
 const { pool } = require('../db/pool');
 const { incrementDailyQuest } = require('../routes/quests');
 
+// The cards in the game (shared/cards.js, which includes the Card Forge cards), by art_url.
+// Retired cards can stay in the database for old records, but never drop from packs.
+let _gameIds = null;
+async function gameCardIds() {
+    if (!_gameIds) {
+        const { CARD_CATALOG } = await import('../../shared/cards.js');
+        _gameIds = Object.keys(CARD_CATALOG);
+    }
+    return _gameIds;
+}
+
 const PACK_COST = 200;            // karat per pack
 const PACK_COST_CONTRABAND = 100; // contraband per pack
 const CARDS_PER_PACK = 3;
@@ -48,6 +59,7 @@ function weightedPick(table) {
 async function drawPack(clan, client) {
     const selected = [];
     const usedIds  = new Set();
+    const inGame   = await gameCardIds();
 
     for (let slot = 0; slot < CARDS_PER_PACK; slot++) {
         const table    = WEIGHT_TABLES[SLOT_TABLES[slot]];
@@ -64,10 +76,10 @@ async function drawPack(clan, client) {
                         attack, defense, rarity, art_url, effect_key, effect_text, flavour_text
                  FROM cards
                  WHERE  clan = $1 AND rarity = $2
-                 AND    id   <> ALL($3::uuid[])
+                 AND    id   <> ALL($3::uuid[]) AND art_url = ANY($4)
                  ORDER BY RANDOM()
                  LIMIT 1`,
-                [clan, rarity, [...usedIds]]
+                [clan, rarity, [...usedIds], inGame]
             );
 
             if (rows.length) {
@@ -78,10 +90,10 @@ async function drawPack(clan, client) {
                     `SELECT id, name, clan, clan_tag, card_type, subtype, level, authority,
                         attack, defense, rarity, art_url, effect_key, effect_text, flavour_text
                  FROM cards
-                     WHERE  clan = $1 AND id <> ALL($2::uuid[])
+                     WHERE  clan = $1 AND id <> ALL($2::uuid[]) AND art_url = ANY($3)
                      ORDER BY RANDOM()
                      LIMIT 1`,
-                    [clan, [...usedIds]]
+                    [clan, [...usedIds], inGame]
                 );
                 if (fallback.rows.length) card = fallback.rows[0];
             }
@@ -102,7 +114,7 @@ async function drawPack(clan, client) {
  * Purchases and opens one booster pack for a player.
  *
  * @param {string} playerId  - UUID
- * @param {string} packType  - 'iron_saints' | 'neon_serpents' | 'dust_devils'
+ * @param {string} packType  - a clan with a pack (routes/shop.js validPacks), e.g. 'lion_pride'
  * @returns {Promise<{ cardsReceived: Array, newGold: number }>}
  */
 async function openPack(playerId, packType, currency = 'karat') {
@@ -239,4 +251,4 @@ async function buyPack(playerId, packType) {
     }
 }
 
-module.exports = { openPack, buyPack };
+module.exports = { openPack, buyPack, gameCardIds };
