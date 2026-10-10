@@ -38,5 +38,5 @@ execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack
 if (!existsSync(out)) throw new Error('Godot did not write the patch.');
 console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for builds ${v.patchBase} and newer.`);
 console.log(`Next: push, then copy it to the server and pull there:\n` +
-    `  scp "${out}" jacob@192.168.0.200:/opt/Turf_War/downloads/\n` +
+    `  scp "${out}" jacob199097@192.168.0.200:/opt/Turf_War/downloads/\n` +
     `  (on the server) cd /opt/Turf_War && git pull && sudo systemctl restart alleyway-backend`);

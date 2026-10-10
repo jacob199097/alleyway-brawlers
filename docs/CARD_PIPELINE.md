@@ -74,7 +74,7 @@ downloads the patch (a few hundred KB), checks it and restarts into it.
 2. `node tools/make_patch.mjs <Godot console exe>` writes `builds/AlleywayBrawlers-<version>-patch.pck`.
 3. Commit and push; copy the patch into `downloads/` on the server, then pull and restart there:
 
-       scp builds/AlleywayBrawlers-<version>-patch.pck jacob@192.168.0.200:/opt/Turf_War/downloads/
+       scp builds/AlleywayBrawlers-<version>-patch.pck jacob199097@192.168.0.200:/opt/Turf_War/downloads/
 
 A patch can't change project settings (`project.godot`), the autoload list, add `class_name` scripts
 (use `preload` instead) or bring new art and audio from `assets/`. Those need a full build.
@@ -85,7 +85,7 @@ copy it into `downloads/` on the server. `https://<server>/download` serves the 
 game links there when it can't patch itself (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link
 somewhere else).
 
-    scp builds/AlleywayBrawlers-<version>-windows.zip jacob@192.168.0.200:/opt/Turf_War/downloads/
+    scp builds/AlleywayBrawlers-<version>-windows.zip jacob199097@192.168.0.200:/opt/Turf_War/downloads/
 
 If a patch ever stops the game from starting, the game notices on the next start, runs the full
 build's own code instead and doesn't download that patch again.
