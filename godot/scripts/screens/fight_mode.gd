@@ -137,6 +137,11 @@ func _start(mode: String) -> void:
 	var why := await Game.request_cpu_match(mode == "ranked")
 	if why != "":
 		on_online_error(why)
+		return
+	# mp:start normally arrives within a second; an older server doesn't know CPU matches
+	await get_tree().create_timer(12.0).timeout
+	if is_inside_tree() and _starting:
+		on_online_error("The server didn't start the match. It may need updating (git pull, then restart alleyway-backend).")
 
 
 ## mp:error while starting a CPU match (net.gd calls this on the current screen).
