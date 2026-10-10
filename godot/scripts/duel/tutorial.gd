@@ -191,7 +191,7 @@ func _build_steps() -> void:
 			"done": func(): return o1.downed,
 			"text": "Attack! [b]Click %s[/b], then [b]click %s[/b].\n\nATK against ATK: the higher number wins. The loser is [b]Downed[/b], and its owner loses Morale equal to the difference ([b]%d[/b])." % [_n("p2"), _n("o1"), p2.base_attack - o1.base_attack]},
 		{"type": INFO, "mark": func(): return _field_rect("opponent", o1),
-			"text": "[b]Downed![/b] It's turned sideways: it can't attack, and it no longer protects its owner.\n\nHit it again and it's [b]knocked out[/b]. Leave it, and it gets back up (in DEF) after a full round."},
+			"text": "[b]Downed![/b] It's turned sideways: it can't attack, and it no longer protects its owner.\n\nHit it again and it's [b]knocked out[/b]. Leave it, and it gets back up (in DEF) after a full round, ready to switch back to ATK."},
 		{"type": DO, "mark": func(): return _field_rect("player", p1) if not _attacking() else _field_rect("opponent", o1),
 			"allow": func(a): return a.kind == "attack" and int(a.from) == _slot("player", p1) and int(a.target) == _slot("opponent", o1),
 			"done": func(): return not _on_field("opponent", o1),

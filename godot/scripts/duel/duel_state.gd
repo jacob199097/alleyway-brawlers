@@ -1487,8 +1487,8 @@ func _begin_turn() -> void:
 	if turn > 1:
 		_draw(active)
 	# A Downed character stays down for a full round (the opponent gets one turn to finish it
-	# off), then gets back up in DEF position at the start of its owner's turn. It can't
-	# switch back to ATK until the turn after.
+	# off), then gets back up in DEF position at the start of its owner's turn. Its owner
+	# may switch it to ATK straight away.
 	for e in characters(active):
 		if not e.card.downed:
 			e.card.erase("down_turns")
@@ -1496,7 +1496,6 @@ func _begin_turn() -> void:
 			e.card.downed = false
 			e.card.erase("down_turns")
 			e.card.position = "def"
-			e.card.position_turn = turn
 			_emit("stand", {"side": active, "slot": e.slot, "card": e.card.duplicate(true)})
 		else:
 			e.card.down_turns = 1

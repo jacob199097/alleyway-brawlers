@@ -1434,7 +1434,7 @@ export class DuelState {
         }
         if (this.turn > 1) this._draw(this.active);
         // A Downed character stays down for a full round, then gets back up in DEF position
-        // at the start of its owner's turn (no switching to ATK until the turn after)
+        // at the start of its owner's turn (its owner may switch it to ATK straight away)
         for (const e of this.characters(this.active)) {
             if (!e.card.downed) {
                 delete e.card.down_turns;
@@ -1442,7 +1442,6 @@ export class DuelState {
                 e.card.downed = false;
                 delete e.card.down_turns;
                 e.card.position = 'def';
-                e.card.position_turn = this.turn;
                 this._emit('stand', { side: this.active, slot: e.slot, card: clone(e.card) });
             } else {
                 e.card.down_turns = 1;

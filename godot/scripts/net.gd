@@ -12,6 +12,7 @@ var is_open := false
 ## Match messages ([name, data]) waiting for the duel screen; it reads them every frame, so
 ## nothing is lost while the screen is still loading.
 var inbox: Array = []
+var rps_inbox: Array = []   # Scissors Paper Rock messages for screens/rps.gd
 var _ws := WebSocketPeer.new()
 var _connecting := false
 var _want := false
@@ -132,8 +133,15 @@ func _on_global_event(name: String, data) -> void:
 			inbox.append([name, data])
 			if inbox.size() > 500:
 				inbox.pop_front()
+		"mp:rps", "mp:rps_result", "mp:rps_choose", "mp:rps_decided", "mp:rps_cancel":
+			rps_inbox.append([name, data])
+			var on_rps: bool = get_tree().current_scene != null and get_tree().current_scene.has_method("on_rps")
+			if name == "mp:rps" and not on_rps:
+				Game.duel_setup = {"online_rps": true}
+				Game.go("rps")
 		"mp:start":
 			inbox.clear()
+			rps_inbox.clear()
 			Game.duel_setup = {"online": true, "start": data}
 			if get_tree().current_scene and get_tree().current_scene.has_method("on_online_start"):
 				get_tree().current_scene.on_online_start(data)

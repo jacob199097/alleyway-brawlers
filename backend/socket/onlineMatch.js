@@ -12,6 +12,9 @@
  * CPU matches (VS CPU and Ranked) run here too, against a server-side CPU (shared/duel/DuelAI.js),
  * so their rewards come from a result the server saw rather than one a client reported.
  *
+ *   Matches against players start with Scissors Paper Rock (mp:rps, mp:rps_pick {rpsId, pick},
+ *   mp:rps_result, mp:rps_choose, mp:rps_first {rpsId, goFirst}, mp:rps_decided, mp:rps_cancel);
+ *   the winner chooses to go first or second.
  *   client → server  mp:queue, mp:cancel, mp:cpu {ranked, difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
  *                    mp:resync
@@ -31,6 +34,10 @@ const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
 const CHALLENGE_SECS   = 60;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
 // Emotes: a fixed list (no free text), at most one every EMOTE_GAP_MS and MAX_EMOTES a match
+// Scissors Paper Rock decides who goes first in matches against players
+const RPS_PICK_SECS    = 15;    // a player who doesn't pick in time throws at random
+const RPS_CHOOSE_SECS  = 10;    // the winner's first/second choice (goes first if no answer)
+const RPS_BEATS        = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 const EMOTES           = ['hello', 'nice', 'wp', 'thinking', 'oops', 'hurry', 'gotcha', 'gg'];
 const EMOTE_GAP_MS     = 2500;
 const MAX_EMOTES       = 30;
@@ -135,6 +142,8 @@ function createOnlineService(io, deps) {
     const matches = new Map();       // matchId → match
     const byPlayer = new Map();      // playerId → match
     const challenges = new Map();    // "from:to" → expiry
+    const rpsByPlayer = new Map();   // playerId → Scissors Paper Rock session before a match
+    const busy = (id) => byPlayer.has(id) || rpsByPlayer.has(id);
 
     const emitTo = (playerId, event, data) => sockets.get(playerId)?.emit(event, data);
 
@@ -144,9 +153,91 @@ function createOnlineService(io, deps) {
         return { playerId, setup, profile };
     }
 
-    async function startMatch(a, b, mode) {
+    // ── Scissors Paper Rock (who goes first) ──
+    function startRps(a, b, mode) {
+        const rps = { id: randomUUID(), a, b, mode, round: 0, picks: {}, timer: null, over: false };
+        rpsByPlayer.set(a.playerId, rps);
+        rpsByPlayer.set(b.playerId, rps);
+        rpsRound(rps);
+    }
+
+    function rpsRound(rps) {
+        rps.round += 1;
+        rps.picks = {};
+        for (const [me, foe] of [[rps.a, rps.b], [rps.b, rps.a]]) {
+            emitTo(me.playerId, 'mp:rps', { rpsId: rps.id, round: rps.round, secs: RPS_PICK_SECS, mode: rps.mode, opponent: foe.profile });
+        }
+        clearTimeout(rps.timer);
+        rps.timer = setTimeout(() => rpsResolve(rps), RPS_PICK_SECS * 1000 + 500);
+    }
+
+    function rpsPick(playerId, rpsId, pick) {
+        const rps = rpsByPlayer.get(playerId);
+        if (!rps || rps.over || rps.id !== rpsId || !RPS_BEATS[pick] || rps.picks[playerId] || rps.chooser) return;
+        rps.picks[playerId] = pick;
+        if (rps.picks[rps.a.playerId] && rps.picks[rps.b.playerId]) rpsResolve(rps);
+    }
+
+    function rpsResolve(rps) {
+        if (rps.over || rps.chooser) return;
+        clearTimeout(rps.timer);
+        const throws = Object.keys(RPS_BEATS);
+        for (const p of [rps.a, rps.b]) rps.picks[p.playerId] ||= throws[Math.floor(Math.random() * 3)];
+        const pa = rps.picks[rps.a.playerId], pb = rps.picks[rps.b.playerId];
+        const winner = pa === pb ? null : RPS_BEATS[pa] === pb ? rps.a : rps.b;
+        for (const [me, foe] of [[rps.a, rps.b], [rps.b, rps.a]]) {
+            emitTo(me.playerId, 'mp:rps_result', { rpsId: rps.id, round: rps.round,
+                you: rps.picks[me.playerId], opponent: rps.picks[foe.playerId],
+                outcome: !winner ? 'draw' : winner === me ? 'win' : 'loss' });
+        }
+        if (!winner) {
+            rps.timer = setTimeout(() => rpsRound(rps), 2200);
+            return;
+        }
+        rps.chooser = winner;
+        rps.timer = setTimeout(() => {
+            emitTo(winner.playerId, 'mp:rps_choose', { rpsId: rps.id, secs: RPS_CHOOSE_SECS });
+            rps.timer = setTimeout(() => rpsDecide(rps, winner.playerId, true), RPS_CHOOSE_SECS * 1000 + 500);
+        }, 1600);
+    }
+
+    function rpsDecide(rps, playerId, goFirst) {
+        if (rps.over || !rps.chooser || rps.chooser.playerId !== playerId) return;
+        rps.over = true;
+        clearTimeout(rps.timer);
+        const firstPlayer = goFirst ? rps.chooser : (rps.chooser === rps.a ? rps.b : rps.a);
+        for (const p of [rps.a, rps.b]) {
+            emitTo(p.playerId, 'mp:rps_decided', { rpsId: rps.id, first: p === firstPlayer ? 'you' : 'opponent' });
+        }
+        rps.timer = setTimeout(() => {
+            rpsByPlayer.delete(rps.a.playerId);
+            rpsByPlayer.delete(rps.b.playerId);
+            // Seat "player" is a, so the first player's seat follows from who that is
+            startMatch(rps.a, rps.b, rps.mode, firstPlayer === rps.a ? 'player' : 'opponent')
+                .catch(err => console.error('[Online] Start failed:', err));
+        }, 1800);
+    }
+
+    /** A player left during Scissors Paper Rock: no match; a queued opponent goes back in the queue. */
+    function rpsCancel(rps, leaver) {
+        if (rps.over && !rpsByPlayer.has(leaver)) return;
+        rps.over = true;
+        clearTimeout(rps.timer);
+        rpsByPlayer.delete(rps.a.playerId);
+        rpsByPlayer.delete(rps.b.playerId);
+        const stay = rps.a.playerId === leaver ? rps.b : rps.a;
+        const requeue = rps.mode === 'casual' && sockets.get(stay.playerId)?.connected;
+        emitTo(stay.playerId, 'mp:rps_cancel', { requeued: requeue,
+            message: requeue ? 'Your opponent left. Finding you another match…' : 'Your opponent left before the match started.' });
+        if (requeue) {
+            queue.push(stay);
+            emitTo(stay.playerId, 'mp:queued', { position: queue.length });
+        }
+    }
+
+    async function startMatch(a, b, mode, firstSeat = null) {
         const { DuelState } = await engine;
-        const first = Math.random() < 0.5 ? 'player' : 'opponent';
+        const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const decks = { player: a.setup.deck, opponent: b.setup.deck };
         const hideouts = { player: a.setup.hideout, opponent: b.setup.hideout };
@@ -341,7 +432,7 @@ function createOnlineService(io, deps) {
         sockets.set(me, socket);
 
         socket.on('mp:queue', async () => {
-            if (byPlayer.has(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
+            if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             if (queue.some(e => e.playerId === me)) return socket.emit('mp:queued', { position: queue.length });
             let entry;
             try {
@@ -352,7 +443,7 @@ function createOnlineService(io, deps) {
             const rival = queue.find(e => e.playerId !== me);
             if (rival) {
                 leaveQueue(rival.playerId);
-                startMatch(rival, entry, 'casual').catch(err => console.error('[Online] Start failed:', err));
+                startRps(rival, entry, 'casual');
             } else {
                 queue.push(entry);
                 socket.emit('mp:queued', { position: queue.length });
@@ -361,7 +452,7 @@ function createOnlineService(io, deps) {
 
         // A match against the server CPU (VS CPU, or Ranked when ranked is true)
         socket.on('mp:cpu', async ({ ranked, difficulty } = {}) => {
-            if (byPlayer.has(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
+            if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             leaveQueue(me);
             try {
                 const entry = await prepare(me);
@@ -395,7 +486,7 @@ function createOnlineService(io, deps) {
             if (!sockets.get(targetPlayerId)?.connected) {
                 return socket.emit('mp:error', { message: 'That player is offline.' });
             }
-            if (byPlayer.has(targetPlayerId)) return socket.emit('mp:error', { message: 'That player is in a match.' });
+            if (busy(targetPlayerId)) return socket.emit('mp:error', { message: 'That player is in a match.' });
             challenges.set(`${me}:${targetPlayerId}`, Date.now() + CHALLENGE_SECS * 1000);
             emitTo(targetPlayerId, 'mp:challenge', { fromPlayerId: me, fromUsername: playerData.username });
             socket.emit('mp:challengeSent', { targetPlayerId });
@@ -412,12 +503,12 @@ function createOnlineService(io, deps) {
             const expires = challenges.get(key);
             challenges.delete(key);
             if (!expires || expires < Date.now()) return socket.emit('mp:error', { message: 'That challenge has expired.' });
-            if (byPlayer.has(me) || byPlayer.has(fromPlayerId)) return socket.emit('mp:error', { message: 'A player is already in a match.' });
+            if (busy(me) || busy(fromPlayerId)) return socket.emit('mp:error', { message: 'A player is already in a match.' });
             leaveQueue(me);
             leaveQueue(fromPlayerId);
             try {
                 const [a, b] = await Promise.all([prepare(fromPlayerId), prepare(me)]);
-                await startMatch(a, b, 'friendly');
+                startRps(a, b, 'friendly');
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
                 emitTo(fromPlayerId, 'mp:error', { message: err.message || 'Could not start the match.' });
@@ -425,6 +516,12 @@ function createOnlineService(io, deps) {
         });
 
         socket.on('mp:action', ({ matchId, action } = {}) => act(me, matchId, action));
+
+        socket.on('mp:rps_pick', ({ rpsId, pick } = {}) => rpsPick(me, rpsId, pick));
+        socket.on('mp:rps_first', ({ rpsId, goFirst } = {}) => {
+            const rps = rpsByPlayer.get(me);
+            if (rps && rps.id === rpsId) rpsDecide(rps, me, goFirst !== false);
+        });
 
         socket.on('mp:concede', ({ matchId } = {}) => {
             const match = byPlayer.get(me);
@@ -451,6 +548,8 @@ function createOnlineService(io, deps) {
             if (sockets.get(me) !== socket) return;   // an older connection closing
             sockets.delete(me);
             leaveQueue(me);
+            const rps = rpsByPlayer.get(me);
+            if (rps) rpsCancel(rps, me);
             const match = byPlayer.get(me);
             if (!match || match.over) return;
             const seat = match.seats.player.playerId === me ? 'player' : 'opponent';
@@ -461,7 +560,7 @@ function createOnlineService(io, deps) {
         });
     }
 
-    return { register, isInMatch: (playerId) => byPlayer.has(playerId), _matches: matches };
+    return { register, isInMatch: (playerId) => busy(playerId), _matches: matches };
 }
 
 // ── Database-backed dependencies (production) ───────────────────────────────
