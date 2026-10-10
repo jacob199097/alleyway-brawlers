@@ -1,12 +1,12 @@
 # Alleyway Brawlers: Godot client
 
-The desktop client in Godot 4.7. It is a port of the Phaser client in `client/`, with all the
-menus and the duel. It talks to the same backend, and the server stays in charge of accounts,
-currency, cards, decks and match rewards.
+The game: a Godot 4.7 desktop client with all the menus, the duel and the tutorial. (It began as a
+port of an earlier Phaser web client, since retired.) It talks to the game server in `backend/`,
+which stays in charge of accounts, currency, cards, decks and match rewards.
 
 ## First-time setup
-1. Copy the art and audio in from `client/assets`. They are gitignored here, so the art is
-   not stored in git twice.
+1. Copy the art and audio in from `assets/` (the master copy at the top of the repo). They are
+   gitignored here, so the art isn't stored in git twice.
    ```
    powershell -ExecutionPolicy Bypass -File godot/tools/sync_assets.ps1
    ```

@@ -12,8 +12,8 @@ node tools/import_forge.mjs path/to/alleyway-cards.zip
 ```
 This:
 - writes `shared/cards_forge.js`, which is merged into the card catalogue (`shared/cards.js`) used
-  by both game clients and the server;
-- copies the card images to `client/assets/cards/` and `godot/assets/cards/`;
+  by the game and the server;
+- copies the card images to `assets/cards/` and `godot/assets/cards/`;
 - regenerates `godot/data/cards.json`.
 
 The Forge is the source of truth: a card deleted in the Forge is removed on the next import.
@@ -31,7 +31,7 @@ sudo systemctl restart alleyway-backend
 `sync_cards` adds or updates the Forge cards in the database (matched by game ID), so they can
 drop from packs, be collected and go into decks. A new clan becomes a pack type, and the shop
 offers its pack once the clan has at least 3 cards. Pack art comes from
-`client/assets/<clan>_booster.png` (for example `nebula_booster.png`) when that file exists.
+`assets/<clan>_booster.png` (for example `nebula_booster.png`) when that file exists.
 
 **Players get the new cards automatically.** When the game starts it compares its cards with
 the server (`/api/content/manifest`) and downloads only new or changed card data and images,

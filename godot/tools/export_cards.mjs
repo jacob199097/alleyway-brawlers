@@ -12,7 +12,7 @@ const json = JSON.stringify(CARD_CATALOG, null, 1) + '\n';
 const out = fileURLToPath(new URL('../data/cards.json', import.meta.url));
 writeFileSync(out, json);
 
-const artDir = fileURLToPath(new URL('../../client/assets/cards/', import.meta.url));
+const artDir = fileURLToPath(new URL('../../assets/cards/', import.meta.url));
 const art = {};
 for (const f of readdirSync(artDir).filter(f => f.endsWith('.png')).sort()) {
     art[f.slice(0, -4)] = sha256(readFileSync(artDir + f));

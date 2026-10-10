@@ -1,8 +1,8 @@
 #!/bin/sh
-# Copies the art and audio the Godot client uses from client/assets into godot/assets.
+# Copies the art and audio the Godot client uses from assets/ (the master copy) into godot/assets.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-src="$here/../../client/assets"
+src="$here/../../assets"
 dst="$here/../assets"
 for dir in cards ranks; do
     mkdir -p "$dst/$dir"

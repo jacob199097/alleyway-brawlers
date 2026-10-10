@@ -159,10 +159,13 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // ── GET /api/auth/reset-password?token=xxx ───────────────────────────────────
-// Validates the token and redirects to the client-side reset form
+// The link in the reset email: validates the token and shows a "choose a new password" page,
+// which posts to POST /api/auth/reset-password below.
 router.get('/reset-password', async (req, res) => {
-    const { token } = req.query;
-    if (!token) return res.status(400).send('Missing token.');
+    const token = String(req.query.token || '');
+    if (!/^[0-9a-f-]{36}$/i.test(token)) {
+        return res.status(400).send(_emailPage('Link not valid', 'This password reset link is not valid. Request a new one from the game.', '#e63946'));
+    }
 
     try {
         const { rows } = await pool.query(
@@ -171,14 +174,12 @@ router.get('/reset-password', async (req, res) => {
             [token]
         );
         if (!rows.length) {
-            return res.status(400).send('Reset link is invalid or has expired.');
+            return res.status(400).send(_emailPage('Link expired', 'This password reset link has expired or was already used. Request a new one from the game.', '#e63946'));
         }
-
-        const appUrl = process.env.APP_CLIENT_URL || 'http://localhost:8080';
-        res.redirect(`${appUrl}/reset-password?token=${token}`);
+        res.send(_resetPage(token));
     } catch (err) {
-        console.error('[Auth] Reset redirect:', err.message);
-        res.status(500).send('Something went wrong. Please try again.');
+        console.error('[Auth] Reset page:', err.message);
+        res.status(500).send(_emailPage('Something went wrong', 'Please try the link again in a moment.', '#e63946'));
     }
 });
 
@@ -229,6 +230,52 @@ function _emailPage(title, body, color) {
  h1{color:${color};margin:0 0 16px;font-size:22px}
  p{color:#cccccc;line-height:1.5;margin:0}
 </style></head><body><div class="card"><h1>${title}</h1><p>${body}</p></div></body></html>`;
+}
+
+/** The "choose a new password" page (token already checked: a UUID). */
+function _resetPage(token) {
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Reset your password</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+ body{margin:0;background:#0d0d1a;color:#e6e6f0;font-family:Arial,sans-serif;
+      display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+ .card{width:100%;max-width:420px;background:#101030;border:2px solid #f4d35e;border-radius:10px;padding:32px}
+ h1{color:#f4d35e;margin:0 0 8px;font-size:22px;text-align:center}
+ p{color:#cccccc;line-height:1.5;margin:0 0 18px;text-align:center}
+ label{display:block;font-size:13px;color:#a8a8c0;margin:12px 0 6px}
+ input{width:100%;box-sizing:border-box;padding:12px;border-radius:6px;border:2px solid #4cc9f0;background:#1a1a2e;color:#fff;font-size:16px}
+ button{width:100%;margin-top:20px;padding:13px;border:0;border-radius:6px;background:#f4d35e;color:#1a1206;font-weight:bold;font-size:16px;cursor:pointer}
+ button:disabled{opacity:.5;cursor:default}
+ #msg{margin-top:16px;min-height:1.4em;text-align:center}
+</style></head><body><div class="card">
+<h1>Choose a new password</h1>
+<p>For your Alleyway Brawlers account.</p>
+<form id="f">
+ <label for="p1">New password (8 characters or more)</label>
+ <input id="p1" type="password" autocomplete="new-password" minlength="8" required>
+ <label for="p2">Type it again</label>
+ <input id="p2" type="password" autocomplete="new-password" minlength="8" required>
+ <button id="b" type="submit">Save new password</button>
+</form>
+<div id="msg"></div>
+<script>
+const f = document.getElementById('f'), msg = document.getElementById('msg'), b = document.getElementById('b');
+const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4caf50' : '#e63946'; };
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+  if (p1.length < 8) return say('Use at least 8 characters.');
+  if (p1 !== p2) return say("The two passwords don't match.");
+  b.disabled = true;
+  try {
+    const r = await fetch('/api/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: '${token}', password: p1 }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { f.remove(); say('Password updated. You can log in to the game now.', true); }
+    else { b.disabled = false; say(d.error || 'That did not work. Try again.'); }
+  } catch { b.disabled = false; say("Can't reach the server. Try again."); }
+});
+</script></div></body></html>`;
 }
 
 function _sign(player) {

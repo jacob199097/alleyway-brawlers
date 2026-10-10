@@ -1,3 +1,8 @@
+> **Superseded (Oct 2026).** This plan was for wrapping the old Phaser web client in Electron. The
+> game is now the Godot client in `godot/`; the Phaser client and the `desktop/` Electron app were
+> removed. Kept for its notes on display settings, Steam and server readiness, which still apply
+> (Steam would use GodotSteam instead of steamworks.js).
+
 # AlleyWay Brawlers — Desktop (Steam) Plan
 
 ## Context

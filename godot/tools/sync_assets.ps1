@@ -1,7 +1,7 @@
-# Copies the art and audio the Godot client uses from client/assets into godot/assets.
+# Copies the art and audio the Godot client uses from assets/ (the master copy) into godot/assets.
 # Run from anywhere:  powershell -ExecutionPolicy Bypass -File godot/tools/sync_assets.ps1
 $ErrorActionPreference = 'Stop'
-$src = Join-Path $PSScriptRoot '..\..\client\assets'
+$src = Join-Path $PSScriptRoot '..\..\assets'
 $dst = Join-Path $PSScriptRoot '..\assets'
 
 foreach ($dir in 'cards', 'ranks') {

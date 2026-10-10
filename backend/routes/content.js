@@ -11,7 +11,7 @@
  *   GET /api/content/manifest        { contentVersion, client: {latest, minimum, downloadUrl},
  *                                      cards: {hash, size}, art: { <id>: {hash, size} } }
  *   GET /api/content/cards.json      the card catalogue (shared/cards.js + Card Forge cards)
- *   GET /api/content/art/<id>.png    a card image (client/assets/cards)
+ *   GET /api/content/art/<id>.png    a card image (assets/cards)
  *
  * The catalogue is read once per server start (restart after `git pull`); image fingerprints
  * are re-checked when the files change.
@@ -23,7 +23,7 @@ const path    = require('path');
 const crypto  = require('crypto');
 
 const router = express.Router();
-const ART_DIR      = path.join(__dirname, '../../client/assets/cards');
+const ART_DIR      = path.join(__dirname, '../../assets/cards');
 const VERSION_FILE = path.join(__dirname, '../../shared/game_version.json');
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');

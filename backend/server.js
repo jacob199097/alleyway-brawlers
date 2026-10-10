@@ -25,8 +25,6 @@ const cors         = require('cors');
 const jwt          = require('jsonwebtoken');
 
 const { pool }                  = require('./db/pool');
-const { registerMatchmaking, createMatch, isInMatch, loadDeckPool } = require('./socket/matchmaker');
-const { registerDuelHandler }   = require('./socket/duelHandler');
 const { createOnlineService, loadSetupFromDb, loadProfileFromDb } = require('./socket/onlineMatch');
 const { resolveMatch, resolveCpuMatch } = require('./economy/postMatch');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
@@ -103,14 +101,6 @@ const online = createOnlineService(io, {
 });
 
 // ── Socket connections ────────────────────────────────────────────────────────
-// Outstanding friend challenges: "fromId:toId" → expiry timestamp
-const pendingChallenges = new Map();
-const CHALLENGE_TTL_MS  = 60_000;
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, expires] of pendingChallenges) if (expires < now) pendingChallenges.delete(key);
-}, CHALLENGE_TTL_MS).unref();
-
 io.on('connection', (socket) => {
     const { playerData } = socket;
     console.log(`[Socket] Connected: ${playerData.username} (${socket.id})`);
@@ -121,84 +111,8 @@ io.on('connection', (socket) => {
         [socket.id, playerData.playerId]
     ).catch(err => console.error('[Socket] Online update failed:', err.message));
 
-    // Register feature handlers
-    registerMatchmaking(socket, io, playerData);
-    registerDuelHandler(socket, io, playerData);
+    // Matches, the queue and friend challenges (socket/onlineMatch.js)
     online.register(socket, playerData);
-
-    // ── Direct challenge (friend invite) ────────────────────────────────────
-    socket.on('challenge:send', ({ targetPlayerId } = {}) => {
-        if (typeof targetPlayerId !== 'string' || targetPlayerId === playerData.playerId) return;
-        // Look up target's socket ID and forward the challenge
-        pool.query('SELECT socket_id, username FROM players WHERE id = $1', [targetPlayerId])
-            .then(({ rows }) => {
-                if (!rows.length || !rows[0].socket_id) return;
-                pendingChallenges.set(`${playerData.playerId}:${targetPlayerId}`, Date.now() + CHALLENGE_TTL_MS);
-                io.to(rows[0].socket_id).emit('challenge:received', {
-                    fromPlayerId: playerData.playerId,
-                    fromUsername: playerData.username,
-                });
-            })
-            .catch(err => console.error('[Challenge] Lookup failed:', err.message));
-    });
-
-    socket.on('challenge:accept', async ({ fromPlayerId } = {}) => {
-        // Only a challenge actually sent to this player, and still fresh, can be accepted
-        const key     = `${fromPlayerId}:${playerData.playerId}`;
-        const expires = pendingChallenges.get(key);
-        pendingChallenges.delete(key);
-        if (!expires || expires < Date.now()) {
-            return socket.emit('challenge:error', { message: 'Challenge expired.' });
-        }
-        if (isInMatch(fromPlayerId) || isInMatch(playerData.playerId)) {
-            return socket.emit('challenge:error', { message: 'A player is already in a match.' });
-        }
-
-        try {
-            const { rows } = await pool.query('SELECT socket_id, username FROM players WHERE id = $1', [fromPlayerId]);
-            if (!rows.length || !rows[0].socket_id) {
-                return socket.emit('challenge:error', { message: 'Challenger is offline.' });
-            }
-            const [challengerPool, accepterPool] = await Promise.all([
-                loadDeckPool(fromPlayerId), loadDeckPool(playerData.playerId),
-            ]);
-            if (!challengerPool || !accepterPool) {
-                return socket.emit('challenge:error', { message: 'Both players need a complete 40-card deck.' });
-            }
-
-            // Both players skip the queue and go straight to a match room
-            const challenger = {
-                socketId:  rows[0].socket_id,
-                playerId:  fromPlayerId,
-                username:  rows[0].username,
-                deckPool:  challengerPool,
-            };
-            const accepter = {
-                socketId:  socket.id,
-                playerId:  playerData.playerId,
-                username:  playerData.username,
-                deckPool:  accepterPool,
-            };
-            const match = createMatch(challenger, accepter);
-
-            io.sockets.sockets.get(challenger.socketId)?.join(match.roomId);
-            io.sockets.sockets.get(accepter.socketId)?.join(match.roomId);
-
-            io.to(challenger.socketId).emit('match:found', {
-                matchId: match.matchId, roomId: match.roomId, yourRole: 'p1',
-                yourPlayerId: fromPlayerId, opponentName: playerData.username,
-                yourTurn: true,
-            });
-            io.to(accepter.socketId).emit('match:found', {
-                matchId: match.matchId, roomId: match.roomId, yourRole: 'p2',
-                yourPlayerId: playerData.playerId, opponentName: rows[0].username,
-                yourTurn: false,
-            });
-        } catch (err) {
-            console.error('[Challenge] Accept failed:', err.message);
-            socket.emit('challenge:error', { message: 'Could not start the match.' });
-        }
-    });
 
     // ── Chat ─────────────────────────────────────────────────────────────────
     socket.on('chat:message', ({ toPlayerId, body } = {}) => {

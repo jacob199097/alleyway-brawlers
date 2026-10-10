@@ -4,7 +4,7 @@
 //
 // Takes the Forge's "Export all" download (card_catalog.json + cards/<id>.png) and:
 //   1. writes shared/cards_forge.js (card rules data, merged into CARD_CATALOG),
-//   2. copies the card images to client/assets/cards and godot/assets/cards,
+//   2. copies the card images to assets/cards and godot/assets/cards,
 //   3. regenerates godot/data/cards.json.
 // The Forge library is the source of truth: cards removed there are removed here too.
 // Then commit, push, and on the server run:  node backend/scripts/sync_cards.mjs
@@ -94,14 +94,14 @@ writeFileSync(join(ROOT, 'shared/cards_forge.js'),
     `export const FORGE_CARDS = ${JSON.stringify(cards, null, 4)};\n`);
 
 let copied = 0;
-for (const target of ['client/assets/cards', 'godot/assets/cards']) {
+for (const target of ['assets/cards', 'godot/assets/cards']) {
     const to = join(ROOT, target);
     if (!existsSync(to)) mkdirSync(to, { recursive: true });
     for (const c of Object.values(cards)) {
         const from = join(artDir, `${c.id}.png`);
         if (existsSync(from)) {
             copyFileSync(from, join(to, `${c.id}.png`));
-            if (target === 'client/assets/cards') copied++;
+            if (target === 'assets/cards') copied++;
         }
     }
 }
