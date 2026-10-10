@@ -563,6 +563,12 @@ func _play(ev: Dictionary) -> void:
 			await _ev_damage(ev)
 		"heal":
 			await _ev_heal(ev)
+		"bounce":
+			await _ev_bounce(ev)
+		"mill":
+			await _ev_mill(ev)
+		"recover":
+			await _ev_recover(ev)
 		"promote":
 			await _ev_promote(ev)
 		"effect":
@@ -943,6 +949,55 @@ func _ev_damage(ev: Dictionary) -> void:
 	if side == "player":
 		_screen_flash(RED, 0.22)
 	await _wait(0.6)
+
+
+## A card effect sends a character back to its owner's hand.
+func _ev_bounce(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(ev.slot)
+	field[side].erase(ev.slot)
+	if v == null:
+		v = _new_view(ev.card, side, side == "player")
+		v.position = slot_pos(side, ev.slot)
+	v.show_badge = false
+	v.downed = false
+	v.glow = 0.0
+	v.set_card(ev.card)
+	Sfx.play("whoosh", 1.2)
+	_ring(v.position, BLUE, 1.2)
+	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "BACK TO HAND", BLUE, 30)
+	if side == "opponent" and v.face_up:
+		v.flip(false)
+	elif side == "player" and not v.face_up:
+		v.flip(true)
+	hand[side].append(v)
+	_layout_hand(side)
+	await _wait(0.4)
+
+
+## The top card of a deck goes straight to the Gutter.
+func _ev_mill(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v := _new_view(ev.card, side, true)
+	v.position = pile_pos(side, "deck")
+	v.z_index = 420
+	Sfx.play("flip", 0.8)
+	await v.move_to(v.position + Vector2(0, -40 if side == "player" else 40), 1.2, 0.0, 0.15).finished
+	await _to_gutter(v, side)
+
+
+## A card comes back from the Gutter to its owner's hand.
+func _ev_recover(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v := _new_view(ev.card, side, side == "player")
+	v.position = pile_pos(side, "gutter")
+	v.z_index = 420
+	Sfx.play("promote", 1.3, -6.0)
+	_burst(v.position, GREEN, 20, 240, 0.6, -200.0)
+	_float_text(v.position + Vector2(0, -110), "RECOVERED", GREEN, 28)
+	hand[side].append(v)
+	_layout_hand(side)
+	await _wait(0.4)
 
 
 ## A card effect restores Morale.

@@ -120,8 +120,9 @@ function int(v) { return Math.trunc(Number(v ?? 0)) || 0; }
 
 function cleanEffect(e) {
     const out = {};
-    for (const k of ['when', 'do', 'target', 'until', 'clan', 'if']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
+    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
     for (const k of ['atk', 'def', 'amount', 'n']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
+    if (e.once) out.once = true;
     return out;
 }
 
