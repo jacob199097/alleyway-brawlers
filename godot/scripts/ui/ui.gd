@@ -17,7 +17,7 @@ const RARITY_LABEL := {1: "Common", 2: "Uncommon", 3: "Rare", 4: "Epic", 5: "Leg
 const TITLES := [[1, "Street Prospect"], [5, "Alley Runner"], [10, "Corner Hustler"], [15, "Turf Brawler"],
 	[20, "Made Enforcer"], [25, "Shot Caller"], [30, "District Fixer"], [35, "Crew Chief"],
 	[40, "Underboss"], [45, "Syndicate Kingpin"], [50, "King of the Streets"]]
-const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
+const TYPE_NAMES := {"gang_member": "CHARACTER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 
 const LivingBackground := preload("res://scripts/ui/living_bg.gd")
 

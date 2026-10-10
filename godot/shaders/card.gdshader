@@ -16,6 +16,11 @@ uniform float flash = 0.0;     // white hit-flash
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
 uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
+// radar: a beam sweeps around the emblem's rings (the Militia back), lighting blips as it passes.
+// It turns by galaxy_angle and brightens with galaxy_glow, like the galaxy.
+uniform float radar = 0.0;
+uniform float radar_center_y = -0.044;   // the emblem's centre, as uv.y (card centre = 0)
+uniform float radar_radius = 0.335;      // the outer ring, in card widths
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
 
 varying vec2 s;
@@ -70,6 +75,25 @@ void fragment() {
 		float rr = length(p);
 		// The crest breathes
 		col.rgb += vec3(0.55, 0.4, 1.0) * galaxy * (0.05 + 0.07 * (0.5 + 0.5 * sin(TIME * 1.6))) * (1.0 + 3.0 * galaxy_glow) * exp(-rr * rr * 60.0);
+	}
+
+	if (radar > 0.0) {
+		vec2 p = vec2(uv.x, uv.y * aspect);
+		vec2 pc = vec2(0.0, radar_center_y * aspect);
+		vec2 q = p - pc;
+		float r = length(q);
+		float inside_r = 1.0 - smoothstep(radar_radius - 0.01, radar_radius + 0.004, r);
+		float behind = mod(galaxy_angle - atan(q.y, q.x), 6.28318);   // 0 at the beam, growing behind it
+		vec3 lime = vec3(0.66, 1.0, 0.25);
+		col.rgb += lime * radar * inside_r * (exp(-behind * 2.4) * (0.2 + 0.22 * galaxy_glow) + smoothstep(0.035, 0.0, behind) * 0.4);
+		for (int i = 0; i < 6; i++) {   // blips the beam lights up
+			float fi = float(i);
+			float ba = fi * 2.39 + 0.6;
+			vec2 bp = pc + vec2(cos(ba), sin(ba)) * (0.07 + 0.042 * fi);
+			float bb = mod(galaxy_angle - ba, 6.28318);
+			col.rgb += lime * radar * exp(-bb * 2.6) * smoothstep(0.013, 0.0, length(p - bp)) * 0.95;
+		}
+		col.rgb += lime * radar * (0.06 + 0.06 * galaxy_glow) * (0.5 + 0.5 * sin(TIME * 2.2)) * smoothstep(0.006, 0.0, abs(r - radar_radius));
 	}
 
 	// A soft diagonal band of light that slides across as the card tilts

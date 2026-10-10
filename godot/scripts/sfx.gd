@@ -107,6 +107,13 @@ func _r_whoosh() -> AudioStream:
 	return _render(0.26, func(t, st): return _noise(st, lerpf(0.02, 0.45, t / 0.26)) * sin(PI * t / 0.26) * 0.8)
 
 
+func _r_gunshot() -> AudioStream:
+	return _render(0.32, func(t, st):
+		var crack := _noise(st, 0.92) * exp(-t * 60.0) * 0.95
+		var thump := _sweep(st, lerpf(130.0, 48.0, minf(t / 0.12, 1.0))) * exp(-t * 26.0) * 0.6
+		return crack + thump + _noise(st, 0.08) * exp(-t * 10.0) * 0.22)
+
+
 func _r_hit() -> AudioStream:
 	return _render(0.3, func(t, st):
 		return _noise(st, 0.6) * exp(-t * 22.0) * 0.8 + _sweep(st, lerpf(160.0, 60.0, t / 0.3)) * exp(-t * 12.0) * 0.7)

@@ -88,12 +88,16 @@ static func art(id: String) -> Texture2D:
 
 ## The card back: a clan's own (assets/card_back_<clan tag>.png, e.g. card_back_nebula.png) when
 ## there is one, otherwise the standard back.
-## Clan backs whose galaxy turns (shaders/card.gdshader, galaxy).
-const SPINNING_BACKS := ["nebula"]
+## Clan backs that move (shaders/card.gdshader): "galaxy" turns the nebula around the crest;
+## "radar" sweeps a beam around the emblem's radar rings.
+const BACK_STYLES := {"nebula": "galaxy", "militia": "radar"}
 
 
-static func back_spins(clan: String) -> bool:
-	return clan in SPINNING_BACKS and ResourceLoader.exists("res://assets/card_back_%s.png" % clan)
+## How a clan's back moves ("" = it doesn't).
+static func back_style(clan: String) -> String:
+	if not BACK_STYLES.has(clan) or not ResourceLoader.exists("res://assets/card_back_%s.png" % clan):
+		return ""
+	return BACK_STYLES[clan]
 
 
 static func back(clan := "") -> Texture2D:

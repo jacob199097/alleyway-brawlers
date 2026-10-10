@@ -42,11 +42,12 @@ const EMOTE_GAP_MS := 2600
 const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
 ## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
-const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}}
+## attack "guns": rapid gunfire, with muzzle flashes, tracers and bullet hits (Militia).
+const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns"}}
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
-const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
+const TYPE_NAMES := {"gang_member": "CHARACTER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 const PHASE_NAMES := {"deployment": "DEPLOYMENT", "brawl": "BRAWL", "regroup": "REGROUP"}
 
 var ai_sides := ["opponent"]
@@ -1290,6 +1291,8 @@ func _ev_clash(ev: Dictionary) -> void:
 	var dir := (tpos - a.home).normalized()
 	if _clan_style(a.card, "attack") == "laser":
 		await _laser_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "guns":
+		await _gun_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
 		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
@@ -1578,6 +1581,86 @@ class WarpPortal extends Node2D:
 				pts.append(Vector2.from_angle(a) * radius * (0.15 + 0.95 * f))
 			draw_polyline(pts, Color(glow.lightened(0.3), 0.75), 3.0, true)
 		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(glow.lightened(0.45), 0.9), 2.5, true)
+
+
+## Militia: brace, then a burst of gunfire (muzzle flashes, tracers, bullet sparks on the
+## target), and a full impact on the last round.
+func _gun_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var muzzle := a.home + dir * 92.0
+	var flash_col := Color(1.0, 0.9, 0.5)
+	_cam_focus(a.home.lerp(tpos, 0.35), 1.04, 0.25)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 18.0, 0.18)
+	t.tween_property(a, "scale", Vector2.ONE * 1.18, 0.18)
+	await t.finished
+	_clear_attack_line()
+	var shots := 9 if big else 7
+	for i in shots:
+		var last := i == shots - 1
+		var hit := tpos + Vector2(randf_range(-26, 26), randf_range(-34, 34)) * (0.3 if last else 1.0)
+		Sfx.play("gunshot", randf_range(0.92, 1.12), -2.0 if last else -6.0)
+		_muzzle_flash(muzzle + dir.orthogonal() * randf_range(-6, 6), dir, flash_col)
+		_tracer(muzzle, hit, flash_col)
+		a.kick(-dir, 6.0)
+		a.position = a.home - dir * (18.0 + randf_range(4.0, 9.0))   # recoil
+		_sparks(hit, -dir, Color(1.0, 0.75, 0.35), 8, 70.0)
+		if d:
+			d.kick(dir, 4.0)
+		shake(4.0)
+		await _wait(0.06)
+	# The last round lands: full impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("hit", 0.85 if direct else 1.0)
+	Sfx.play("boom", 1.0 if big else 1.2, 0.0 if big else -5.0)
+	shake(20.0 if big else 11.0)
+	_shockwave(tpos, 0.8 if big else 0.45)
+	_post_pulse("aberration", 10.0 if big else 4.0, 0.35)
+	_sparks(tpos, dir, Color(1, 0.86, 0.5), 36 if big else 22)
+	_burst(tpos, Color(1, 0.8, 0.4), 22, 480)
+	_ring(tpos, Color.WHITE, 1.4 if big else 1.15)
+	if d:
+		d.flash()
+		d.kick(dir, 28.0 if big else 20.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (26.0 if big else 16.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+
+
+## A star-shaped flash at the muzzle, gone in a blink.
+func _muzzle_flash(at: Vector2, dir: Vector2, col: Color) -> void:
+	var f := Node2D.new()
+	f.position = at
+	f.rotation = dir.angle()
+	f.z_index = 72
+	f.material = _add_mat
+	f.draw.connect(func():
+		f.draw_colored_polygon(PackedVector2Array([Vector2(0, -9), Vector2(34, 0), Vector2(0, 9), Vector2(-6, 0)]), col)
+		f.draw_colored_polygon(PackedVector2Array([Vector2(4, -16), Vector2(16, 0), Vector2(4, 16)]), Color(col, 0.7))
+		f.draw_circle(Vector2(6, 0), 9.0, Color(1, 1, 1, 0.9)))
+	fx.add_child(f)
+	var t := f.create_tween()
+	t.tween_property(f, "modulate:a", 0.0, 0.07)
+	t.tween_callback(f.queue_free)
+
+
+## A bullet's tracer: a bright streak from the gun to where it hits, fading fast.
+func _tracer(from: Vector2, to: Vector2, col: Color) -> void:
+	var l := Line2D.new()
+	l.points = PackedVector2Array([from, from.lerp(to, 0.35), to])
+	l.width = 3.0
+	var g := Gradient.new()
+	g.set_color(0, Color(col, 0.0))
+	g.set_color(1, Color(1, 1, 0.9, 1.0))
+	l.gradient = g
+	l.material = _add_mat
+	l.z_index = 71
+	fx.add_child(l)
+	var t := l.create_tween()
+	t.tween_property(l, "modulate:a", 0.0, 0.08)
+	t.tween_callback(l.queue_free)
 
 
 ## A laser beam from `from` to `to` that lasts `secs`, then narrows away.
@@ -2130,7 +2213,7 @@ func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
 	v.setup(c, side, up)
-	v.set_back(_back_for(side), CardDB.back_spins(_clan_of(side)))
+	v.set_back(_back_for(side), CardDB.back_style(_clan_of(side)))
 	return v
 
 

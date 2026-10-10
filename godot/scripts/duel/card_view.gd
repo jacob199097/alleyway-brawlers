@@ -43,10 +43,12 @@ var _stats := []
 var _tw: Tween
 var _mat := ShaderMaterial.new()
 var _back_mat: ShaderMaterial = null   # the back's own material when its galaxy turns
-var _spin_angle := randf() * TAU        # the galaxy's turn so far
-var _spin_speed := GALAXY_IDLE
-const GALAXY_IDLE := 0.09               # radians per second: a slow drift
-const GALAXY_HOVER := 1.6               # hovering a face-down card: it whirls and glows
+var _spin_angle := randf() * TAU        # how far the back's animation has turned
+var _spin_speed := 0.09
+var _spin_idle := 0.09                  # radians per second at rest...
+var _spin_hover := 1.6                  # ...and while a face-down card is hovered (it also glows)
+## Speeds per moving back (CardDB.BACK_STYLES): [at rest, hovered]
+const BACK_SPEEDS := {"galaxy": [0.09, 1.6], "radar": [1.5, 4.8]}
 var _tilt := Vector2.ZERO        # current (y_rot, x_rot) in the card's own frame
 var _kick := Vector2.ZERO        # recoil from hits, decays
 var _flip_deg := 0.0             # extra turn while flipping over
@@ -96,16 +98,19 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	return self
 
 
-## Show a different card back (a clan's own); spin = its galaxy turns.
-func set_back(tex: Texture2D, spin := false) -> void:
+## Show a different card back (a clan's own); style = how it moves (CardDB.back_style).
+func set_back(tex: Texture2D, style := "") -> void:
 	if tex and tex != _back.texture:
 		_back.texture = tex
 		_fit(_back)
-	if spin and _back_mat == null:
+	if BACK_SPEEDS.has(style) and _back_mat == null:
 		_back_mat = _mat.duplicate()
-		_back_mat.set_shader_parameter("galaxy", 1.0)
+		_back_mat.set_shader_parameter(style, 1.0)
 		_back_mat.set_shader_parameter("foil", 0.0)
 		_back.material = _back_mat
+		_spin_idle = BACK_SPEEDS[style][0]
+		_spin_hover = BACK_SPEEDS[style][1]
+		_spin_speed = _spin_idle
 
 
 func set_card(c: Dictionary) -> void:
@@ -312,12 +317,12 @@ func _update_tilt(delta: float) -> void:
 	_tilt = _tilt.lerp(target, 1.0 - exp(-14.0 * delta))
 	_kick = _kick.lerp(Vector2.ZERO, 1.0 - exp(-7.0 * delta))
 	if _back_mat:
-		# The galaxy speeds up while a face-down card is hovered, and eases back after
-		var want := GALAXY_HOVER if hovered and not face_up else GALAXY_IDLE
+		# The back's animation speeds up while a face-down card is hovered, and eases back after
+		var want := _spin_hover if hovered and not face_up else _spin_idle
 		_spin_speed = lerpf(_spin_speed, want, 1.0 - exp(-4.0 * delta))
 		_spin_angle = fmod(_spin_angle + _spin_speed * delta, TAU)
 		_back_mat.set_shader_parameter("galaxy_angle", _spin_angle)
-		_back_mat.set_shader_parameter("galaxy_glow", clampf((_spin_speed - GALAXY_IDLE) / (GALAXY_HOVER - GALAXY_IDLE), 0.0, 1.0))
+		_back_mat.set_shader_parameter("galaxy_glow", clampf((_spin_speed - _spin_idle) / (_spin_hover - _spin_idle), 0.0, 1.0))
 	for m in [_mat, _back_mat]:
 		if m:
 			m.set_shader_parameter("y_rot", _tilt.x + _flip_deg)
