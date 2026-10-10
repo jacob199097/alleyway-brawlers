@@ -69,7 +69,7 @@ copy the zip from `builds/` into the `downloads/` folder of the server's checkou
 `https://<server>/download` serves the newest one. The game links there when an update is available
 or required (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link somewhere else instead). From the PC:
 
-    scp builds/AlleywayBrawlers-<version>-windows.zip jacob@192.168.0.200:~/alleyway-brawlers/downloads/
+    scp builds/AlleywayBrawlers-<version>-windows.zip jacob@192.168.0.200:/opt/Turf_War/downloads/
 
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
