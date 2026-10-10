@@ -99,6 +99,8 @@ func make_card(spec) -> Dictionary:
 	c.downed = false
 	c.has_attacked = false
 	c.deployed_turn = 0
+	if c.get("effectKey") == null:
+		c.effectKey = ""   # Card Forge cards may have no hand-written effect
 	c.mods = []   # temporary buffs/debuffs: {atk, def, until_turn}
 	return c
 
@@ -418,6 +420,14 @@ func _attack(side: String, from: int, target: int) -> bool:
 	att.has_attacked = true
 	_emit("attack", {"side": side, "from": from, "target": target, "card": att.duplicate(true)})
 	var ctx := {"side": side, "foe": other(side), "from": from, "target": target, "att": att, "bonus": 0}
+	var def_now = card_at(other(side), target) if target >= 0 else null
+	for e in _fx(att, "attack"):
+		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self":
+			if str(e.get("if", "")) == "" and int(e.get("atk", 0)) != 0:
+				ctx.bonus += int(e.get("atk", 0))
+				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(e.get("atk", 0)))], from)
+		elif _fx_cond(side, from, e, def_now):
+			_do_fx(side, from, att, e)
 	if is_lion(att) and sides[side].brutus_bonus > 0:
 		ctx.bonus += sides[side].brutus_bonus
 		sides[side].brutus_bonus = 0
@@ -524,6 +534,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		_effect(foe, def, "Bulwark: the attacker loses 300 ATK", target)
 
 	var def_was_downed: bool = def.downed
+	var def_info := {"downed": def.downed, "position": def.position, "face_down": false}
 	var vs_def: bool = def.downed or def.position == "def"
 	var a_val: int = maxi(0, att.attack + bonus)
 	var d_val: int = def.defense if vs_def else def.attack
@@ -550,8 +561,10 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	if winner == "" and card_at(side, from) == att and not att.downed:
 		if result == "ko":
 			_on_ko(side, from, att, def_was_downed, target)
+			_run_fx(side, _slot_of(side, att, from), att, "ko", def_info)
 		elif result == "downed":
 			_on_down(side, from, att)
+			_run_fx(side, _slot_of(side, att, from), att, "down", def_info)
 
 
 ## A dormant leader soaks attacks with its Influence (its DEF). At 0 it is defeated:
@@ -615,6 +628,16 @@ func _end(win_side: String, reason: String) -> void:
 
 
 func _brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> int:
+	var extra := 0
+	for e in _fx(att, "attack"):
+		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self" \
+				and str(e.get("if", "")) != "" and _fx_cond(side, from, e, def):
+			extra += int(e.get("atk", 0))
+			_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(e.get("atk", 0)))], from)
+	return extra + _key_brawl_bonus(side, from, att, def)
+
+
+func _key_brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> int:
 	var key: String = att.get("effectKey", "")
 	if key == "goldfang_attacker" and def.position == "def" and not def.downed:
 		_effect(side, att, "Goldfang hits a defender: +500 ATK", from)
@@ -701,6 +724,7 @@ func _spring(side: String, slot: int) -> void:
 # ── Effects ──────────────────────────────────────────────────────────────────
 
 func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
+	_run_fx(side, slot, c, "deploy")
 	var foe := other(side)
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
@@ -828,6 +852,7 @@ func _recalc() -> void:
 		var foe_has_downed := characters(other(side)).any(func(e): return e.card.downed)
 		var lions := lion_count(side)
 		var roan: bool = s.leader_state == "dormant" and s.leader.get("effectKey") == "king_roan_leader" and lions >= 2
+		var auras := _auras(side)
 		values[side] = {}
 		for slot in FRONT:
 			var c = s.field[slot]
@@ -856,6 +881,10 @@ func _recalc() -> void:
 						atk += 600
 			if roan and is_lion(c):
 				atk += 300
+			for a in auras:
+				if _aura_hits(a, slot, c):
+					atk += int(a[1].get("atk", 0))
+					df += int(a[1].get("def", 0))
 			for adj in [slot - 1, slot + 1]:
 				if adj in FRONT and s.field[adj] != null and s.field[adj].get("effectKey") == "bulwark":
 					df += 400
@@ -863,6 +892,174 @@ func _recalc() -> void:
 			c.defense = maxi(0, df)
 			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down]
 	_emit("stats", {"values": values})
+
+
+# ── Card effects from data (Card Forge) ──────────────────────────────────────
+# A card's "effects" list holds building blocks: {when, do, target, atk, def, amount, until,
+# clan, if, n}.
+#   when:   deploy | attack | ko | down | turn_start | passive
+#   do:     buff | down | draw | discard | damage | heal | promote | attack_again
+#   target: self | ally | allies | enemy | enemies   (buff and down)
+#   clan:   only characters with this clan tag;  until: turn | next_turn (buffs)
+#   if:     "" | vs_def | vs_downed | allies (n or more others) | adjacent | foe_downed
+
+func _fx(c, when: String) -> Array:
+	var out: Array = []
+	if c == null:
+		return out
+	for e in c.get("effects", []):
+		if e is Dictionary and str(e.get("when", "")) == when:
+			out.append(e)
+	return out
+
+
+## Characters on `side`, other than the one in `except`, that pass the effect's clan filter.
+func _fx_pool(side: String, e: Dictionary, except: int, standing_only := false) -> Array:
+	var clan := str(e.get("clan", ""))
+	return characters(side).filter(func(x):
+		return x.slot != except and (clan == "" or x.card.get("clanTag") == clan) \
+			and not (standing_only and x.card.downed))
+
+
+func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
+	match str(e.get("if", "")):
+		"vs_def":
+			return def != null and (def.get("position") == "def" or def.get("face_down", false))
+		"vs_downed":
+			return def != null and def.get("downed", false)
+		"allies":
+			return _fx_pool(side, e, slot).size() >= int(e.get("n", 1))
+		"adjacent":
+			return _fx_pool(side, e, slot).any(func(x): return absi(x.slot - slot) == 1)
+		"foe_downed":
+			return characters(other(side)).any(func(x): return x.card.downed)
+	return true
+
+
+func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null) -> void:
+	for e in _fx(c, when):
+		if winner == "" and _fx_cond(side, slot, e, def):
+			_do_fx(side, slot, c, e)
+
+
+func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary) -> void:
+	var foe := other(side)
+	var n: int = maxi(1, int(e.get("amount", 1)))
+	var target := str(e.get("target", "self"))
+	match str(e.get("do", "")):
+		"buff":
+			var mod := {"atk": int(e.get("atk", 0)), "def": int(e.get("def", 0)),
+				"until_turn": turn + (1 if str(e.get("until", "turn")) == "next_turn" else 0)}
+			var label := _stat_text(mod)
+			if target == "self":
+				if card_at(side, slot) == c:
+					c.mods.append(mod.duplicate())
+					_effect(side, c, "%s: %s" % [c.name, label], slot)
+			elif target == "ally" or target == "enemy":
+				var on := side if target == "ally" else foe
+				var pool := _fx_pool(on, e, slot if on == side else -99)
+				pool.sort_custom(_strongest_first)
+				_ask_target(side, "fx", "%s: choose %s for %s" % [c.name, "an ally" if on == side else "an enemy", label], c,
+					pool, on, func(x: Dictionary):
+						x.card.mods.append(mod.duplicate())
+						_effect(side, c, "%s: %s" % [x.card.name, label], slot))
+			elif target == "allies" or target == "enemies":
+				var on := side if target == "allies" else foe
+				var pool := _fx_pool(on, e, slot if on == side else -99)
+				for x in pool:
+					x.card.mods.append(mod.duplicate())
+				if not pool.is_empty():
+					_effect(side, c, "%s: %s to %s" % [c.name, label, "your characters" if on == side else "enemy characters"], slot)
+		"down":
+			var pool := _fx_pool(foe, e, -99, true)
+			if target == "enemies":
+				for x in pool:
+					x.card.downed = true
+					_emit("downed", {"side": foe, "slot": x.slot, "card": x.card.duplicate(true)})
+				if not pool.is_empty():
+					_effect(side, c, "%s Downs %d enem%s" % [c.name, pool.size(), "y" if pool.size() == 1 else "ies"], slot)
+			else:
+				pool.sort_custom(_strongest_first)
+				_ask_target(side, "fx", "%s: choose an enemy character to Down" % c.name, c, pool, foe, func(x: Dictionary):
+					x.card.downed = true
+					_emit("downed", {"side": foe, "slot": x.slot, "card": x.card.duplicate(true)})
+					_effect(side, c, "%s Downs %s" % [c.name, x.card.name], slot))
+		"draw":
+			_effect(side, c, "%s: draw %d" % [c.name, n], slot)
+			for i in n:
+				_draw(side)
+		"discard":
+			var k: int = mini(n, sides[foe].hand.size())
+			if k > 0:
+				_effect(side, c, "%s: your opponent discards %d" % [c.name, k], slot)
+				_ask_discard(foe, k, Callable())
+		"damage":
+			_effect(side, c, "%s: %d Morale damage" % [c.name, n], slot)
+			_damage(foe, n)
+		"heal":
+			var s: Dictionary = sides[side]
+			var gain: int = mini(n, START_MORALE - s.morale)
+			if gain > 0:
+				s.morale += gain
+				_effect(side, c, "%s: +%d Morale" % [c.name, gain], slot)
+				_emit("heal", {"side": side, "amount": gain, "morale": s.morale})
+		"promote":
+			if card_at(side, slot) == c:
+				_promote(side, slot, c.name)
+		"attack_again":
+			if card_at(side, slot) == c and c.has_attacked:
+				c.has_attacked = false
+				_effect(side, c, "%s may attack again this turn" % c.name, slot)
+
+
+## Passive buffs active on `side`: [[source slot (-1 = dormant leader), effect], ...]
+func _auras(side: String) -> Array:
+	var s: Dictionary = sides[side]
+	var out: Array = []
+	for x in characters(side):
+		if x.card.face_down:
+			continue
+		for e in _fx(x.card, "passive"):
+			if str(e.get("do", "")) == "buff" and _fx_cond(side, x.slot, e, null):
+				out.append([x.slot, e])
+	if s.leader_state == "dormant" and s.leader != null:
+		for e in _fx(s.leader, "passive"):
+			if str(e.get("do", "")) == "buff" and _fx_cond(side, -1, e, null):
+				out.append([-1, e])
+	return out
+
+
+func _aura_hits(a: Array, slot: int, c: Dictionary) -> bool:
+	var e: Dictionary = a[1]
+	var clan := str(e.get("clan", ""))
+	if clan != "" and c.get("clanTag") != clan:
+		return false
+	match str(e.get("target", "self")):
+		"self":
+			return a[0] == slot
+		"allies":
+			return a[0] != slot
+	return false
+
+
+func _slot_of(side: String, c: Dictionary, fallback: int) -> int:
+	for slot in FRONT:
+		if sides[side].field[slot] == c:
+			return slot
+	return fallback
+
+
+static func _signed(v: int) -> String:
+	return ("+" if v > 0 else "") + str(v)
+
+
+static func _stat_text(mod: Dictionary) -> String:
+	var parts: Array = []
+	if int(mod.get("atk", 0)) != 0:
+		parts.append("%s ATK" % _signed(int(mod.atk)))
+	if int(mod.get("def", 0)) != 0:
+		parts.append("%s DEF" % _signed(int(mod.def)))
+	return " / ".join(parts) if not parts.is_empty() else "no change"
 
 
 # ── Turn flow ────────────────────────────────────────────────────────────────
@@ -899,6 +1096,8 @@ func _begin_turn() -> void:
 			_emit("stand", {"side": active, "slot": e.slot, "card": e.card.duplicate(true)})
 		else:
 			e.card.down_turns = 1
+	for e in characters(active):
+		_run_fx(active, e.slot, e.card, "turn_start")
 	# King's Test survivors may promote at the start of their owner's next turn
 	for e in characters(active):
 		if e.card.get("kings_test", false):

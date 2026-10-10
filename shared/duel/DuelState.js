@@ -59,6 +59,17 @@ function attackValue(c) {
 }
 
 /** Strongest first; ties go to the lower lane (same order as the Godot engine). */
+function signed(v) {
+    return (v > 0 ? '+' : '') + String(v);
+}
+
+function statText(mod) {
+    const parts = [];
+    if (toInt(mod.atk) !== 0) parts.push(`${signed(toInt(mod.atk))} ATK`);
+    if (toInt(mod.def) !== 0) parts.push(`${signed(toInt(mod.def))} DEF`);
+    return parts.length ? parts.join(' / ') : 'no change';
+}
+
 function strongestFirst(a, b) {
     const va = attackValue(a.card);
     const vb = attackValue(b.card);
@@ -124,6 +135,7 @@ export class DuelState {
         c.downed = false;
         c.has_attacked = false;
         c.deployed_turn = 0;
+        if (c.effectKey == null) c.effectKey = ''; // Card Forge cards may have no hand-written effect
         c.mods = [];
         return c;
     }
@@ -393,6 +405,17 @@ export class DuelState {
         att.has_attacked = true;
         this._emit('attack', { side, from, target, card: clone(att) });
         const ctx = { side, foe: other(side), from, target, att, bonus: 0 };
+        const defNow = target >= 0 ? this.cardAt(other(side), target) : null;
+        for (const e of this._fx(att, 'attack')) {
+            if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self') {
+                if (String(e.if ?? '') === '' && toInt(e.atk) !== 0) {
+                    ctx.bonus += toInt(e.atk);
+                    this._effect(side, att, `${att.name}: ${signed(toInt(e.atk))} ATK this brawl`, from);
+                }
+            } else if (this._fxCond(side, from, e, defNow)) {
+                this._doFx(side, from, att, e);
+            }
+        }
         if (isLion(att) && this.sides[side].brutus_bonus > 0) {
             ctx.bonus += this.sides[side].brutus_bonus;
             this.sides[side].brutus_bonus = 0;
@@ -510,6 +533,7 @@ export class DuelState {
             this._effect(foe, def, 'Bulwark: the attacker loses 300 ATK', target);
         }
         const defWasDowned = def.downed;
+        const defInfo = { downed: def.downed, position: def.position, face_down: false };
         const vsDef = def.downed || def.position === 'def';
         const aVal = Math.max(0, att.attack + bonus);
         const dVal = vsDef ? def.defense : def.attack;
@@ -531,8 +555,13 @@ export class DuelState {
             this._defeat(side, from);
         }
         if (this.winner === '' && this.cardAt(side, from) === att && !att.downed) {
-            if (result === 'ko') this._onKo(side, from, att, defWasDowned, target);
-            else if (result === 'downed') this._onDown(side, from, att);
+            if (result === 'ko') {
+                this._onKo(side, from, att, defWasDowned, target);
+                this._runFx(side, this._slotOf(side, att, from), att, 'ko', defInfo);
+            } else if (result === 'downed') {
+                this._onDown(side, from, att);
+                this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo);
+            }
         }
     }
 
@@ -592,6 +621,18 @@ export class DuelState {
     }
 
     _brawlBonus(side, from, att, def) {
+        let extra = 0;
+        for (const e of this._fx(att, 'attack')) {
+            if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self'
+                    && String(e.if ?? '') !== '' && this._fxCond(side, from, e, def)) {
+                extra += toInt(e.atk);
+                this._effect(side, att, `${att.name}: ${signed(toInt(e.atk))} ATK this brawl`, from);
+            }
+        }
+        return extra + this._keyBrawlBonus(side, from, att, def);
+    }
+
+    _keyBrawlBonus(side, from, att, def) {
         const key = att.effectKey || '';
         if (key === 'goldfang_attacker' && def.position === 'def' && !def.downed) {
             this._effect(side, att, 'Goldfang hits a defender: +500 ATK', from);
@@ -697,6 +738,7 @@ export class DuelState {
     // ── Effects ────────────────────────────────────────────────────────────
 
     _onDeploy(side, slot, c) {
+        this._runFx(side, slot, c, 'deploy');
         const foe = other(side);
         switch (c.effectKey || '') {
             case 'pride_lieutenant_deploy': {
@@ -822,6 +864,7 @@ export class DuelState {
             const foeHasDowned = this.characters(other(side)).some(e => e.card.downed);
             const lions = this.lionCount(side);
             const roan = s.leader_state === 'dormant' && s.leader.effectKey === 'king_roan_leader' && lions >= 2;
+            const auras = this._auras(side);
             values[side] = {};
             for (const slot of FRONT) {
                 const c = s.field[slot];
@@ -841,6 +884,12 @@ export class DuelState {
                     case 'sovereign': if (foeHasDowned) atk += 600; break;
                 }
                 if (roan && isLion(c)) atk += 300;
+                for (const a of auras) {
+                    if (this._auraHits(a, slot, c)) {
+                        atk += toInt(a[1].atk);
+                        df += toInt(a[1].def);
+                    }
+                }
                 for (const adj of [slot - 1, slot + 1]) {
                     if (FRONT.includes(adj) && s.field[adj] != null && s.field[adj].effectKey === 'bulwark') df += 400;
                 }
@@ -850,6 +899,157 @@ export class DuelState {
             }
         }
         this._emit('stats', { values });
+    }
+
+    // ── Card effects from data (Card Forge) ────────────────────────────────
+    // Same building blocks as duel_state.gd: {when, do, target, atk, def, amount, until, clan, if, n}
+
+    _fx(c, when) {
+        if (c == null) return [];
+        return (c.effects || []).filter(e => e && typeof e === 'object' && String(e.when ?? '') === when);
+    }
+
+    _fxPool(side, e, except, standingOnly = false) {
+        const clan = String(e.clan ?? '');
+        return this.characters(side).filter(x => x.slot !== except && (clan === '' || x.card.clanTag === clan)
+            && !(standingOnly && x.card.downed));
+    }
+
+    _fxCond(side, slot, e, def) {
+        switch (String(e.if ?? '')) {
+            case 'vs_def': return def != null && (def.position === 'def' || !!def.face_down);
+            case 'vs_downed': return def != null && !!def.downed;
+            case 'allies': return this._fxPool(side, e, slot).length >= toInt(e.n ?? 1);
+            case 'adjacent': return this._fxPool(side, e, slot).some(x => Math.abs(x.slot - slot) === 1);
+            case 'foe_downed': return this.characters(other(side)).some(x => x.card.downed);
+        }
+        return true;
+    }
+
+    _runFx(side, slot, c, when, def = null) {
+        for (const e of this._fx(c, when)) {
+            if (this.winner === '' && this._fxCond(side, slot, e, def)) this._doFx(side, slot, c, e);
+        }
+    }
+
+    _doFx(side, slot, c, e) {
+        const foe = other(side);
+        const n = Math.max(1, toInt(e.amount ?? 1));
+        const target = String(e.target ?? 'self');
+        switch (String(e.do ?? '')) {
+            case 'buff': {
+                const mod = { atk: toInt(e.atk), def: toInt(e.def),
+                    until_turn: this.turn + (String(e.until ?? 'turn') === 'next_turn' ? 1 : 0) };
+                const label = statText(mod);
+                if (target === 'self') {
+                    if (this.cardAt(side, slot) === c) {
+                        c.mods.push({ ...mod });
+                        this._effect(side, c, `${c.name}: ${label}`, slot);
+                    }
+                } else if (target === 'ally' || target === 'enemy') {
+                    const on = target === 'ally' ? side : foe;
+                    const pool = this._fxPool(on, e, on === side ? slot : -99);
+                    pool.sort(strongestFirst);
+                    this._askTarget(side, 'fx', `${c.name}: choose ${on === side ? 'an ally' : 'an enemy'} for ${label}`, c,
+                        pool, on, (x) => {
+                            x.card.mods.push({ ...mod });
+                            this._effect(side, c, `${x.card.name}: ${label}`, slot);
+                        });
+                } else if (target === 'allies' || target === 'enemies') {
+                    const on = target === 'allies' ? side : foe;
+                    const pool = this._fxPool(on, e, on === side ? slot : -99);
+                    for (const x of pool) x.card.mods.push({ ...mod });
+                    if (pool.length) this._effect(side, c, `${c.name}: ${label} to ${on === side ? 'your characters' : 'enemy characters'}`, slot);
+                }
+                break;
+            }
+            case 'down': {
+                const pool = this._fxPool(foe, e, -99, true);
+                if (target === 'enemies') {
+                    for (const x of pool) {
+                        x.card.downed = true;
+                        this._emit('downed', { side: foe, slot: x.slot, card: clone(x.card) });
+                    }
+                    if (pool.length) this._effect(side, c, `${c.name} Downs ${pool.length} enem${pool.length === 1 ? 'y' : 'ies'}`, slot);
+                } else {
+                    pool.sort(strongestFirst);
+                    this._askTarget(side, 'fx', `${c.name}: choose an enemy character to Down`, c, pool, foe, (x) => {
+                        x.card.downed = true;
+                        this._emit('downed', { side: foe, slot: x.slot, card: clone(x.card) });
+                        this._effect(side, c, `${c.name} Downs ${x.card.name}`, slot);
+                    });
+                }
+                break;
+            }
+            case 'draw':
+                this._effect(side, c, `${c.name}: draw ${n}`, slot);
+                for (let i = 0; i < n; i++) this._draw(side);
+                break;
+            case 'discard': {
+                const k = Math.min(n, this.sides[foe].hand.length);
+                if (k > 0) {
+                    this._effect(side, c, `${c.name}: your opponent discards ${k}`, slot);
+                    this._askDiscard(foe, k, null);
+                }
+                break;
+            }
+            case 'damage':
+                this._effect(side, c, `${c.name}: ${n} Morale damage`, slot);
+                this._damage(foe, n);
+                break;
+            case 'heal': {
+                const s = this.sides[side];
+                const gain = Math.min(n, START_MORALE - s.morale);
+                if (gain > 0) {
+                    s.morale += gain;
+                    this._effect(side, c, `${c.name}: +${gain} Morale`, slot);
+                    this._emit('heal', { side, amount: gain, morale: s.morale });
+                }
+                break;
+            }
+            case 'promote':
+                if (this.cardAt(side, slot) === c) this._promote(side, slot, c.name);
+                break;
+            case 'attack_again':
+                if (this.cardAt(side, slot) === c && c.has_attacked) {
+                    c.has_attacked = false;
+                    this._effect(side, c, `${c.name} may attack again this turn`, slot);
+                }
+                break;
+        }
+    }
+
+    _auras(side) {
+        const s = this.sides[side];
+        const out = [];
+        for (const x of this.characters(side)) {
+            if (x.card.face_down) continue;
+            for (const e of this._fx(x.card, 'passive')) {
+                if (String(e.do ?? '') === 'buff' && this._fxCond(side, x.slot, e, null)) out.push([x.slot, e]);
+            }
+        }
+        if (s.leader_state === 'dormant' && s.leader != null) {
+            for (const e of this._fx(s.leader, 'passive')) {
+                if (String(e.do ?? '') === 'buff' && this._fxCond(side, -1, e, null)) out.push([-1, e]);
+            }
+        }
+        return out;
+    }
+
+    _auraHits(a, slot, c) {
+        const e = a[1];
+        const clan = String(e.clan ?? '');
+        if (clan !== '' && c.clanTag !== clan) return false;
+        switch (String(e.target ?? 'self')) {
+            case 'self': return a[0] === slot;
+            case 'allies': return a[0] !== slot;
+        }
+        return false;
+    }
+
+    _slotOf(side, c, fallback) {
+        for (const slot of FRONT) if (this.sides[side].field[slot] === c) return slot;
+        return fallback;
     }
 
     // ── Turn flow ──────────────────────────────────────────────────────────
@@ -886,6 +1086,7 @@ export class DuelState {
                 e.card.down_turns = 1;
             }
         }
+        for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {
                 delete e.card.kings_test;

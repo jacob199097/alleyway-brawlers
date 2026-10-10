@@ -2,6 +2,8 @@ extends Screen
 ## Card packs: buy with Karat or Contraband (the server rolls the cards), then a pack-opening
 ## reveal where higher rarities get more suspense.
 
+## Known packs and their art. The server's list decides what's on sale: a new Card Forge clan
+## shows up with its name, and art from assets/<id>_booster.png once that file exists.
 const PACKS := [
 	{"id": "lion_pride", "label": "Lion Clan", "image": "Lion_booster.png", "color": Color("ffd166")},
 	{"id": "viper_clan", "label": "Viper Clan", "image": "Viper_booster.png", "color": Color("a5d6a7")},
@@ -26,11 +28,23 @@ func _ready() -> void:
 	UI.back_button(self, func(): Game.go("main_menu"))
 	if not needs_server("The shop"):
 		return
-	for i in PACKS.size():
-		_pack(PACKS[i], Vector2(560 + i * 480, 170))
 	var cb := UI.button("PURCHASE CONTRABAND", func(): Game.go("contraband"), Vector2(380, 64), UI.PURPLE)
 	cb.position = Vector2(1500, 990)
 	add_child(cb)
+	var packs: Array = PACKS.duplicate()
+	var r := await Api.request("GET", "/api/shop/packs")
+	if r.ok and r.data is Dictionary and r.data.get("packs") is Array and not r.data.packs.is_empty():
+		var known := {}
+		for p in PACKS:
+			known[p.id] = p
+		packs = []
+		for sp in r.data.packs:
+			var id := str(sp.get("id", ""))
+			packs.append(known.get(id, {"id": id, "label": str(sp.get("name", id)), "image": "%s_booster.png" % id,
+				"color": Color("b388ff")}))
+	var step: float = minf(480.0, 1700.0 / maxi(1, packs.size()))
+	for i in packs.size():
+		_pack(packs[i], Vector2(760.0 - (packs.size() - 1) * step / 2.0 + i * step, 170))
 
 
 func _refresh_balance() -> void:
@@ -38,7 +52,7 @@ func _refresh_balance() -> void:
 
 
 func _pack(p: Dictionary, at: Vector2) -> void:
-	var art := UI.texture_rect(UI.tex(p.image), Vector2(400, 543))
+	var art := UI.texture_rect(UI.tex(p.image) if UI.tex(p.image) else CardDB.back(), Vector2(400, 543))
 	art.position = at
 	art.pivot_offset = art.size / 2
 	art.mouse_filter = Control.MOUSE_FILTER_STOP

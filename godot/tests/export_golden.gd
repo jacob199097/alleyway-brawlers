@@ -4,6 +4,26 @@ extends SceneTree
 ## Run:  godot --headless --path godot --script res://tests/export_golden.gd -- <out.json> [games]
 
 const MAX_ACTIONS := 1500
+# Odd-numbered games give every character one of these data effects (Card Forge building
+# blocks) instead of its hand-written one, so both engines are checked on every block.
+const FX_SAMPLES := [
+	[{"when": "deploy", "do": "buff", "target": "ally", "atk": 500}],
+	[{"when": "deploy", "do": "down", "target": "enemy"}],
+	[{"when": "deploy", "do": "buff", "target": "enemies", "atk": -300, "until": "next_turn"}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 400}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 600, "if": "vs_def"}],
+	[{"when": "ko", "do": "draw", "amount": 1}],
+	[{"when": "down", "do": "discard", "amount": 1}],
+	[{"when": "ko", "do": "attack_again", "if": "vs_downed"}],
+	[{"when": "turn_start", "do": "heal", "amount": 300}],
+	[{"when": "deploy", "do": "damage", "amount": 200}],
+	[{"when": "passive", "do": "buff", "target": "self", "atk": 300, "if": "allies", "n": 1}],
+	[{"when": "passive", "do": "buff", "target": "allies", "def": 200, "clan": "lion"}],
+	[{"when": "passive", "do": "buff", "target": "self", "atk": 400, "if": "adjacent"}],
+	[{"when": "down", "do": "promote"}],
+	[{"when": "deploy", "do": "down", "target": "enemies", "if": "foe_downed"}],
+	[{"when": "attack", "do": "draw", "amount": 1}, {"when": "deploy", "do": "buff", "target": "self", "def": 300}],
+]
 
 
 func _init() -> void:
@@ -17,6 +37,12 @@ func _init() -> void:
 		var setup := DuelAI.test_setup()
 		for side in ["player", "opponent"]:
 			_shuffle(setup.decks[side], rng)
+		if g % 2 == 1:
+			for side in ["player", "opponent"]:
+				var deck: Array = setup.decks[side]
+				for i in deck.size():
+					if CardDB.get_card(deck[i]).get("cardType") == "gang_member":
+						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_SAMPLES[rng.randi_range(0, FX_SAMPLES.size() - 1)]}
 		var first := "player" if g % 2 == 0 else "opponent"
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1)
 		d.start()

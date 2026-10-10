@@ -561,6 +561,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_ko(ev)
 		"damage":
 			await _ev_damage(ev)
+		"heal":
+			await _ev_heal(ev)
 		"promote":
 			await _ev_promote(ev)
 		"effect":
@@ -941,6 +943,17 @@ func _ev_damage(ev: Dictionary) -> void:
 	if side == "player":
 		_screen_flash(RED, 0.22)
 	await _wait(0.6)
+
+
+## A card effect restores Morale.
+func _ev_heal(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var root: Control = _panels[side].root
+	_set_morale(side, ev.morale)
+	Sfx.play("promote", 1.4, -4.0)
+	_float_text(root.position + root.size / 2, "+%d" % int(ev.amount), GREEN, 64)
+	_burst(get_viewport().get_canvas_transform().affine_inverse() * (root.position + root.size / 2), GREEN, 26, 260, 0.8, -300.0)
+	await _wait(0.5)
 
 
 func _ev_promote(ev: Dictionary) -> void:

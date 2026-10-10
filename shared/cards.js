@@ -2,7 +2,11 @@
  * CARD CATALOG
  * Rules data for every card, keyed by game ID (also the art key: assets/cards/<id>.png).
  * Shared by the client (solo duels, deck loading) and the server (online matches).
+ * Cards from the Card Forge (shared/cards_forge.js, written by tools/import_forge.mjs) are
+ * merged in at the bottom.
  */
+
+import { FORGE_CARDS } from './cards_forge.js';
 
 export const CARD_CATALOG = {
     // ── LIONS: Eric (Striver chain) ──────────────────────────────────────────
@@ -267,3 +271,6 @@ export const CARD_CATALOG = {
         effectText: 'Choose 1 Downed LIONS character; Stand it.',
     },
 };
+
+// Card Forge cards on top (same id replaces the hand-written card)
+Object.assign(CARD_CATALOG, FORGE_CARDS);

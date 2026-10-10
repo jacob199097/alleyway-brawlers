@@ -17,7 +17,21 @@ function getStripe() {
     return _stripe;
 }
 
-const VALID_PACKS = ['lion_pride', 'viper_clan'];
+// A pack for every clan with at least 3 collectable cards (new Card Forge clans appear here
+// automatically after backend/scripts/sync_cards.mjs). Cached for a minute.
+let _packs = { at: 0, list: ['lion_pride', 'viper_clan'] };
+async function validPacks() {
+    if (Date.now() - _packs.at < 60_000) return _packs.list;
+    try {
+        const { rows } = await pool.query(
+            `SELECT clan::text AS clan FROM cards WHERE card_type <> 'leader'
+             GROUP BY clan HAVING COUNT(*) >= 3 ORDER BY MIN(created_at), clan`);
+        _packs = { at: Date.now(), list: rows.map(r => r.clan) };
+    } catch (err) {
+        console.error('[Shop] Could not list packs:', err.message);
+    }
+    return _packs.list;
+}
 
 // ── GET /api/shop/packs — list available packs and player karat ───────────────
 router.get('/packs', requireAuth, async (req, res) => {
@@ -27,7 +41,7 @@ router.get('/packs', requireAuth, async (req, res) => {
         );
         res.json({
             karat: rows[0]?.karat ?? 0,
-            packs: VALID_PACKS.map(p => ({
+            packs: (await validPacks()).map(p => ({
                 id:    p,
                 name:  p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 cost:  200,
@@ -42,7 +56,7 @@ router.get('/packs', requireAuth, async (req, res) => {
 // ── POST /api/shop/buy — purchase without opening ────────────────────────────
 router.post('/buy', requireAuth, async (req, res) => {
     const { packType } = req.body;
-    if (!VALID_PACKS.includes(packType)) {
+    if (!(await validPacks()).includes(packType)) {
         return res.status(400).json({ error: 'Invalid pack type.' });
     }
     try {
@@ -57,7 +71,7 @@ router.post('/buy', requireAuth, async (req, res) => {
 // ── POST /api/shop/open — spend karat and open a pack immediately ─────────────
 router.post('/open', requireAuth, async (req, res) => {
     const { packType, currency = 'karat' } = req.body;
-    if (!VALID_PACKS.includes(packType)) {
+    if (!(await validPacks()).includes(packType)) {
         return res.status(400).json({ error: 'Invalid pack type.' });
     }
     if (!['karat', 'contraband'].includes(currency)) {
