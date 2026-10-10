@@ -64,9 +64,12 @@ with a download screen. No new build is needed for card changes; only code chang
 ## Game versions
 `shared/game_version.json` holds `latest` (the newest Windows build) and `minimum` (older builds
 must update before playing online). When you ship a build with code changes, raise the version in
-`godot/project.godot` (`config/version`) and in that file. Put the download link in the server's
-`backend/.env` as `CLIENT_DOWNLOAD_URL=...`; the game offers it when an update is available or
-required.
+`godot/project.godot` (`config/version`) and in that file. The server hosts the builds:
+copy the zip from `builds/` into the `downloads/` folder of the server's checkout (not in git), and
+`https://<server>/download` serves the newest one. The game links there when an update is available
+or required (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link somewhere else instead). From the PC:
+
+    scp builds/AlleywayBrawlers-<version>-windows.zip jacob@192.168.0.200:~/alleyway-brawlers/downloads/
 
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and

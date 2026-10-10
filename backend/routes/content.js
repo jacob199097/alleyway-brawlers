@@ -69,7 +69,9 @@ function versions() {
     return {
         latest: String(v.latest || '0.0.0'),
         minimum: String(v.minimum || '0.0.0'),
-        downloadUrl: process.env.CLIENT_DOWNLOAD_URL || '',
+        // The server hosts the builds itself (routes/download.js) unless .env points elsewhere
+        downloadUrl: process.env.CLIENT_DOWNLOAD_URL
+            || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download` : ''),
     };
 }
 
