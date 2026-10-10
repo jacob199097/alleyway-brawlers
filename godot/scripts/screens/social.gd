@@ -68,8 +68,7 @@ func _row(f: Dictionary) -> Control:
 	var dot_box := CenterContainer.new()
 	dot_box.add_child(dot)
 	row.add_child(dot_box)
-	var av_key := str(f.get("friend_avatar", "profile_001"))
-	row.add_child(UI.texture_rect(UI.tex("%s.png" % av_key) if UI.tex("%s.png" % av_key) else UI.tex("profile_001.png"), Vector2(64, 64), true))
+	row.add_child(UI.texture_rect(UI.avatar(f.get("friend_avatar")), Vector2(64, 64), true))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)

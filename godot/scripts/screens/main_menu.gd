@@ -120,8 +120,7 @@ static func _bar(x: float, y: float) -> Vector2:
 func _build_bar(p: Dictionary) -> void:
 	var bar := UI.texture_rect(UI.tex("main_menu_bar.png"), Vector2(1920, 208))
 	add_child(bar)
-	var avatar_path := "%s.png" % p.get("avatar_url", "profile_001")
-	var av := UI.texture_rect(UI.tex(avatar_path) if UI.tex(avatar_path) else UI.tex("profile_001.png"), Vector2(128, 128), true)
+	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(128, 128), true)
 	av.position = _bar(180, 130) - Vector2(64, 64)
 	av.mouse_filter = Control.MOUSE_FILTER_STOP
 	av.gui_input.connect(func(e):
@@ -131,7 +130,7 @@ func _build_bar(p: Dictionary) -> void:
 	add_child(av)
 	_text(str(p.get("username", "")).to_upper(), _bar(540, 92), 30, Color.WHITE)
 	_text(str(int(p.get("level", 1))), _bar(1150, 92), 30, UI.BLUE)
-	_text(UI.player_title(int(p.get("level", 1))), _bar(420, 170), 24, UI.RED)
+	_text(UI.shown_title(p), _bar(420, 170), 24, UI.RED)
 	var xp := UI.xp_progress(p)
 	_text("%d / %d" % [xp.current, xp.needed], _bar(1090, 158), 18, UI.BLUE)
 	var track := ColorRect.new()
@@ -196,9 +195,13 @@ func _build_center() -> void:
 	var deck := UI.image_button("deck_editor.png", Vector2(560, 306), func(): Game.go("deck_builder"), "DECK EDITOR")
 	deck.position = Vector2(760, 560)
 	add_child(deck)
-	var lib := UI.button("CARD LIBRARY", func(): Game.go("card_library"), Vector2(420, 68))
-	lib.position = Vector2(830, 895)
+	var lib := UI.button("CARD LIBRARY", func(): Game.go("card_library"), Vector2(272, 68))
+	lib.position = Vector2(760, 895)
 	add_child(lib)
+	var ach := UI.button("ACHIEVEMENTS", func(): Game.go("achievements"), Vector2(272, 68), UI.GOLD)
+	ach.position = Vector2(1048, 895)
+	ach.disabled = Game.offline
+	add_child(ach)
 
 
 func _build_right() -> void:

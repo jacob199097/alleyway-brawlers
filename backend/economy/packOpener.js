@@ -15,6 +15,7 @@
 
 const { pool } = require('../db/pool');
 const { incrementDailyQuest } = require('../routes/quests');
+const { bump } = require('./counters');
 
 // The cards in the game (shared/cards.js, which includes the Card Forge cards), by art_url.
 // Retired cards can stay in the database for old records, but never drop from packs.
@@ -180,10 +181,13 @@ async function openPack(playerId, packType, currency = 'karat') {
             );
         }
 
+        await bump(client, playerId, 'packs', 1);
         await client.query('COMMIT');
 
         // Daily quest: opened a crew pack
         incrementDailyQuest(playerId, 'daily_pack', 1).catch(() => {});
+        // Achievements: packs opened, cards collected (required here: achievements requires this file)
+        require('./achievements').checkAndAnnounce(playerId);
 
         return {
             cardsReceived: cards.map(c => ({

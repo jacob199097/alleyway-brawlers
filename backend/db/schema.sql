@@ -312,3 +312,7 @@ CREATE TABLE payment_grants (
 );
 
 CREATE UNIQUE INDEX player_packs_player_pack_key ON player_packs (player_id, pack_type);
+
+-- Crafting (players.dust) and achievements (player_counters, player_achievements, players.title,
+-- players.card_back) come from migrate_progression.sql, which the server applies when it starts
+-- (db/migrate.js); or run it here after this file.

@@ -21,6 +21,7 @@ const SCREENS := {
 	"profile": "res://scenes/profile.tscn",
 	"social": "res://scenes/social.tscn",
 	"mailbox": "res://scenes/mailbox.tscn",
+	"achievements": "res://scenes/achievements.tscn",
 }
 const DEFAULT_SETTINGS := {
 	"music_volume": 0.5,

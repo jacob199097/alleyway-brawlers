@@ -1,10 +1,17 @@
 extends Node
-## Game sounds. Until real audio exists they are synthesised at startup; drop a file at
-## res://assets/sfx/<name>.wav or .ogg and it is used instead.
+## Game sounds. Each sound is a set of recordings in assets/sfx: <name>_1.ogg, <name>_2.ogg, ...
+## (or just <name>.ogg / .wav), and each play picks one at random so repeats don't sound the same.
+## The server also hands them out (backend/routes/content.js), so new or changed sounds reach
+## players without a new build (scripts/content_sync.gd keeps them in user://content/sfx).
+## A sound with no recording yet is synthesised (the _r_<name> recipes below).
+## assets/sfx/README.md lists every sound and what each is for.
 ##   Sfx.play("slam")   Sfx.play("draw", 1.1)   Sfx.play("hit", 1.0, -3.0)
 
 const RATE := 22050
 const VOICES := 12
+const DOWNLOADED := "user://content/sfx"
+## New sounds fall back to an older one until they have recordings of their own
+const FALLBACK := {"laser": "whoosh", "laser_beam": "riser", "pack_open": "ko", "shuffle": "draw"}
 
 var volume_db := -3.0
 var _streams := {}
@@ -21,9 +28,10 @@ func _ready() -> void:
 
 
 func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
-	var stream := _stream(sound)
-	if stream == null:
+	var options: Array = _stream(sound)
+	if options.is_empty():
 		return
+	var stream: AudioStream = options[randi() % options.size()]
 	var p := _players[_next]
 	_next = (_next + 1) % VOICES
 	p.stream = stream
@@ -32,19 +40,40 @@ func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
 	p.play()
 
 
-func _stream(sound: String) -> AudioStream:
+## Forget loaded sounds (after new ones are downloaded).
+func reload() -> void:
+	_streams.clear()
+
+
+## Every recording of a sound: downloaded ones first, then built in, then a synthesised one.
+func _stream(sound: String) -> Array:
 	if _streams.has(sound):
 		return _streams[sound]
-	var stream: AudioStream = null
-	for ext in ["wav", "ogg"]:
-		var path := "res://assets/sfx/%s.%s" % [sound, ext]
-		if ResourceLoader.exists(path):
-			stream = load(path)
-			break
-	if stream == null and has_method("_r_" + sound):
-		stream = call("_r_" + sound)
-	_streams[sound] = stream
-	return stream
+	var out: Array = _recordings(sound)
+	if out.is_empty() and has_method("_r_" + sound):
+		out = [call("_r_" + sound)]
+	if out.is_empty() and FALLBACK.has(sound):
+		out = _stream(FALLBACK[sound])
+	_streams[sound] = out
+	return out
+
+
+func _recordings(sound: String) -> Array:
+	var names: Array = ["%s.ogg" % sound, "%s.wav" % sound]
+	for i in range(1, 13):
+		names.append("%s_%d.ogg" % [sound, i])
+		names.append("%s_%d.wav" % [sound, i])
+	var out: Array = []
+	for n in names:
+		var s: AudioStream = null
+		var file := "%s/%s" % [DOWNLOADED, n]
+		if FileAccess.file_exists(file):
+			s = AudioStreamOggVorbis.load_from_file(file) if n.ends_with(".ogg") else AudioStreamWAV.load_from_file(file)
+		if s == null and ResourceLoader.exists("res://assets/sfx/" + n):
+			s = load("res://assets/sfx/" + n)
+		if s:
+			out.append(s)
+	return out
 
 
 # ── Synthesis ────────────────────────────────────────────────────────────────

@@ -121,7 +121,7 @@ func _open_pack(p: Dictionary, cards: Array) -> void:
 		t.tween_property(pack, "rotation", 0.06 * (1 if i % 2 == 0 else -1), 0.05)
 	t.tween_property(pack, "rotation", 0.0, 0.05)
 	await t.finished
-	Sfx.play("ko", 1.3)
+	Sfx.play("pack_open")
 	_flash(Color.WHITE, 0.7)
 	_rays(Vector2(960, 530))
 	var tear := create_tween().set_parallel()

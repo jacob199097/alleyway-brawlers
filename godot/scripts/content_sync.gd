@@ -1,5 +1,5 @@
 extends RefCounted
-## Keeps the game's cards (and clan card backs) up to date without a new build. At start-up (boot screen) it asks the
+## Keeps the game's cards (and clan card backs and sounds) up to date without a new build. At start-up (boot screen) it asks the
 ## server what the latest card data and card images are (backend/routes/content.js), compares
 ## their fingerprints with what's built in (data/content.json) and what was downloaded before
 ## (user://content), and downloads only what changed. It also reports whether this build of the
@@ -96,7 +96,28 @@ func run(download := true) -> Dictionary:
 		elif h != str(state.backs.get(id, "")) or not FileAccess.file_exists(file):
 			back_todo.append(id)
 
-	var total := todo.size() + back_todo.size() + (1 if need_cards else 0)
+	# Sounds (assets/sfx on the server): same rules, kept in user://content/sfx by file name
+	DirAccess.make_dir_recursive_absolute(DIR + "/sfx")
+	if not state.has("sfx"):
+		state.sfx = {}
+	var sfx: Dictionary = m.get("sfx", {})
+	var bundled_sfx: Dictionary = bundled.get("sfx", {})
+	var sfx_todo: Array = []
+	for id in sfx:
+		var h := str(sfx[id].get("hash", ""))
+		var file := "%s/sfx/%s" % [DIR, id]
+		if h == str(bundled_sfx.get(id, "")) and ResourceLoader.exists("res://assets/sfx/%s" % id):
+			_remove(file)
+			state.sfx.erase(id)
+		elif h != str(state.sfx.get(id, "")) or not FileAccess.file_exists(file):
+			sfx_todo.append(id)
+	if m.has("sfx"):   # sounds the server dropped
+		for f in DirAccess.get_files_at(DIR + "/sfx"):
+			if not sfx.has(f):
+				_remove("%s/sfx/%s" % [DIR, f])
+				state.sfx.erase(f)
+
+	var total := todo.size() + back_todo.size() + sfx_todo.size() + (1 if need_cards else 0)
 	started.emit(total)
 	var done := 0
 	if need_cards:
@@ -138,9 +159,22 @@ func run(download := true) -> Dictionary:
 		done += 1
 		progress.emit(done, total, str(id), null)
 		_save_state(state)
+	for id in sfx_todo:
+		var want := str(sfx[id].get("hash", ""))
+		var s: Dictionary = await Api.fetch("/api/content/sfx/%s" % id)
+		if s.ok and _sha256(s.body) == want:
+			_write("%s/sfx/%s" % [DIR, id], s.body)
+			state.sfx[id] = want
+			out.downloaded += 1
+		else:
+			out.failed += 1
+		done += 1
+		progress.emit(done, total, "", null)
+		_save_state(state)
 	_save_state(state)
 	if total > 0:
 		CardDB.reload()
+		Sfx.reload()
 	return out
 
 

@@ -1,5 +1,6 @@
 # Runs on every push and pull request (GitHub → Actions tab shows the results).
 #   server: online matches, Scissors Paper Rock, rematches, replays (backend/socket/*.test.cjs)
+#   database: crafting and achievements against a real Postgres (backend/economy/progression.test.cjs)
 #   godot:  both rules engines agree (golden test), plus the duel, tutorial and rules smoke tests
 name: tests
 
@@ -28,6 +29,33 @@ jobs:
         run: node backend/socket/replay.test.cjs
       - name: Spectators
         run: node backend/socket/spectate.test.cjs
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install server packages
+        run: npm ci --prefix backend --omit=dev
+      - name: Crafting and achievements
+        run: node backend/economy/progression.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
 
   godot:
     runs-on: ubuntu-latest

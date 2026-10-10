@@ -323,6 +323,57 @@ static func spinner(parent: Control, pos: Vector2, text := "LOADING…") -> Labe
 	return l
 
 
+## The title under a player's name: one they unlocked and chose (achievements), else their level's.
+static func shown_title(p: Dictionary) -> String:
+	var t = p.get("title")
+	return str(t) if t is String and t != "" else player_title(int(p.get("level", 1)))
+
+
+## A player's avatar. Keys (players.avatar_url): "profile_001" (an image in assets/),
+## "clan:<clan>" (the emblem from that clan's card back) or "card:<card id>" (the card's art).
+## Both of those are unlocked by achievements (backend/economy/achievements.js).
+static func avatar(key) -> Texture2D:
+	var k := str(key) if key != null else ""
+	var src: Texture2D = null
+	var region := Rect2()
+	if k.begins_with("clan:"):
+		src = CardDB.back(k.substr(5))
+		if src:   # the emblem sits in the middle of a back
+			var s := src.get_size()
+			region = Rect2(s.x * 0.17, s.y * 0.47 - s.x * 0.33, s.x * 0.66, s.x * 0.66)
+	elif k.begins_with("card:"):
+		src = CardDB.art(k.substr(5))
+		if src:   # the art window, below the name bar
+			var s := src.get_size()
+			region = Rect2(s.x * 0.21, s.y * 0.14, s.x * 0.62, s.x * 0.62)
+	if src:
+		var at := AtlasTexture.new()
+		at.atlas = src
+		at.region = region
+		return at
+	var own := tex("%s.png" % k) if k != "" and not k.contains(":") else null
+	return own if own else tex("profile_001.png")
+
+
+## What an achievement gives, in a few words: "300 Karat · Title: Untouchable".
+static func reward_text(r: Dictionary) -> String:
+	var parts: Array = []
+	if int(r.get("karat", 0)) > 0:
+		parts.append("%d Karat" % int(r.karat))
+	if int(r.get("dust", 0)) > 0:
+		parts.append("%d Dust" % int(r.dust))
+	if r.get("title") is String:
+		parts.append("Title: %s" % r.title)
+	var av = r.get("avatar")
+	if av == "portraits":
+		parts.append("Card portrait avatars")
+	elif av is String:
+		parts.append("Avatar")
+	if r.get("back") is String:
+		parts.append("Card back")
+	return "  ·  ".join(parts)
+
+
 static func player_title(level: int) -> String:
 	var out: String = TITLES[0][1]
 	for entry in TITLES:

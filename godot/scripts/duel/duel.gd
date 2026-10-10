@@ -90,6 +90,7 @@ var _online := false      # a server-run match (Game.duel_setup.online)
 var _replay := {}         # watching a recorded match: {start, updates, over, complete}
 var _spectating := false  # watching a friend's match live (mp:spectate): their side is "player"
 var _names := {}          # side -> name, for a spectator's texts
+var _chosen_back := {"player": "", "opponent": ""}   # side -> card back the player chose ("" = their clan's)
 var _replay_next := 0     # next update to play
 var _replay_wait := 0.0
 var _emote_ready_at := 0
@@ -137,10 +138,17 @@ func _ready() -> void:
 		$BackLayer/Background.texture = load("res://assets/duel_background.png")
 	_build_detail()
 	var me := Game.player
+	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
+	# Card backs players chose (achievements): "default", a clan, or none = their deck's clan back
+	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
+	if not online_start.is_empty():
+		for pair in [["player", "you"], ["opponent", "opponent"]]:
+			var prof = online_start.get(pair[1], {})
+			var b = prof.get("card_back") if prof is Dictionary else null
+			_chosen_back[pair[0]] = str(b) if b is String else ""
 	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
 		str(me.get("avatar_url", "profile_001")),
-		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.player_title(int(me.get("level", 1))).to_upper()])
-	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
+		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()])
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "profile_002", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
@@ -151,9 +159,10 @@ func _ready() -> void:
 				str(you.get("avatar_url", "profile_001")) if you.get("avatar_url") else "profile_001",
 				"LV %d  ·  WATCHING" % int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
+		var opp_title = opp.get("title")
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
 			str(opp.get("avatar_url", "profile_002")) if opp.get("avatar_url") else "profile_002",
-			"LV %d  ·  ONLINE" % int(opp.get("level", 1)))
+			"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"])
 	_build_phase_bar()
 	_build_turn_box()
 	_build_log()
@@ -198,6 +207,7 @@ func _ready() -> void:
 	_make_leader_views()
 	counts = duel._counts()
 	_refresh_hud()
+	Sfx.play("shuffle", 1.0, -8.0)
 	duel.start()
 	_queue.append_array(duel.take_events())
 	_pump()
@@ -228,6 +238,8 @@ func _setup_online(start: Dictionary) -> void:
 	_match_id = str(start.get("matchId", ""))
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
 	duel.load_view(start.get("view", {}))
+	if not start.get("resync", false):
+		Sfx.play("shuffle", 1.0, -8.0)
 	_make_leader_views()
 	counts = duel._counts()
 	if start.get("resync", false):
@@ -1376,7 +1388,7 @@ func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 	for i in 2:
 		var off := dir.orthogonal() * (-18.0 if i == 0 else 18.0)
 		_beam(muzzle, tpos + off, 14.0, 0.09)
-		Sfx.play("whoosh", 1.9 + i * 0.15, -5.0)
+		Sfx.play("laser", 0.9 + i * 0.1, -4.0)
 		a.kick(-dir, 10.0)
 		_burst(tpos + off, LASER_GLOW, 10, 320, 0.35, 150.0)
 		shake(5.0)
@@ -1384,7 +1396,7 @@ func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 			d.kick(dir, 8.0)
 		await _wait(0.13)
 	# The beam: held on the target, flickering, sparks spraying from the hit
-	Sfx.play("riser", 1.5, -6.0)
+	Sfx.play("laser_beam", 0.85, -3.0)
 	var hold := 0.34 if big else 0.26
 	_beam(muzzle, tpos, 28.0 if big else 24.0, hold)
 	a.kick(-dir, 16.0)
@@ -2202,6 +2214,7 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.match_id = ""
 		Game.match_result.reason = str(_over.get("reason", "morale"))
 		Game.match_result.rewards = _over.get("rewards")
+		Game.match_result.achievements = _over.get("achievements", [])
 		if _over.has("result"):
 			Game.match_result.result = _over.result
 	Game.go("post_match")
@@ -2213,13 +2226,21 @@ func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
 	v.setup(c, side, up)
-	v.set_back(_back_for(side), CardDB.back_style(_clan_of(side)))
+	v.set_back(_back_for(side), CardDB.back_style(_back_clan(side)))
 	return v
 
 
 ## A side's cards wear its leader's clan back (CardDB.back), e.g. the Nebula back.
 func _back_for(side: String) -> Texture2D:
-	return CardDB.back(_clan_of(side))
+	return CardDB.back(_back_clan(side))
+
+
+## Whose card back a side shows: the one its player chose ("default" = the plain back), else its clan's.
+func _back_clan(side: String) -> String:
+	var chosen: String = _chosen_back.get(side, "")
+	if chosen == "default":
+		return ""
+	return chosen if chosen != "" else _clan_of(side)
 
 
 func _clan_of(side: String) -> String:
@@ -2932,9 +2953,7 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	av.size = Vector2(64, 64)
 	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	var av_path := "res://assets/%s.png" % avatar
-	if ResourceLoader.exists(av_path):
-		av.texture = load(av_path)
+	av.texture = UI.avatar(avatar)
 	p.add_child(av)
 	var n := _label(26, Color.WHITE, true)
 	n.text = display_name

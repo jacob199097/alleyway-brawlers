@@ -301,6 +301,10 @@ func _show_rewards(rw: Dictionary) -> void:
 	reveal.tween_property(_rewards, "visible_ratio", 1.0, 0.5)
 	if rw.get("rankChanged", false):
 		_rank_up(str(rw.get("newRank", "")))
+	# Achievements this match unlocked (sent with the result)
+	var got = Game.match_result.get("achievements", [])
+	if got is Array and not got.is_empty():
+		get_tree().create_timer(1.8).timeout.connect(func(): Net.show_achievements(got))
 
 
 ## Roll a number up to its final value, ticking as it goes.

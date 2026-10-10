@@ -3,7 +3,7 @@
 // ships with, so the game knows which newer cards to download from the server (backend/routes/content.js).
 // Run after changing cards:  node godot/tools/export_cards.mjs
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CARD_CATALOG } from '../../shared/cards.js';
 
@@ -23,6 +23,12 @@ const backs = {};
 for (const f of readdirSync(backDir).filter(f => /^card_back(_[a-z0-9_]+)?\.png$/.test(f)).sort()) {
     backs[f.slice(0, -4)] = sha256(readFileSync(backDir + f));
 }
+// Sounds the build ships with (assets/sfx)
+const sfxDir = fileURLToPath(new URL('../../assets/sfx/', import.meta.url));
+const sfx = {};
+for (const f of (existsSync(sfxDir) ? readdirSync(sfxDir) : []).filter(f => /^[a-z0-9_]+\.(ogg|wav)$/.test(f)).sort()) {
+    sfx[f] = sha256(readFileSync(sfxDir + f));
+}
 writeFileSync(fileURLToPath(new URL('../data/content.json', import.meta.url)),
-    JSON.stringify({ cards: sha256(json), art, backs }, null, 1) + '\n');
+    JSON.stringify({ cards: sha256(json), art, backs, sfx }, null, 1) + '\n');
 console.log(`Wrote ${Object.keys(CARD_CATALOG).length} cards to ${out} (and fingerprints for ${Object.keys(art).length} images)`);

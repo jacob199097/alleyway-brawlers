@@ -71,6 +71,11 @@ router.patch('/friends/:id/accept', requireAuth, async (req, res) => {
         );
         if (!rowCount) return res.status(404).json({ error: 'Request not found.' });
         res.json({ success: true });
+        // Achievements: friends made (both players)
+        const { rows: [f] } = await pool.query('SELECT requester_id FROM friendships WHERE id = $1', [req.params.id]);
+        const { checkAndAnnounce } = require('../economy/achievements');
+        checkAndAnnounce(req.playerId);
+        if (f) checkAndAnnounce(f.requester_id);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

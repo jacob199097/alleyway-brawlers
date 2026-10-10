@@ -149,6 +149,8 @@ function forSeat(v, seat) {
  * @param {(args) => Promise<object>} [deps.resolveCpuMatch]  {playerId, outcome, ranked, turns} → rewards
  * @param {number} [deps.turnSecs] [deps.awaySecs]  shorter move clocks (tests)
  * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
+ * @param {(m) => Promise<Array>} [deps.recordMatch]  a player's match for achievements → what it unlocked
+ *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -263,8 +265,8 @@ function createOnlineService(io, deps) {
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null,
             seats: {
-                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0 },
-                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0 },
+                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0 },
+                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0 },
             },
         };
         // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
@@ -288,7 +290,8 @@ function createOnlineService(io, deps) {
     }
 
     function profileOf(seat) {
-        return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url };
+        return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
+            title: seat.profile.title || null, card_back: seat.profile.card_back || null };
     }
 
     /** The server CPU's seat: a random clan's starter deck (shared/clans.js). */
@@ -315,6 +318,10 @@ function createOnlineService(io, deps) {
     function broadcast(match, events) {
         for (const ev of events) {
             if (['summon', 'set', 'hustle'].includes(ev.type)) match.seats[ev.side].cardsPlayed += 1;
+            // For achievements: a KO counts for the other side; promotions and awakenings for their own
+            if (ev.type === 'ko' && match.seats[other(ev.side)]) match.seats[other(ev.side)].kos += 1;
+            if (ev.type === 'promote' && match.seats[ev.side]) match.seats[ev.side].promotes += 1;
+            if (ev.type === 'awaken' && match.seats[ev.side]) match.seats[ev.side].awakens += 1;
         }
         const clock = match.state.winner ? 0 : armTimer(match);
         const away = !match.state.winner && match.seats[seatToAct(match.state)].idle > 0;
@@ -447,12 +454,24 @@ function createOnlineService(io, deps) {
         } catch (err) {
             console.error('[Online] Rewards failed:', err.message);
         }
+        // Achievements: what each player did this match
+        const unlocked = {};
+        for (const seat of ['player', 'opponent']) {
+            const s = match.seats[seat];
+            if (s.bot || !deps.recordMatch) continue;
+            unlocked[s.playerId] = await deps.recordMatch({
+                playerId: s.playerId, outcome: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
+                mode: match.mode, difficulty: bot?.level || null, clan: await deckClan(s.setup),
+                kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: match.state.sides[seat].morale,
+            }).catch(() => []);
+        }
         for (const seat of ['player', 'opponent']) {
             const s = match.seats[seat];
             emitTo(s.playerId, 'mp:over', {
                 matchId: match.id, reason,
                 result: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
                 rewards: rewards[s.playerId] || null,
+                achievements: unlocked[s.playerId] || [],
                 player_morale: match.state.sides[seat].morale,
                 opponent_morale: match.state.sides[other(seat)].morale,
                 turns: match.state.turn,
@@ -717,7 +736,18 @@ function createOnlineService(io, deps) {
         });
     }
 
-    return { register, isInMatch: (playerId) => busy(playerId), _matches: matches };
+    return { register, isInMatch: (playerId) => busy(playerId), notify: emitTo, _matches: matches };
+}
+
+/** The clan most of a deck's cards belong to (achievements: wins with a clan). */
+async function deckClan(setup) {
+    const { getCard } = await engine;
+    const count = {};
+    for (const spec of setup?.deck || []) {
+        const clan = getCard(spec.id)?.clan;
+        if (clan) count[clan] = (count[clan] || 0) + 1;
+    }
+    return Object.keys(count).sort((a, b) => count[b] - count[a])[0] || null;
 }
 
 // ── Database-backed dependencies (production) ───────────────────────────────
@@ -777,8 +807,10 @@ async function loadSetupFromDb(pool, playerId) {
 }
 
 async function loadProfileFromDb(pool, playerId) {
-    const { rows } = await pool.query('SELECT username, level, avatar_url FROM players WHERE id = $1', [playerId]);
-    return rows[0] || { username: 'Player', level: 1, avatar_url: null };
+    const { rows } = await pool.query('SELECT username, level, avatar_url, title, card_back FROM players WHERE id = $1', [playerId]);
+    if (!rows[0]) return { username: 'Player', level: 1, avatar_url: null };
+    const { titleText } = require('../economy/achievements');
+    return { ...rows[0], title: await titleText(rows[0].title).catch(() => null) };
 }
 
 /**

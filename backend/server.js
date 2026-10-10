@@ -28,6 +28,8 @@ const { pool }                  = require('./db/pool');
 const { createOnlineService, loadSetupFromDb, loadProfileFromDb, replaySteps } = require('./socket/onlineMatch');
 const { resolveMatch, resolveCpuMatch } = require('./economy/postMatch');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
+const achievements = require('./economy/achievements');
+const { migrate } = require('./db/migrate');
 
 // ── REST routes ───────────────────────────────────────────────────────────────
 const authRoutes    = require('./routes/auth');
@@ -43,6 +45,8 @@ const { saveReplay, createReplayRoutes } = require('./routes/replays');
 const { router: questRoutes } = require('./routes/quests');
 const onboardingRoutes = require('./routes/onboarding');
 const { router: mailRoutes } = require('./routes/mail');
+const craftRoutes = require('./routes/craft');
+const achievementRoutes = require('./routes/achievements');
 
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app    = express();
@@ -74,6 +78,8 @@ app.use('/api/replays', createReplayRoutes(replaySteps));
 app.use('/api/quests',  questRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/mail',    mailRoutes);
+app.use('/api/craft',   craftRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
@@ -105,11 +111,13 @@ const online = createOnlineService(io, {
     incrementDailyQuest,
     recordDailyWin,
     saveReplay,
+    recordMatch: achievements.recordMatch,
     areFriends: async (a, b) => (await pool.query(
         `SELECT 1 FROM friendships WHERE status = 'accepted'
          AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0,
 });
 app.locals.online = online;   // routes/social.js: which friends are in a match
+achievements.setNotifier(online.notify);   // unlocks outside matches reach the player's game
 
 // ── Socket connections ────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
@@ -160,8 +168,11 @@ io.on('connection', (socket) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] AlleyWay Brawlers running on port ${PORT}`);
-});
+// The database gets any new tables and columns first (db/migrate.js)
+migrate(pool)
+    .catch(err => console.error('[Server] Database migration failed:', err.message))
+    .finally(() => server.listen(PORT, '0.0.0.0', () => {
+        console.log(`[Server] AlleyWay Brawlers running on port ${PORT}`);
+    }));
 
 module.exports = { app, io };

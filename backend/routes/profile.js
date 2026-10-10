@@ -3,6 +3,7 @@
 const router          = require('express').Router();
 const { requireAuth } = require('./middleware');
 const { pool }        = require('../db/pool');
+const achievements    = require('../economy/achievements');
 
 // ── GET /api/profile/me ───────────────────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
@@ -11,6 +12,7 @@ router.get('/me', requireAuth, async (req, res) => {
             `SELECT p.id, p.username, p.email, p.karat, p.contraband, p.level, p.xp,
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at,
+                    p.dust, p.title AS title_id, p.card_back,
                     -- Collection completion %
                     (
                         SELECT COUNT(DISTINCT pi.card_id)::float /
@@ -22,7 +24,7 @@ router.get('/me', requireAuth, async (req, res) => {
             [req.playerId]
         );
         if (!rows.length) return res.status(404).json({ error: 'Player not found.' });
-        res.json(rows[0]);
+        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -40,8 +42,14 @@ router.patch('/me', requireAuth, async (req, res) => {
         updates.push(`profile_bio = $${params.length}`);
     }
     if (avatarUrl !== undefined) {
-        params.push(avatarUrl);
-        updates.push(`avatar_url = $${params.length}`);
+        // Avatars are unlocked by achievements, so the check lives there
+        try {
+            const r = await achievements.equip(req.playerId, { avatar: avatarUrl });
+            if (r.error) return res.status(400).json(r);
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (bio === undefined) return res.json({ success: true });
     }
     if (!updates.length) return res.status(400).json({ error: 'Nothing to update.' });
 

@@ -12,6 +12,7 @@ var card: Dictionary = {}
 var badge := ""          # top-right, e.g. "1/3"
 var count_badge := ""    # bottom-left, e.g. "×2"
 var dimmed := false: set = set_dimmed
+var selected := false: set = set_selected   # outlined in gold (the Card Library's crafting pick)
 
 var _art: TextureRect
 var _name: Label
@@ -85,6 +86,11 @@ func set_dimmed(v: bool) -> void:
 	queue_redraw()
 
 
+func set_selected(v: bool) -> void:
+	selected = v
+	queue_redraw()
+
+
 func refresh() -> void:
 	if _overlay:
 		_overlay.queue_redraw()
@@ -111,7 +117,9 @@ func _draw() -> void:
 	draw_rect(Rect2(r.position + Vector2(4, 6), r.size), Color(0, 0, 0, 0.4))
 	draw_rect(r, Color("0d1020"))
 	var col := UI.rarity_color(card.get("rarity"))
-	draw_rect(r, UI.GOLD if _hover else col, false, 4.0 if _hover else 3.0)
+	draw_rect(r, UI.GOLD if _hover or selected else col, false, 6.0 if selected else 4.0 if _hover else 3.0)
+	if selected:
+		draw_rect(r.grow(5), Color(UI.GOLD, 0.45), false, 3.0)
 
 
 func _draw_overlay() -> void:

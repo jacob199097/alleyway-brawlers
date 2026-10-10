@@ -19,6 +19,28 @@ const cards = Object.values(CARD_CATALOG).map(c => ({
 }));
 const byId = new Map(cards.map(c => [c.id, c]));
 const inventory = new Map(cards.map(c => [c.id, 3]));
+cards.filter(c => c.rarity <= 2).slice(0, 4).forEach(c => inventory.set(c.id, 5));   // a few extras to scrap
+
+// Crafting and achievements use the real definitions (backend/economy/*.js; nothing there connects to a database)
+const _require = createRequire(import.meta.url);
+const { VALUES: CRAFT_VALUES } = _require('../../backend/economy/crafting.js');
+const achievementDefs = await _require('../../backend/economy/achievements.js').definitions();
+const unlocked = new Map(achievementDefs.filter((a, i) => i % 3 === 0).map((a, i) => [a.id, new Date(Date.now() - i * 86400e3).toISOString()]));
+const craftSummary = (p) => {
+    let extras = 0, extrasDust = 0;
+    for (const c of cards) {
+        const n = Math.max(0, (inventory.get(c.id) || 0) - (c.card_type === 'leader' ? 1 : 3));
+        extras += n; extrasDust += n * CRAFT_VALUES[c.rarity].scrap;
+    }
+    return { dust: p.dust, values: CRAFT_VALUES, maxCopies: 3, extras, extrasDust };
+};
+const looks = () => {
+    const got = achievementDefs.filter(a => unlocked.has(a.id));
+    return { avatars: ['profile_001', 'profile_002', ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
+        portraits: got.some(a => a.reward.avatar === 'portraits'),
+        titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
+        backs: ['default', ...got.map(a => a.reward.back).filter(Boolean)] };
+};
 
 // One account per email; the token names the account. `player` is whoever made the request.
 const players = new Map();   // token → player
@@ -30,7 +52,7 @@ function loginAs(email) {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
             contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
             avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
-            created_at: new Date().toISOString(), collection_pct: 100, token,
+            created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null,
         });
     }
     return players.get(token);
@@ -92,7 +114,44 @@ const routes = {
     'POST /api/auth/forgot-password': () => [200, { success: true }],
     'GET /api/profile/me': () => [200, player],
     'PATCH /api/profile/me': (b) => { if (b.avatarUrl) player.avatar_url = b.avatarUrl; return [200, { success: true }]; },
-    'GET /api/profile/inventory': () => [200, cards.map(c => ({ ...c, quantity: inventory.get(c.id) }))
+    'GET /api/craft': () => [200, craftSummary(player)],
+    'POST /api/craft/scrap': (b) => {
+        const c = cards.find(x => x.art_url === b.card);
+        if (!c || !inventory.get(c.id)) return [400, { error: "You don't own that card." }];
+        inventory.set(c.id, inventory.get(c.id) - 1);
+        player.dust += CRAFT_VALUES[c.rarity].scrap;
+        return [200, { dust: player.dust, quantity: inventory.get(c.id), gained: CRAFT_VALUES[c.rarity].scrap }];
+    },
+    'POST /api/craft/make': (b) => {
+        const c = cards.find(x => x.art_url === b.card);
+        if (!c) return [400, { error: "That card can't be crafted." }];
+        const cost = CRAFT_VALUES[c.rarity].craft;
+        if ((inventory.get(c.id) || 0) >= (c.card_type === 'leader' ? 1 : 3)) return [400, { error: 'You already have all a deck can use.' }];
+        if (player.dust < cost) return [400, { error: `You need ${cost} Dust to craft ${c.name}.` }];
+        player.dust -= cost;
+        inventory.set(c.id, (inventory.get(c.id) || 0) + 1);
+        return [200, { dust: player.dust, quantity: inventory.get(c.id), spent: cost }];
+    },
+    'POST /api/craft/extras': () => {
+        const { extras, extrasDust } = craftSummary(player);
+        for (const c of cards) inventory.set(c.id, Math.min(inventory.get(c.id) || 0, c.card_type === 'leader' ? 1 : 3));
+        player.dust += extrasDust;
+        return [200, { dust: player.dust, gained: extrasDust, scrapped: extras }];
+    },
+    'GET /api/achievements': () => [200, {
+        achievements: achievementDefs.map(a => ({ id: a.id, name: a.name, desc: a.desc, reward: a.reward, clan: a.clan || null,
+            target: a.target, progress: unlocked.has(a.id) ? a.target : Math.floor(a.target * 0.6),
+            unlocked: unlocked.has(a.id), unlockedAt: unlocked.get(a.id) || null })),
+        cosmetics: looks(),
+        equipped: { avatar: player.avatar_url, title: player.title_id, back: player.card_back },
+    }],
+    'POST /api/achievements/equip': (b) => {
+        if (b.avatar !== undefined) player.avatar_url = b.avatar;
+        if (b.title !== undefined) { player.title_id = b.title; player.title = looks().titles.find(t => t.id === b.title)?.text ?? null; }
+        if (b.back !== undefined) player.card_back = b.back;
+        return [200, { ok: true }];
+    },
+    'GET /api/profile/inventory': () => [200, cards.map(c => ({ ...c, quantity: inventory.get(c.id) })).filter(c => c.quantity > 0)
         .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name))],
     'GET /api/deck': () => [200, decks.map(deckSummary)],
     'POST /api/deck': (b) => {
@@ -254,7 +313,7 @@ const service = createOnlineService(io, {
     },
     async loadProfile(playerId) {
         const p = byPlayerId(playerId);
-        return { username: p.username, level: p.level, avatar_url: p.avatar_url };
+        return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title, card_back: p.card_back };
     },
     async resolveMatch({ winnerId, p1Id, p2Id }) {
         const out = {};

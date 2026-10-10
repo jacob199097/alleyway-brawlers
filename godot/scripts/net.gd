@@ -2,7 +2,8 @@ extends Node
 ## Realtime connection to the game server: a minimal Socket.io client over Godot's WebSocket
 ## (Engine.IO v4), authenticated with the player's login token.
 ##   Net.connect_to_server()   Net.send("mp:queue")   Net.event.connect(func(name, data): ...)
-## Also handles things that can happen on any screen: friend challenges, a match starting.
+## Also handles things that can happen on any screen: friend challenges, a match starting,
+## achievements unlocking (show_achievements).
 
 signal opened
 signal closed
@@ -20,6 +21,8 @@ var _connecting := false
 var _want := false
 var _retry_in := 0.0
 var _retry_delay := 1.0
+var _banners: Array = []      # achievements waiting to be shown, one banner at a time
+var _banner_layer: CanvasLayer
 
 
 func _ready() -> void:
@@ -171,12 +174,67 @@ func _on_global_event(name: String, data) -> void:
 			_show_challenge(data)
 		"mp:declined":
 			_toast("%s declined your challenge." % data.get("byUsername", "Your friend"), UI.RED)
+		"achievements":
+			if data is Dictionary and data.get("unlocked") is Array:
+				show_achievements(data.unlocked)
+				Game.refresh_player()   # their Karat or Dust may have gone up
 		"mp:error":
 			var scene := get_tree().current_scene
 			if not (scene and scene.has_method("on_online_error")):
 				_toast(str(data.get("message", "Something went wrong.")), UI.RED)
 			else:
 				scene.on_online_error(str(data.get("message", "")))
+
+
+## "Achievement unlocked" banners, one after another at the top of the screen. They sit on their
+## own layer, so they stay up while the screen changes.
+func show_achievements(list: Array) -> void:
+	var idle := _banners.is_empty()
+	for a in list:
+		if a is Dictionary:
+			_banners.append(a)
+	if idle:
+		_next_banner()
+
+
+func _next_banner() -> void:
+	if _banners.is_empty():
+		return
+	var a: Dictionary = _banners[0]
+	if _banner_layer == null:
+		_banner_layer = CanvasLayer.new()
+		_banner_layer.layer = 90
+		add_child(_banner_layer)
+	var p := UI.panel(UI.GOLD, Color(0.06, 0.05, 0.02, 0.96))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	p.add_child(row)
+	var cup := UI.label("🏆", 54, UI.GOLD)
+	row.add_child(cup)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	row.add_child(col)
+	col.add_child(UI.label("ACHIEVEMENT UNLOCKED", 16, UI.MUTED, true))
+	col.add_child(UI.label(str(a.get("name", "")).to_upper(), 30, UI.GOLD, true))
+	var gift := UI.reward_text(a.get("reward", {}) if a.get("reward") is Dictionary else {})
+	if gift != "":
+		col.add_child(UI.label(gift, 18, Color(0.92, 0.92, 1.0)))
+	_banner_layer.add_child(p)
+	await get_tree().process_frame
+	var sz := p.get_combined_minimum_size()
+	p.size = sz
+	var y := 24.0
+	p.position = Vector2(960 - sz.x / 2, -sz.y - 20)
+	Sfx.play("promote", 1.2, -4.0)
+	var t := p.create_tween()
+	t.tween_property(p, "position:y", y, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(3.2)
+	t.tween_property(p, "position:y", -sz.y - 20, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		p.queue_free()
+		_banners.pop_front()
+		_next_banner())
 
 
 func _show_challenge(data: Dictionary) -> void:

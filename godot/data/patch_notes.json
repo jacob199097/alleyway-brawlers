@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.7.0",
+        "notes": [
+            "Crafting: scrap cards you don't need into Dust, and spend Dust crafting the ones you're missing. In the Card Library, click a card, then SCRAP or CRAFT along the bottom. SCRAP EXTRAS turns every copy beyond 3 (1 for leaders) into Dust in one go, and cards your decks use are never scrapped.",
+            "Achievements: over 20 goals to chase, from your first win to KO-ing 100 characters, flawless wins and comebacks, plus two for every clan. Find them under ACHIEVEMENTS on the main menu. They unlock by themselves and pay Karat or Dust.",
+            "Achievements unlock titles to show under your name, clan emblem avatars, card portrait avatars (use any card you own), and clan card backs to use on any deck. Choose them on the Achievements screen, under YOUR LOOK.",
+            "Your opponent sees your title, avatar and card back in online matches.",
+            "Real sound effects for cards, hits, KOs, Ambushes, Nebula lasers, pack opening and the match shuffle, with several takes of each so they don't repeat. New sounds download by themselves, like new cards."
+        ]
+    },
+    {
         "version": "0.6.2",
         "notes": [
             "Spectating: watch a friend's match live. Press 👁 WATCH next to a friend who's in a match (Social). You see it from their side, with both hands hidden.",

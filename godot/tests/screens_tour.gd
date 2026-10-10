@@ -44,9 +44,18 @@ func _run() -> void:
 	# only saves when it offers the tutorial or meets a new version, so neither happens
 	Game.settings.tutorial_offered = true
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
-	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "contraband", "profile", "social", "mailbox", "clan_select"]:
+	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "contraband", "profile", "social", "mailbox", "clan_select", "achievements"]:
 		Game.go(s)
 		await _shot("02_" + s, 2.2)
+	# Crafting: pick a card in the library, then an achievement unlocking
+	Game.go("card_library")
+	await get_tree().create_timer(2.0).timeout
+	var lib = _screen()
+	var first: Dictionary = lib._tiles.values()[0].card
+	lib._select(first)
+	await _shot("02_card_library_craft", 0.8)
+	Net.show_achievements([{"name": "Untouchable", "reward": {"dust": 300, "title": "Untouchable"}}])
+	await _shot("02_achievement_banner", 1.0)
 	# Pack opening
 	Game.go("shop")
 	await get_tree().create_timer(1.2).timeout
