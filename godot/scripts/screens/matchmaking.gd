@@ -93,10 +93,9 @@ func _cancel() -> void:
 
 func _play_cpu() -> void:
 	Net.send("mp:cancel")
-	var deck := await Game.load_duel_deck()
-	if deck.has("error"):
-		UI.dialog(self, "CAN'T START DUEL", deck.error, [["CLOSE", func(): pass]], UI.RED)
-		return
-	deck.mode = "cpu"
-	Game.duel_setup = deck
-	Game.go("rps")
+	_queued = false
+	_cpu.visible = false
+	_status.text = "STARTING A CPU MATCH…"
+	var why := await Game.request_cpu_match(false)
+	if why != "":
+		on_online_error(why)

@@ -8,6 +8,7 @@ const RANK_COLORS := {
 }
 
 var _starting := false
+var _spin: Label = null
 
 
 func _ready() -> void:
@@ -130,7 +131,18 @@ func _start(mode: String) -> void:
 			buttons.push_front(["DECK EDITOR", func(): Game.go("deck_builder"), UI.BLUE])
 		UI.dialog(self, "CAN'T START DUEL", deck.error, buttons, UI.RED)
 		return
-	deck.mode = mode
-	deck.ranked = mode == "ranked"
-	Game.duel_setup = deck
-	Game.go("rps")
+	# The server runs the match (and decides who goes first)
+	_starting = true
+	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
+	var why := await Game.request_cpu_match(mode == "ranked")
+	if why != "":
+		on_online_error(why)
+
+
+## mp:error while starting a CPU match (net.gd calls this on the current screen).
+func on_online_error(message: String) -> void:
+	if _spin and is_instance_valid(_spin):
+		_spin.queue_free()
+	_spin = null
+	_starting = false
+	UI.dialog(self, "CAN'T START DUEL", message, [["CLOSE", func(): pass]], UI.RED)

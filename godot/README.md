@@ -41,6 +41,11 @@ Right-click any card to zoom it.
 - **Casual Brawl** puts you in the online queue against another player. It uses your active
   deck and doesn't change Rank Points. You can also **Challenge** an online friend from Social.
   Live chat is there too.
+- **VS CPU and Ranked run on the server too**, against a server-side CPU (`shared/duel/DuelAI.js`,
+  a copy of `scripts/duel/duel_ai.gd`). The server sees the result, so it pays the rewards
+  (up to 25 rewarded CPU matches a day). Only Ranked moves Rank Points. Offline play and the
+  tutorial still run in the client and pay nothing. The old `/api/match/complete` route (a
+  result the client reports) no longer pays rewards.
 - **The server runs every online match.** `backend/socket/onlineMatch.js` uses
   `shared/duel/DuelState.js`, a JavaScript copy of `scripts/duel/duel_state.gd`. Clients only
   send moves. Each player gets the events they're allowed to see: not the opponent's hand, deck
@@ -52,7 +57,7 @@ Right-click any card to zoom it.
 - If you change the rules in either engine, change the other too, then check they still match:
   ```
   godot --headless --path godot --script res://tests/export_golden.gd -- golden.json 100
-  node shared/duel/engine.test.mjs golden.json
+  node shared/duel/engine.test.mjs golden.json   # also checks the server CPU picks the same moves
   ```
 
 ## Duel controls

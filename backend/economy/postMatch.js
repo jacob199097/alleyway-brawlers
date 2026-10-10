@@ -188,13 +188,15 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
 async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
     if (!['win', 'loss', 'draw'].includes(outcome)) throw new Error('Invalid outcome');
     const reward = REWARDS[outcome];
+    // Only Ranked matches move Rank Points
+    const rankDelta = matchMeta.ranked === true ? reward.rankPoints : 0;
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const { rows } = await client.query(
-            `SELECT karat, xp, level, rank_points, wins, losses, draws, first_win_date
+            `SELECT karat, xp, level, rank_points, rank, wins, losses, draws, first_win_date
              FROM   players
              WHERE  id = $1
              FOR UPDATE`,
@@ -220,7 +222,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
         const newXp       = p.xp + xpEarned;
         const newLevel    = calcLevel(newXp);
         const newKarat    = p.karat + reward.karat;
-        const newRankPts  = p.rank_points + reward.rankPoints;
+        const newRankPts  = p.rank_points + rankDelta;
         const { tier: newRank, points: clampedRankPts } = calcRank(newRankPts);
 
         const newWins   = p.wins   + (outcome === 'win'  ? 1 : 0);
@@ -264,7 +266,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
             leveledUp:      newLevel > p.level,
             newRank,
             rankChanged:    newRank !== p.rank,
-            rankPointDelta: reward.rankPoints,
+            rankPointDelta: rankDelta,
         };
 
     } catch (err) {
@@ -275,4 +277,27 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
     }
 }
 
-module.exports = { resolveMatch, resolveSoloMatch, calcLevel, calcRank, LEVEL_THRESHOLDS };
+// CPU matches run on the server (socket/onlineMatch.js), so the result is trusted. Each one is
+// logged in solo_matches, and only DAILY_CPU_REWARD_CAP per day pay out.
+const DAILY_CPU_REWARD_CAP = 25;
+
+async function resolveCpuMatch({ playerId, outcome, ranked = false }) {
+    const { rows: [{ rewarded_today }] } = await pool.query(
+        `SELECT COUNT(*)::int AS rewarded_today FROM solo_matches
+         WHERE  player_id = $1 AND rewarded AND completed_at >= date_trunc('day', NOW())`,
+        [playerId]
+    );
+    const rewardable = rewarded_today < DAILY_CPU_REWARD_CAP;
+    await pool.query(
+        `INSERT INTO solo_matches (player_id, ranked, completed_at, outcome, rewarded)
+         VALUES ($1, $2, NOW(), $3, $4)`,
+        [playerId, ranked, outcome, rewardable]
+    );
+    if (!rewardable) {
+        return { outcome, karatEarned: 0, xpEarned: 0, firstWinBonus: false, leveledUp: false,
+            rankChanged: false, rankPointDelta: 0, dailyCapReached: true };
+    }
+    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked } });
+}
+
+module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, calcLevel, calcRank, LEVEL_THRESHOLDS };

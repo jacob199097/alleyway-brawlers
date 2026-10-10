@@ -28,7 +28,7 @@ const { pool }                  = require('./db/pool');
 const { registerMatchmaking, createMatch, isInMatch, loadDeckPool } = require('./socket/matchmaker');
 const { registerDuelHandler }   = require('./socket/duelHandler');
 const { createOnlineService, loadSetupFromDb, loadProfileFromDb } = require('./socket/onlineMatch');
-const { resolveMatch }          = require('./economy/postMatch');
+const { resolveMatch, resolveCpuMatch } = require('./economy/postMatch');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 
 // ── REST routes ───────────────────────────────────────────────────────────────
@@ -95,6 +95,7 @@ const online = createOnlineService(io, {
     loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     resolveMatch,
+    resolveCpuMatch,
     incrementDailyQuest,
     recordDailyWin,
 });

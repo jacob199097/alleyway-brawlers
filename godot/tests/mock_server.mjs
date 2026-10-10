@@ -257,6 +257,15 @@ const service = createOnlineService(io, {
         console.log('MATCH OVER winner', byPlayerId(winnerId)?.username ?? 'none');
         return out;
     },
+    async resolveCpuMatch({ playerId, outcome, ranked }) {
+        const p = byPlayerId(playerId);
+        const win = outcome === 'win';
+        p.xp += win ? 100 : 20; p.karat += win ? 50 : 10; p[win ? 'wins' : 'losses']++;
+        console.log(`CPU MATCH OVER ${p.username} ${outcome}${ranked ? ' (ranked)' : ''}`);
+        return { outcome, karatEarned: win ? 50 : 10, xpEarned: win ? 100 : 20, firstWinBonus: false,
+            newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false, newRank: p.rank,
+            rankChanged: false, rankPointDelta: ranked ? (win ? 25 : -10) : 0 };
+    },
 });
 io.on('connection', (socket) => {
     const { playerId, username } = socket.playerData;

@@ -4,7 +4,8 @@ extends Node
 ## Run two at once against tests/mock_server.mjs:
 ##   godot --headless --path godot res://tests/online_bot.tscn -- <email> [server] [--autoplay]
 ## Flags after the email: "--autoplay" (required for the bot to play), "--drop" (disconnects once
-## mid-match to test reconnecting), "--concede" (concedes after a few turns).
+## mid-match to test reconnecting), "--concede" (concedes after a few turns), "--cpu" (plays the
+## server's CPU instead of queueing; add "--ranked" for a Ranked CPU match).
 
 const TIMEOUT_SECS := 900.0
 
@@ -33,7 +34,13 @@ func _run() -> void:
 	Api.token = r.data.token
 	Game.player = r.data.player
 	Net.connect_to_server()
-	Game.go("matchmaking")
+	var args := OS.get_cmdline_user_args()
+	if "--cpu" in args:
+		var why := await Game.request_cpu_match("--ranked" in args)
+		if why != "":
+			_finish(1, why)
+	else:
+		Game.go("matchmaking")
 
 
 func _process(delta: float) -> void:

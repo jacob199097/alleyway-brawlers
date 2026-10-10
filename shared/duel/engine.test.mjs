@@ -4,6 +4,7 @@
 //   node shared/duel/engine.test.mjs golden.json
 import { readFileSync } from 'node:fs';
 import { DuelState } from './DuelState.js';
+import { choose } from './DuelAI.js';
 
 const file = process.argv[2];
 if (!file) {
@@ -28,12 +29,19 @@ function diff(a, b, path = '') {
 }
 
 let failed = 0;
+let aiMoves = 0, aiMismatch = 0;   // the server's CPU (DuelAI.js) must pick the Godot CPU's moves
 let totalEvents = 0;
 games.forEach((g, gi) => {
     const d = new DuelState(g.decks, g.hideouts, g.leaders, g.first, -1);
     d.start();
     for (const [si, step] of g.steps.entries()) {
         if (step.action) {
+            const mine = choose(d, step.side);
+            aiMoves++;
+            if (diff(mine, step.action)) {
+                if (aiMismatch < 5) console.error(`game ${gi} step ${si}: JS CPU chose ${JSON.stringify(mine)}, Godot ${JSON.stringify(step.action)}`);
+                aiMismatch++;
+            }
             if (!d.doAction(step.side, step.action)) {
                 console.error(`game ${gi} step ${si}: JS refused ${JSON.stringify(step.action)}`);
                 failed++;
@@ -65,4 +73,5 @@ games.forEach((g, gi) => {
     }
 });
 console.log(`${games.length} games, ${totalEvents} events compared, ${failed} mismatching game(s)`);
-process.exit(failed ? 1 : 0);
+console.log(`CPU moves: ${aiMoves} compared, ${aiMismatch} different`);
+process.exit(failed || aiMismatch ? 1 : 0);

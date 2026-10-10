@@ -9,7 +9,10 @@
  * neither player learns the other's hand, deck or face-down cards.
  *
  * Socket.io events (Godot client, scripts/net.gd):
- *   client → server  mp:queue, mp:cancel, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
+ * CPU matches (VS CPU and Ranked) run here too, against a server-side CPU (shared/duel/DuelAI.js),
+ * so their rewards come from a result the server saw rather than one a client reported.
+ *
+ *   client → server  mp:queue, mp:cancel, mp:cpu {ranked}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
  *                    mp:resync
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
@@ -26,8 +29,10 @@ const { randomUUID } = require('crypto');
 const TURN_SECS        = 90;    // a player who doesn't act for this long is auto-played
 const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
 const CHALLENGE_SECS   = 60;
+const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
 
 const engine = import('../../shared/duel/DuelState.js');
+const cpu = import('../../shared/duel/DuelAI.js');
 
 // ── Perspective and hidden information ──────────────────────────────────────
 
@@ -116,6 +121,7 @@ function forSeat(v, seat) {
  * @param {(args) => Promise<object>} deps.resolveMatch       rewards per playerId
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
  * @param {(playerId) => Promise} [deps.recordDailyWin]
+ * @param {(args) => Promise<object>} [deps.resolveCpuMatch]  {playerId, outcome, ranked, turns} → rewards
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -162,6 +168,17 @@ function createOnlineService(io, deps) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url };
     }
 
+    /** The server CPU's seat: its deck is every Lv.1 card twice (like the old client-side CPU). */
+    async function cpuSeat(ranked) {
+        const { cpuSetup } = await cpu;
+        return {
+            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(),
+            profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'profile_002' },
+        };
+    }
+
+    const seatToAct = (st) => (st.pending && st.pending.side ? st.pending.side : st.active);
+
     function sendStart(match, seat, resync) {
         const s = match.seats[seat];
         emitTo(s.playerId, 'mp:start', {
@@ -187,10 +204,25 @@ function createOnlineService(io, deps) {
         else armTimer(match);
     }
 
-    /** Whoever has to act next gets TURN_SECS; then the server plays a safe move for them. */
+    /** Whoever has to act next gets TURN_SECS; then the server plays a safe move for them.
+     *  When it's the server CPU's move, it plays after a short pause instead. */
     function armTimer(match) {
         clearTimeout(match.timer);
-        match.timer = setTimeout(() => autoPlay(match), TURN_SECS * 1000);
+        if (match.seats[seatToAct(match.state)].bot) match.timer = setTimeout(() => botMove(match), BOT_MOVE_MS);
+        else match.timer = setTimeout(() => autoPlay(match), TURN_SECS * 1000);
+    }
+
+    async function botMove(match) {
+        if (match.over) return;
+        const { choose } = await cpu;
+        const st = match.state;
+        const seat = seatToAct(st);
+        if (!match.seats[seat].bot) return armTimer(match);
+        const action = choose(st, seat);
+        if (!Object.keys(action).length || !st.doAction(seat, action)) {
+            if (!st.doAction(seat, { kind: 'next' })) return autoPlay(match);
+        }
+        broadcast(match, st.takeEvents());
     }
 
     function autoPlay(match) {
@@ -232,7 +264,21 @@ function createOnlineService(io, deps) {
         const winner = winnerSeat ? match.seats[winnerSeat] : null;
         const loser = winnerSeat ? match.seats[other(winnerSeat)] : null;
         let rewards = {};
-        try {
+        const bot = Object.values(match.seats).find(s => s.bot);
+        if (bot) {
+            // CPU match: only the human is rewarded, from the result the server saw
+            const human = Object.values(match.seats).find(s => !s.bot);
+            try {
+                rewards[human.playerId] = await deps.resolveCpuMatch?.({
+                    playerId: human.playerId,
+                    outcome: !winnerSeat ? 'draw' : winner === human ? 'win' : 'loss',
+                    ranked: match.mode === 'cpu_ranked', turns: match.state.turn,
+                }) || null;
+                if (human.cardsPlayed > 0) deps.incrementDailyQuest?.(human.playerId, 'daily_play_10', Math.min(40, human.cardsPlayed))?.catch?.(() => {});
+            } catch (err) {
+                console.error('[Online] CPU match rewards failed:', err.message);
+            }
+        } else try {
             rewards = await deps.resolveMatch({
                 winnerId: winner?.playerId ?? null, loserId: loser?.playerId ?? null,
                 p1Id: match.seats.player.playerId, p2Id: match.seats.opponent.playerId,
@@ -289,6 +335,18 @@ function createOnlineService(io, deps) {
             } else {
                 queue.push(entry);
                 socket.emit('mp:queued', { position: queue.length });
+            }
+        });
+
+        // A match against the server CPU (VS CPU, or Ranked when ranked is true)
+        socket.on('mp:cpu', async ({ ranked } = {}) => {
+            if (byPlayer.has(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
+            leaveQueue(me);
+            try {
+                const entry = await prepare(me);
+                await startMatch(entry, await cpuSeat(ranked === true), ranked === true ? 'cpu_ranked' : 'cpu');
+            } catch (err) {
+                socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }
         });
 

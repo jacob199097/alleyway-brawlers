@@ -8,8 +8,10 @@ const { incrementDailyQuest } = require('./quests');
 
 const router = express.Router();
 
-// Solo (AI) duels run on the client, so the server can't replay them. Instead it
-// issues one session per match and limits what a session can pay out:
+// Results that a client reports can't be trusted, so this route no longer pays rewards: CPU
+// matches now run on the server (socket/onlineMatch.js, mp:cpu) and are rewarded there.
+// It still closes the session and records the outcome, for older clients.
+// Session rules (kept):
 //   * a session can be completed once, by its owner, and only after a minimum
 //     real-time duration; starting a new match abandons the previous session
 //   * rewarded completions are capped per day
@@ -86,7 +88,8 @@ router.post('/complete', requireAuth, async (req, res) => {
              WHERE  player_id = $1 AND rewarded AND completed_at >= date_trunc('day', NOW())`,
             [playerId]
         );
-        const rewardable = rewarded_today < DAILY_SOLO_REWARD_CAP;
+        const rewardable = false;   // see the note at the top: client-reported results don't pay
+        void rewarded_today;
 
         // Claim the session atomically — a concurrent second request updates 0 rows.
         const { rowCount } = await pool.query(
@@ -99,7 +102,7 @@ router.post('/complete', requireAuth, async (req, res) => {
         if (!rewardable) {
             return res.json({ ok: true, rewards: {
                 outcome: result, karatEarned: 0, xpEarned: 0, firstWinBonus: false,
-                leveledUp: false, rankChanged: false, rankPointDelta: 0, dailyCapReached: true,
+                leveledUp: false, rankChanged: false, rankPointDelta: 0, clientReported: true,
             }});
         }
 

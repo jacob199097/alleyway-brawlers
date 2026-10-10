@@ -133,6 +133,20 @@ func sign_out() -> void:
 	_save_session()
 
 
+## A match against the server's CPU (VS CPU, or Ranked). CPU matches run on the server so
+## the result, and the rewards, can be trusted. mp:start then opens the duel (net.gd).
+## Returns "" once requested, or why it couldn't be.
+func request_cpu_match(ranked: bool) -> String:
+	Net.connect_to_server()
+	var give_up := Time.get_ticks_msec() + 8000   # real time, not game time
+	while not Net.is_open and Time.get_ticks_msec() < give_up:
+		await get_tree().process_frame
+	if not Net.is_open:
+		return "Can't reach the game server. CPU matches run on the server so their rewards count; check your connection, or play offline from the login screen."
+	Net.send("mp:cpu", {"ranked": ranked})
+	return ""
+
+
 ## The guided first duel (scripts/duel/tutorial.gd). Works signed in or offline.
 func start_tutorial() -> void:
 	duel_setup = {"mode": "tutorial"}
