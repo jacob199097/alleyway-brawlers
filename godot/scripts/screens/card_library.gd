@@ -1,6 +1,9 @@
 extends Screen
+
 ## Card library: your collection (or every card in the game), with filters and a detail panel
 ## that follows the mouse. Right-click or click a card to zoom it.
+
+const Keywords := preload("res://scripts/keywords.gd")
 
 const TILE := Vector2(150, 212)
 
@@ -204,9 +207,19 @@ func _show_detail(c: Dictionary) -> void:
 	_detail.add_child(UI.label(line, 17, UI.rarity_color(rarity)))
 	if c.get("cardType") in ["gang_member", "leader"]:
 		_detail.add_child(UI.label("ATK %d   DEF %d   ·   AUTHORITY %d" % [int(c.get("attack", 0)), int(c.get("defense", 0)), int(c.get("authority", 0))], 22, UI.GOLD, true))
-	var t := UI.label(str(c.get("effectText", "")), 18, Color(0.88, 0.88, 0.95))
-	t.autowrap_mode = TextServer.AUTOWRAP_WORD
+	# Keywords are coloured and explain themselves when hovered
+	var t := RichTextLabel.new()
+	t.bbcode_enabled = true
+	t.fit_content = true
+	t.scroll_active = false
+	t.meta_underlined = false
+	t.add_theme_font_size_override("normal_font_size", 18)
+	t.add_theme_font_size_override("bold_font_size", 18)
+	t.add_theme_color_override("default_color", Color(0.88, 0.88, 0.95))
+	t.text = Keywords.markup(str(c.get("effectText", "")))
 	t.custom_minimum_size = Vector2(480, 0)
+	t.meta_hover_started.connect(func(meta): t.tooltip_text = Keywords.LIST.get(str(meta), [null, ""])[1])
+	t.meta_hover_ended.connect(func(_meta): t.tooltip_text = "")
 	_detail.add_child(t)
 	if not Game.offline:
 		_detail.add_child(UI.label("Owned: %d" % int(c.get("quantity", 0)), 18, UI.BLUE, true))

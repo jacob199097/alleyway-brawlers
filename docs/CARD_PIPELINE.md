@@ -24,6 +24,23 @@ Character roles follow the class rules, and the importer enforces them:
 - **Heavy**: standalone, always level 1, high Authority. Playing one sacrifices one of your characters on
   the field, and the Heavy takes that lane.
 
+Keyword effects are effect blocks in the Forge. Each keyword has its own colour on the card, and in the game
+hovering it shows what it does. The game's copy of the colours and meanings is `godot/scripts/keywords.gd`;
+keep it in step with `EFFECT_KEYWORDS` in the Forge.
+
+| Keyword | Effect block | What it does |
+|---|---|---|
+| POISON X | `poison` | At the start of its owner's next 3 turns, it loses X ATK (until it leaves the field). |
+| BURN X | `burn` | At the start of its owner's next 3 turns, its owner loses X Morale. |
+| BLEED X | `bleed` | After every brawl it is in, it loses X ATK and X DEF (until it leaves the field). |
+| SHOCK X | `shock` | Downs it if X is at least its DEF; otherwise -X DEF this turn. |
+| FREEZE | `freeze` | Switched to DEF; can't attack or change position until its owner's next turn ends. |
+| STASIS | `stasis` | Nebula only. Until its owner's next turn ends: can't attack, be attacked or be targeted, its effects are off, and it doesn't block direct attacks. |
+| STUN | `stun` | Can't attack during its owner's next turn. |
+| SHIELD | `shield` | The next time it would be defeated, it isn't. |
+| PIERCE | `pierce` | Beating a DEF or Downed character also costs the opponent the difference in Morale. |
+| DRAIN X / HEAL X | `drain` / `heal` | Take X Morale from the opponent / gain X Morale. |
+
 The importer warns about problems such as a missing image, a "promotes to" card that isn't in the
 export, or two cards with the same name. The server needs unique names, so add "Lv.2" and so on.
 

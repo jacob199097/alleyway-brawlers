@@ -185,7 +185,7 @@ func can_summon(side: String, c: Dictionary, slot: int, tribute := -1) -> bool:
 		return false
 	if needs_tribute(c):
 		var t = card_at(side, tribute) if tribute in FRONT else null
-		return slot == tribute and t != null and t.get("cardType") != "leader"
+		return slot == tribute and t != null and t.get("cardType") != "leader" and not in_stasis(t)
 	return tribute == -1 and sides[side].field[slot] == null
 
 
@@ -219,19 +219,51 @@ func can_hustle(side: String, c: Dictionary) -> bool:
 		and sides[side].authority >= c.authority and hustle_ready(side, c)
 
 
+## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
+const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
+const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until"]
+
+
+func in_stasis(c) -> bool:
+	return c != null and int(c.get("stasis_until", 0)) >= turn
+
+
+func frozen(c) -> bool:
+	return c != null and int(c.get("freeze_until", 0)) >= turn
+
+
+## The statuses on a character, for the field display (sent with the "stats" event).
+func statuses(c: Dictionary) -> Array:
+	var out: Array = []
+	for k in ["poison", "burn", "bleed"]:
+		if c.has(k):
+			out.append(k)
+	if frozen(c):
+		out.append("freeze")
+	if in_stasis(c):
+		out.append("stasis")
+	if int(c.get("stun_until", 0)) >= turn:
+		out.append("stun")
+	if c.get("shield", false):
+		out.append("shield")
+	return out
+
+
 func can_attack_with(side: String, slot: int) -> bool:
 	if not can_act(side) or phase != "brawl" or turn == 1 or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
 	return c != null and c.position == "atk" and not c.downed and not c.has_attacked and not c.face_down \
-		and int(c.get("stun_until", 0)) < turn
+		and int(c.get("stun_until", 0)) < turn and not frozen(c) and not in_stasis(c)
 
 
 ## Attack targets: any enemy character; DIRECT when none of them is still standing (an empty
 ## front row, or only Downed characters); and the enemy LEADER whenever it is dormant.
 func attack_targets(side: String) -> Array:
 	var foe := other(side)
-	var foes := characters(foe)
+	# A character in STASIS can't be attacked and doesn't block a direct attack
+	var foes := characters(foe).filter(func(e): return not in_stasis(e.card))
 	var targets: Array = foes.map(func(e): return e.slot)
 	if not foes.any(func(e): return not e.card.downed):
 		targets.append(DIRECT)
@@ -245,7 +277,7 @@ func can_change_position(side: String, slot: int) -> bool:
 	if not can_deploy_now(side) or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
-	return c != null and not c.downed and not c.has_attacked \
+	return c != null and not c.downed and not c.has_attacked and not frozen(c) and not in_stasis(c) \
 		and c.deployed_turn != turn and c.get("position_turn", 0) != turn
 
 
@@ -254,7 +286,7 @@ func can_promote(side: String, slot: int) -> bool:
 	if not can_deploy_now(side) or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
-	if c == null or c.get("ability") != "maya_promote" or c.face_down or c.downed or c.get("subtype") != "striver":
+	if c == null or c.get("ability") != "maya_promote" or c.face_down or c.downed or c.get("subtype") != "striver" or in_stasis(c):
 		return false
 	if sides[side].promoted.has(slot) or CardDB.next_form(c.id) == "":
 		return false
@@ -269,7 +301,7 @@ func can_use_ability(side: String, slot: int) -> bool:
 	if not can_act(side) or not phase in ["deployment", "brawl", "regroup"] or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
-	if c == null or c.get("ability") != "maya_buff" or c.face_down or c.downed:
+	if c == null or c.get("ability") != "maya_buff" or c.face_down or c.downed or in_stasis(c):
 		return false
 	if c.get("ability_turn", 0) == turn:
 		return false
@@ -332,6 +364,7 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute := -1)
 		sides[side].field[tribute] = null
 		t.downed = false
 		t.mods = []
+		_clear_status(t)
 		sides[side].gutter.append(t)
 		_emit("tribute", {"side": side, "slot": tribute, "card": t.duplicate(true), "for": c.duplicate(true)})
 	c.position = "def" if position == "def" else "atk"
@@ -562,9 +595,11 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		_damage(foe, dmg)
 		if winner == "" and card_at(side, from) == att:
 			_run_fx(side, from, att, "direct")
+		_bleed(side, att)
 		return
 	if target == LEADER:
 		_hit_leader(ctx)
+		_bleed(side, att)
 		return
 
 	var def: Dictionary = card_at(foe, target)
@@ -623,6 +658,20 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		elif result == "downed":
 			_on_down(side, from, att)
 			_run_fx(side, _slot_of(side, att, from), att, "down", def_info)
+	_bleed(side, att)
+	_bleed(foe, def)
+
+
+## BLEED: a bleeding character loses ATK and DEF after every brawl it is in.
+func _bleed(side: String, c: Dictionary) -> void:
+	var n := int(c.get("bleed", 0))
+	if n <= 0 or winner != "":
+		return
+	var slot := _slot_of(side, c, -1)
+	if slot < 0:
+		return
+	c.mods.append({"atk": -n, "def": -n, "until_turn": FOREVER})
+	_emit("status_tick", {"side": side, "slot": slot, "kind": "bleed", "amount": n, "card": c.duplicate(true)})
 
 
 ## A dormant leader soaks attacks with its Influence (its DEF). At 0 it is defeated:
@@ -667,6 +716,7 @@ func _ko(side: String, slot: int) -> void:
 	sides[side].field[slot] = null
 	c.downed = false
 	c.mods = []
+	_clear_status(c)
 	sides[side].gutter.append(c)
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_ko")
@@ -852,6 +902,7 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		s.field[slot] = promoted
 		old.mods = []
 		old.downed = false
+		_clear_status(old)
 		s.gutter.append(old)
 		_emit("promote", {"side": side, "slot": slot, "from": old.duplicate(true),
 			"card": promoted.duplicate(true), "reason": reason})
@@ -959,7 +1010,7 @@ func _recalc() -> void:
 					df += 400
 			c.attack = maxi(0, atk)
 			c.defense = maxi(0, df)
-			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down]
+			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down, statuses(c)]
 	_emit("stats", {"values": values})
 
 
@@ -970,7 +1021,9 @@ func _recalc() -> void:
 #           ally_deployed | turn_start | turn_end | passive
 #   do:     buff | down | ko | stand | bounce | force_def | stun | shield | pierce | draw |
 #           search | recover | discard | mill | damage | heal | drain | authority | promote |
-#           attack_again
+#           attack_again | poison | burn | bleed | shock | freeze | stasis
+#   amount: poison (ATK lost per turn), burn (Morale lost per turn), bleed (ATK/DEF lost per
+#           brawl), shock (damage to DEF: Downs the target if it is at least its DEF)
 #   target: self | ally | allies | enemy | enemies | attacker (defend only)
 #   clan:   only characters with this clan tag (for ally_deployed: the deployed ally's clan)
 #   kind:   search / recover: "" | gang_member | hustle | ambush
@@ -981,7 +1034,7 @@ func _recalc() -> void:
 
 func _fx(c, when: String) -> Array:
 	var out: Array = []
-	if c == null:
+	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects
 		return out
 	for e in c.get("effects", []):
 		if e is Dictionary and str(e.get("when", "")) == when:
@@ -1103,7 +1156,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			_fx_apply(side, slot, c, e, vs, "attackers", "force into DEF", fn, "%s forces %%s into DEF" % c.name)
 		"stun":
 			var fn := func(x: Dictionary) -> String:
-				x.card.stun_until = turn + 1
+				x.card.stun_until = _owner_next_turn(x.side)
 				return "%s stuns %s: it can't attack next turn" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "any", "stun", fn, "%s stuns %%s" % c.name)
 		"shield":
@@ -1171,6 +1224,79 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			if card_at(side, slot) == c and c.has_attacked:
 				c.has_attacked = false
 				_effect(side, c, "%s may attack again this turn" % c.name, slot)
+		"poison", "burn":
+			var kind := str(e.get("do", ""))
+			var fn := func(x: Dictionary) -> String:
+				var cur: Dictionary = x.card.get(kind, {})
+				x.card[kind] = {"amt": maxi(n, int(cur.get("amt", 0))), "left": STATUS_TICKS}
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": kind, "card": x.card.duplicate(true)})
+				if kind == "poison":
+					return "%s is POISONED: -%d ATK each turn" % [x.card.name, n]
+				return "%s is BURNING: its owner loses %d Morale each turn" % [x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", kind.to_upper(), fn,
+				"%s %s %%s" % [c.name, "poisons" if kind == "poison" else "burns"])
+		"bleed":
+			var fn := func(x: Dictionary) -> String:
+				x.card.bleed = maxi(n, int(x.card.get("bleed", 0)))
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "bleed", "card": x.card.duplicate(true)})
+				return "%s is BLEEDING: -%d ATK / DEF after every brawl" % [x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", "BLEED", fn, "%s makes %%s bleed" % c.name)
+		"shock":
+			var fn := func(x: Dictionary) -> String:
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "shock", "card": x.card.duplicate(true)})
+				if not x.card.downed and n >= int(x.card.get("defense", 0)):
+					x.card.downed = true
+					_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
+					return "%s SHOCKS %s: it goes Down" % [c.name, x.card.name]
+				x.card.mods.append({"atk": 0, "def": -n, "until_turn": turn})
+				_recalc()
+				return "%s SHOCKS %s: -%d DEF this turn" % [c.name, x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", "SHOCK", fn, "%s shocks %%s" % c.name)
+		"freeze":
+			var fn := func(x: Dictionary) -> String:
+				x.card.freeze_until = _owner_next_turn(x.side)
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "freeze", "card": x.card.duplicate(true)})
+				if x.card.position != "def":
+					x.card.position = "def"
+					x.card.position_turn = turn
+					_emit("position", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
+				return "%s is FROZEN in DEF through its owner's next turn" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "any", "FREEZE", fn, "%s freezes %%s" % c.name)
+		"stasis":
+			var fn := func(x: Dictionary) -> String:
+				x.card.stasis_until = _owner_next_turn(x.side)
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "stasis", "card": x.card.duplicate(true)})
+				return "%s is in STASIS until its owner's next turn ends" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "any", "STASIS", fn, "%s puts %%s in STASIS" % c.name)
+
+
+## The last turn of "through its owner's next turn" for a character on `side`.
+func _owner_next_turn(side: String) -> int:
+	return turn + (2 if side == active else 1)
+
+
+func _clear_status(c: Dictionary) -> void:
+	for k in STATUS_KEYS:
+		c.erase(k)
+
+
+## POISON and BURN tick at the start of their owner's turn.
+func _status_ticks(side: String) -> void:
+	for e in characters(side):
+		var c: Dictionary = e.card
+		for kind in ["poison", "burn"]:
+			if winner != "" or not c.has(kind):
+				continue
+			var st: Dictionary = c[kind]
+			var amt := int(st.amt)
+			st.left = int(st.left) - 1
+			if int(st.left) <= 0:
+				c.erase(kind)
+			_emit("status_tick", {"side": side, "slot": e.slot, "kind": kind, "amount": amt, "card": c.duplicate(true)})
+			if kind == "poison":
+				c.mods.append({"atk": -amt, "def": 0, "until_turn": FOREVER})
+			else:
+				_damage(side, amt)
 
 
 ## Apply a targeted effect. \`pool_kind\`: any | standing | downed | attackers (in ATK, standing).
@@ -1200,7 +1326,7 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 		"enemy", "enemies":
 			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
-	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader")
+	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader" and not in_stasis(x.card))
 	if target == "ally" or target == "enemy":
 		entries.sort_custom(_strongest_first)
 		var on := side if target == "ally" else foe
@@ -1246,6 +1372,7 @@ func _bounce(side: String, slot: int) -> void:
 	c.has_attacked = false
 	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used"]:
 		c.erase(k)
+	_clear_status(c)
 	sides[side].hand.append(c)
 	_emit("bounce", {"side": side, "slot": slot, "card": c.duplicate(true)})
 
@@ -1334,6 +1461,9 @@ func _begin_turn() -> void:
 			_emit("stand", {"side": active, "slot": e.slot, "card": e.card.duplicate(true)})
 		else:
 			e.card.down_turns = 1
+	_status_ticks(active)
+	if winner != "":
+		return
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_start")
 	# King's Test survivors may promote at the start of their owner's next turn

@@ -45,6 +45,10 @@ export function nextForm(id) {
 const clone = (o) => structuredClone(o);
 const isEmpty = (o) => !o || Object.keys(o).length === 0;
 const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
+// Keyword statuses (Card Forge effects); same rules as duel_state.gd
+const FOREVER = 1000000;
+const STATUS_TICKS = 3;
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -188,7 +192,7 @@ export class DuelState {
         if (!FRONT.includes(slot) || this.sides[side].authority < c.authority) return false;
         if (DuelState.needsTribute(c)) {
             const t = FRONT.includes(tribute) ? this.cardAt(side, tribute) : null;
-            return slot === tribute && t != null && t.cardType !== 'leader';
+            return slot === tribute && t != null && t.cardType !== 'leader' && !this.inStasis(t);
         }
         return tribute === -1 && this.sides[side].field[slot] == null;
     }
@@ -219,18 +223,31 @@ export class DuelState {
             && this.sides[side].authority >= c.authority && this.hustleReady(side, c);
     }
 
+    inStasis(c) { return c != null && toInt(c.stasis_until ?? 0) >= this.turn; }
+
+    frozen(c) { return c != null && toInt(c.freeze_until ?? 0) >= this.turn; }
+
+    statuses(c) {
+        const out = ['poison', 'burn', 'bleed'].filter(k => c[k] !== undefined);
+        if (this.frozen(c)) out.push('freeze');
+        if (this.inStasis(c)) out.push('stasis');
+        if (toInt(c.stun_until ?? 0) >= this.turn) out.push('stun');
+        if (c.shield) out.push('shield');
+        return out;
+    }
+
     canAttackWith(side, slot) {
         if (!this.canAct(side) || this.phase !== 'brawl' || this.turn === 1 || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
         return c != null && c.position === 'atk' && !c.downed && !c.has_attacked && !c.face_down
-            && toInt(c.stun_until ?? 0) < this.turn;
+            && toInt(c.stun_until ?? 0) < this.turn && !this.frozen(c) && !this.inStasis(c);
     }
 
     // Any enemy character; DIRECT when none is still standing (empty row or only Downed);
     // the enemy LEADER whenever it is dormant.
     attackTargets(side) {
         const foe = other(side);
-        const foes = this.characters(foe);
+        const foes = this.characters(foe).filter(e => !this.inStasis(e.card));
         const targets = foes.map(e => e.slot);
         if (!foes.some(e => !e.card.downed)) targets.push(DIRECT);
         if (this.leaderDormant(foe)) targets.push(LEADER);
@@ -240,14 +257,14 @@ export class DuelState {
     canChangePosition(side, slot) {
         if (!this.canDeployNow(side) || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
-        return c != null && !c.downed && !c.has_attacked
+        return c != null && !c.downed && !c.has_attacked && !this.frozen(c) && !this.inStasis(c)
             && c.deployed_turn !== this.turn && (c.position_turn ?? 0) !== this.turn;
     }
 
     canPromote(side, slot) {
         if (!this.canDeployNow(side) || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
-        if (c == null || c.ability !== 'maya_promote' || c.face_down || c.downed || c.subtype !== 'striver') return false;
+        if (c == null || c.ability !== 'maya_promote' || c.face_down || c.downed || c.subtype !== 'striver' || this.inStasis(c)) return false;
         if (this.sides[side].promoted[slot] || nextForm(c.id) === '') return false;
         return this.characters(side).some(e => e.slot !== slot && isLion(e.card) && e.card.authority >= c.authority);
     }
@@ -255,7 +272,7 @@ export class DuelState {
     canUseAbility(side, slot) {
         if (!this.canAct(side) || !['deployment', 'brawl', 'regroup'].includes(this.phase) || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
-        if (c == null || c.ability !== 'maya_buff' || c.face_down || c.downed) return false;
+        if (c == null || c.ability !== 'maya_buff' || c.face_down || c.downed || this.inStasis(c)) return false;
         if ((c.ability_turn ?? 0) === this.turn) return false;
         return this.characters(side).some(e => e.slot !== slot && isLion(e.card));
     }
@@ -310,6 +327,7 @@ export class DuelState {
             this.sides[side].field[tribute] = null;
             t.downed = false;
             t.mods = [];
+            this._clearStatus(t);
             this.sides[side].gutter.push(t);
             this._emit('tribute', { side, slot: tribute, card: clone(t), for: clone(c) });
         }
@@ -555,10 +573,12 @@ export class DuelState {
             this._emit('clash', { side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' });
             this._damage(foe, dmg);
             if (this.winner === '' && this.cardAt(side, from) === att) this._runFx(side, from, att, 'direct');
+            this._bleed(side, att);
             return;
         }
         if (target === LEADER) {
             this._hitLeader(ctx);
+            this._bleed(side, att);
             return;
         }
         const def = this.cardAt(foe, target);
@@ -615,6 +635,17 @@ export class DuelState {
                 this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo);
             }
         }
+        this._bleed(side, att);
+        this._bleed(foe, def);
+    }
+
+    _bleed(side, c) {
+        const n = toInt(c.bleed ?? 0);
+        if (n <= 0 || this.winner !== '') return;
+        const slot = this._slotOf(side, c, -1);
+        if (slot < 0) return;
+        c.mods.push({ atk: -n, def: -n, until_turn: FOREVER });
+        this._emit('status_tick', { side, slot, kind: 'bleed', amount: n, card: clone(c) });
     }
 
     _hitLeader(ctx) {
@@ -657,6 +688,7 @@ export class DuelState {
         this.sides[side].field[slot] = null;
         c.downed = false;
         c.mods = [];
+        this._clearStatus(c);
         this.sides[side].gutter.push(c);
         this._emit('ko', { side, slot, card: clone(c) });
         this._runFx(side, slot, c, 'self_ko');
@@ -863,6 +895,7 @@ export class DuelState {
             s.field[slot] = promoted;
             old.mods = [];
             old.downed = false;
+            this._clearStatus(old);
             s.gutter.push(old);
             this._emit('promote', { side, slot, from: clone(old), card: clone(promoted), reason });
             this._onDeploy(side, slot, promoted);
@@ -959,7 +992,7 @@ export class DuelState {
                 }
                 c.attack = Math.max(0, atk);
                 c.defense = Math.max(0, df);
-                values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down];
+                values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down, this.statuses(c)];
             }
         }
         this._emit('stats', { values });
@@ -970,7 +1003,7 @@ export class DuelState {
     // {when, do, target, atk, def, amount, until, clan, kind, if, n, once}
 
     _fx(c, when) {
-        if (c == null) return [];
+        if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
         return (c.effects || []).filter(e => e && typeof e === 'object' && String(e.when ?? '') === when);
     }
 
@@ -1074,7 +1107,7 @@ export class DuelState {
                 break;
             case 'stun':
                 this._fxApply(side, slot, c, e, vs, 'any', 'stun', (x) => {
-                    x.card.stun_until = this.turn + 1;
+                    x.card.stun_until = this._ownerNextTurn(x.side);
                     return `${c.name} stuns ${x.card.name}: it can't attack next turn`;
                 }, `${c.name} stuns %s`);
                 break;
@@ -1164,6 +1197,76 @@ export class DuelState {
                     this._effect(side, c, `${c.name} may attack again this turn`, slot);
                 }
                 break;
+            case 'poison': case 'burn': {
+                const kind = String(e.do);
+                this._fxApply(side, slot, c, e, vs, 'any', kind.toUpperCase(), (x) => {
+                    const cur = x.card[kind] || {};
+                    x.card[kind] = { amt: Math.max(n, toInt(cur.amt ?? 0)), left: STATUS_TICKS };
+                    this._emit('status', { side: x.side, slot: x.slot, kind, card: clone(x.card) });
+                    return kind === 'poison' ? `${x.card.name} is POISONED: -${n} ATK each turn`
+                        : `${x.card.name} is BURNING: its owner loses ${n} Morale each turn`;
+                }, `${c.name} ${kind === 'poison' ? 'poisons' : 'burns'} %s`);
+                break;
+            }
+            case 'bleed':
+                this._fxApply(side, slot, c, e, vs, 'any', 'BLEED', (x) => {
+                    x.card.bleed = Math.max(n, toInt(x.card.bleed ?? 0));
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'bleed', card: clone(x.card) });
+                    return `${x.card.name} is BLEEDING: -${n} ATK / DEF after every brawl`;
+                }, `${c.name} makes %s bleed`);
+                break;
+            case 'shock':
+                this._fxApply(side, slot, c, e, vs, 'any', 'SHOCK', (x) => {
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'shock', card: clone(x.card) });
+                    if (!x.card.downed && n >= toInt(x.card.defense ?? 0)) {
+                        x.card.downed = true;
+                        this._emit('downed', { side: x.side, slot: x.slot, card: clone(x.card) });
+                        return `${c.name} SHOCKS ${x.card.name}: it goes Down`;
+                    }
+                    x.card.mods.push({ atk: 0, def: -n, until_turn: this.turn });
+                    this._recalc();
+                    return `${c.name} SHOCKS ${x.card.name}: -${n} DEF this turn`;
+                }, `${c.name} shocks %s`);
+                break;
+            case 'freeze':
+                this._fxApply(side, slot, c, e, vs, 'any', 'FREEZE', (x) => {
+                    x.card.freeze_until = this._ownerNextTurn(x.side);
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'freeze', card: clone(x.card) });
+                    if (x.card.position !== 'def') {
+                        x.card.position = 'def';
+                        x.card.position_turn = this.turn;
+                        this._emit('position', { side: x.side, slot: x.slot, card: clone(x.card) });
+                    }
+                    return `${x.card.name} is FROZEN in DEF through its owner's next turn`;
+                }, `${c.name} freezes %s`);
+                break;
+            case 'stasis':
+                this._fxApply(side, slot, c, e, vs, 'any', 'STASIS', (x) => {
+                    x.card.stasis_until = this._ownerNextTurn(x.side);
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'stasis', card: clone(x.card) });
+                    return `${x.card.name} is in STASIS until its owner's next turn ends`;
+                }, `${c.name} puts %s in STASIS`);
+                break;
+        }
+    }
+
+    _ownerNextTurn(side) { return this.turn + (side === this.active ? 2 : 1); }
+
+    _clearStatus(c) { for (const k of STATUS_KEYS) delete c[k]; }
+
+    _statusTicks(side) {
+        for (const e of this.characters(side)) {
+            const c = e.card;
+            for (const kind of ['poison', 'burn']) {
+                if (this.winner !== '' || c[kind] === undefined) continue;
+                const st = c[kind];
+                const amt = toInt(st.amt);
+                st.left = toInt(st.left) - 1;
+                if (toInt(st.left) <= 0) delete c[kind];
+                this._emit('status_tick', { side, slot: e.slot, kind, amount: amt, card: clone(c) });
+                if (kind === 'poison') c.mods.push({ atk: -amt, def: 0, until_turn: FOREVER });
+                else this._damage(side, amt);
+            }
         }
     }
 
@@ -1193,7 +1296,7 @@ export class DuelState {
                 entries = this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card }));
                 break;
         }
-        entries = entries.filter(x => pick(x) && x.card.cardType !== 'leader');
+        entries = entries.filter(x => pick(x) && x.card.cardType !== 'leader' && !this.inStasis(x.card));
         if (target === 'ally' || target === 'enemy') {
             entries.sort(strongestFirst);
             const on = target === 'ally' ? side : foe;
@@ -1236,6 +1339,7 @@ export class DuelState {
         c.face_down = false;
         c.has_attacked = false;
         for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used']) delete c[k];
+        this._clearStatus(c);
         this.sides[side].hand.push(c);
         this._emit('bounce', { side, slot, card: clone(c) });
     }
@@ -1307,6 +1411,8 @@ export class DuelState {
                 e.card.down_turns = 1;
             }
         }
+        this._statusTicks(this.active);
+        if (this.winner !== '') return;
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {

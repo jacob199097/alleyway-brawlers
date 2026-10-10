@@ -42,6 +42,15 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "buff", "target": "self", "atk": 500, "if": "alone"}, {"when": "turn_start", "do": "draw", "if": "gutter_ge", "n": 4, "once": true}],
 	[{"when": "passive", "do": "buff", "target": "self", "def": 400, "if": "leader_dormant"}, {"when": "deploy", "do": "stun", "target": "enemies"}],
 	[{"when": "deploy", "do": "shield", "target": "ally"}, {"when": "deploy", "do": "bounce", "target": "enemy", "if": "foe_downed"}],
+	[{"when": "deploy", "do": "poison", "target": "enemy", "amount": 300}],
+	[{"when": "deploy", "do": "burn", "target": "enemies", "amount": 200}],
+	[{"when": "defend", "do": "bleed", "target": "attacker", "amount": 200}, {"when": "attack", "do": "poison", "target": "enemies", "amount": 100}],
+	[{"when": "deploy", "do": "shock", "target": "enemy", "amount": 900}],
+	[{"when": "attack", "do": "shock", "target": "enemies", "amount": 400}, {"when": "self_ko", "do": "burn", "target": "enemies", "amount": 300}],
+	[{"when": "deploy", "do": "freeze", "target": "enemy"}],
+	[{"when": "defend", "do": "freeze", "target": "attacker"}, {"when": "deploy", "do": "bleed", "target": "enemies", "amount": 100}],
+	[{"when": "deploy", "do": "stasis", "target": "enemy"}],
+	[{"when": "turn_end", "do": "stasis", "target": "self", "once": true, "if": "morale_le", "n": 3000}, {"when": "passive", "do": "buff", "target": "self", "atk": 300}],
 	[{"when": "defend", "do": "down", "target": "attacker", "if": "vs_def"}, {"when": "defend", "do": "ko", "target": "attacker", "once": true, "if": "vs_downed"}],
 ]
 

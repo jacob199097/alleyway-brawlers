@@ -8,6 +8,13 @@ extends Node2D
 const SIZE := Vector2(124, 175)   # field size; hand and zoom views scale the node
 const MAX_TILT := 24.0            # degrees
 static var _shader: Shader = preload("res://shaders/card.gdshader")
+## Keyword statuses: colour and the short tag drawn on the card (same colours as the Card Forge)
+const STATUS_STYLE := {
+	"poison": [Color("6ee26a"), "PSN", "POISONED"], "burn": [Color("ff6a4a"), "BRN", "BURNING"],
+	"bleed": [Color("ff4a6e"), "BLD", "BLEEDING"], "shock": [Color("4fc3ff"), "SHK", "SHOCKED"],
+	"freeze": [Color("a6ecff"), "FRZ", "FROZEN"], "stasis": [Color("9a7bff"), "STS", "STASIS"],
+	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
+}
 
 var card: Dictionary = {}
 var uid := -1
@@ -17,6 +24,7 @@ var downed := false: set = set_downed
 var show_badge := false: set = set_show_badge
 var glow := 0.0: set = set_glow
 var badge_text := "": set = set_badge_text   # replaces the ATK/DEF badge (e.g. a leader's Influence)
+var statuses: Array = []: set = set_statuses  # keyword statuses, e.g. ["poison", "stasis"]
 var glow_color := Color("f4d35e")
 var home := Vector2.ZERO
 var home_rot := 0.0
@@ -26,6 +34,7 @@ var hovered := false            # lean toward the mouse
 var rest_tilt := Vector2.ZERO   # resting lean in screen space: (turn, lean back), degrees
 
 var _body := Node2D.new()   # flips (scale.x) independently of the node's own scale
+var _status_layer := Node2D.new()   # status tags, drawn over the art
 var _front := Sprite2D.new()
 var _back := Sprite2D.new()
 var _fallback: Label
@@ -50,6 +59,8 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	_back.material = _mat
 	_back.texture = CardDB.back()
 	_fit(_back)
+	add_child(_status_layer)
+	_status_layer.draw.connect(_draw_statuses)
 
 	_badge = RichTextLabel.new()
 	_badge.top_level = true
@@ -226,6 +237,8 @@ func _badge_wanted() -> bool:
 
 func _process(delta: float) -> void:
 	_update_tilt(delta)
+	if not statuses.is_empty():
+		_status_layer.queue_redraw()
 	if _badge.visible != _badge_wanted():
 		_update_badge()
 	if _badge.visible:
@@ -270,6 +283,39 @@ func _draw() -> void:
 func _fit(s: Sprite2D) -> void:
 	if s.texture:
 		s.scale = SIZE / s.texture.get_size()
+
+
+func set_statuses(v: Array) -> void:
+	statuses = v.duplicate()
+	_status_layer.queue_redraw()
+
+
+func _draw_statuses() -> void:
+	if statuses.is_empty() or busy:
+		return
+	var r := Rect2(-SIZE / 2, SIZE)
+	if statuses.has("stasis"):
+		for i in 3:
+			_status_layer.draw_rect(r.grow(2.0 + i * 3.0), Color(STATUS_STYLE.stasis[0], 0.7 - i * 0.2), false, 3.0)
+		_status_layer.draw_rect(r, Color(STATUS_STYLE.stasis[0], 0.18))
+	elif statuses.has("freeze"):
+		_status_layer.draw_rect(r, Color(STATUS_STYLE.freeze[0], 0.16))
+	var font := ThemeDB.fallback_font
+	var x := r.position.x + 4.0
+	var y := r.position.y + 4.0
+	for k in statuses:
+		if not STATUS_STYLE.has(k):
+			continue
+		var col: Color = STATUS_STYLE[k][0]
+		var pill := Rect2(x, y, 34, 17)
+		if pill.end.x > r.end.x - 2.0:
+			x = r.position.x + 4.0
+			y += 20.0
+			pill = Rect2(x, y, 34, 17)
+		_status_layer.draw_rect(pill, Color(0.03, 0.03, 0.08, 0.9))
+		_status_layer.draw_rect(pill, col, false, 1.5)
+		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
+		x += 38.0
 
 
 func set_badge_text(v: String) -> void:

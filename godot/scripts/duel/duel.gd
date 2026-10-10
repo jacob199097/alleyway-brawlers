@@ -33,6 +33,7 @@ const GREEN := Color("3ddc84")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
+const Keywords := preload("res://scripts/keywords.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
@@ -231,6 +232,7 @@ func _build_from_view() -> void:
 				v.show_badge = true
 				if c.has("attack"):
 					v.set_stats(int(c.attack), int(c.defense), int(c.get("base_attack", c.attack)), int(c.get("base_defense", c.defense)))
+					v.statuses = duel.statuses(c)
 			field[side][slot] = v
 		var p: Dictionary = _panels[side]
 		p.shown = float(s.morale)
@@ -565,6 +567,10 @@ func _play(ev: Dictionary) -> void:
 			await _ev_heal(ev)
 		"tribute":
 			await _ev_tribute(ev)
+		"status":
+			await _ev_status(ev)
+		"status_tick":
+			await _ev_status_tick(ev)
 		"bounce":
 			await _ev_bounce(ev)
 		"mill":
@@ -953,6 +959,57 @@ func _ev_damage(ev: Dictionary) -> void:
 	await _wait(0.6)
 
 
+## A keyword effect lands on a character (POISON, BURN, BLEED, SHOCK, FREEZE, STASIS).
+func _ev_status(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	if v == null:
+		return
+	var style: Array = CardView.STATUS_STYLE.get(ev.kind, [GOLD, "", str(ev.kind).to_upper()])
+	var col: Color = style[0]
+	if ev.kind != "shock" and not v.statuses.has(ev.kind):
+		var st := v.statuses.duplicate()
+		st.append(ev.kind)
+		v.statuses = st
+	Sfx.play("effect")
+	v.flash()
+	_pulse_glow(v, col)
+	_float_text(v.position + Vector2(0, -110 if ev.side == "player" else 110), style[2], col, 34)
+	match ev.kind:
+		"shock":
+			_burst(v.position, col, 40, 520, 0.45, 0.0)
+			shake(8)
+		"stasis":
+			_ring(v.position, col, 1.4)
+			_burst(v.position, col, 30, 160, 1.2, -60.0)
+		"freeze":
+			_burst(v.position, col, 30, 220, 0.9, 120.0)
+		"burn":
+			_burst(v.position, col, 30, 260, 0.8, -420.0)
+		_:
+			_burst(v.position, col, 26, 240, 0.8, -200.0)
+	await _wait(0.45)
+
+
+## POISON / BURN tick at the start of the owner's turn; BLEED after a brawl.
+func _ev_status_tick(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	if v == null:
+		return
+	var col: Color = CardView.STATUS_STYLE.get(ev.kind, [GOLD])[0]
+	var text := "-%d ATK" % int(ev.amount)
+	if ev.kind == "burn":
+		text = "BURN -%d" % int(ev.amount)
+	elif ev.kind == "bleed":
+		text = "-%d ATK/DEF" % int(ev.amount)
+	if ev.kind != "bleed" and not ev.card.has(ev.kind):
+		v.statuses = v.statuses.filter(func(k): return k != ev.kind)
+	Sfx.play("down", 1.3, -6.0)
+	v.flash()
+	_float_text(v.position + Vector2(0, -90 if ev.side == "player" else 90), text, col, 30)
+	_burst(v.position, col, 18, 200, 0.7, -150.0)
+	await _wait(0.35)
+
+
 ## A character is sacrificed so a Heavy can take its lane.
 func _ev_tribute(ev: Dictionary) -> void:
 	var side: String = ev.side
@@ -1108,6 +1165,8 @@ func _ev_stats(ev: Dictionary) -> void:
 			if v:
 				var s: Array = vals[slot]
 				v.set_stats(s[0], s[1], s[2], s[3])
+				if s.size() > 5:
+					v.statuses = s[5]
 
 
 func _ev_move(ev: Dictionary) -> void:
@@ -1910,8 +1969,27 @@ func _build_detail() -> void:
 	text.size = Vector2(340, 152)
 	text.add_theme_font_size_override("normal_font_size", 16)
 	text.add_theme_font_size_override("italics_font_size", 15)
-	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.add_theme_font_size_override("bold_font_size", 16)
+	text.meta_underlined = false
+	text.mouse_filter = Control.MOUSE_FILTER_PASS   # keywords explain themselves when hovered
 	p.add_child(text)
+	var tip := PanelContainer.new()
+	tip.add_theme_stylebox_override("panel", _box(INK, Color(0.6, 0.55, 0.9), 2, 8))
+	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tip.visible = false
+	tip.z_index = 50
+	var tip_text := RichTextLabel.new()
+	tip_text.bbcode_enabled = true
+	tip_text.fit_content = true
+	tip_text.scroll_active = false
+	tip_text.custom_minimum_size = Vector2(300, 0)
+	tip_text.add_theme_font_size_override("normal_font_size", 15)
+	tip_text.add_theme_font_size_override("bold_font_size", 17)
+	tip_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tip.add_child(tip_text)
+	p.add_child(tip)
+	text.meta_hover_started.connect(func(meta): _show_keyword_tip(p, tip, tip_text, str(meta)))
+	text.meta_hover_ended.connect(func(_meta): tip.visible = false)
 	_ui.detail_art = art
 	_ui.detail_title = title
 	_ui.detail_kind = kind
@@ -1920,8 +1998,25 @@ func _build_detail() -> void:
 	_show_detail({})
 
 
-func _show_detail(c: Dictionary, live_stats := []) -> void:
-	var key := "%s:%s" % [c.get("uid", c.get("id", "")), live_stats]
+## The hover box for a keyword in the card text, placed above the mouse inside the panel.
+func _show_keyword_tip(p: Control, tip: PanelContainer, tip_text: RichTextLabel, kw: String) -> void:
+	var desc := Keywords.describe(kw)
+	if desc == "":
+		return
+	tip_text.text = desc
+	tip.reset_size()
+	tip.visible = true
+	await get_tree().process_frame
+	var m := p.get_local_mouse_position()
+	tip.position = Vector2(clampf(m.x - tip.size.x / 2.0, 4.0, p.size.x - tip.size.x - 4.0), maxf(4.0, m.y - tip.size.y - 14.0))
+
+
+const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
+	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD"}
+
+
+func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
+	var key := "%s:%s:%s" % [c.get("uid", c.get("id", "")), live_stats, live_status]
 	if key == _detail_key:
 		return
 	_detail_key = key
@@ -1952,7 +2047,10 @@ func _show_detail(c: Dictionary, live_stats := []) -> void:
 			CardView._stat_color(atk, base_atk, "ffd86b"), atk, CardView._stat_color(def, base_def, "9ddcff"), def]
 	else:
 		_ui.detail_stats.text = ""
-	var body := str(c.get("effectText", ""))
+	var body := Keywords.markup(str(c.get("effectText", "")))
+	if not live_status.is_empty():
+		var words: Array = live_status.map(func(k): return STATUS_WORDS.get(k, str(k).to_upper()))
+		body = "[color=#8a8aa0]Status:[/color] %s\n\n%s" % [Keywords.markup("  ".join(words)), body]
 	if c.get("flavourText") is String:
 		body += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % c.flavourText
 	_ui.detail_text.text = body
@@ -2394,7 +2492,7 @@ func _update_hover() -> void:
 		if v.side == "opponent" and not v.face_up:
 			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid})
 		else:
-			_show_detail(v.card, v.stats())
+			_show_detail(v.card, v.stats(), v.statuses)
 		return
 	for side in ["player", "opponent"]:
 		if Rect2(pile_pos(side, "gutter") - CARD / 2, CARD).has_point(m):
