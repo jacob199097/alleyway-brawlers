@@ -11,6 +11,7 @@ uniform float dist = 3.2;      // camera distance, in card widths (smaller = str
 uniform float margin = 0.35;   // must match CardView.SHADER_MARGIN
 uniform float glare = 0.0;
 uniform float foil = 0.0;
+uniform float holo = 0.0;     // 0..1: hovered Epic/Legendary: a strong rainbow sweep and twinkling glints
 uniform float flash = 0.0;     // white hit-flash
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
@@ -80,6 +81,17 @@ void fragment() {
 		vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (h + vec3(0.0, 0.33, 0.67)));
 		float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
 		col.rgb += rainbow * foil * (0.04 + 0.2 * sheen + 0.22 * glare) * (0.3 + lum);
+	}
+	if (holo > 0.0) {
+		// Rainbow bands that slide as the card tilts, plus scattered glints that twinkle
+		float h2 = fract(uv.x * 0.9 - uv.y * 0.6 + y_rot / 30.0 + x_rot / 40.0 + TIME * 0.12);
+		vec3 rb = 0.5 + 0.5 * cos(6.28318 * (h2 + vec3(0.0, 0.33, 0.67)));
+		float lum2 = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+		col.rgb += rb * holo * (0.12 + 0.22 * lum2);
+		vec2 cell = floor((uv + 0.5) * vec2(16.0, 23.0));
+		float rnd = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+		float tw = pow(max(0.0, sin(TIME * 2.6 + rnd * 40.0)), 22.0);
+		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75;
 	}
 	col.rgb = mix(col.rgb, vec3(1.0), flash);
 	col.a *= inside;

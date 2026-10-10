@@ -206,8 +206,13 @@ func _flip_card(c: Dictionary, center: Vector2) -> void:
 		_flash(col, 0.25 + 0.05 * rarity)
 	var tile := CardTile.make(c, size_)
 	tile.position = holder.position
+	tile.pivot_offset = size_ / 2
 	_reveal.add_child(tile)
 	holder.queue_free()
+	if rarity >= 5:
+		await _legendary_moment(tile, c, center)
+	elif rarity >= 4:
+		_epic_pop(center, _clan_color(c, col))
 	tile.pressed.connect(func(tl): UI.card_zoom(self, tl.card))
 	tile.zoomed.connect(func(tl): UI.card_zoom(self, tl.card))
 	var name := UI.label(str(c.get("name", "?")), 24, col, true)
@@ -221,6 +226,130 @@ func _flip_card(c: Dictionary, center: Vector2) -> void:
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_reveal.add_child(rl)
 	await get_tree().create_timer(0.25).timeout
+
+
+## The card's clan colour (from the Card Forge), or `fallback`.
+func _clan_color(c: Dictionary, fallback: Color) -> Color:
+	var info := CardDB.get_card(str(c.get("art_url", c.get("cardId", ""))))
+	var hex := str(info.get("clanColor", c.get("clanColor", "")))
+	return Color(hex) if hex.begins_with("#") else fallback
+
+
+## An Epic: a ring and a spray of sparks in its clan's colour.
+func _epic_pop(center: Vector2, col: Color) -> void:
+	var ring := Control.new()
+	ring.position = center
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.draw.connect(func(): ring.draw_arc(Vector2.ZERO, 160.0, 0.0, TAU, 64, Color(col.lightened(0.3), 0.9), 6.0, true))
+	_reveal.add_child(ring)
+	var t := create_tween().set_parallel()
+	t.tween_property(ring, "scale", Vector2.ONE * 1.8, 0.45).from(Vector2.ONE * 0.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(ring, "modulate:a", 0.0, 0.45)
+	t.chain().tween_callback(ring.queue_free)
+	_spray(center, col, 40)
+
+
+## A Legendary: everything else dims, the card rises to centre stage with turning rays in gold and
+## its clan's colour, "LEGENDARY" slams in with the clan's name, the screen shakes, and it settles back.
+func _legendary_moment(tile: Control, c: Dictionary, center: Vector2) -> void:
+	var col := _clan_color(c, UI.GOLD)
+	var stage := Vector2(960, 470)
+	var home := tile.position
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0)
+	dim.size = size
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_reveal.add_child(dim)
+	var rays := Control.new()
+	rays.position = stage
+	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rays.draw.connect(func():
+		for i in 20:
+			var a := i * TAU / 20.0
+			var w := 0.06 if i % 2 == 0 else 0.035
+			var tint: Color = UI.GOLD if i % 2 == 0 else col
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 1200.0, Vector2.from_angle(a + w) * 1200.0]),
+				PackedColorArray([Color(tint.lightened(0.3), 0.55), Color(tint, 0.0), Color(tint, 0.0)])))
+	rays.modulate.a = 0.0
+	_reveal.add_child(rays)
+	_reveal.move_child(tile, -1)
+	Sfx.play("riser", 0.7)
+	var up := create_tween().set_parallel()
+	up.tween_property(dim, "color:a", 0.7, 0.3)
+	up.tween_property(rays, "modulate:a", 1.0, 0.35)
+	up.tween_property(tile, "position", stage - tile.size / 2, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	up.tween_property(tile, "scale", Vector2.ONE * 1.45, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var spin := create_tween().set_loops()
+	spin.tween_property(rays, "rotation", TAU, 24.0).from(0.0)
+	await up.finished
+	# Slam
+	Sfx.play("ambush", 1.0)
+	Sfx.play("ko", 0.8)
+	_flash(Color.WHITE, 0.6)
+	_spray(stage, UI.GOLD, 70)
+	_spray(stage, col, 50)
+	var word := UI.label("LEGENDARY", 120, UI.GOLD, true)
+	word.size = Vector2(1920, 140)
+	word.position = Vector2(0, stage.y + 300)
+	word.pivot_offset = word.size / 2
+	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	word.scale = Vector2.ONE * 2.4
+	_reveal.add_child(word)
+	var clan_name := str(CardDB.get_card(str(c.get("art_url", ""))).get("clanName", ""))
+	var sub := UI.label(("%s  ·  %s" % [clan_name.to_upper(), str(c.get("name", "")).to_upper()]) if clan_name != "" else str(c.get("name", "")).to_upper(), 34, col.lightened(0.3), true)
+	sub.size = Vector2(1920, 44)
+	sub.position = Vector2(0, stage.y + 425)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.modulate.a = 0.0
+	_reveal.add_child(sub)
+	var slam := create_tween().set_parallel()
+	slam.tween_property(word, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	slam.tween_property(sub, "modulate:a", 1.0, 0.3).set_delay(0.15)
+	_shake_reveal(18.0)
+	await get_tree().create_timer(1.5).timeout
+	# Back into the row
+	var back := create_tween().set_parallel()
+	back.tween_property(tile, "position", home, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	back.tween_property(tile, "scale", Vector2.ONE, 0.35)
+	back.tween_property(dim, "color:a", 0.0, 0.35)
+	back.tween_property(rays, "modulate:a", 0.0, 0.35)
+	back.tween_property(word, "modulate:a", 0.0, 0.3)
+	back.tween_property(sub, "modulate:a", 0.0, 0.3)
+	await back.finished
+	spin.kill()
+	for n in [dim, rays, word, sub]:
+		n.queue_free()
+
+
+## Sparks flying out from a point.
+func _spray(at: Vector2, col: Color, amount: int) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = amount
+	p.lifetime = 1.1
+	p.spread = 180.0
+	p.initial_velocity_min = 260.0
+	p.initial_velocity_max = 620.0
+	p.gravity = Vector2(0, 500)
+	p.scale_amount_min = 3.0
+	p.scale_amount_max = 6.0
+	var g := Gradient.new()
+	g.set_color(0, col.lightened(0.4))
+	g.set_color(1, Color(col, 0.0))
+	p.color_ramp = g
+	p.emitting = true
+	_reveal.add_child(p)
+	get_tree().create_timer(1.6).timeout.connect(p.queue_free)
+
+
+func _shake_reveal(amount: float) -> void:
+	var t := create_tween()
+	for i in 8:
+		var k := amount * (1.0 - i / 8.0)
+		t.tween_property(_reveal, "position", Vector2(randf_range(-k, k), randf_range(-k, k)), 0.04)
+	t.tween_property(_reveal, "position", Vector2.ZERO, 0.05)
 
 
 func _flash(color: Color, alpha: float) -> void:

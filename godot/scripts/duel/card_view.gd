@@ -52,6 +52,9 @@ var _kick := Vector2.ZERO        # recoil from hits, decays
 var _flip_deg := 0.0             # extra turn while flipping over
 var _flash := 0.0
 var _last_pos := Vector2.INF
+var _holo := 0.0                 # hover shimmer on Epic/Legendary cards
+var _status_fx := {}             # status -> particle emitter (embers, drips)
+var _sparkle: CPUParticles2D     # golden sparkles around a hovered Legendary
 
 
 func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
@@ -256,6 +259,34 @@ func _process(delta: float) -> void:
 	_update_tilt(delta)
 	if not statuses.is_empty():
 		_status_layer.queue_redraw()
+	for e in _status_fx.values():
+		e.emitting = not busy
+	# Hovering an Epic or Legendary: a holographic shimmer; a Legendary also sparkles
+	var rare := int(card.get("rarity", 1))
+	var shine := hovered and face_up and rare >= 4
+	_holo = lerpf(_holo, 1.0 if shine else 0.0, 1.0 - exp(-8.0 * delta))
+	_mat.set_shader_parameter("holo", _holo)
+	if shine and rare >= 5 and _sparkle == null:
+		_sparkle = CPUParticles2D.new()
+		_sparkle.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		_sparkle.emission_rect_extents = SIZE / 2 + Vector2(6, 6)
+		_sparkle.amount = 18
+		_sparkle.lifetime = 0.9
+		_sparkle.direction = Vector2.UP
+		_sparkle.spread = 180.0
+		_sparkle.initial_velocity_min = 6.0
+		_sparkle.initial_velocity_max = 24.0
+		_sparkle.gravity = Vector2(0, -20)
+		_sparkle.scale_amount_min = 1.5
+		_sparkle.scale_amount_max = 3.5
+		var g := Gradient.new()
+		g.set_color(0, Color(1.0, 0.95, 0.7, 1.0))
+		g.set_color(1, Color(1.0, 0.8, 0.3, 0.0))
+		_sparkle.color_ramp = g
+		_sparkle.z_index = 3
+		add_child(_sparkle)
+	if _sparkle:
+		_sparkle.emitting = shine and rare >= 5
 	if _badge.visible != _badge_wanted():
 		_update_badge()
 	if _badge.visible:
@@ -314,18 +345,85 @@ func _fit(s: Sprite2D) -> void:
 func set_statuses(v: Array) -> void:
 	statuses = v.duplicate()
 	_status_layer.queue_redraw()
+	if not is_inside_tree():
+		return
+	# Particles for the statuses that have them: embers rise off a BURNING card, POISON and BLEED drip
+	for k in _status_fx.keys():
+		if not statuses.has(k):
+			_status_fx[k].emitting = false
+			_status_fx[k].get_tree().create_timer(1.2).timeout.connect(_status_fx[k].queue_free)
+			_status_fx.erase(k)
+	for k in statuses:
+		if _status_fx.has(k) or not STATUS_PARTICLES.has(k):
+			continue
+		_status_fx[k] = _make_emitter(k)
+
+
+## Particles per status: [colour, emit from (offset, half-size), velocity, gravity, amount, lifetime, size]
+const STATUS_PARTICLES := {
+	"burn": [Color("ff7a3a"), Vector2(0, 30), Vector2(54, 50), 46.0, Vector2(0, -90), 14, 0.9, 3.2],
+	"poison": [Color("6ee26a"), Vector2(0, 86), Vector2(54, 3), 8.0, Vector2(0, 260), 6, 0.8, 3.6],
+	"bleed": [Color("e0284f"), Vector2(0, 86), Vector2(50, 3), 5.0, Vector2(0, 200), 4, 0.9, 3.0],
+}
+
+
+func _make_emitter(kind: String) -> CPUParticles2D:
+	var p: Array = STATUS_PARTICLES[kind]
+	var e := CPUParticles2D.new()
+	e.position = p[1]
+	e.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	e.emission_rect_extents = p[2]
+	e.direction = Vector2.UP if kind == "burn" else Vector2.DOWN
+	e.spread = 25.0
+	e.initial_velocity_min = p[3] * 0.5
+	e.initial_velocity_max = p[3]
+	e.gravity = p[4]
+	e.amount = p[5]
+	e.lifetime = p[6]
+	e.scale_amount_min = p[7] * 0.6
+	e.scale_amount_max = p[7]
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(p[0].lightened(0.3), 0.95))
+	ramp.set_color(1, Color(p[0], 0.0))
+	e.color_ramp = ramp
+	e.local_coords = false   # drips fall straight down, whatever way the card faces
+	e.z_index = 2
+	add_child(e)
+	return e
 
 
 func _draw_statuses() -> void:
 	if statuses.is_empty() or busy:
 		return
 	var r := Rect2(-SIZE / 2, SIZE)
-	if statuses.has("stasis"):
+	var t := Time.get_ticks_msec() / 1000.0
+	var L := _status_layer
+	if statuses.has("burn"):
+		for i in 4:   # heat glowing up from the bottom edge
+			L.draw_rect(Rect2(r.position.x, r.end.y - 12.0 - i * 12.0, r.size.x, 12.0), Color(1.0, 0.42, 0.15, (0.22 - i * 0.05) * (0.8 + 0.2 * sin(t * 7.0 + i))))
+	if statuses.has("poison"):
 		for i in 3:
-			_status_layer.draw_rect(r.grow(2.0 + i * 3.0), Color(STATUS_STYLE.stasis[0], 0.7 - i * 0.2), false, 3.0)
-		_status_layer.draw_rect(r, Color(STATUS_STYLE.stasis[0], 0.18))
-	elif statuses.has("freeze"):
-		_status_layer.draw_rect(r, Color(STATUS_STYLE.freeze[0], 0.16))
+			L.draw_rect(Rect2(r.position.x, r.end.y - 10.0 - i * 10.0, r.size.x, 10.0), Color(0.43, 0.89, 0.42, 0.16 - i * 0.04))
+		for i in 3:   # bubbles rising and popping
+			var ph := fmod(t * 0.7 + i * 0.37, 1.0)
+			var bx := r.position.x + 22.0 + i * 38.0 + sin(t * 2.0 + i) * 4.0
+			L.draw_arc(Vector2(bx, r.end.y - 8.0 - ph * 60.0), 3.0 + ph * 3.0, 0.0, TAU, 12, Color(0.6, 1.0, 0.5, 0.7 * (1.0 - ph)), 1.5, true)
+	if statuses.has("bleed"):
+		L.draw_rect(Rect2(r.position.x, r.end.y - 8.0, r.size.x, 8.0), Color(0.88, 0.16, 0.3, 0.3))
+	if statuses.has("freeze"):
+		_draw_frost(L, r, t)
+	if statuses.has("shock"):
+		_draw_crackle(L, r, t)
+	if statuses.has("shield"):
+		var a := 0.45 + 0.3 * sin(t * 3.0)
+		L.draw_rect(r.grow(3.0), Color(1.0, 0.85, 0.35, a), false, 2.5)
+		L.draw_rect(r.grow(7.0), Color(1.0, 0.85, 0.35, a * 0.35), false, 2.0)
+	if statuses.has("stun"):
+		for i in 3:   # little stars circling over its head
+			var ang := t * 3.2 + i * TAU / 3.0
+			_star(L, Vector2(cos(ang) * 34.0, r.position.y - 4.0 + sin(ang) * 8.0), 6.0, Color(1.0, 0.75, 0.3, 0.9))
+	if statuses.has("stasis"):
+		_draw_time_bubble(L, r, t)
 	var font := ThemeDB.fallback_font
 	var x := r.position.x + 4.0
 	var y := r.position.y + 4.0
@@ -342,6 +440,74 @@ func _draw_statuses() -> void:
 		_status_layer.draw_rect(pill, col, false, 1.5)
 		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
 		x += 38.0
+
+
+## STASIS: frozen in time inside a slowly turning purple bubble, with a clock face on it.
+func _draw_time_bubble(L: Node2D, r: Rect2, t: float) -> void:
+	var col: Color = STATUS_STYLE.stasis[0]
+	var R := r.size.y * 0.6
+	L.draw_rect(r, Color(col, 0.16))
+	L.draw_circle(Vector2.ZERO, R, Color(col, 0.08))
+	L.draw_arc(Vector2.ZERO, R, 0.0, TAU, 64, Color(col.lightened(0.3), 0.7), 2.0, true)
+	for i in 12:   # rune dashes turning one way...
+		var a := t * 0.5 + i * TAU / 12.0
+		L.draw_arc(Vector2.ZERO, R - 7.0, a, a + 0.28, 6, Color(col.lightened(0.4), 0.55), 3.0, true)
+	for i in 6:    # ...and an inner ring turning the other
+		var a := -t * 0.8 + i * TAU / 6.0
+		L.draw_arc(Vector2.ZERO, R * 0.78, a, a + 0.5, 8, Color(col, 0.4), 2.0, true)
+	for i in 12:   # clock ticks
+		var d := Vector2.from_angle(i * TAU / 12.0)
+		L.draw_line(d * (R - 2.0), d * (R - 11.0), Color(1, 1, 1, 0.45), 1.5, true)
+	L.draw_line(Vector2.ZERO, Vector2.from_angle(t * 0.35 - PI / 2) * R * 0.55, Color(1, 1, 1, 0.5), 2.0, true)
+	L.draw_line(Vector2.ZERO, Vector2.from_angle(t * 0.03 - PI / 2) * R * 0.35, Color(1, 1, 1, 0.5), 3.0, true)
+	L.draw_circle(Vector2.ZERO, 3.0, Color(1, 1, 1, 0.7))
+
+
+## FREEZE: an icy frame, frost crystals growing from the corners, a glint sliding across.
+func _draw_frost(L: Node2D, r: Rect2, t: float) -> void:
+	var ice: Color = STATUS_STYLE.freeze[0]
+	L.draw_rect(r, Color(ice, 0.16))
+	L.draw_rect(r.grow(-2.0), Color(0.9, 0.98, 1.0, 0.45), false, 4.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = uid * 7919 + 13
+	for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+		var inward: Vector2 = (Vector2.ZERO - corner).normalized()
+		for k in 3:
+			var dir := inward.rotated(rng.randf_range(-0.7, 0.7))
+			var length := rng.randf_range(16.0, 30.0)
+			var tip: Vector2 = corner + dir * length
+			L.draw_line(corner, tip, Color(0.92, 0.99, 1.0, 0.8), 1.6, true)
+			for side in [-1.0, 1.0]:   # little branches
+				var mid: Vector2 = corner + dir * length * 0.55
+				L.draw_line(mid, mid + dir.rotated(0.8 * side) * length * 0.35, Color(0.92, 0.99, 1.0, 0.6), 1.2, true)
+	var x := r.position.x + fmod(t * 60.0, r.size.x + 80.0) - 40.0   # a glint
+	L.draw_line(Vector2(clampf(x, r.position.x, r.end.x), r.position.y), Vector2(clampf(x - 40.0, r.position.x, r.end.x), r.end.y), Color(1, 1, 1, 0.22), 6.0, true)
+
+
+## SHOCK: jagged lightning crackling across the card in short bursts.
+func _draw_crackle(L: Node2D, r: Rect2, t: float) -> void:
+	var tick := int(t * 14.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = tick * 31 + uid
+	if rng.randf() > 0.45:
+		return
+	var col: Color = STATUS_STYLE.shock[0]
+	for b in rng.randi_range(1, 2):
+		var p := Vector2(rng.randf_range(r.position.x, r.end.x), r.position.y)
+		var pts := PackedVector2Array([p])
+		while p.y < r.end.y:
+			p += Vector2(rng.randf_range(-16.0, 16.0), rng.randf_range(14.0, 26.0))
+			p.x = clampf(p.x, r.position.x, r.end.x)
+			pts.append(p)
+		L.draw_polyline(pts, Color(col, 0.35), 6.0, true)
+		L.draw_polyline(pts, Color(0.9, 0.97, 1.0, 0.95), 1.6, true)
+
+
+func _star(L: Node2D, c: Vector2, s: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 8:
+		pts.append(c + Vector2.from_angle(i * PI / 4.0 - PI / 2) * (s if i % 2 == 0 else s * 0.4))
+	L.draw_colored_polygon(pts, col)
 
 
 func set_badge_text(v: String) -> void:

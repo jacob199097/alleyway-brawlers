@@ -8,7 +8,14 @@
             "The CPU only plays a Hustle when it would actually do something.",
             "New clans show up by themselves on the clan screen, in the shop, the Deck Builder and the Card Library.",
             "Hover over a face-down Nebula card and its galaxy whirls and glows.",
-            "Nebula characters attack with dark purple laser beams."
+            "Nebula characters attack with dark purple laser beams.",
+            "Nebula characters warp in through a portal when summoned and dissolve into stardust when KO'd.",
+            "Status effects show on the board: Stasis seals a card in a turning time bubble, Freeze frosts it over, Burn sends up embers, Poison drips and bubbles, Shock crackles with lightning, Stun circles stars overhead, Shield glows gold.",
+            "Promotions burst in the clan's colour, with level-up chevrons.",
+            "Leaders awaken with a cinematic: the screen darkens, the leader takes centre stage with rays and its name, then hits the field.",
+            "Hover an Epic or Legendary card for a holographic shimmer (Legendaries sparkle too).",
+            "Pulling a Legendary from a pack gets a big centre-stage reveal; Epics burst in their clan's colour.",
+            "Rarity names and colours now match the Card Forge: Common, Uncommon, Rare, Epic, Legendary."
         ]
     },
     {

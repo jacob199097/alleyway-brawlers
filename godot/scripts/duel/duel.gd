@@ -40,9 +40,9 @@ const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"
 	["oops", "Oops!"], ["hurry", "Your move…"], ["gotcha", "Gotcha!"], ["gg", "GG"]]
 const EMOTE_GAP_MS := 2600
 const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
-## How a clan's characters attack (default: they charge in and hit). "laser": they stay back and
-## fire dark purple laser beams (Nebula).
-const CLAN_ATTACKS := {"nebula": "laser"}
+## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
+## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
+const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}}
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
@@ -1161,17 +1161,20 @@ func _ev_summon(ev: Dictionary) -> void:
 			await _showcase(v, c, BLUE if side == "player" else RED)
 		elif not v.face_up:
 			v.flip(true)
-		var rise := Vector2(0, -70 if side == "player" else 70)
-		await v.move_to(target + rise, 1.75, 0.0, 0.3 if heavy else 0.24).finished
-		if heavy:
-			_cam_focus(target, 1.07, 0.3)
-		await _wait(0.16 if heavy else 0.05)
-		await v.move_to(target, 1.0, 0.0, 0.1, Tween.TRANS_QUAD, Tween.EASE_IN).finished
-		v.kick(Vector2(0, 1 if side == "player" else -1), 16.0)
-		await _impact(target, heavy)
-		if heavy:
-			_cam_reset(0.45)
-			_dim(0.0, 0.35)
+		if _clan_style(c, "summon") == "warp":
+			await _warp_in(v, target, _clan_color(c), heavy)
+		else:
+			var rise := Vector2(0, -70 if side == "player" else 70)
+			await v.move_to(target + rise, 1.75, 0.0, 0.3 if heavy else 0.24).finished
+			if heavy:
+				_cam_focus(target, 1.07, 0.3)
+			await _wait(0.16 if heavy else 0.05)
+			await v.move_to(target, 1.0, 0.0, 0.1, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+			v.kick(Vector2(0, 1 if side == "player" else -1), 16.0)
+			await _impact(target, heavy)
+			if heavy:
+				_cam_reset(0.45)
+				_dim(0.0, 0.35)
 	v.busy = false
 	v.z_index = 10
 	v.show_badge = true
@@ -1285,7 +1288,7 @@ func _ev_clash(ev: Dictionary) -> void:
 	await _wait(0.36)
 	a.stop_moving()
 	var dir := (tpos - a.home).normalized()
-	if CLAN_ATTACKS.get(_clan_key(a.card), "") == "laser":
+	if _clan_style(a.card, "attack") == "laser":
 		await _laser_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
@@ -1328,6 +1331,16 @@ func _ev_clash(ev: Dictionary) -> void:
 	a.go_home(0.28)
 	await _wait(0.2)
 	a.z_index = 10
+
+
+func _clan_style(c: Dictionary, what: String) -> String:
+	return str(CLAN_STYLE.get(_clan_key(c), {}).get(what, ""))
+
+
+## The clan's colour (from the Card Forge), or gold.
+func _clan_color(c: Dictionary) -> Color:
+	var hex := str(c.get("clanColor", ""))
+	return Color(hex) if hex.begins_with("#") else GOLD
 
 
 func _clan_key(c: Dictionary) -> String:
@@ -1400,6 +1413,171 @@ func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	if big:
 		_impact_frame(0.06)
+
+
+## Nebula summon: a portal opens at the slot, the card comes through it spinning out of the dark,
+## and the portal collapses behind it.
+func _warp_in(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
+	var portal := WarpPortal.new()
+	portal.glow = col
+	portal.position = target
+	portal.z_index = 8
+	cards_layer.add_child(portal)
+	Sfx.play("riser", 0.75, -4.0)
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	var open := create_tween().set_parallel()
+	open.tween_property(portal, "radius", 96.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	open.tween_property(portal, "spin", 9.0, 0.28)
+	# The card dives into the portal...
+	await v.move_to(target, 0.08, PI * 1.5, 0.22, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+	await open.finished
+	v.modulate.a = 0.0
+	await _wait(0.08)
+	# ...and comes out the other side
+	v.modulate.a = 1.0
+	Sfx.play("whoosh", 0.7)
+	_burst(target, col.lightened(0.35), 30, 420, 0.7, 0.0)
+	_ring(target, col.lightened(0.3), 1.5)
+	await v.move_to(target, 1.0, 0.0, 0.34, Tween.TRANS_BACK, Tween.EASE_OUT).finished
+	v.kick(Vector2(0, 1), 14.0)
+	shake(14.0 if heavy else 8.0)
+	_shockwave(target, 0.6 if heavy else 0.35)
+	var close := create_tween().set_parallel()
+	close.tween_property(portal, "radius", 0.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	close.tween_property(portal, "spin", 2.0, 0.3)
+	close.chain().tween_callback(portal.queue_free)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Nebula KO: the card shatters into stardust that drifts up and away.
+func _stardust(v: CardView, col: Color) -> void:
+	v.flash()
+	Sfx.play("ko", 1.25)
+	Sfx.play("effect", 0.6, -2.0)
+	shake(12)
+	_post_pulse("aberration", 8.0, 0.35)
+	_stamp(v.position, "K.O.", col.lightened(0.3))
+	var dust := CPUParticles2D.new()
+	dust.position = v.position
+	dust.one_shot = true
+	dust.explosiveness = 0.75
+	dust.amount = 140
+	dust.lifetime = 1.4
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = CardView.SIZE / 2.0 * v.scale.x
+	dust.direction = Vector2.UP
+	dust.spread = 180.0
+	dust.initial_velocity_min = 20.0
+	dust.initial_velocity_max = 140.0
+	dust.gravity = Vector2(0, -70)
+	dust.damping_min = 20.0
+	dust.damping_max = 40.0
+	dust.scale_amount_min = 1.5
+	dust.scale_amount_max = 4.0
+	var g := Gradient.new()
+	g.set_color(0, Color.WHITE)
+	g.add_point(0.35, col.lightened(0.25))
+	g.set_color(g.get_point_count() - 1, Color(col, 0.0))
+	dust.color_ramp = g
+	dust.material = _add_mat
+	dust.z_index = 450
+	fx.add_child(dust)
+	dust.emitting = true
+	get_tree().create_timer(2.0).timeout.connect(dust.queue_free)
+	_ring(v.position, col.lightened(0.4), 1.6)
+	var t := create_tween().set_parallel()
+	t.tween_property(v, "modulate:a", 0.0, 0.45)
+	t.tween_property(v, "scale", v.scale * 1.15, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await t.finished
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.2)
+
+
+## Promotion: chevrons stream up through the card.
+func _level_chevrons(pos: Vector2, col: Color) -> void:
+	for i in 5:
+		var ch := Node2D.new()
+		ch.position = pos + Vector2(0, 80)
+		ch.z_index = 445
+		ch.material = _add_mat
+		ch.draw.connect(func():
+			ch.draw_polyline(PackedVector2Array([Vector2(-34, 12), Vector2(0, -12), Vector2(34, 12)]), col.lightened(0.35), 7.0, true))
+		fx.add_child(ch)
+		var t := create_tween().set_parallel()
+		t.tween_property(ch, "position:y", pos.y - 110.0, 0.55).set_delay(i * 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(ch, "modulate:a", 0.0, 0.55).set_delay(i * 0.07).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		t.chain().tween_callback(ch.queue_free)
+
+
+## Leader awakening: the leader trembles while the screen darkens, rises to centre stage with
+## rays, a lens-shaking shockwave and its name, then holds for a beat before it takes the field.
+func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
+	var col := _clan_color(c)
+	_dim(0.82, 0.3)
+	_cam_focus(v.position, 1.12, 0.45)
+	Sfx.play("riser", 0.6)
+	_light_column(v.position, col)
+	for i in 7:   # it stirs
+		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 12.0 + i * 3.0)
+		shake(3.0 + i)
+		if i % 2 == 0:
+			_sparks(v.position, Vector2.UP, col.lightened(0.3), 6, 120.0)
+		await _wait(0.07)
+	_cam_reset(0.3)
+	Sfx.play("ambush", 0.8)
+	await _showcase(v, c, col, "%s AWAKENS" % str(c.get("name", "")).to_upper())
+	var center := Vector2(1080, DIVIDER_Y)
+	_shockwave(center, 1.2)
+	_impact_frame(0.07)
+	shake(26)
+	_post_pulse("aberration", 16.0, 0.5)
+	_burst(center, col.lightened(0.4), 60, 760, 1.1, -100.0)
+	_ring(center, Color.WHITE, 3.2)
+	Sfx.play("boom", 0.7)
+	var tag := _label(30, col.lightened(0.35), true)
+	tag.text = "THE LEADER TAKES THE FIELD"
+	tag.size = Vector2(1920, 40)
+	tag.position = Vector2(0, center.y + 330)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.modulate.a = 0.0
+	overlay.add_child(tag)
+	var tt := create_tween()
+	tt.tween_property(tag, "modulate:a", 1.0, 0.2)
+	tt.tween_interval(0.9)
+	tt.tween_property(tag, "modulate:a", 0.0, 0.3)
+	tt.tween_callback(tag.queue_free)
+	await _wait(0.75)
+
+
+## The Nebula portal: spiral arms turning around a dark centre.
+class WarpPortal extends Node2D:
+	var glow := Color.PURPLE
+	var radius := 0.0
+	var spin := 3.0
+	var _angle := 0.0
+
+	func _process(delta: float) -> void:
+		_angle += spin * delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if radius < 1.0:
+			return
+		draw_circle(Vector2.ZERO, radius * 1.15, Color(glow, 0.14))
+		draw_circle(Vector2.ZERO, radius * 0.75, Color(0.05, 0.01, 0.1, 0.85))
+		for arm in 5:
+			var pts := PackedVector2Array()
+			for k in 18:
+				var f := k / 17.0
+				var a := _angle + arm * TAU / 5.0 + f * 2.6
+				pts.append(Vector2.from_angle(a) * radius * (0.15 + 0.95 * f))
+			draw_polyline(pts, Color(glow.lightened(0.3), 0.75), 3.0, true)
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(glow.lightened(0.45), 0.9), 2.5, true)
 
 
 ## A laser beam from `from` to `to` that lasts `secs`, then narrows away.
@@ -1495,6 +1673,9 @@ func _ev_ko(ev: Dictionary) -> void:
 		return
 	v.show_badge = false
 	v.z_index = 440
+	if _clan_style(v.card, "ko") == "stardust" and v.face_up:
+		await _stardust(v, _clan_color(v.card))
+		return
 	v.flash()
 	Sfx.play("ko")
 	Sfx.play("boom", 0.9)
@@ -1681,18 +1862,26 @@ func _ev_promote(ev: Dictionary) -> void:
 	v.z_index = 440
 	v.show_badge = false
 	v.busy = true
+	var col := _clan_color(c)
 	Sfx.play("promote")
-	_light_column(pos)
-	_burst(pos + Vector2(0, 60), GOLD, 40, 300, 1.1, -500.0)
+	_light_column(pos, col)
+	_burst(pos + Vector2(0, 60), col.lightened(0.2), 40, 300, 1.1, -500.0)
 	await v.move_to(pos + Vector2(0, -30 if side == "player" else 30), 1.4, 0.0, 0.3, Tween.TRANS_BACK).finished
 	v.downed = false
+	# Level-up: chevrons stream upward through the card while it turns into its next form
+	_level_chevrons(pos, col)
 	await v.swap_to(c, 0.36)
-	_ring(pos, GOLD, 1.8)
+	_ring(pos, col.lightened(0.3), 1.8)
+	_ring(pos, Color.WHITE, 1.2)
+	_sparks(pos, Vector2.UP, col.lightened(0.4), 34, 70.0)
 	_shockwave(pos, 0.7)
 	Sfx.play("boom", 1.2, -4.0)
 	shake(12)
 	_show_detail(c)
-	_float_text(pos + Vector2(0, -175 if side == "player" else 175), "PROMOTED!", GOLD, 58)
+	_float_text(pos + Vector2(0, -175 if side == "player" else 175), "PROMOTED!", col.lightened(0.25), 58)
+	var lv := int(c.get("level", 0))
+	if lv > 1:
+		_float_text(pos + Vector2(0, -120 if side == "player" else 120), "LEVEL %d" % lv, Color.WHITE, 34)
 	v.home = pos
 	v.home_rot = PI / 2 if c.position == "def" else 0.0
 	v.home_scale = 1.0
@@ -1806,15 +1995,11 @@ func _ev_awaken(ev: Dictionary) -> void:
 	v.busy = true
 	v.z_index = 440
 	_show_detail(c)
-	_dim(0.6, 0.25)
-	Sfx.play("promote", 0.8)
-	_light_column(v.position)
-	_splash_name("%s AWAKENS" % c.name, GOLD)
-	await v.move_to(v.position + Vector2(0, -40 if side == "player" else 40), 1.6, 0.0, 0.4, Tween.TRANS_BACK).finished
-	await _wait(0.3)
-	await v.move_to(target + Vector2(0, -60 if side == "player" else 60), 1.9, 0.0, 0.3).finished
+	await _awaken_cinematic(v, c, side)
+	await v.move_to(target + Vector2(0, -60 if side == "player" else 60), 1.9, 0.0, 0.26).finished
 	await v.move_to(target, 1.0, 0.0, 0.12, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 	await _impact(target, true)
+	_cam_reset(0.4)
 	_dim(0.0, 0.35)
 	v.busy = false
 	v.z_index = 10
@@ -2094,11 +2279,11 @@ func _ring(pos: Vector2, color: Color, size_to: float) -> void:
 	t.chain().tween_callback(s.queue_free)
 
 
-func _light_column(pos: Vector2) -> void:
+func _light_column(pos: Vector2, color := GOLD) -> void:
 	var s := Sprite2D.new()
 	s.texture = _column_tex
 	s.material = _add_mat
-	s.modulate = Color(GOLD, 0.0)
+	s.modulate = Color(color, 0.0)
 	s.centered = false
 	s.scale = Vector2(190.0 / 64.0, (pos.y + 100.0) / 256.0)
 	s.position = Vector2(pos.x - 95.0, 0)
@@ -2259,7 +2444,7 @@ func _comet(from: Vector2, to_screen: Vector2, color: Color) -> void:
 
 ## A big card's entrance: it rises to centre stage in front of turning light rays, holds for a
 ## beat so its art and foil can be seen, and then the caller slams it into its slot.
-func _showcase(v: CardView, c: Dictionary, color: Color) -> void:
+func _showcase(v: CardView, c: Dictionary, color: Color, title := "") -> void:
 	var center := Vector2(1080, DIVIDER_Y)
 	var rays := Node2D.new()
 	rays.position = center
@@ -2279,7 +2464,7 @@ func _showcase(v: CardView, c: Dictionary, color: Color) -> void:
 	t.tween_property(rays, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	t.tween_property(rays, "rotation", 0.35, 0.95)
 	Sfx.play("riser", 0.7)
-	_splash_name(str(c.get("name", "")), color, center.y + 265.0)
+	_splash_name(title if title != "" else str(c.get("name", "")), color, center.y + 265.0)
 	await v.move_to(center, 2.5, 0.0, 0.34, Tween.TRANS_BACK).finished
 	v.kick(Vector2(1, -0.4), 18.0)
 	_ring(center, color.lerp(Color.WHITE, 0.3), 2.6)

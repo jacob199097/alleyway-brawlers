@@ -11,8 +11,9 @@ const PURPLE := Color("e040fb")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const MUTED := Color(0.62, 0.66, 0.82)
 
-const RARITY_COLOR := {1: Color("aaaaaa"), 2: Color("4cc9f0"), 3: Color("f4d35e"), 4: Color("c77dff"), 5: Color("ff6b35")}
-const RARITY_LABEL := {1: "Common", 2: "Rare", 3: "Epic", 4: "Legendary", 5: "Mythic"}
+## Same names and colours as the Card Forge (RARITY there)
+const RARITY_COLOR := {1: Color("a3a3a3"), 2: Color("62b86c"), 3: Color("4f93e3"), 4: Color("a56be3"), 5: Color("eab33a")}
+const RARITY_LABEL := {1: "Common", 2: "Uncommon", 3: "Rare", 4: "Epic", 5: "Legendary"}
 const TITLES := [[1, "Street Prospect"], [5, "Alley Runner"], [10, "Corner Hustler"], [15, "Turf Brawler"],
 	[20, "Made Enforcer"], [25, "Shot Caller"], [30, "District Fixer"], [35, "Crew Chief"],
 	[40, "Underboss"], [45, "Syndicate Kingpin"], [50, "King of the Streets"]]
