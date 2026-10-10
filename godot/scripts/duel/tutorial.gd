@@ -110,10 +110,12 @@ func _strip_effects() -> void:
 		var s: Dictionary = d.sides[side]
 		for c in s.deck:
 			c.effectKey = ""
+			c.effects = []   # Card Forge effects too
 			c.erase("ability")
 			c.effectText = "Card effects are switched off in the tutorial."
 		if s.leader != null:
 			s.leader.effectKey = ""
+			s.leader.effects = []
 			s.leader.awakenCondition = {}
 			s.leader.effectText = "Dormant leader. While it's Dormant it can be attacked: hits remove its Influence, and at 0 it's defeated and its owner loses 1000 Morale."
 

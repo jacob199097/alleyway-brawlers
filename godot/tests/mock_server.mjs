@@ -7,11 +7,12 @@ import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
+import { pickableClans, starterRecipe } from '../../shared/clans.js';
 
 const port = Number(process.argv[2] || 3999);
 
 const cards = Object.values(CARD_CATALOG).map(c => ({
-    id: randomUUID(), name: c.name, clan: 'lion_pride', clan_tag: c.clanTag, card_type: c.cardType,
+    id: randomUUID(), name: c.name, clan: c.clan, clan_tag: c.clanTag, card_type: c.cardType,
     subtype: c.subtype ?? null, level: c.level ?? 1, authority: c.authority ?? 0,
     attack: c.attack ?? null, defense: c.defense ?? null, rarity: c.rarity ?? 1,
     art_url: c.id, effect_text: c.effectText ?? '', flavour_text: c.flavourText ?? null,
@@ -28,7 +29,7 @@ function loginAs(email) {
         players.set(token, {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
             contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
-            avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: 'lion_pride',
+            avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
             created_at: new Date().toISOString(), collection_pct: 100, token,
         });
     }
@@ -159,6 +160,7 @@ const routes = {
     'PATCH /api/social/friends/:id/accept': (_b, id) => { const f = friends.find(x => x.friendship_id === id); if (f) f.status = 'accepted'; return [200, { success: true }]; },
     'GET /api/social/messages/:id': (_b, id) => [200, [
         { sender_id: id, body: 'You up for a brawl later?' }, { sender_id: player.id, body: 'Always. Bring your best deck.' }]],
+    'GET /api/onboarding/clans': () => [200, pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader }))],
     'POST /api/onboarding/start-clan': (b) => { player.chosen_clan = b.clan; return [200, { success: true, clan: b.clan }]; },
     'POST /api/match/start': () => { const id = randomUUID(); matches.set(id, Date.now()); return [200, { matchId: id }]; },
     'POST /api/match/complete': (b) => {

@@ -72,8 +72,9 @@ func _build_filters() -> void:
 		bar.add_child(_chip("show", "owned", "OWNED"))
 		bar.add_child(_chip("show", "all", "ALL CARDS"))
 		bar.add_child(_spacer())
-	for f in [["all", "ALL CLANS"], ["lion", "LIONS"]]:
-		bar.add_child(_chip("faction", f[0], f[1]))
+	bar.add_child(_chip("faction", "all", "ALL CLANS"))
+	for c in CardDB.clans():
+		bar.add_child(_chip("faction", c.id, str(c.name).to_upper()))
 	bar.add_child(_spacer())
 	for k in [["all", "ANY TYPE"], ["gang_member", "UNITS"], ["hustle", "HUSTLE"], ["ambush", "AMBUSH"], ["leader", "LEADER"]]:
 		bar.add_child(_chip("kind", k[0], k[1]))
@@ -162,7 +163,7 @@ func _render() -> void:
 	var entries := _entries()
 	entries.sort_custom(_rarest_first)
 	for c in entries:
-		if _faction != "all" and str(c.get("clanTag", "")) != _faction:
+		if _faction != "all" and str(c.get("clan", "")) != _faction:
 			continue
 		if _kind != "all" and str(c.get("cardType", "")) != _kind:
 			continue

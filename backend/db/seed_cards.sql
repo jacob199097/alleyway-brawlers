@@ -1,7 +1,7 @@
 -- ============================================================
 -- Card set — Lions (generated from CARD_CATALOG in client/scenes/DuelScene.js).
 -- art_url is the card's game ID; the client loads assets/cards/<art_url>.png.
--- Safe to re-run: existing cards (matched by name) are updated in place.
+-- Safe to re-run: existing cards (matched by art_url, the game ID) are updated in place.
 -- ============================================================
 
 INSERT INTO cards (name, clan, card_type, clan_tag, subtype, level, authority, attack, defense,
@@ -47,9 +47,9 @@ AWAKEN: When you control 4+ LIONS characters OR your total Authority is 10+.', '
     ('Corner Deal', 'lion_pride', 'hustle', 'lion', NULL, NULL, 2, NULL, NULL, 0, 1, 'Draw 2 cards, then discard 1 card. If you control a Striver, you do not discard.', 'corner_deal', 'corner_deal', NULL),
     ('Blood Scent', 'lion_pride', 'hustle', 'lion', NULL, NULL, 3, NULL, NULL, 0, 2, 'Choose 1 LIONS Striver you control; its PROMOTE condition is treated as fulfilled this turn.', 'blood_scent', 'blood_scent', NULL),
     ('Lion Rescue', 'lion_pride', 'hustle', 'lion', NULL, NULL, 2, NULL, NULL, 0, 1, 'Choose 1 Downed LIONS character; Stand it.', 'lion_rescue', 'lion_rescue', NULL)
-ON CONFLICT (name) DO UPDATE SET
+ON CONFLICT (art_url) DO UPDATE SET
     clan = EXCLUDED.clan, card_type = EXCLUDED.card_type, clan_tag = EXCLUDED.clan_tag,
     subtype = EXCLUDED.subtype, level = EXCLUDED.level, authority = EXCLUDED.authority,
     attack = EXCLUDED.attack, defense = EXCLUDED.defense, tribute_cost = EXCLUDED.tribute_cost,
     rarity = EXCLUDED.rarity, effect_text = EXCLUDED.effect_text, effect_key = EXCLUDED.effect_key,
-    art_url = EXCLUDED.art_url, flavour_text = EXCLUDED.flavour_text;
+    name = EXCLUDED.name, flavour_text = EXCLUDED.flavour_text;

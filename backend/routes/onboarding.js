@@ -2,10 +2,11 @@
 
 /**
  * ONBOARDING — first-time clan selection.
- * After signup the player calls POST /api/onboarding/start-clan with
- * { clan: 'lion_pride' }. The server seeds a starter inventory
- * matching the chosen faction and creates a default 40-card deck for the
- * player so they can immediately enter a duel.
+ *   GET  /api/onboarding/clans        the clans a new player can pick (shared/clans.js): any clan
+ *                                     with enough cards for a starter deck, Card Forge clans included
+ *   POST /api/onboarding/start-clan   { clan } — seeds that clan's starter inventory (deck cards,
+ *                                     the promoted forms for the Hideout, the leader) and makes the
+ *                                     40-card starter deck the active deck.
  */
 
 const router         = require('express').Router();
@@ -13,52 +14,23 @@ const { requireAuth } = require('./middleware');
 const { pool }       = require('../db/pool');
 const { sendMail }   = require('./mail');
 
-const VALID_CLANS = ['lion_pride'];
+const clans = import('../../shared/clans.js');
 
-/**
- * Lions starter recipe.
- *   • King Roan x1   — leader (kept in inventory; not part of the 40-card main deck)
- *   • Main deck (40 cards):
- *      Maya x3, Hunter x3, Pride Runner x3, Eric x3,
- *      Pride Mentor x2, King's Test x2, Blood Scent x2, Lion Rescue x3,
- *      Corner Deal x2, No Witnesses x3, Goldfang x2, Block Enforcer x3,
- *      Lion Grunt x3, Brutus x2, Pride Lieutenant x2, Debt Collector x2
- *   • Hideout copies (in inventory only, used for promotions in-duel):
- *      Maya Lv.2 x3, Maya Lv.3 x3, Hunter Lv.2 x3, Hunter Lv.3 x3,
- *      Eric Lv.2 x3, Eric Lv.3 x3
- */
-const LION_STARTER = {
-    leader: { name: 'King Roan', copies: 1 },
-    deck: [
-        ['Maya',             3],
-        ['Hunter',           3],
-        ['Pride Runner',     3],
-        ['Eric',             3],
-        ['Pride Mentor',     2],
-        ["King's Test",      2],
-        ['Blood Scent',      2],
-        ['Lion Rescue',      3],
-        ['Corner Deal',      2],
-        ['No Witnesses',     3],
-        ['Goldfang',         2],
-        ['Block Enforcer',   3],
-        ['Lion Grunt',       3],
-        ['Brutus',           2],
-        ['Pride Lieutenant', 2],
-        ['Debt Collector',   2],
-    ],
-    hideout: [
-        ['Maya Lv.2',  3], ['Maya Lv.3',  3],
-        ['Hunter Lv.2', 3], ['Hunter Lv.3', 3],
-        ['Eric Lv.2',  3], ['Eric Lv.3',  3],
-    ],
-};
+router.get('/clans', requireAuth, async (_req, res) => {
+    try {
+        const { pickableClans, starterRecipe } = await clans;
+        res.json(pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader })));
+    } catch (err) {
+        console.error('[Onboarding] clans:', err.message);
+        res.status(500).json({ error: 'Could not list the clans.' });
+    }
+});
 
 router.post('/start-clan', requireAuth, async (req, res) => {
-    const { clan } = req.body;
-    if (!VALID_CLANS.includes(clan)) {
-        return res.status(400).json({ error: 'Invalid clan.' });
-    }
+    const { clan } = req.body || {};
+    const { pickableClans, starterRecipe } = await clans;
+    const info = pickableClans().find(c => c.id === clan);
+    if (!info) return res.status(400).json({ error: 'Invalid clan.' });
 
     const client = await pool.connect();
     try {
@@ -75,7 +47,7 @@ router.post('/start-clan', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Clan already selected.' });
         }
 
-        await _seedLionsStarter(client, req.playerId);
+        await seedStarter(client, req.playerId, starterRecipe(clan), info.name);
 
         await client.query(
             'UPDATE players SET chosen_clan = $1 WHERE id = $2',
@@ -85,11 +57,10 @@ router.post('/start-clan', requireAuth, async (req, res) => {
         await client.query('COMMIT');
 
         // Drop a welcome message into the player's mailbox.
-        const clanName = 'Lions';
         sendMail(req.playerId, {
-            subject: `Welcome to the ${clanName}`,
+            subject: `Welcome to the ${info.name}`,
             body: `Welcome to AlleyWay Brawlers!\n\n` +
-                  `Your starter inventory and a 40-card ${clanName} deck have been added to your account. ` +
+                  `Your starter inventory and a 40-card ${info.name} deck have been added to your account. ` +
                   `Open the Deck Editor to customise it, then head to Fight Mode to take it for a spin.\n\n` +
                   `— Find new packs and Contraband bundles in the Shop. The mailbox here will deliver any system messages, daily-quest rewards or future news.`,
         });
@@ -104,69 +75,42 @@ router.post('/start-clan', requireAuth, async (req, res) => {
     }
 });
 
-async function _seedLionsStarter(client, playerId) {
-    // Lookup all card ids by name in a single query
-    const allNames = [LION_STARTER.leader.name,
-        ...LION_STARTER.deck.map(([n]) => n),
-        ...LION_STARTER.hideout.map(([n]) => n)];
-    const { rows } = await client.query(
-        `SELECT id, name FROM cards WHERE name = ANY($1::text[]) AND clan='lion_pride'`,
-        [allNames]
-    );
-    const idByName = {};
-    for (const r of rows) idByName[r.name] = r.id;
-
-    // Sanity-check that everything we need exists
-    const missing = allNames.filter(n => !idByName[n]);
+/** Inventory and the active starter deck from a recipe (card game IDs = cards.art_url). */
+async function seedStarter(client, playerId, recipe, clanName) {
+    const ids = [...new Set([recipe.leader, ...recipe.deck.map(([id]) => id), ...recipe.hideout.map(([id]) => id)].filter(Boolean))];
+    const { rows } = await client.query('SELECT id, art_url FROM cards WHERE art_url = ANY($1::text[])', [ids]);
+    const dbId = Object.fromEntries(rows.map(r => [r.art_url, r.id]));
+    const missing = ids.filter(id => !dbId[id]);
     if (missing.length) {
-        throw new Error('Missing Lion cards in DB: ' + missing.join(', '));
+        throw new Error(`These cards aren't on the server yet (run backend/scripts/sync_cards.mjs): ${missing.join(', ')}`);
     }
 
-    // Inventory: leader + every deck/hideout copy
-    const inventoryAdds = [
-        [idByName[LION_STARTER.leader.name], LION_STARTER.leader.copies],
-        ...LION_STARTER.deck.map(([n, q]) => [idByName[n], q]),
-        ...LION_STARTER.hideout.map(([n, q]) => [idByName[n], q]),
-    ];
-    for (const [cardId, qty] of inventoryAdds) {
+    const adds = [...recipe.deck, ...recipe.hideout];
+    if (recipe.leader) adds.push([recipe.leader, 1]);
+    for (const [id, qty] of adds) {
         await client.query(
             `INSERT INTO player_inventory (player_id, card_id, quantity)
              VALUES ($1, $2, $3)
              ON CONFLICT (player_id, card_id)
              DO UPDATE SET quantity = player_inventory.quantity + EXCLUDED.quantity`,
-            [playerId, cardId, qty]
+            [playerId, dbId[id], qty]
         );
     }
 
-    // Build the starter deck (always 40 main-deck cards)
-    const total = LION_STARTER.deck.reduce((s, [, q]) => s + q, 0);
-    if (total !== 40) throw new Error('Lions starter deck must total 40 (got ' + total + ')');
-
-    // Reset any existing default deck so re-running doesn't double up
-    await client.query(
-        `DELETE FROM decks WHERE player_id = $1 AND name = 'Lions Starter'`,
-        [playerId]
-    );
-    const leaderId = idByName[LION_STARTER.leader.name];
+    const total = recipe.deck.reduce((s, [, q]) => s + q, 0);
+    if (total !== 40) throw new Error(`The starter deck must have 40 cards (got ${total}).`);
+    const name = `${clanName} Starter`;
+    await client.query('DELETE FROM decks WHERE player_id = $1 AND name = $2', [playerId, name]);
     const { rows: deckRows } = await client.query(
         `INSERT INTO decks (player_id, name, is_active, leader_card_id)
-         VALUES ($1, 'Lions Starter', TRUE, $2)
+         VALUES ($1, $2, TRUE, $3)
          RETURNING id`,
-        [playerId, leaderId]
+        [playerId, name, recipe.leader ? dbId[recipe.leader] : null]
     );
     const deckId = deckRows[0].id;
-
-    // Make sure no other deck is active
-    await client.query(
-        `UPDATE decks SET is_active = FALSE WHERE player_id = $1 AND id <> $2`,
-        [playerId, deckId]
-    );
-
-    for (const [name, copies] of LION_STARTER.deck) {
-        await client.query(
-            `INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)`,
-            [deckId, idByName[name], copies]
-        );
+    await client.query('UPDATE decks SET is_active = FALSE WHERE player_id = $1 AND id <> $2', [playerId, deckId]);
+    for (const [id, copies] of recipe.deck) {
+        await client.query('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, dbId[id], copies]);
     }
 }
 

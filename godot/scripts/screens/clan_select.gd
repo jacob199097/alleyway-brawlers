@@ -1,10 +1,12 @@
 extends Screen
 ## First login: pick a starting clan. The server seeds the starter inventory and deck.
+## The clans come from the server (GET /api/onboarding/clans: every clan with a starter deck), so
+## a new Card Forge clan appears here by itself. Art: assets/<clan>_deck.png, else its leader.
 
-const CLANS := [
-	{"id": "lion_pride", "label": "LIONS", "color": Color("ffd166"), "image": "lions_deck.png",
-		"blurb": "Aggressive pride that swarms the field.\nFull starter deck included."},
-]
+## Art and words for clans that have them; others use their leader's art and a plain line.
+const KNOWN := {
+	"lion_pride": {"image": "lions_deck.png", "blurb": "Aggressive pride that swarms the field."},
+}
 
 var _selected := ""
 var _tiles := {}
@@ -19,23 +21,34 @@ func _ready() -> void:
 	sub.position = Vector2(0, 100)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(sub)
-	for i in CLANS.size():
-		var c: Dictionary = CLANS[i]
+	var r := await Api.request("GET", "/api/onboarding/clans")
+	var clans: Array = r.data if r.ok and r.data is Array else []
+	if clans.is_empty():
+		var msg := UI.label(r.error if not r.ok else "No clans are ready yet. Try again later.", 26, UI.RED, true)
+		msg.size = Vector2(1920, 40)
+		msg.position = Vector2(0, 480)
+		msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		add_child(msg)
+	# One row, centred; tiles get narrower the more clans there are
+	var w := minf(600.0, 1820.0 / maxi(1, clans.size()) - 40.0)
+	var gap := w + 40.0
+	for i in clans.size():
+		var c := _clan_info(clans[i])
 		var tile := Button.new()
 		tile.toggle_mode = true
-		tile.custom_minimum_size = Vector2(600, 680)
-		tile.position = Vector2(960 - CLANS.size() * 360 + 60 + i * 720, 170)   # centred, however many clans
+		tile.custom_minimum_size = Vector2(w, 680)
+		tile.position = Vector2(960 - clans.size() * gap / 2 + 20 + i * gap, 170)
 		add_child(tile)
-		var art := UI.texture_rect(UI.tex(c.image), Vector2(560, 448))
+		var art := UI.texture_rect(c.image, Vector2(w - 40, 448))
 		art.position = Vector2(20, 20)
 		tile.add_child(art)
 		var name := UI.label(c.label, 48, c.color, true)
-		name.size = Vector2(600, 60)
+		name.size = Vector2(w, 60)
 		name.position = Vector2(0, 490)
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(name)
 		var blurb := UI.label(c.blurb, 22, Color(0.85, 0.85, 0.9))
-		blurb.size = Vector2(600, 80)
+		blurb.size = Vector2(w, 80)
 		blurb.position = Vector2(0, 570)
 		blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(blurb)
@@ -45,6 +58,21 @@ func _ready() -> void:
 	_confirm.position = Vector2(780, 975)
 	_confirm.disabled = true
 	add_child(_confirm)
+
+
+## Label, colour, art and blurb for one clan from the server's list.
+func _clan_info(c: Dictionary) -> Dictionary:
+	var id := str(c.get("id", ""))
+	var known: Dictionary = KNOWN.get(id, {})
+	var image: Texture2D = UI.tex("%s_deck.png" % id)
+	if image == null and known.has("image"):
+		image = UI.tex(known.image)
+	if image == null and str(c.get("leader", "")) != "":
+		image = CardDB.art(str(c.leader))
+	if image == null:
+		image = CardDB.back(str(c.get("tag", "")))
+	return {"id": id, "label": str(c.get("name", id)).to_upper(), "color": Color(str(c.get("color", "#b388ff"))),
+		"image": image, "blurb": "%s%d cards · 40-card starter deck included" % [str(known.blurb) + "\n" if known.has("blurb") else "", int(c.get("cards", 0))]}
 
 
 func _select(id: String) -> void:

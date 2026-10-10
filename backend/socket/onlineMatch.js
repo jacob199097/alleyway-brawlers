@@ -291,11 +291,11 @@ function createOnlineService(io, deps) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url };
     }
 
-    /** The server CPU's seat: its deck is every Lv.1 card twice (like the old client-side CPU). */
+    /** The server CPU's seat: a random clan's starter deck (shared/clans.js). */
     async function cpuSeat(ranked, level) {
-        const { cpuSetup } = await cpu;
+        const { cpuSetup, randomCpuClan } = await cpu;
         return {
-            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(), level,
+            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(randomCpuClan()), level,
             profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'profile_002' },
         };
     }

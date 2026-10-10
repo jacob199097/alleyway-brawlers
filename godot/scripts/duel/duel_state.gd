@@ -23,6 +23,9 @@ const LEADER_DEFEAT_PENALTY := 1000
 const FRONT := [0, 1, 2, 3, 4]   # character slots
 const BACK := [5, 6, 7, 8, 9]    # ambush slots
 const DIRECT := -1               # attack target: the opponent's morale
+const NO_SLOT := -10             # effects of a card that isn't on the field (a Hustle, a sprung Ambush)
+## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
+const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -410,6 +413,9 @@ func _hustle(side: String, uid: int) -> bool:
 	_spend(side, c.authority)
 	s.gutter.append(c)
 	_emit("hustle", {"side": side, "card": c.duplicate(true)})
+	# A Card Forge Hustle: all of its effects happen when it's played
+	if not c.get("effects", []).is_empty():
+		_run_fx(side, NO_SLOT, c, "*")
 	match c.effectKey:
 		"corner_deal":
 			_draw(side)
@@ -546,6 +552,12 @@ func _atk_ambush(ctx: Dictionary) -> void:
 				var a = card_at(foe, slot)
 				if a != null and a.get("effectKey") == key:
 					options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
+	# Card Forge Ambushes can be sprung when any of your characters is attacked
+	for slot in BACK:
+		var a = card_at(foe, slot)
+		if a != null and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
+				and not str(a.get("effectKey", "")) in HAND_AMBUSHES:
+			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
 		return
@@ -558,6 +570,9 @@ func _atk_ambush(ctx: Dictionary) -> void:
 			var slot := int(choice)
 			var a: Dictionary = card_at(foe, slot)
 			_spring(foe, slot)
+			if not str(a.get("effectKey", "")) in HAND_AMBUSHES:
+				_spring_fx(ctx, foe, a)
+				return
 			if a.effectKey == "no_witnesses_ambush":
 				_effect(foe, a, "No Witnesses: the attacker is Downed and the attack negated", slot)
 				ctx.att.downed = true
@@ -566,6 +581,31 @@ func _atk_ambush(ctx: Dictionary) -> void:
 			_effect(foe, a, "Lion's Ambush: the attacker loses 1000 ATK this brawl", slot)
 			ctx.bonus -= 1000
 			_atk_resolve(ctx))
+
+
+## A sprung Card Forge Ambush: all of its effects happen against the attack. Changing the
+## attacker's ATK counts in this brawl. The attack stops if the attacker no longer can make it
+## (Downed, gone, in Stasis) or the defender is gone.
+func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
+	var vs := {"side": ctx.side, "slot": ctx.from, "card": ctx.att}
+	for e in _fx(a, "*"):
+		if winner != "":
+			return
+		if not _fx_cond(foe, NO_SLOT, e, ctx.att):
+			continue
+		if str(e.get("do", "")) == "buff" and str(e.get("target", "")) == "attacker":
+			var atk := int(e.get("atk", 0))
+			if atk != 0:
+				ctx.bonus += atk
+				_effect(foe, a, "%s: the attacker gets %s ATK this brawl" % [a.name, _signed(atk)], NO_SLOT)
+		else:
+			_do_fx(foe, NO_SLOT, a, e, vs)
+	if winner != "":
+		return
+	if card_at(ctx.side, ctx.from) != ctx.att or ctx.att.downed or in_stasis(ctx.att) or card_at(foe, ctx.target) == null:
+		_effect(foe, a, "%s stops the attack" % a.name, NO_SLOT)
+		return
+	_atk_resolve(ctx)
 
 
 func _atk_resolve(ctx: Dictionary) -> void:
@@ -1017,7 +1057,7 @@ func _fx(c, when: String) -> Array:
 	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects
 		return out
 	for e in c.get("effects", []):
-		if e is Dictionary and str(e.get("when", "")) == when:
+		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
 			out.append(e)
 	return out
 

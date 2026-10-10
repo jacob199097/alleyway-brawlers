@@ -132,6 +132,19 @@ Each effect is one building block. Both rules engines run them the same way (`du
 | **Card kind** (search, recover) | Any card · Character · Hustle · Ambush |
 | **Only if** | Always · The other card is in DEF / Downed / ATK · You control N+ other allies · You control no other characters · Next to an ally · An enemy is Downed · Your hand has N or fewer cards · Your Morale is N or less · The opponent's Morale is N or less · The opponent controls N+ characters · Your Gutter has N+ cards · Your leader is Dormant |
 | **Clan filter** | Limits who it affects or counts, what search/recover finds, or which deployed allies trigger it |
+
+**Hustles and Ambushes** have no "When": a Hustle does all of its effects when it's played; an Ambush is
+set face-down and, when an enemy attacks one of your characters, you may spring it and all of its
+effects happen. An Ambush that changes the attacker's ATK changes it for that Brawl, and if it Downs,
+removes or puts the attacker in Stasis the attack stops. (The Forge hides the options that need a card on
+the field: "This card", Pierce, PROMOTE, Attack again, once per turn.)
+
+**Clans** need no code: every card carries its clan's name and colour from the Forge, and any clan with
+enough cards for a 40-card deck (`shared/clans.js`) can be picked by new players, gets a starter deck
+built from its cards, is played by the CPU, and shows in the shop, Deck Builder and Card Library. Art
+for the clan screen and shop: `assets/<clan>_deck.png` and `assets/<clan>_booster.png` (until then the
+clan's leader, or its card back, stands in). Card names don't have to be unique: a Striver's levels can
+all be called "Kade" (cards are matched by game ID).
 | **Once per turn** | The effect works only the first time it triggers each turn |
 
 A card can have several effects. Tick **Write the card's effect text from these effects** and

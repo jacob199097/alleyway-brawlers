@@ -4,13 +4,32 @@
  * DuelState.doAction(), one at a time.
  */
 import { CARD_CATALOG } from '../cards.js';
+import { pickableClans, starterRecipe, expand } from '../clans.js';
 import { DuelState, FRONT, BACK, DIRECT, LEADER, other } from './DuelState.js';
 
 const SLOT_ORDER = [2, 1, 3, 0, 4];   // deploy toward the middle first
 const NO_TARGET = -99;
 
-/** The CPU's deck: two of every Lv.1 character and every Hustle/Ambush; higher levels in the Hideout. */
-export function cpuSetup() {
+/**
+ * The CPU's deck: a clan's starter deck (shared/clans.js), for `clan` or else the clan with the
+ * most cards. Only if no clan has a starter yet: two of every Lv.1 character and every
+ * Hustle/Ambush, higher levels in the Hideout.
+ */
+export function cpuSetup(clan = '') {
+    const clans = pickableClans();
+    const pick = clans.some(c => c.id === clan) ? clan : [...clans].sort((a, b) => b.cards - a.cards)[0]?.id;
+    const recipe = pick ? starterRecipe(pick) : null;
+    if (recipe) return { deck: expand(recipe.deck), hideout: expand(recipe.hideout), leader: recipe.leader, clan: pick };
+    return everyCardSetup();
+}
+
+/** A clan the CPU plays at random (server CPU matches). */
+export function randomCpuClan() {
+    const clans = pickableClans();
+    return clans.length ? clans[Math.floor(Math.random() * clans.length)].id : '';
+}
+
+function everyCardSetup() {
     const base = [];
     const hideout = [];
     let leader = '';

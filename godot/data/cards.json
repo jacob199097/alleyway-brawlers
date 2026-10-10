@@ -16,7 +16,9 @@
   "promotesTo": "eric_lv2",
   "art_url": "eric_lv1",
   "flavourText": "I don't follow footsteps. I leave my own.",
-  "effectText": "When this card sends an opponent's character to the Gutter: You can PROMOTE this card."
+  "effectText": "When this card sends an opponent's character to the Gutter: You can PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "eric_lv2": {
   "id": "eric_lv2",
@@ -35,7 +37,9 @@
   "promotesTo": "eric_lv3",
   "art_url": "eric_lv2",
   "flavourText": "I don't follow footsteps. I leave my own.",
-  "effectText": "When this card sends an opponent's character to the Gutter: You can PROMOTE this card."
+  "effectText": "When this card sends an opponent's character to the Gutter: You can PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "eric_lv3": {
   "id": "eric_lv3",
@@ -54,7 +58,9 @@
   "promotesTo": null,
   "art_url": "eric_lv3",
   "flavourText": "I don't follow footsteps. I leave my own.",
-  "effectText": "When this card sends an opponent's character to the Gutter: Draw 1 card.\nAt the start of your turn: gains +100 ATK for each other LIONS card you control."
+  "effectText": "When this card sends an opponent's character to the Gutter: Draw 1 card.\nAt the start of your turn: gains +100 ATK for each other LIONS card you control.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "maya_lv1": {
   "id": "maya_lv1",
@@ -75,7 +81,9 @@
   "ability": "maya_promote",
   "abilityOnlyPromote": true,
   "flavourText": "Loyalty isn't given. It's earned in the streets.",
-  "effectText": "If you control another LIONS card with equal or higher Authority, you can PROMOTE this card."
+  "effectText": "If you control another LIONS card with equal or higher Authority, you can PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "maya_lv2": {
   "id": "maya_lv2",
@@ -96,7 +104,9 @@
   "ability": "maya_promote",
   "abilityOnlyPromote": true,
   "flavourText": "Loyalty isn't given. It's earned in the streets.",
-  "effectText": "At the start of your turn: if you control another LIONS card with equal or higher Authority, you can PROMOTE this card."
+  "effectText": "At the start of your turn: if you control another LIONS card with equal or higher Authority, you can PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "maya_lv3": {
   "id": "maya_lv3",
@@ -116,7 +126,9 @@
   "art_url": "maya_lv3",
   "flavourText": "Loyalty isn't given. It's earned in the streets.",
   "effectText": "Once per turn: Choose 1 other LIONS card. It gains +400 ATK and +400 DEF until end of turn.",
-  "ability": "maya_buff"
+  "ability": "maya_buff",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "pride_runner": {
   "id": "pride_runner",
@@ -135,7 +147,9 @@
   "promotesTo": null,
   "art_url": "pride_runner",
   "flavourText": "One lion hunts. Two lions own the street.",
-  "effectText": "While adjacent to another LIONS character, this card gains +400 ATK."
+  "effectText": "While adjacent to another LIONS character, this card gains +400 ATK.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "lion_grunt": {
   "id": "lion_grunt",
@@ -154,7 +168,9 @@
   "promotesTo": null,
   "art_url": "lion_grunt",
   "flavourText": "A lone lion prowls. A pack owns the block.",
-  "effectText": "If you control another LIONS character, this card gains +300 ATK."
+  "effectText": "If you control another LIONS character, this card gains +300 ATK.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "block_enforcer": {
   "id": "block_enforcer",
@@ -173,7 +189,9 @@
   "promotesTo": null,
   "art_url": "block_enforcer",
   "flavourText": "We hold the line. You handle the lion.",
-  "effectText": "Once per turn, when an allied LIONS would be targeted in a brawl, you may have this card become the target instead."
+  "effectText": "Once per turn, when an allied LIONS would be targeted in a brawl, you may have this card become the target instead.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "goldfang": {
   "id": "goldfang",
@@ -192,7 +210,9 @@
   "promotesTo": null,
   "art_url": "goldfang",
   "flavourText": "They hide behind defense. I break it, then I break them.",
-  "effectText": "If this card attacks a defending character, it gains +500 ATK during that brawl."
+  "effectText": "If this card attacks a defending character, it gains +500 ATK during that brawl.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "pride_lieutenant": {
   "id": "pride_lieutenant",
@@ -211,7 +231,9 @@
   "promotesTo": null,
   "art_url": "pride_lieutenant",
   "flavourText": "Strength is nothing without your people.",
-  "effectText": "When deployed: One other LIONS card gains +500 ATK until end of turn."
+  "effectText": "When deployed: One other LIONS card gains +500 ATK until end of turn.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "pride_mentor": {
   "id": "pride_mentor",
@@ -230,7 +252,9 @@
   "promotesTo": null,
   "art_url": "pride_mentor",
   "flavourText": "Strength gets respect. Survival earns wisdom.",
-  "effectText": "Once per turn, when a LIONS Striver PROMOTES, draw 2 cards."
+  "effectText": "Once per turn, when a LIONS Striver PROMOTES, draw 2 cards.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "brutus": {
   "id": "brutus",
@@ -249,7 +273,9 @@
   "promotesTo": null,
   "art_url": "brutus",
   "flavourText": "Strength leads. Loyalty follows. We finish.",
-  "effectText": "When this enters the grid: Choose 1 enemy character; it loses 700 ATK until the end of your opponent's next turn.\nWhen this defeats an opponent's character: Your next LIONS attacker this turn gains +300 ATK."
+  "effectText": "When this enters the grid: Choose 1 enemy character; it loses 700 ATK until the end of your opponent's next turn.\nWhen this defeats an opponent's character: Your next LIONS attacker this turn gains +300 ATK.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "hunter_lv1": {
   "id": "hunter_lv1",
@@ -268,7 +294,9 @@
   "promotesTo": null,
   "art_url": "hunter_lv1",
   "flavourText": "The hunt never ends. Only the hunted changes.",
-  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a Downed character: PROMOTE this card."
+  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a Downed character: PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "hunter_lv2": {
   "id": "hunter_lv2",
@@ -287,7 +315,9 @@
   "promotesTo": null,
   "art_url": "hunter_lv2",
   "flavourText": "The hunt never ends. Only the hunted changes.",
-  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: PROMOTE this card."
+  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: PROMOTE this card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "hunter_lv3": {
   "id": "hunter_lv3",
@@ -306,7 +336,9 @@
   "promotesTo": null,
   "art_url": "hunter_lv3",
   "flavourText": "The hunt never ends. Only the hunted changes.",
-  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: It may attack again this turn."
+  "effectText": "When this card attacks a Downed character: +500 ATK this Brawl.\nWhen this card KOs a character: Choose 1 enemy character → Down it.\nWhen this card KOs a Downed character: It may attack again this turn.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "debt_collector": {
   "id": "debt_collector",
@@ -325,7 +357,9 @@
   "promotesTo": null,
   "art_url": "debt_collector",
   "flavourText": "Everyone pays. It's just a matter of when.",
-  "effectText": "When this card Downs a character by battle: Your opponent discards 1 card."
+  "effectText": "When this card Downs a character by battle: Your opponent discards 1 card.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "bulwark": {
   "id": "bulwark",
@@ -344,7 +378,9 @@
   "promotesTo": null,
   "art_url": "bulwark",
   "flavourText": "The wall doesn't move. The wall doesn't break.",
-  "effectText": "This card cannot be moved by enemy effects.\nWhile this card is in play: Adjacent allies gain +400 DEF.\nWhen this card is attacked: The attacking character loses 300 ATK during that Brawl."
+  "effectText": "This card cannot be moved by enemy effects.\nWhile this card is in play: Adjacent allies gain +400 DEF.\nWhen this card is attacked: The attacking character loses 300 ATK during that Brawl.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "mauler": {
   "id": "mauler",
@@ -363,7 +399,9 @@
   "promotesTo": null,
   "art_url": "mauler",
   "flavourText": "Down doesn't mean done. Until I say it does.",
-  "effectText": "This card deals +500 ATK when attacking a Downed character.\nWhen this card KOs a Downed character: All enemy characters in adjacent lanes take -500 DEF this turn."
+  "effectText": "This card deals +500 ATK when attacking a Downed character.\nWhen this card KOs a Downed character: All enemy characters in adjacent lanes take -500 DEF this turn.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "kingpin": {
   "id": "kingpin",
@@ -382,7 +420,9 @@
   "promotesTo": null,
   "art_url": "kingpin",
   "flavourText": "When they're down, I take everything.",
-  "effectText": "While your opponent controls a Downed character: This card gains +400 ATK."
+  "effectText": "While your opponent controls a Downed character: This card gains +400 ATK.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "sovereign": {
   "id": "sovereign",
@@ -401,7 +441,9 @@
   "promotesTo": null,
   "art_url": "sovereign",
   "flavourText": "Bow or break.",
-  "effectText": "When this card enters play: All enemy characters with 1500 DEF or less become Downed.\nWhile your opponent controls a Downed character: This card gains +600 ATK."
+  "effectText": "When this card enters play: All enemy characters with 1500 DEF or less become Downed.\nWhile your opponent controls a Downed character: This card gains +600 ATK.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "king_roan": {
   "id": "king_roan",
@@ -424,7 +466,9 @@
   "awakenCondition": {
    "lions": 4,
    "authorityThreshold": 10
-  }
+  },
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "lion_ambush": {
   "id": "lion_ambush",
@@ -437,7 +481,9 @@
   "clanTag": "lion",
   "effectKey": "lion_ambush",
   "art_url": "lion_ambush",
-  "effectText": "Play when an opponent declares an attack. If they attack a LIONS character, that attacker loses 1000 ATK during this brawl."
+  "effectText": "Play when an opponent declares an attack. If they attack a LIONS character, that attacker loses 1000 ATK during this brawl.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "no_witnesses": {
   "id": "no_witnesses",
@@ -450,7 +496,9 @@
   "clanTag": "lion",
   "effectKey": "no_witnesses_ambush",
   "art_url": "no_witnesses",
-  "effectText": "When an opponent brawls a LIONS character: Down the attacking character and negate their attack."
+  "effectText": "When an opponent brawls a LIONS character: Down the attacking character and negate their attack.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "kings_test": {
   "id": "kings_test",
@@ -463,7 +511,9 @@
   "clanTag": "lion",
   "effectKey": "kings_test",
   "art_url": "kings_test",
-  "effectText": "When a LIONS Striver would be destroyed in battle: Negate that destruction. If it survives, you may PROMOTE it at the start of your next turn."
+  "effectText": "When a LIONS Striver would be destroyed in battle: Negate that destruction. If it survives, you may PROMOTE it at the start of your next turn.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "corner_deal": {
   "id": "corner_deal",
@@ -476,7 +526,9 @@
   "clanTag": "lion",
   "effectKey": "corner_deal",
   "art_url": "corner_deal",
-  "effectText": "Draw 2 cards, then discard 1 card. If you control a Striver, you do not discard."
+  "effectText": "Draw 2 cards, then discard 1 card. If you control a Striver, you do not discard.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "blood_scent": {
   "id": "blood_scent",
@@ -489,7 +541,9 @@
   "clanTag": "lion",
   "effectKey": "blood_scent",
   "art_url": "blood_scent",
-  "effectText": "Choose 1 LIONS Striver you control; its PROMOTE condition is treated as fulfilled this turn."
+  "effectText": "Choose 1 LIONS Striver you control; its PROMOTE condition is treated as fulfilled this turn.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  },
  "lion_rescue": {
   "id": "lion_rescue",
@@ -502,6 +556,8 @@
   "clanTag": "lion",
   "effectKey": "lion_rescue",
   "art_url": "lion_rescue",
-  "effectText": "Choose 1 Downed LIONS character; Stand it."
+  "effectText": "Choose 1 Downed LIONS character; Stand it.",
+  "clanName": "Lions",
+  "clanColor": "#ffd166"
  }
 }

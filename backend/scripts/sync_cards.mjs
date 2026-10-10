@@ -29,6 +29,9 @@ try {
         if (!/^[a-z0-9_]+$/.test(clan)) throw new Error(`Bad clan name "${clan}"`);
         await pool.query(`ALTER TYPE pack_type ADD VALUE IF NOT EXISTS '${clan}'`);
     }
+    // Cards are identified by game ID (art_url), so a Striver's levels can share a name
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS cards_art_url_key ON cards (art_url)');
+    await pool.query('ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_key');
     // Forge cards may cost 0 to 15 Authority (the original limit was 1 to 12)
     await pool.query('ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_authority_check');
     await pool.query('ALTER TABLE cards ADD CONSTRAINT cards_authority_check CHECK (authority BETWEEN 0 AND 15)');

@@ -12,11 +12,13 @@ const NO_TARGET := -99
 static func test_setup() -> Dictionary:
 	var base: Array = []
 	var hideout: Array = []
+	var leader := ""
 	for id in CardDB.all():
 		var c: Dictionary = CardDB.get_card(id)
 		match c.cardType:
 			"leader":
-				pass
+				if leader == "":
+					leader = id
 			"gang_member":
 				if int(c.level) == 1:
 					base.append(id)
@@ -30,7 +32,7 @@ static func test_setup() -> Dictionary:
 	return {
 		"decks": {"player": deck.duplicate(), "opponent": deck.duplicate()},
 		"hideouts": {"player": hideout.duplicate(), "opponent": hideout.duplicate()},
-		"leaders": {"player": "king_roan", "opponent": "king_roan"},
+		"leaders": {"player": leader, "opponent": leader},
 	}
 
 ## Difficulty: "easy" misses attacks, picks the first target that works and never sacrifices for

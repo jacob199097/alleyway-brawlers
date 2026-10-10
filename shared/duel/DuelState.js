@@ -22,6 +22,9 @@ export const LEADER_DEFEAT_PENALTY = 1000;
 export const FRONT = [0, 1, 2, 3, 4];
 export const BACK = [5, 6, 7, 8, 9];
 export const DIRECT = -1;
+const NO_SLOT = -10;   // effects of a card that isn't on the field (a Hustle, a sprung Ambush)
+// Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
+const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 export const LEADER = -2;
 
 // ── Card data ──────────────────────────────────────────────────────────────
@@ -372,6 +375,8 @@ export class DuelState {
         this._spend(side, c.authority);
         s.gutter.push(c);
         this._emit('hustle', { side, card: clone(c) });
+        // A Card Forge Hustle: all of its effects happen when it's played
+        if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
         switch (c.effectKey) {
             case 'corner_deal':
                 this._draw(side);
@@ -526,6 +531,13 @@ export class DuelState {
                 }
             }
         }
+        // Card Forge Ambushes can be sprung when any of your characters is attacked
+        for (const slot of BACK) {
+            const a = this.cardAt(foe, slot);
+            if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))) {
+                options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
+            }
+        }
         if (!options.length) {
             this._atkResolve(ctx);
             return;
@@ -540,6 +552,10 @@ export class DuelState {
                 const slot = toInt(choice);
                 const a = this.cardAt(foe, slot);
                 this._spring(foe, slot);
+                if (!HAND_AMBUSHES.includes(String(a.effectKey ?? ''))) {
+                    this._springFx(ctx, foe, a);
+                    return;
+                }
                 if (a.effectKey === 'no_witnesses_ambush') {
                     this._effect(foe, a, 'No Witnesses: the attacker is Downed and the attack negated', slot);
                     ctx.att.downed = true;
@@ -982,7 +998,32 @@ export class DuelState {
 
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
-        return (c.effects || []).filter(e => e && typeof e === 'object' && String(e.when ?? '') === when);
+        // "*": all of them (Hustles, Ambushes)
+        return (c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when));
+    }
+
+    /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */
+    _springFx(ctx, foe, a) {
+        const vs = { side: ctx.side, slot: ctx.from, card: ctx.att };
+        for (const e of this._fx(a, '*')) {
+            if (this.winner !== '') return;
+            if (!this._fxCond(foe, NO_SLOT, e, ctx.att)) continue;
+            if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker') {
+                const atk = toInt(e.atk ?? 0);
+                if (atk !== 0) {
+                    ctx.bonus += atk;
+                    this._effect(foe, a, `${a.name}: the attacker gets ${signed(atk)} ATK this brawl`, NO_SLOT);
+                }
+            } else {
+                this._doFx(foe, NO_SLOT, a, e, vs);
+            }
+        }
+        if (this.winner !== '') return;
+        if (this.cardAt(ctx.side, ctx.from) !== ctx.att || ctx.att.downed || this.inStasis(ctx.att) || this.cardAt(foe, ctx.target) == null) {
+            this._effect(foe, a, `${a.name} stops the attack`, NO_SLOT);
+            return;
+        }
+        this._atkResolve(ctx);
     }
 
     _fxOnce(c, key, e) {

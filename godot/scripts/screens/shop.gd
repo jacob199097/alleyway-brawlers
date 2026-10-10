@@ -39,8 +39,9 @@ func _ready() -> void:
 		packs = []
 		for sp in r.data.packs:
 			var id := str(sp.get("id", ""))
-			packs.append(known.get(id, {"id": id, "label": str(sp.get("name", id)), "image": "%s_booster.png" % id,
-				"color": Color("b388ff")}))
+			var info := CardDB.clan(id)
+			packs.append(known.get(id, {"id": id, "label": str(info.get("name", sp.get("name", id))), "image": "%s_booster.png" % id,
+				"color": info.get("color", Color("b388ff"))}))
 	var step: float = minf(480.0, 1700.0 / maxi(1, packs.size()))
 	for i in packs.size():
 		_pack(packs[i], Vector2(760.0 - (packs.size() - 1) * step / 2.0 + i * step, 170))

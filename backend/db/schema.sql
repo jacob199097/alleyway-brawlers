@@ -96,7 +96,7 @@ FROM generate_series(1, 50) AS lvl;
 
 CREATE TABLE cards (
     id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name            TEXT        NOT NULL UNIQUE,
+    name            TEXT        NOT NULL,                 -- a Striver's levels may share a name
     clan            pack_type   NOT NULL,                 -- which clan this card belongs to
     card_type       card_type   NOT NULL,
     clan_tag        TEXT,                                 -- short clan key used by card effects ('lion')
@@ -117,7 +117,7 @@ CREATE TABLE cards (
     effect_key      TEXT,                                 -- maps to client-side effect handler
 
     -- Art
-    art_url         TEXT,
+    art_url         TEXT        UNIQUE,                   -- the card's game ID (shared/cards.js)
     flavour_text    TEXT,
 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

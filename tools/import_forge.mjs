@@ -66,6 +66,9 @@ for (const [key, raw] of Object.entries(exported)) {
         effectText: raw.effectText || '',
         effects: Array.isArray(raw.effects) ? raw.effects.map(cleanEffect) : [],
     };
+    // The clan's name and colour as set in the Forge (shown by the game's screens; shared/clans.js)
+    if (raw.clanName) c.clanName = String(raw.clanName);
+    if (/^#[0-9a-f]{6}$/i.test(String(raw.clanColor || ''))) c.clanColor = String(raw.clanColor);
     if (unit) {
         c.attack = int(raw.attack);
         c.defense = int(raw.defense);
@@ -94,11 +97,6 @@ for (const c of Object.values(cards)) {
     const next = cards[c.promotesTo];
     if (next && next.subtype !== 'striver') warnings.push(`${c.id}: promotes to "${next.id}", which isn't a Striver.`);
     if (!existsSync(join(artDir, `${c.id}.png`))) warnings.push(`${c.id}: no card image in the export.`);
-}
-const names = {};
-for (const c of Object.values(cards)) (names[c.name] ||= []).push(c.id);
-for (const [n, ids] of Object.entries(names)) {
-    if (ids.length > 1) warnings.push(`Name "${n}" is used by ${ids.join(', ')}; the server needs unique names (e.g. add "Lv.2").`);
 }
 
 // ── 3. Write the data, copy the art, regenerate Godot's data ────────────────

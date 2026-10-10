@@ -2491,8 +2491,8 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	var parts: Array = [TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
 	if c.get("subtype") is String:
 		parts.append(str(c.subtype).to_upper())
-	if DuelState.is_lion(c):
-		parts.append("LIONS")
+	if str(c.get("clanName", "")) != "":
+		parts.append(str(c.clanName).to_upper())
 	parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
 	_ui.detail_kind.text = "  ·  ".join(parts)
 	if c.get("cardType") in ["gang_member", "leader"]:

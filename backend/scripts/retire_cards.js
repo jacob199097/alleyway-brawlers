@@ -10,11 +10,13 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { pool } = require('../db/pool');
 
 const PACK_REFUND = 200;     // what a pack costs in the shop (routes/shop.js)
-const CLANS_IN_GAME = ['lion_pride'];   // starting clans players can still pick (routes/onboarding.js)
 const apply = process.argv.includes('--apply');
 
 (async () => {
     const { CARD_CATALOG } = await import('../../shared/cards.js');
+    // Starting clans players can still pick (routes/onboarding.js): the ones with a starter deck
+    const { pickableClans } = await import('../../shared/clans.js');
+    const CLANS_IN_GAME = pickableClans().map(c => c.id);
     const inGame = Object.keys(CARD_CATALOG);
     const client = await pool.connect();
     try {

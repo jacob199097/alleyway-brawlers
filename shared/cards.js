@@ -248,3 +248,12 @@ export const CARD_CATALOG = {
 
 // Card Forge cards on top (same id replaces the hand-written card)
 Object.assign(CARD_CATALOG, FORGE_CARDS);
+
+// Every card names its clan for the game's screens (shared/clans.js). Card Forge cards bring the
+// name and colour set in the Forge; the hand-written clans have theirs here.
+const CLAN_INFO = { lion_pride: { clanName: 'Lions', clanColor: '#ffd166' } };
+for (const c of Object.values(CARD_CATALOG)) {
+    const info = CLAN_INFO[c.clan];
+    if (!c.clanName) c.clanName = info ? info.clanName : String(c.clan || '').replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+    if (!c.clanColor) c.clanColor = info ? info.clanColor : '#b388ff';
+}

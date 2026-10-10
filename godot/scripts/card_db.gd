@@ -20,6 +20,30 @@ static func all() -> Dictionary:
 	return _cards
 
 
+## Every clan with collectable cards: [{id, name, color, tag}], by name. Worked out from the cards
+## (each names its clan: clanName/clanColor, shared/cards.js), so new clans need no code.
+static func clans() -> Array:
+	var seen := {}
+	for id in all():
+		var c: Dictionary = all()[id]
+		var clan := str(c.get("clan", ""))
+		if clan == "" or seen.has(clan) or c.get("cardType") == "leader":
+			continue
+		seen[clan] = {"id": clan, "name": str(c.get("clanName", clan.capitalize())),
+			"color": Color(str(c.get("clanColor", "#b388ff"))), "tag": str(c.get("clanTag", ""))}
+	var out: Array = seen.values()
+	out.sort_custom(func(a, b): return a.name < b.name)
+	return out
+
+
+## One clan's entry from clans(), or {} if it has no cards.
+static func clan(id: String) -> Dictionary:
+	for c in clans():
+		if c.id == id:
+			return c
+	return {}
+
+
 ## Forget loaded cards and art (after new content is downloaded).
 static func reload() -> void:
 	_cards = {}

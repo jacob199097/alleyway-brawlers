@@ -55,6 +55,22 @@ const FX_SAMPLES := [
 ]
 
 
+## Effects for Hustles (happen when played) and Ambushes (happen when sprung) in odd games.
+const FX_CARD_SAMPLES := [
+	[{"do": "draw", "amount": 2}],
+	[{"do": "damage", "amount": 400}, {"do": "heal", "amount": 200}],
+	[{"do": "buff", "target": "allies", "atk": 300}],
+	[{"do": "down", "target": "enemy"}],
+	[{"do": "poison", "target": "enemies", "amount": 200}],
+	[{"do": "stasis", "target": "ally"}, {"do": "search", "kind": "gang_member"}],
+	[{"do": "buff", "target": "attacker", "atk": -1200}],
+	[{"do": "down", "target": "attacker"}],
+	[{"do": "bounce", "target": "attacker", "if": "vs_atk"}, {"do": "draw", "amount": 1}],
+	[{"do": "freeze", "target": "attacker"}, {"do": "shock", "target": "enemy", "amount": 700}],
+	[{"do": "stand", "target": "allies"}, {"do": "shield", "target": "ally"}],
+]
+
+
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out_path: String = args[0] if args.size() > 0 else "user://golden.json"
@@ -70,8 +86,11 @@ func _init() -> void:
 			for side in ["player", "opponent"]:
 				var deck: Array = setup.decks[side]
 				for i in deck.size():
-					if CardDB.get_card(deck[i]).get("cardType") == "gang_member":
+					var kind: String = CardDB.get_card(deck[i]).get("cardType", "")
+					if kind == "gang_member":
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_SAMPLES[rng.randi_range(0, FX_SAMPLES.size() - 1)]}
+					elif kind in ["hustle", "ambush"]:
+						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_CARD_SAMPLES[rng.randi_range(0, FX_CARD_SAMPLES.size() - 1)]}
 		var first := "player" if g % 2 == 0 else "opponent"
 		var levels := {"player": DuelAI.LEVELS[g % 3], "opponent": DuelAI.LEVELS[(g + 1) % 3]}
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1)
