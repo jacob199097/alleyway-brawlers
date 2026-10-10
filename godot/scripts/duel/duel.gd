@@ -40,6 +40,11 @@ const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"
 	["oops", "Oops!"], ["hurry", "Your move…"], ["gotcha", "Gotcha!"], ["gg", "GG"]]
 const EMOTE_GAP_MS := 2600
 const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
+## How a clan's characters attack (default: they charge in and hit). "laser": they stay back and
+## fire dark purple laser beams (Nebula).
+const CLAN_ATTACKS := {"nebula": "laser"}
+const LASER_GLOW := Color(0.62, 0.32, 1.0)
+const LASER_CORE := Color(0.16, 0.03, 0.3)
 
 const TYPE_NAMES := {"gang_member": "GANG MEMBER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 const PHASE_NAMES := {"deployment": "DEPLOYMENT", "brawl": "BRAWL", "regroup": "REGROUP"}
@@ -1280,46 +1285,183 @@ func _ev_clash(ev: Dictionary) -> void:
 	await _wait(0.36)
 	a.stop_moving()
 	var dir := (tpos - a.home).normalized()
-	# Wind-up: rear back toward the camera while the view leans in
-	Sfx.play("riser", 1.0 if big else 1.15, -4.0)
-	_cam_focus(a.home.lerp(tpos, 0.5), 1.08 if big else 1.04, 0.32)
-	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(a, "position", a.home - dir * 54, 0.24)
-	t.tween_property(a, "scale", Vector2.ONE * 1.32, 0.24)
-	await t.finished
-	await _wait(0.07)
-	# Strike
-	Sfx.play("whoosh", 1.3)
-	t = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	t.tween_property(a, "position", a.home.lerp(tpos, 0.8), 0.09)
-	t.tween_property(a, "scale", Vector2.ONE * 1.12, 0.09)
-	await t.finished
-	# Contact
-	_strike_at = tpos
-	_strike_time = _game_time
-	Sfx.play("hit", 0.85 if direct else 1.0)
-	Sfx.play("boom", 1.0 if big else 1.25, 0.0 if big else -5.0)
-	shake(26.0 if big else 14.0)
-	_shockwave(tpos, 1.0 if big else 0.55)
-	_post_pulse("aberration", 14.0 if big else 6.0, 0.4)
-	_sparks(tpos, dir, Color(1, 0.86, 0.5), 46 if big else 26)
-	_burst(tpos, Color(1, 0.85, 0.45), 30, 560)
-	_ring(tpos, Color.WHITE, 1.6 if big else 1.3)
-	a.kick(-dir, 18.0)
-	if d:
-		d.flash()
-		d.kick(dir, 34.0 if big else 26.0)
-		var push := create_tween()
-		push.tween_property(d, "position", d.home + dir * (34.0 if big else 20.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	if big:
-		_impact_frame(0.06)
+	if CLAN_ATTACKS.get(_clan_key(a.card), "") == "laser":
+		await _laser_strike(a, d, tpos, dir, big, direct)
+	else:
+		# Wind-up: rear back toward the camera while the view leans in
+		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
+		_cam_focus(a.home.lerp(tpos, 0.5), 1.08 if big else 1.04, 0.32)
+		var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(a, "position", a.home - dir * 54, 0.24)
+		t.tween_property(a, "scale", Vector2.ONE * 1.32, 0.24)
+		await t.finished
+		await _wait(0.07)
+		# Strike
+		Sfx.play("whoosh", 1.3)
+		t = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		t.tween_property(a, "position", a.home.lerp(tpos, 0.8), 0.09)
+		t.tween_property(a, "scale", Vector2.ONE * 1.12, 0.09)
+		await t.finished
+		# Contact
+		_strike_at = tpos
+		_strike_time = _game_time
+		Sfx.play("hit", 0.85 if direct else 1.0)
+		Sfx.play("boom", 1.0 if big else 1.25, 0.0 if big else -5.0)
+		shake(26.0 if big else 14.0)
+		_shockwave(tpos, 1.0 if big else 0.55)
+		_post_pulse("aberration", 14.0 if big else 6.0, 0.4)
+		_sparks(tpos, dir, Color(1, 0.86, 0.5), 46 if big else 26)
+		_burst(tpos, Color(1, 0.85, 0.45), 30, 560)
+		_ring(tpos, Color.WHITE, 1.6 if big else 1.3)
+		a.kick(-dir, 18.0)
+		if d:
+			d.flash()
+			d.kick(dir, 34.0 if big else 26.0)
+			var push := create_tween()
+			push.tween_property(d, "position", d.home + dir * (34.0 if big else 20.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		if big:
+			_impact_frame(0.06)
 	await _hit_stop(0.11 if big else 0.07)
 	_clear_attack_line()
 	_cam_reset(0.4)
 	a.go_home(0.28)
 	await _wait(0.2)
 	a.z_index = 10
+
+
+func _clan_key(c: Dictionary) -> String:
+	var tag := str(c.get("clanTag", ""))
+	return tag if tag != "" else str(c.get("clan", ""))
+
+
+## A ranged attack: an orb charges in front of the card, two quick zaps, then a sustained dark
+## purple beam into the target (sparks where it hits), and a full impact as it ends.
+func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var muzzle := a.home + dir * 96.0
+	# Charge
+	Sfx.play("riser", 0.8, -4.0)
+	_cam_focus(a.home.lerp(tpos, 0.35), 1.05 if big else 1.03, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 30.0, 0.26)
+	t.tween_property(a, "scale", Vector2.ONE * 1.22, 0.26)
+	var orb := LaserOrb.new()
+	orb.glow = LASER_GLOW
+	orb.core = LASER_CORE
+	orb.position = muzzle
+	orb.radius = 2.0
+	orb.z_index = 71
+	fx.add_child(orb)
+	create_tween().tween_property(orb, "radius", 16.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_burst(muzzle, LASER_GLOW, 10, -140, 0.3, 0.0)   # sparks drawn inward
+	await t.finished
+	# Two quick zaps, a little off target (the targeting arrow gives way to the beams)
+	_clear_attack_line()
+	for i in 2:
+		var off := dir.orthogonal() * (-18.0 if i == 0 else 18.0)
+		_beam(muzzle, tpos + off, 14.0, 0.09)
+		Sfx.play("whoosh", 1.9 + i * 0.15, -5.0)
+		a.kick(-dir, 10.0)
+		_burst(tpos + off, LASER_GLOW, 10, 320, 0.35, 150.0)
+		shake(5.0)
+		if d:
+			d.kick(dir, 8.0)
+		await _wait(0.13)
+	# The beam: held on the target, flickering, sparks spraying from the hit
+	Sfx.play("riser", 1.5, -6.0)
+	var hold := 0.34 if big else 0.26
+	_beam(muzzle, tpos, 28.0 if big else 24.0, hold)
+	a.kick(-dir, 16.0)
+	var held := 0.0
+	while held < hold:
+		_sparks(tpos, dir, LASER_GLOW.lightened(0.35), 6, 70.0)
+		shake(4.0)
+		if d:
+			d.kick(dir, 5.0)
+		await _wait(0.06)
+		held += 0.06
+	orb.fade()
+	# Impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("hit", 0.85 if direct else 1.0)
+	Sfx.play("boom", 0.9 if big else 1.1, 0.0 if big else -5.0)
+	shake(22.0 if big else 12.0)
+	_shockwave(tpos, 0.9 if big else 0.5)
+	_post_pulse("aberration", 12.0 if big else 5.0, 0.4)
+	_sparks(tpos, dir, LASER_GLOW.lightened(0.3), 40 if big else 24)
+	_burst(tpos, LASER_GLOW, 24, 520)
+	_ring(tpos, LASER_GLOW.lightened(0.4), 1.5 if big else 1.2)
+	if d:
+		d.flash()
+		d.kick(dir, 30.0 if big else 22.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (30.0 if big else 18.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+
+
+## A laser beam from `from` to `to` that lasts `secs`, then narrows away.
+func _beam(from: Vector2, to: Vector2, width: float, secs: float) -> void:
+	var b := LaserBeam.new()
+	b.glow = LASER_GLOW
+	b.core = LASER_CORE
+	b.position = from
+	b.target = to - from
+	b.width = width
+	b.z_index = 70
+	fx.add_child(b)
+	var t := b.create_tween()
+	t.tween_interval(secs)
+	t.tween_property(b, "width", 0.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(b.queue_free)
+
+
+## The beam: a wide soft glow, bright violet edges and a dark core, flickering a little.
+class LaserBeam extends Node2D:
+	var glow := Color.PURPLE
+	var core := Color.BLACK
+	var target := Vector2.ZERO
+	var width := 12.0
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if width <= 0.2:
+			return
+		var w := width * randf_range(0.85, 1.12)
+		draw_line(Vector2.ZERO, target, Color(glow, 0.14), w * 3.2, true)
+		draw_line(Vector2.ZERO, target, Color(glow, 0.35), w * 1.9, true)
+		draw_line(Vector2.ZERO, target, glow.lightened(0.35), w, true)
+		draw_line(Vector2.ZERO, target, core, w * 0.5, true)
+		draw_line(Vector2.ZERO, target, Color(glow.lightened(0.6), 0.5), maxf(1.0, w * 0.08), true)
+		draw_circle(target, w * 0.9, Color(glow.lightened(0.4), 0.8))
+		draw_circle(target, w * 0.45, core)
+		draw_circle(Vector2.ZERO, w * 0.7, glow.lightened(0.3))
+
+
+## The charge at the muzzle: a dark core in a glowing shell.
+class LaserOrb extends Node2D:
+	var glow := Color.PURPLE
+	var core := Color.BLACK
+	var radius := 11.0:
+		set(v):
+			radius = v
+			queue_redraw()
+
+	func fade() -> void:
+		var t := create_tween()
+		t.tween_property(self, "modulate:a", 0.0, 0.15)
+		t.tween_callback(queue_free)
+
+	func _draw() -> void:
+		draw_circle(Vector2.ZERO, radius * 2.1, Color(glow, 0.16))
+		draw_circle(Vector2.ZERO, radius * 1.45, Color(glow, 0.38))
+		draw_circle(Vector2.ZERO, radius, glow.lightened(0.25))
+		draw_circle(Vector2.ZERO, radius * 0.66, core)
+		draw_arc(Vector2.ZERO, radius * 0.66, 0.0, TAU, 24, glow.lightened(0.55), 1.5, true)
 
 
 func _ev_blocked(ev: Dictionary) -> void:
