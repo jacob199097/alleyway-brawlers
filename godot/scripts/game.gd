@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS := {
 	"vsync": true,
 	"fps_cap": 0,                   # 0 = unlimited
 	"show_fps": false,
-	"server_url": "http://192.168.0.200:3000",
+	"server_url": "https://alleywaybrawlers.duckdns.org",   # LAN: http://192.168.0.200:3000
 	"tutorial_done": false,         # finished or skipped the guided first duel
 	"tutorial_offered": false,      # the main menu has suggested it once
 }
