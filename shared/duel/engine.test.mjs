@@ -36,7 +36,7 @@ games.forEach((g, gi) => {
     d.start();
     for (const [si, step] of g.steps.entries()) {
         if (step.action) {
-            const mine = choose(d, step.side);
+            const mine = choose(d, step.side, (g.levels || {})[step.side] || 'normal');
             aiMoves++;
             if (diff(mine, step.action)) {
                 if (aiMismatch < 5) console.error(`game ${gi} step ${si}: JS CPU chose ${JSON.stringify(mine)}, Godot ${JSON.stringify(step.action)}`);

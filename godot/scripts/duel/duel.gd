@@ -491,7 +491,7 @@ func _after_events() -> void:
 			return
 		var a: Dictionary = _tutorial.opponent_move() if _tutorial and side == "opponent" else {}
 		if a.is_empty():
-			a = DuelAI.choose(duel, side)
+			a = DuelAI.choose(duel, side, str(Game.duel_setup.get("difficulty", "normal")))
 		if a.is_empty() or not _act(side, a):
 			if not _act(side, {"kind": "next"}):
 				push_warning("CPU has no legal action: %s" % a)

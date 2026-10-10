@@ -1298,7 +1298,10 @@ export class DuelState {
         }
         entries = entries.filter(x => pick(x) && x.card.cardType !== 'leader' && !this.inStasis(x.card));
         if (target === 'ally' || target === 'enemy') {
-            entries.sort(strongestFirst);
+            entries.sort((a, b) => {
+                const va = this._targetValue(side, e, a), vb = this._targetValue(side, e, b);
+                return va !== vb ? vb - va : a.slot - b.slot;
+            });
             const on = target === 'ally' ? side : foe;
             this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
                 entries, on, (x) => this._effect(side, c, fn(x), slot));
@@ -1312,6 +1315,38 @@ export class DuelState {
         } else {
             for (const x of entries) this._effect(side, c, fn(x), slot);
         }
+    }
+
+    // Same as _target_value in duel_state.gd
+    _targetValue(side, e, x) {
+        const c = x.card;
+        const value = attackValue(c);
+        const standingAtk = !c.downed && c.position === 'atk';
+        switch (String(e.do ?? '')) {
+            case 'shock':
+                if (!c.downed && Math.max(1, toInt(e.amount ?? 1)) >= toInt(c.defense ?? 0)) return 100000 + value;
+                break;
+            case 'stasis':
+                if (x.side === side) return (c.downed ? 100000 : 0) + value;
+                return (standingAtk ? 100000 : 0) + value;
+            case 'poison': case 'bleed':
+                if (c[e.do] !== undefined) return value - 50000;
+                if (c.downed) return value - 20000;
+                break;
+            case 'burn':
+                if (c.burn !== undefined) return toInt(c.defense ?? 0) - 50000;
+                return (c.downed ? 0 : 10000) + toInt(c.defense ?? 0);
+            case 'freeze': case 'stun': {
+                const key = e.do === 'freeze' ? 'freeze_until' : 'stun_until';
+                if (toInt(c[key] ?? 0) >= this.turn) return value - 50000;
+                if (standingAtk) return 100000 + value;
+                break;
+            }
+            case 'shield':
+                if (c.shield) return value - 50000;
+                break;
+        }
+        return value;
     }
 
     _fxKindOk(card, e) {

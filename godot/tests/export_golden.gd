@@ -73,20 +73,21 @@ func _init() -> void:
 					if CardDB.get_card(deck[i]).get("cardType") == "gang_member":
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_SAMPLES[rng.randi_range(0, FX_SAMPLES.size() - 1)]}
 		var first := "player" if g % 2 == 0 else "opponent"
+		var levels := {"player": DuelAI.LEVELS[g % 3], "opponent": DuelAI.LEVELS[(g + 1) % 3]}
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1)
 		d.start()
 		var steps: Array = [{"action": null, "side": "", "events": d.take_events()}]
 		var n := 0
 		while d.winner == "" and n < MAX_ACTIONS:
 			var side: String = d.pending.side if not d.pending.is_empty() else d.active
-			var a := DuelAI.choose(d, side)
+			var a := DuelAI.choose(d, side, levels[side])
 			if a.is_empty() or not d.do_action(side, a):
 				push_error("refused action in game %d" % g)
 				break
 			steps.append({"action": a, "side": side, "events": d.take_events()})
 			n += 1
 		records.append({"decks": setup.decks, "hideouts": setup.hideouts, "leaders": setup.leaders,
-			"first": first, "steps": steps, "winner": d.winner})
+			"first": first, "levels": levels, "steps": steps, "winner": d.winner})
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(records))
 	f.close()

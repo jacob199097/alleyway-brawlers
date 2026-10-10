@@ -12,7 +12,7 @@
  * CPU matches (VS CPU and Ranked) run here too, against a server-side CPU (shared/duel/DuelAI.js),
  * so their rewards come from a result the server saw rather than one a client reported.
  *
- *   client → server  mp:queue, mp:cancel, mp:cpu {ranked}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
+ *   client → server  mp:queue, mp:cancel, mp:cpu {ranked, difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
  *                    mp:resync
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
@@ -170,10 +170,10 @@ function createOnlineService(io, deps) {
     }
 
     /** The server CPU's seat: its deck is every Lv.1 card twice (like the old client-side CPU). */
-    async function cpuSeat(ranked) {
+    async function cpuSeat(ranked, level) {
         const { cpuSetup } = await cpu;
         return {
-            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(),
+            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(), level,
             profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'profile_002' },
         };
     }
@@ -219,7 +219,7 @@ function createOnlineService(io, deps) {
         const st = match.state;
         const seat = seatToAct(st);
         if (!match.seats[seat].bot) return armTimer(match);
-        const action = choose(st, seat);
+        const action = choose(st, seat, match.seats[seat].level || 'normal');
         if (!Object.keys(action).length || !st.doAction(seat, action)) {
             if (!st.doAction(seat, { kind: 'next' })) return autoPlay(match);
         }
@@ -273,7 +273,7 @@ function createOnlineService(io, deps) {
                 rewards[human.playerId] = await deps.resolveCpuMatch?.({
                     playerId: human.playerId,
                     outcome: !winnerSeat ? 'draw' : winner === human ? 'win' : 'loss',
-                    ranked: match.mode === 'cpu_ranked', turns: match.state.turn,
+                    ranked: match.mode === 'cpu_ranked', turns: match.state.turn, difficulty: bot.level || 'normal',
                 }) || null;
                 if (human.cardsPlayed > 0) deps.incrementDailyQuest?.(human.playerId, 'daily_play_10', Math.min(40, human.cardsPlayed))?.catch?.(() => {});
             } catch (err) {
@@ -340,12 +340,13 @@ function createOnlineService(io, deps) {
         });
 
         // A match against the server CPU (VS CPU, or Ranked when ranked is true)
-        socket.on('mp:cpu', async ({ ranked } = {}) => {
+        socket.on('mp:cpu', async ({ ranked, difficulty } = {}) => {
             if (byPlayer.has(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             leaveQueue(me);
             try {
                 const entry = await prepare(me);
-                await startMatch(entry, await cpuSeat(ranked === true), ranked === true ? 'cpu_ranked' : 'cpu');
+                const level = ranked === true ? 'hard' : ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
+                await startMatch(entry, await cpuSeat(ranked === true, level), ranked === true ? 'cpu_ranked' : 'cpu');
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }

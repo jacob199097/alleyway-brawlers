@@ -113,8 +113,13 @@ func _rank_art(parent: Control) -> void:
 func _start(mode: String) -> void:
 	if _starting:
 		return
+	var difficulty := "hard" if mode == "ranked" else "normal"
+	if mode == "cpu":
+		difficulty = await _pick_difficulty()
+		if difficulty == "":
+			return
 	if Game.offline:
-		Game.duel_setup = {"mode": mode}
+		Game.duel_setup = {"mode": mode, "difficulty": difficulty}
 		Game.go("rps")
 		return
 	if mode == "casual":
@@ -134,7 +139,7 @@ func _start(mode: String) -> void:
 	# The server runs the match (and decides who goes first)
 	_starting = true
 	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
-	var why := await Game.request_cpu_match(mode == "ranked")
+	var why := await Game.request_cpu_match(mode == "ranked", difficulty)
 	if why != "":
 		on_online_error(why)
 		return
@@ -142,6 +147,23 @@ func _start(mode: String) -> void:
 	await get_tree().create_timer(12.0).timeout
 	if is_inside_tree() and _starting:
 		on_online_error("The server didn't start the match. It may need updating (git pull, then restart alleyway-backend).")
+
+
+## Easy / Normal / Hard for VS CPU; "" when cancelled. Rewards scale with it on the server.
+func _pick_difficulty() -> String:
+	var choice := [""]
+	var rewards := "" if Game.offline else "
+
+Easy pays half rewards, Hard pays 50% more."
+	UI.dialog(self, "CHOOSE DIFFICULTY",
+		"Easy: a forgetful CPU that misses chances.
+Normal: the standard CPU.
+Hard: sacrifices cleverly and trades up." + rewards,
+		[["EASY", func(): choice[0] = "easy", UI.GREEN], ["NORMAL", func(): choice[0] = "normal", UI.BLUE],
+		["HARD", func(): choice[0] = "hard", UI.RED], ["CANCEL", func(): choice[0] = "cancel"]], Color("b388ff"))
+	while choice[0] == "":
+		await get_tree().process_frame
+	return "" if choice[0] == "cancel" else choice[0]
 
 
 ## mp:error while starting a CPU match (net.gd calls this on the current screen).

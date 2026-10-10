@@ -33,8 +33,13 @@ static func test_setup() -> Dictionary:
 		"leaders": {"player": "king_roan", "opponent": "king_roan"},
 	}
 
+## Difficulty: "easy" misses attacks, picks the first target that works and never sacrifices for
+## a Heavy; "normal" is the standard CPU; "hard" sacrifices more readily (preferring Downed or
+## weakened characters) and takes even trades that cost it the weaker card.
+const LEVELS := ["easy", "normal", "hard"]
 
-static func choose(d: DuelState, side: String) -> Dictionary:
+
+static func choose(d: DuelState, side: String, level := "normal") -> Dictionary:
 	if d.winner != "":
 		return {}
 	if not d.pending.is_empty():
@@ -49,13 +54,13 @@ static func choose(d: DuelState, side: String) -> Dictionary:
 	var a := {}
 	match d.phase:
 		"deployment":
-			a = _deploy(d, side)
+			a = _deploy(d, side, level)
 		"brawl":
-			a = _brawl(d, side)
+			a = _brawl(d, side, level)
 	return a if not a.is_empty() else {"kind": "next"}
 
 
-static func _deploy(d: DuelState, side: String) -> Dictionary:
+static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	var s: Dictionary = d.sides[side]
 	for slot in DuelState.FRONT:
 		if d.can_promote(side, slot):
@@ -63,33 +68,44 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 	for c in s.hand:
 		if d.can_hustle(side, c):
 			return {"kind": "hustle", "uid": c.uid}
-	# Stand up a defender that now out-muscles everything the opponent shows
 	var threat := _threat(d, side)
-	for e in d.characters(side):
-		var c: Dictionary = e.card
-		if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
-			return {"kind": "position", "slot": e.slot}
-
-	# A Heavy is worth a sacrifice when it clearly out-muscles the weakest character we'd give up
-	var heavy = null
-	for c in s.hand:
-		if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or c.base_attack > heavy.base_attack):
-			heavy = c
-	if heavy != null:
-		var weakest = null
+	if level != "easy":
+		# Stand up a defender that now out-muscles everything the opponent shows
 		for e in d.characters(side):
-			if e.card.get("cardType") != "leader" and (weakest == null or e.card.attack < weakest.card.attack):
-				weakest = e
-		if weakest != null and heavy.base_attack >= weakest.card.attack + 800:
-			return {"kind": "summon", "uid": heavy.uid, "slot": weakest.slot, "tribute": weakest.slot,
-				"position": "atk" if heavy.base_attack >= threat else "def"}
+			var c: Dictionary = e.card
+			if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
+				return {"kind": "position", "slot": e.slot}
+
+		# A Heavy is worth a sacrifice when it clearly out-muscles the character we'd give up
+		var heavy = null
+		for c in s.hand:
+			if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or c.base_attack > heavy.base_attack):
+				heavy = c
+		if heavy != null:
+			var fodder = null
+			var fodder_value := 0
+			for e in d.characters(side):
+				if e.card.get("cardType") == "leader" or d.in_stasis(e.card):
+					continue
+				var v := _keep_value(e.card)
+				if fodder == null or v < fodder_value:
+					fodder = e
+					fodder_value = v
+			var margin := 400 if level == "hard" else 800
+			if fodder != null and heavy.base_attack >= fodder_value + margin:
+				return {"kind": "summon", "uid": heavy.uid, "slot": fodder.slot, "tribute": fodder.slot,
+					"position": "atk" if heavy.base_attack >= threat else "def"}
 
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
 	if not free.is_empty():
 		var best = null
 		for c in s.hand:
-			if d.can_summon(side, c, free[0]) and (best == null or c.base_attack > best.base_attack):
-				best = c
+			if d.can_summon(side, c, free[0]):
+				if level == "easy":
+					best = c
+					break
+				if best == null or c.base_attack > best.base_attack:
+					best = c
 		if best != null:
 			var pos := "atk" if best.base_attack >= threat else "def"
 			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": pos}
@@ -103,15 +119,20 @@ static func _deploy(d: DuelState, side: String) -> Dictionary:
 	return {}
 
 
-static func _brawl(d: DuelState, side: String) -> Dictionary:
+static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 	var foe := DuelState.other(side)
 	# Maya Lv.3 buffs an ally before the punches start
 	for slot in DuelState.FRONT:
 		if d.can_use_ability(side, slot):
 			return {"kind": "ability", "slot": slot}
+	# Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
+	var plan := {}
+	var plan_score := 0.0
 	for slot in DuelState.FRONT:
 		if not d.can_attack_with(side, slot):
 			continue
+		if level == "easy" and _roll(d, side, slot) < 35:
+			continue   # an easy CPU sometimes forgets to attack
 		var att: Dictionary = d.card_at(side, slot)
 		var targets := d.attack_targets(side)
 		var best := NO_TARGET
@@ -126,17 +147,22 @@ static func _brawl(d: DuelState, side: String) -> Dictionary:
 				# chipping its Influence is a last resort
 				score = 4.0 if att.attack >= d.sides[foe].leader.influence else 0.5
 			else:
-				score = _target_score(att, d.card_at(foe, t))
+				score = _target_score(att, d.card_at(foe, t), level)
 			if score > best_score:
 				best_score = score
 				best = t
-		if best != NO_TARGET:
+				if level == "easy":
+					break
+		if best != NO_TARGET and level != "hard":
 			return {"kind": "attack", "from": slot, "target": best}
-	return {}
+		if best != NO_TARGET and best_score > plan_score:
+			plan_score = best_score
+			plan = {"kind": "attack", "from": slot, "target": best}
+	return plan
 
 
 ## How much the CPU wants to attack this enemy character (0 = not worth it).
-static func _target_score(att: Dictionary, df: Dictionary) -> float:
+static func _target_score(att: Dictionary, df: Dictionary, level: String) -> float:
 	var score := 0.0
 	if df.face_down:
 		score = 1.0 if att.attack >= 1600 else 0.0   # unknown DEF: only strong attackers try
@@ -146,7 +172,26 @@ static func _target_score(att: Dictionary, df: Dictionary) -> float:
 		score = 2.0 if att.attack > df.defense else 0.0
 	elif att.attack > df.attack:
 		score = 2.0 + (att.attack - df.attack) / 1000.0
+	elif level == "hard" and att.attack == df.attack and att.base_attack < df.base_attack:
+		score = 1.5   # both go Down: a trade that costs us the weaker card
+	if df.get("shield", false):
+		score *= 0.5   # the hit only pops the shield
 	return score
+
+
+## How much a character is worth keeping (lowest = the first to sacrifice for a Heavy).
+static func _keep_value(c: Dictionary) -> int:
+	if c.downed:
+		return -1
+	var v: int = c.attack
+	if c.has("poison") or c.has("bleed"):
+		v -= 500
+	return v
+
+
+## A repeatable 0-99 "dice roll" (the server's CPU must make the same choices).
+static func _roll(d: DuelState, side: String, slot: int) -> int:
+	return (d.turn * 37 + slot * 53 + d.sides[side].hand.size() * 17) % 100
 
 
 ## The strongest face-up attacker the opponent shows.

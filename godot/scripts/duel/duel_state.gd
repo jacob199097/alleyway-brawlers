@@ -1328,7 +1328,11 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
 	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader" and not in_stasis(x.card))
 	if target == "ally" or target == "enemy":
-		entries.sort_custom(_strongest_first)
+		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
+			var va := _target_value(side, e, a)
+			var vb := _target_value(side, e, b)
+			return va > vb or (va == vb and a.slot < b.slot)
+		entries.sort_custom(best_first)
 		var on := side if target == "ally" else foe
 		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
 		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
@@ -1343,6 +1347,41 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 	else:
 		for x in entries:
 			_effect(side, c, fn.call(x), slot)
+
+
+## How good a target `x` is for effect `e`, from the deciding side's view (prompts list the
+## best first, and that is the CPU's pick). Plain strength unless the effect cares about more.
+func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
+	var c: Dictionary = x.card
+	var value := _attack_value(c)
+	var standing_atk: bool = not c.downed and c.position == "atk"
+	match str(e.get("do", "")):
+		"shock":
+			if not c.downed and maxi(1, int(e.get("amount", 1))) >= int(c.get("defense", 0)):
+				return 100000 + value   # one it knocks Down
+		"stasis":
+			if x.side == side:
+				return (100000 if c.downed else 0) + value   # shelter a Downed ally from the KO
+			return (100000 if standing_atk else 0) + value
+		"poison", "bleed":
+			if c.has(str(e.do)):
+				return value - 50000
+			if c.downed:
+				return value - 20000
+		"burn":
+			if c.has("burn"):
+				return int(c.get("defense", 0)) - 50000
+			return (0 if c.downed else 10000) + int(c.get("defense", 0))   # one that will stay around
+		"freeze", "stun":
+			var key := "freeze_until" if str(e.do) == "freeze" else "stun_until"
+			if int(c.get(key, 0)) >= turn:
+				return value - 50000
+			if standing_atk:
+				return 100000 + value
+		"shield":
+			if c.get("shield", false):
+				return value - 50000
+	return value
 
 
 func _fx_kind_ok(card: Dictionary, e: Dictionary) -> bool:
