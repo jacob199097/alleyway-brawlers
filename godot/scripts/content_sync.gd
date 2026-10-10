@@ -1,5 +1,5 @@
 extends RefCounted
-## Keeps the game's cards up to date without a new build. At start-up (boot screen) it asks the
+## Keeps the game's cards (and clan card backs) up to date without a new build. At start-up (boot screen) it asks the
 ## server what the latest card data and card images are (backend/routes/content.js), compares
 ## their fingerprints with what's built in (data/content.json) and what was downloaded before
 ## (user://content), and downloads only what changed. It also reports whether this build of the
@@ -66,7 +66,8 @@ func run(download := true) -> Dictionary:
 	for id in art:
 		var h := str(art[id].get("hash", ""))
 		var file := "%s/cards/%s.png" % [DIR, id]
-		if h == str(bundled_art.get(id, "")):
+		# Built in only counts if this build really has the file (a patch updates the list, not the art)
+		if h == str(bundled_art.get(id, "")) and ResourceLoader.exists("res://assets/cards/%s.png" % id):
 			_remove(file)
 			state.art.erase(id)
 		elif h != str(state.art.get(id, "")) or not FileAccess.file_exists(file):
@@ -79,7 +80,23 @@ func run(download := true) -> Dictionary:
 			_remove("%s/cards/%s" % [DIR, f])
 			state.art.erase(id)
 
-	var total := todo.size() + (1 if need_cards else 0)
+	# Card backs (a new clan's back): same rules, kept in user://content/backs
+	DirAccess.make_dir_recursive_absolute(DIR + "/backs")
+	if not state.has("backs"):
+		state.backs = {}
+	var backs: Dictionary = m.get("backs", {})
+	var bundled_backs: Dictionary = bundled.get("backs", {})
+	var back_todo: Array = []
+	for id in backs:
+		var h := str(backs[id].get("hash", ""))
+		var file := "%s/backs/%s.png" % [DIR, id]
+		if h == str(bundled_backs.get(id, "")) and ResourceLoader.exists("res://assets/%s.png" % id):
+			_remove(file)
+			state.backs.erase(id)
+		elif h != str(state.backs.get(id, "")) or not FileAccess.file_exists(file):
+			back_todo.append(id)
+
+	var total := todo.size() + back_todo.size() + (1 if need_cards else 0)
 	started.emit(total)
 	var done := 0
 	if need_cards:
@@ -109,6 +126,18 @@ func run(download := true) -> Dictionary:
 		done += 1
 		progress.emit(done, total, str(id), tex)
 		_save_state(state)   # keep what's done if the game is closed part-way
+	for id in back_todo:
+		var want := str(backs[id].get("hash", ""))
+		var b: Dictionary = await Api.fetch("/api/content/back/%s.png" % id)
+		if b.ok and _sha256(b.body) == want:
+			_write("%s/backs/%s.png" % [DIR, id], b.body)
+			state.backs[id] = want
+			out.downloaded += 1
+		else:
+			out.failed += 1
+		done += 1
+		progress.emit(done, total, str(id), null)
+		_save_state(state)
 	_save_state(state)
 	if total > 0:
 		CardDB.reload()

@@ -48,6 +48,7 @@ static func clan(id: String) -> Dictionary:
 static func reload() -> void:
 	_cards = {}
 	_art = {}
+	_backs = {}
 
 
 static func get_card(id: String) -> Dictionary:
@@ -95,13 +96,34 @@ const BACK_STYLES := {"nebula": "galaxy", "militia": "radar"}
 
 ## How a clan's back moves ("" = it doesn't).
 static func back_style(clan: String) -> String:
-	if not BACK_STYLES.has(clan) or not ResourceLoader.exists("res://assets/card_back_%s.png" % clan):
+	if not BACK_STYLES.has(clan) or _back_texture("card_back_" + clan) == null:
 		return ""
 	return BACK_STYLES[clan]
 
 
 static func back(clan := "") -> Texture2D:
-	var own := "res://assets/card_back_%s.png" % clan
-	if clan != "" and ResourceLoader.exists(own):
-		return load(own)
-	return load("res://assets/card_back.png") if ResourceLoader.exists("res://assets/card_back.png") else null
+	if clan != "":
+		var own := _back_texture("card_back_" + clan)
+		if own:
+			return own
+	return _back_texture("card_back")
+
+
+static var _backs: Dictionary = {}
+
+
+## A card back by file name: downloaded (scripts/content_sync.gd) first, then built in.
+static func _back_texture(id: String) -> Texture2D:
+	if _backs.has(id):
+		return _backs[id]
+	var tex: Texture2D = null
+	var downloaded := CONTENT_DIR + "/backs/%s.png" % id
+	if FileAccess.file_exists(downloaded):
+		var img := Image.load_from_file(downloaded)
+		if img and not img.is_empty():
+			img.generate_mipmaps()
+			tex = ImageTexture.create_from_image(img)
+	if tex == null and ResourceLoader.exists("res://assets/%s.png" % id):
+		tex = load("res://assets/%s.png" % id)
+	_backs[id] = tex
+	return tex

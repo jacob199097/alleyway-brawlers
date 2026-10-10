@@ -29,5 +29,10 @@
   "pride_mentor": "67bb6c7ed588c15e6dd461b2446263ba8a26e78d3d9025150b063ead7fbbacf8",
   "pride_runner": "3f5096f673013afa74d5daf49bdbf0c45e5f3ab5300ca7551c079e517a004c66",
   "sovereign": "82150095d0b4f443bbfd0b8fa5898e0159e0ad7dfd9e52779f7c296eae065d27"
+ },
+ "backs": {
+  "card_back": "a01f58c862bb2a65b510b52306ae51a665f29b838d49ae55a48807afa2b2622c",
+  "card_back_militia": "f1be5eed4807dff749f8a002b0581e9cd6a3e01081748f2f0e0ddbaa71441d96",
+  "card_back_nebula": "3866af30f0cf6d76e43aa03d6f93d4baddd19573bd5541f3ace7b4dbdd9b2d86"
  }
 }

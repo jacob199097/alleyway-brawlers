@@ -27,9 +27,12 @@ func _ready() -> void:
 		get_tree().current_scene.scene_file_path if get_tree().current_scene else "?", state,
 		CardDB.all().size(), "yes" if not CardDB.get_card("astra_lv1").is_empty() else "no"])
 	print("  art for astra_lv1 loads: %s" % (CardDB.art("astra_lv1") != null))
+	print("  downloaded card back for testclan loads: %s" % (FileAccess.file_exists(CardDB.CONTENT_DIR + "/backs/card_back_testclan.png") and CardDB.back("testclan") != CardDB.back()))
 	if not keep:
 		for f in DirAccess.get_files_at(CardDB.CONTENT_DIR + "/cards"):
 			DirAccess.remove_absolute(CardDB.CONTENT_DIR + "/cards/" + f)
+		for f in DirAccess.get_files_at(CardDB.CONTENT_DIR + "/backs"):
+			DirAccess.remove_absolute(CardDB.CONTENT_DIR + "/backs/" + f)
 		for f in ["cards.json", "state.json"]:
 			DirAccess.remove_absolute(CardDB.CONTENT_DIR + "/" + f)
 	get_tree().quit()

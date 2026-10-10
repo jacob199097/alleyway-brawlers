@@ -17,6 +17,12 @@ const art = {};
 for (const f of readdirSync(artDir).filter(f => f.endsWith('.png')).sort()) {
     art[f.slice(0, -4)] = sha256(readFileSync(artDir + f));
 }
+// Card backs the build ships with (assets/card_back*.png)
+const backDir = fileURLToPath(new URL('../../assets/', import.meta.url));
+const backs = {};
+for (const f of readdirSync(backDir).filter(f => /^card_back(_[a-z0-9_]+)?\.png$/.test(f)).sort()) {
+    backs[f.slice(0, -4)] = sha256(readFileSync(backDir + f));
+}
 writeFileSync(fileURLToPath(new URL('../data/content.json', import.meta.url)),
-    JSON.stringify({ cards: sha256(json), art }, null, 1) + '\n');
+    JSON.stringify({ cards: sha256(json), art, backs }, null, 1) + '\n');
 console.log(`Wrote ${Object.keys(CARD_CATALOG).length} cards to ${out} (and fingerprints for ${Object.keys(art).length} images)`);
