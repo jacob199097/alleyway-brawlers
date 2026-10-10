@@ -22,18 +22,88 @@ func _ready() -> void:
 	_build_right()
 	_build_quests()
 	_intro()
+	if not Game.offline:
+		Net.rejoin()   # a match still running (the game closed mid-match) opens again
+	var returning: bool = Game.settings.tutorial_offered
 	if not Game.settings.tutorial_done and not Game.settings.tutorial_offered:
 		# First visit: suggest the guided first duel once
 		Game.set_setting("tutorial_offered", true)
 		await get_tree().create_timer(0.6).timeout
 		UI.dialog(self, "NEW TO THE ALLEY?", "Play a quick guided duel to learn the basics: Authority, attacking, Downed cards, leaders and Direct Attacks.",
 			[["PLAY TUTORIAL", Game.start_tutorial, UI.GREEN], ["NOT NOW", func(): pass]])
+	_patch_notes(returning)
 	if Game.offline:
 		var l := UI.label("OFFLINE  ·  vs CPU with the starter deck  ·  nothing is saved", 22, UI.PURPLE, true)
 		l.size = Vector2(1920, 30)
 		l.position = Vector2(0, 1040)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		add_child(l)
+
+
+## "What's new" once per version (data/patch_notes.json): every version since the one the
+## player last saw. New players just start from the current one.
+func _patch_notes(returning: bool) -> void:
+	var mine := str(ProjectSettings.get_setting("application/config/version", ""))
+	var seen := str(Game.settings.get("last_seen_version", ""))
+	if mine == "" or seen == mine:
+		return
+	Game.set_setting("last_seen_version", mine)
+	if returning:
+		_show_patch_notes(seen, mine)
+
+
+## The notes for every version after `seen` up to `mine` ("" seen: just `mine`).
+func _show_patch_notes(seen: String, mine: String) -> void:
+	var all = JSON.parse_string(FileAccess.get_file_as_string("res://data/patch_notes.json"))
+	if not all is Array:
+		return
+	var lines: Array = []
+	for entry in all:
+		var v := str(entry.get("version", ""))
+		if _newer(v, mine) or (seen != "" and not _newer(v, seen)):
+			continue   # not out yet, or seen already
+		if seen == "" and v != mine:
+			continue   # first time we track it: just this version
+		lines.append("[b][color=#f4d35e]%s[/color][/b]" % v)
+		for n in entry.get("notes", []):
+			lines.append("•  " + str(n))
+		lines.append("")
+	if lines.is_empty():
+		return
+	await get_tree().create_timer(0.7).timeout
+	var dlg := UI.dialog(self, "WHAT'S NEW", "", [["GOT IT", func(): pass, UI.GREEN]], UI.BLUE)
+	var col: VBoxContainer = dlg.get_child(0).get_child(0)
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = true
+	text.fit_content = true
+	text.custom_minimum_size = Vector2(1000, 0)
+	text.add_theme_font_size_override("normal_font_size", 21)
+	text.add_theme_font_size_override("bold_font_size", 24)
+	text.text = "
+".join(lines)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1020, mini(620, 34 * lines.size()))
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(text)
+	col.add_child(scroll)
+	col.move_child(scroll, 1)
+	await get_tree().process_frame
+	var p: Control = dlg.get_child(0)
+	p.reset_size()
+	p.position = (Vector2(1920, 1080) - p.size) / 2
+	p.pivot_offset = p.size / 2
+
+
+## a > b, for versions like "0.6.1".
+static func _newer(a: String, b: String) -> bool:
+	var x := a.split(".")
+	var y := b.split(".")
+	for i in maxi(x.size(), y.size()):
+		var p := int(x[i]) if i < x.size() else 0
+		var q := int(y[i]) if i < y.size() else 0
+		if p != q:
+			return p > q
+	return false
 
 
 func _unhandled_input(e: InputEvent) -> void:

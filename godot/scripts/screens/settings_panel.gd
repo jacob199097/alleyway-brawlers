@@ -1,11 +1,16 @@
 class_name SettingsPanel
 extends Control
-## Settings overlay (menu gear, or Esc in a duel): Audio, Display and Server tabs.
+## Settings overlay (menu gear, or Esc in a duel): Audio, Display, Gameplay and Server tabs.
 ## Changes apply and save immediately (Game.set_setting).
 
 const RESOLUTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160"]
 const WINDOW_MODES := [["windowed", "WINDOWED"], ["fullscreen", "BORDERLESS FULLSCREEN"], ["exclusive", "EXCLUSIVE FULLSCREEN"]]
 const FPS_CAPS := [0, 30, 60, 120, 144, 165, 240]
+const ANIM_SPEEDS := [1.0, 1.5, 2.0]
+## Duel keyboard shortcuts (scripts/duel/duel.gd, _unhandled_input), listed on the Gameplay tab
+const SHORTCUTS := [["Space / Enter", "Next phase / end turn"], ["Esc", "Cancel, or open the menu"],
+	["Right-click", "Cancel what you're doing"], ["L", "Battle log"], ["E", "Emotes (against players)"],
+	["F11", "Fullscreen"]]
 
 var allow_logout := true
 var _tab := "audio"
@@ -41,8 +46,8 @@ func _ready() -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 16)
 	col.add_child(tabs)
-	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["server", "SERVER"]]:
-		var b := UI.button(t[1], _show.bind(t[0]), Vector2(240, 52))
+	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["server", "SERVER"]]:
+		var b := UI.button(t[1], _show.bind(t[0]), Vector2(220, 52))
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tabs[t[0]] = b
@@ -88,6 +93,22 @@ func _show(tab: String) -> void:
 			_cycle("V-Sync", [true, false], ["ON", "OFF"], "vsync")
 			_cycle("FPS Cap", FPS_CAPS, FPS_CAPS.map(func(f): return "UNLIMITED" if f == 0 else str(f)), "fps_cap")
 			_cycle("Show FPS", [true, false], ["ON", "OFF"], "show_fps")
+		"gameplay":
+			_cycle("Animation Speed", ANIM_SPEEDS, ["NORMAL", "FAST (1.5×)", "FASTER (2×)"], "anim_speed")
+			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
+			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
+			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front.", 20, UI.MUTED)
+			note.autowrap_mode = TextServer.AUTOWRAP_WORD
+			note.custom_minimum_size = Vector2(1000, 0)
+			_body.add_child(note)
+			var keys := GridContainer.new()
+			keys.columns = 2
+			keys.add_theme_constant_override("h_separation", 30)
+			keys.add_theme_constant_override("v_separation", 4)
+			_body.add_child(keys)
+			for k in SHORTCUTS:
+				keys.add_child(UI.label(k[0], 20, UI.GOLD, true))
+				keys.add_child(UI.label(k[1], 20, Color.WHITE))
 		"server":
 			_server_tab()
 

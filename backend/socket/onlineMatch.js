@@ -17,11 +17,14 @@
  *   the winner chooses to go first or second.
  *   client → server  mp:queue, mp:cancel, mp:cpu {ranked, difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
- *                    mp:resync
+ *                    mp:resync, mp:rematch, mp:rematch_decline
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
- *                    mp:declined {byUsername}, mp:start {matchId, you, opponent, view, resync},
- *                    mp:update {matchId, events, view}, mp:opponent {status, graceSecs?},
- *                    mp:over {matchId, result, reason, rewards}
+ *                    mp:declined {byUsername}, mp:start {matchId, you, opponent, view, resync, clock},
+ *                    mp:update {matchId, events, view, clock, away}, mp:opponent {status, graceSecs?},
+ *                    mp:over {matchId, result, reason, rewards}, mp:none (resync with no match),
+ *                    mp:rematch_offer {fromUsername}, mp:rematch_sent, mp:rematch_declined {message}
+ *   clock = seconds the player who acts next has before a safe move is played for them;
+ *   away = that player was auto-played last time (so they get AWAY_SECS).
  *
  * Every player sees the match from their own side: their seat is always "player".
  * Database access is passed in (createOnlineService), so tests can run it without Postgres.
@@ -30,7 +33,12 @@
 const { randomUUID } = require('crypto');
 
 const TURN_SECS        = 90;    // a player who doesn't act for this long is auto-played
+// Once auto-played, a player who still isn't acting gets AWAY_SECS per move, and loses after
+// AFK_FORFEIT auto-played moves in a row (any move of their own resets it)
+const AWAY_SECS        = 15;
+const AFK_FORFEIT      = 8;
 const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
+const REMATCH_SECS     = 60;    // after a match against a player, either can offer a rematch this long
 const CHALLENGE_SECS   = 60;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
 // Emotes: a fixed list (no free text), at most one every EMOTE_GAP_MS and MAX_EMOTES a match
@@ -135,6 +143,7 @@ function forSeat(v, seat) {
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
  * @param {(playerId) => Promise} [deps.recordDailyWin]
  * @param {(args) => Promise<object>} [deps.resolveCpuMatch]  {playerId, outcome, ranked, turns} → rewards
+ * @param {number} [deps.turnSecs] [deps.awaySecs]  shorter move clocks (tests)
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -143,6 +152,8 @@ function createOnlineService(io, deps) {
     const byPlayer = new Map();      // playerId → match
     const challenges = new Map();    // "from:to" → expiry
     const rpsByPlayer = new Map();   // playerId → Scissors Paper Rock session before a match
+    const rematchable = new Map();   // playerId → { opp, until } after a match against a player
+    const rematchAsks = new Map();   // playerId → the opponent they offered a rematch to
     const busy = (id) => byPlayer.has(id) || rpsByPlayer.has(id);
 
     const emitTo = (playerId, event, data) => sockets.get(playerId)?.emit(event, data);
@@ -246,8 +257,8 @@ function createOnlineService(io, deps) {
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null,
             seats: {
-                player: { ...a, connected: true, grace: null, cardsPlayed: 0 },
-                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0 },
+                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0 },
+                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0 },
             },
         };
         // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
@@ -289,31 +300,43 @@ function createOnlineService(io, deps) {
             matchId: match.id, mode: match.mode, resync,
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
+            clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
         });
     }
 
     function broadcast(match, events) {
+        for (const ev of events) {
+            if (['summon', 'set', 'hustle'].includes(ev.type)) match.seats[ev.side].cardsPlayed += 1;
+        }
+        const clock = match.state.winner ? 0 : armTimer(match);
+        const away = !match.state.winner && match.seats[seatToAct(match.state)].idle > 0;
         for (const seat of ['player', 'opponent']) {
             const visible = events.map(ev => statsFilter(filterEvent(ev, seat), seat));
             emitTo(match.seats[seat].playerId, 'mp:update', {
                 matchId: match.id,
                 events: forSeat(visible, seat),
                 view: forSeat(viewFor(match.state, seat), seat),
+                clock, away,
             });
         }
-        for (const ev of events) {
-            if (['summon', 'set', 'hustle'].includes(ev.type)) match.seats[ev.side].cardsPlayed += 1;
-        }
         if (match.state.winner) finish(match, match.state.winner, match.state.endReason || 'morale');
-        else armTimer(match);
     }
 
-    /** Whoever has to act next gets TURN_SECS; then the server plays a safe move for them.
-     *  When it's the server CPU's move, it plays after a short pause instead. */
+    /** Whoever has to act next gets TURN_SECS (AWAY_SECS if they were just auto-played); then the
+     *  server plays a safe move for them. When it's the server CPU's move, it plays after a short
+     *  pause instead. Returns the seconds given. */
     function armTimer(match) {
         clearTimeout(match.timer);
-        if (match.seats[seatToAct(match.state)].bot) match.timer = setTimeout(() => botMove(match), BOT_MOVE_MS);
-        else match.timer = setTimeout(() => autoPlay(match), TURN_SECS * 1000);
+        const s = match.seats[seatToAct(match.state)];
+        if (s.bot) {
+            match.timer = setTimeout(() => botMove(match), BOT_MOVE_MS);
+            match.clockEnds = null;
+            return TURN_SECS;
+        }
+        const secs = s.idle > 0 ? (deps.awaySecs ?? AWAY_SECS) : (deps.turnSecs ?? TURN_SECS);
+        match.timer = setTimeout(() => autoPlay(match), secs * 1000);
+        match.clockEnds = Date.now() + secs * 1000;
+        return secs;
     }
 
     async function botMove(match) {
@@ -336,6 +359,8 @@ function createOnlineService(io, deps) {
         const st = match.state;
         const p = st.pending;
         const seat = p && p.side ? p.side : st.active;
+        match.seats[seat].idle += 1;
+        if (match.seats[seat].idle >= AFK_FORFEIT) return finish(match, other(seat), 'afk');
         let action = { kind: 'next' };
         if (p && p.kind === 'choose') action = { kind: 'choose', option: p.options[0].id };
         else if (p && p.kind === 'discard') action = { kind: 'discard', uid: st.sides[seat].hand[0].uid };
@@ -359,6 +384,7 @@ function createOnlineService(io, deps) {
             emitTo(playerId, 'mp:error', { message: 'That move is not allowed right now.' });
             return sendStart(match, seat, true);
         }
+        match.seats[seat].idle = 0;
         match.record.actions.push([seat, action]);
         broadcast(match, match.state.takeEvents());
     }
@@ -416,9 +442,29 @@ function createOnlineService(io, deps) {
                 turns: match.state.turn,
             });
         }
+        if (!bot) {
+            // Either player can offer a rematch for a while (mp:rematch)
+            const until = Date.now() + REMATCH_SECS * 1000;
+            const [p, o] = [match.seats.player.playerId, match.seats.opponent.playerId];
+            rematchable.set(p, { opp: o, until });
+            rematchable.set(o, { opp: p, until });
+            rematchAsks.delete(p);
+            rematchAsks.delete(o);
+        }
         console.log(`[Online] Match ${match.id} over (${reason}) — winner ${winner?.profile.username ?? 'none'}`);
         match.record.end = { winner: winnerSeat || '', reason, turns: match.state.turn };
         Promise.resolve(deps.saveReplay?.(match.record)).catch(err => console.error('[Online] Replay save failed:', err.message));
+    }
+
+    /** `playerId` won't rematch: their opponent is told, and neither can ask any more. */
+    function declineRematch(playerId, message) {
+        const r = rematchable.get(playerId);
+        if (!r) return;
+        rematchable.delete(playerId);
+        rematchable.delete(r.opp);
+        rematchAsks.delete(playerId);
+        rematchAsks.delete(r.opp);
+        if (r.until >= Date.now()) emitTo(r.opp, 'mp:rematch_declined', { message });
     }
 
     function leaveQueue(playerId) {
@@ -515,6 +561,34 @@ function createOnlineService(io, deps) {
             }
         });
 
+        // Rematch: both players ask (the second ask starts it, with Scissors Paper Rock again)
+        socket.on('mp:rematch', async () => {
+            const r = rematchable.get(me);
+            if (!r || r.until < Date.now()) return socket.emit('mp:rematch_declined', { message: 'The rematch offer has expired.' });
+            if (!sockets.get(r.opp)?.connected) return socket.emit('mp:rematch_declined', { message: 'Your opponent has left.' });
+            if (busy(me) || busy(r.opp)) return socket.emit('mp:rematch_declined', { message: 'Your opponent is already in another match.' });
+            if (rematchAsks.get(r.opp) !== me) {
+                rematchAsks.set(me, r.opp);
+                emitTo(r.opp, 'mp:rematch_offer', { fromUsername: playerData.username });
+                return socket.emit('mp:rematch_sent', {});
+            }
+            rematchAsks.delete(me);
+            rematchAsks.delete(r.opp);
+            rematchable.delete(me);
+            rematchable.delete(r.opp);
+            leaveQueue(me);
+            leaveQueue(r.opp);
+            try {
+                const [a, b] = await Promise.all([prepare(r.opp), prepare(me)]);
+                startRps(a, b, 'friendly');
+            } catch (err) {
+                for (const id of [me, r.opp]) emitTo(id, 'mp:rematch_declined', { message: err.message || 'Could not start the rematch.' });
+            }
+        });
+
+        // Declining an offer, or leaving the results screen
+        socket.on('mp:rematch_decline', () => declineRematch(me, 'Your opponent left.'));
+
         socket.on('mp:action', ({ matchId, action } = {}) => act(me, matchId, action));
 
         socket.on('mp:rps_pick', ({ rpsId, pick } = {}) => rpsPick(me, rpsId, pick));
@@ -548,6 +622,7 @@ function createOnlineService(io, deps) {
             if (sockets.get(me) !== socket) return;   // an older connection closing
             sockets.delete(me);
             leaveQueue(me);
+            declineRematch(me, 'Your opponent has left.');
             const rps = rpsByPlayer.get(me);
             if (rps) rpsCancel(rps, me);
             const match = byPlayer.get(me);

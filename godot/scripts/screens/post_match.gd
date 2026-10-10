@@ -1,6 +1,7 @@
 extends Screen
 ## After a duel: Victory/Defeat art (its BRAWL AGAIN / MENU buttons are part of the artwork),
 ## the match stats, the MVP card, and the rewards the server grants for the match.
+## After a match against a player, either can offer a REMATCH (backend/socket/onlineMatch.js).
 
 const ART_SIZE := Vector2(920, 613)     # victory.png / defeat.png are 1536×1024
 const ART_POS := Vector2(500, 0)
@@ -8,6 +9,9 @@ const ART_POS := Vector2(500, 0)
 var _xp_fill: ColorRect
 var _xp_label: Label
 var _rewards: Label
+var _rematch: Button
+var _rematch_note: Label
+var _rematch_done := false   # asked, declined or expired: nothing more to tell the server
 
 
 func _ready() -> void:
@@ -52,12 +56,76 @@ func _ready() -> void:
 	_outcome_panel(d, won)
 	_mvp_panel(d.get("mvp", {}))
 	_submit(d)
+	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "":
+		_rematch_box()
 
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_ESCAPE, KEY_ENTER, KEY_SPACE]:
 		get_viewport().set_input_as_handled()
 		Game.go("main_menu")
+
+
+# ── Rematch ──────────────────────────────────────────────────────────────────
+
+func _rematch_box() -> void:
+	var col := VBoxContainer.new()
+	col.position = Vector2(700, 700)
+	col.custom_minimum_size = Vector2(520, 0)
+	col.add_theme_constant_override("separation", 12)
+	add_child(col)
+	_rematch = UI.button("⚔ REMATCH", _ask_rematch, Vector2(520, 72), UI.GOLD)
+	col.add_child(_rematch)
+	_rematch_note = UI.label("Offer your opponent another match (60 s).", 20, UI.MUTED)
+	_rematch_note.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_rematch_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_rematch_note.custom_minimum_size = Vector2(520, 0)
+	col.add_child(_rematch_note)
+	get_tree().create_timer(60.0).timeout.connect(func():
+		if is_instance_valid(_rematch) and not _rematch_done:
+			_rematch_end("The rematch offer has expired."))
+	tree_exiting.connect(func():
+		if not _rematch_done:
+			Net.send("mp:rematch_decline"))
+
+
+func _process(_delta: float) -> void:
+	while _rematch and not Net.rematch_inbox.is_empty():
+		var m: Array = Net.rematch_inbox.pop_front()
+		_on_net(m[0], m[1])
+	if _rematch and not _rematch_done and not Net.rps_inbox.is_empty():
+		_rematch_done = true   # it's on (net.gd opens Scissors Paper Rock)
+
+
+func _ask_rematch() -> void:
+	if not Net.send("mp:rematch"):
+		UI.toast(self, "Not connected to the server.", UI.RED)
+		return
+	_rematch.disabled = true
+	_rematch.text = "WAITING FOR OPPONENT…"
+
+
+func _on_net(name: String, data) -> void:
+	match name:
+		"mp:rematch_offer":
+			Game.alert()
+			Sfx.play("ambush", 1.2)
+			_rematch.disabled = false
+			_rematch.text = "✓ ACCEPT REMATCH"
+			_rematch_note.text = "%s wants a rematch!" % str(data.get("fromUsername", "Your opponent"))
+			_rematch_note.label_settings.font_color = UI.GOLD
+		"mp:rematch_sent":
+			_rematch_note.text = "Asked. It starts as soon as they agree."
+		"mp:rematch_declined":
+			_rematch_end(str(data.get("message", "No rematch.")))
+
+
+func _rematch_end(message: String) -> void:
+	_rematch_done = true
+	_rematch.disabled = true
+	_rematch.text = "NO REMATCH"
+	_rematch_note.text = message
+	_rematch_note.label_settings.font_color = UI.RED
 
 
 func _art_button(r: Rect2, text: String, cb: Callable) -> void:
@@ -94,6 +162,8 @@ func _outcome_panel(d: Dictionary, won: bool) -> void:
 			reason = "Your opponent left the match" if won else "You were disconnected"
 		"deck_out":
 			reason = "Your opponent ran out of cards" if won else "You ran out of cards"
+		"afk":
+			reason = "Your opponent stopped playing" if won else "You were away too long"
 	var r := UI.label(reason, 26, Color.WHITE, true)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)

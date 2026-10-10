@@ -33,6 +33,10 @@ const DEFAULT_SETTINGS := {
 	"server_url": "https://alleywaybrawlers.duckdns.org",   # LAN: http://192.168.0.200:3000
 	"tutorial_done": false,         # finished or skipped the guided first duel
 	"tutorial_offered": false,      # the main menu has suggested it once
+	"anim_speed": 1.0,              # duel animation speed (1, 1.5 or 2)
+	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
+	"rival_emotes": true,           # show the opponent's emotes
+	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 }
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"
 const ErrorReport := preload("res://scripts/error_report.gd")
@@ -151,6 +155,18 @@ func _send_error_reports() -> void:
 	_errors.muted = false
 	if int(r.get("status", 0)) == 0:
 		_errors.give_back(batch)   # server unreachable: try again later
+
+
+## It's the player's move (or a match or challenge is waiting) while the game window isn't in
+## front: flash the taskbar button and play a sound. Settings → Gameplay → Turn Alerts.
+func alert(sound := true) -> void:
+	if not settings.get("turn_alert", true) or DisplayServer.get_name() == "headless":
+		return
+	if get_tree().root.has_focus():
+		return
+	DisplayServer.window_request_attention()
+	if sound:
+		Sfx.play("ambush", 1.3)
 
 
 # ── Session ──────────────────────────────────────────────────────────────────

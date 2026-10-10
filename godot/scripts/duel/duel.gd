@@ -87,6 +87,11 @@ var _replay_wait := 0.0
 var _emote_ready_at := 0
 var _emotes_muted := false
 var _awaiting := false    # sent a move, waiting for the server's answer
+var _away_warned := false # told the player a move was played for them (server move clock)
+var _base_speed := 1.0    # Engine.time_scale outside hit-stops: Settings → Animation Speed, or replay speed
+var _replay_seek := -1    # replay: jump to this update once the current one has finished animating
+var _log_text: RichTextLabel   # the battle log (L)
+var _log_lines := 0
 var _over := {}           # mp:over from the server
 var _clock_left := 0.0
 var _post: ColorRect                # full-screen hit effects (shaders/post.gdshader)
@@ -138,7 +143,11 @@ func _ready() -> void:
 			"LV %d  ·  ONLINE" % int(opp.get("level", 1)))
 	_build_phase_bar()
 	_build_turn_box()
+	_build_log()
 	_play_music()
+	_emotes_muted = not Game.settings.get("rival_emotes", true)
+	_base_speed = float(Game.settings.get("anim_speed", 1.0))
+	Engine.time_scale = _base_speed
 
 	_build_post()
 	_arrow = AttackArrow.new()
@@ -199,6 +208,7 @@ func _make_leader_views() -> void:
 
 func _setup_online(start: Dictionary) -> void:
 	_online = true
+	Net.rematch_inbox.clear()
 	ai_sides = []
 	_match_id = str(start.get("matchId", ""))
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
@@ -216,6 +226,9 @@ func _setup_online(start: Dictionary) -> void:
 	_ui.clock = _label(22, GOLD, true)
 	_ui.clock.position = Vector2(150, 96)
 	$HUD/UI/TurnBox.add_child(_ui.clock)
+	_clock_left = float(start.get("clock", ONLINE_TURN_SECS))
+	if not start.get("resync", false):
+		Game.alert()
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	_after_events()
@@ -233,11 +246,16 @@ func _setup_replay(r: Dictionary) -> void:
 	var tag := _label(28, GOLD, true)
 	tag.text = "▶ REPLAY"
 	bar.add_child(tag)
+	_base_speed = 1.0
+	Engine.time_scale = 1.0
+	bar.add_child(UI.button("◀◀ TURN", func(): _seek_turn(-1), Vector2(140, 44), BLUE))
 	var speed := UI.button("SPEED 1×", func(): pass, Vector2(150, 44), BLUE)
 	speed.pressed.connect(func():
-		Engine.time_scale = {1.0: 2.0, 2.0: 4.0}.get(Engine.time_scale, 1.0)
-		speed.text = "SPEED %d×" % int(Engine.time_scale))
+		_base_speed = {1.0: 2.0, 2.0: 4.0}.get(_base_speed, 1.0)
+		Engine.time_scale = _base_speed
+		speed.text = "SPEED %d×" % int(_base_speed))
 	bar.add_child(speed)
+	bar.add_child(UI.button("TURN ▶▶", func(): _seek_turn(1), Vector2(140, 44), BLUE))
 	bar.add_child(UI.button("EXIT", func(): Game.go("profile"), Vector2(120, 44), RED))
 	ui.add_child(bar)
 	if not r.get("complete", true):
@@ -250,6 +268,9 @@ func _step_replay(delta: float) -> void:
 	if _playing or not _queue.is_empty() or _mode == "over":
 		return
 	var updates: Array = _replay.get("updates", [])
+	if _replay_seek >= 0:
+		_jump_to(_replay_seek)
+		_replay_seek = -1
 	if _replay_next >= updates.size():
 		if _mode != "over":
 			_on_net_event("mp:over", _over)   # a concede or disconnect ends without a game_over event
@@ -264,6 +285,202 @@ func _step_replay(delta: float) -> void:
 	_replay_wait = REPLAY_GAP
 	_on_net_event("mp:update", updates[_replay_next])
 	_replay_next += 1
+
+
+## The updates where a turn starts.
+func _turn_starts() -> Array:
+	var out: Array = []
+	var updates: Array = _replay.get("updates", [])
+	for i in updates.size():
+		if updates[i].get("events", []).any(func(e): return e.get("type") == "turn"):
+			out.append(i)
+	return out
+
+
+## ◀◀ goes back to the start of the turn before the one on screen, ▶▶ on to the next turn.
+func _seek_turn(dir: int) -> void:
+	if _mode == "over":
+		return
+	var starts := _turn_starts()
+	var here := _replay_next - 1 if _replay_seek < 0 else _replay_seek
+	var to := -1
+	if dir < 0:
+		for k in starts:
+			if k < here:
+				to = k
+		to = maxi(to, 0)
+	else:
+		for k in starts:
+			if k > here:
+				to = k
+				break
+	if to < 0:
+		UI.toast(overlay, "That's the last turn.", GOLD)
+		return
+	_replay_seek = to
+	_queue.clear()
+
+
+## Lay the board out as it was just before update `i`, then carry on playing from there.
+func _jump_to(i: int) -> void:
+	var updates: Array = _replay.get("updates", [])
+	var view: Dictionary = _replay.start.view if i == 0 else updates[i - 1].view
+	_cancel_interaction()
+	_clear_attack_line()
+	_hovered = null
+	for side in ["player", "opponent"]:
+		for v in hand[side]:
+			v.queue_free()
+		hand[side].clear()
+		for slot in field[side]:
+			field[side][slot].queue_free()
+		field[side].clear()
+	for side in leaders:
+		leaders[side].queue_free()
+	leaders.clear()
+	duel.load_view(view)
+	_make_leader_views()
+	counts = duel._counts()
+	_build_from_view()
+	_refresh_hud()
+	_replay_next = i
+	_replay_wait = 0.0
+	_log("⏩ Skipped to turn %d" % duel.turn, "")
+
+
+# ── Battle log ───────────────────────────────────────────────────────────────
+
+func _build_log() -> void:
+	var b := UI.button("LOG", _toggle_log, Vector2(100, 48), GOLD)
+	b.position = Vector2(560, 1004)
+	b.tooltip_text = "Battle log (L)"
+	ui.add_child(b)
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.98), GOLD, 2, 10))
+	p.position = Vector2(20, 250)
+	p.size = Vector2(560, 640)
+	p.visible = false
+	p.z_index = 40
+	var col := VBoxContainer.new()
+	p.add_child(col)
+	var head := _label(26, GOLD, true)
+	head.text = "BATTLE LOG"
+	col.add_child(head)
+	_log_text = RichTextLabel.new()
+	_log_text.bbcode_enabled = true
+	_log_text.scroll_following = true
+	_log_text.custom_minimum_size = Vector2(530, 580)
+	_log_text.add_theme_font_size_override("normal_font_size", 19)
+	_log_text.add_theme_font_size_override("bold_font_size", 19)
+	col.add_child(_log_text)
+	ui.add_child(p)
+	_ui.log = p
+
+
+func _toggle_log() -> void:
+	_ui.log.visible = not _ui.log.visible
+	Sfx.play("click")
+
+
+## A line in the battle log, coloured by whose it is ("player", "opponent" or "").
+func _log(text: String, side: String) -> void:
+	if _log_text == null:
+		return
+	var color := "#8fd3ff" if side == "player" else "#ff8a94" if side == "opponent" else "#f4d35e"
+	_log_text.append_text("[color=%s]%s[/color]\n" % [color, text.replace("[", "[lb]")])
+	_log_lines += 1
+	if _log_lines > 400:
+		_log_text.remove_paragraph(0)
+		_log_lines -= 1
+
+
+func _who(side: String) -> String:
+	return "You" if side == "player" else "Opponent"
+
+
+func _whose(side: String) -> String:
+	return "Your" if side == "player" else "Opponent's"
+
+
+func _cname(c) -> String:
+	if not c is Dictionary or not c.has("name") or c.get("face_down", false) and not c.has("attack"):
+		return "a face-down card"
+	return str(c.name)
+
+
+func _log_event(ev: Dictionary) -> void:
+	var side: String = str(ev.get("side", ""))
+	match ev.type:
+		"turn":
+			_log("── TURN %d · %s ──" % [int(ev.turn), "YOU" if side == "player" else "OPPONENT"], "")
+		"mulligan":
+			_log("%s redrew %d card(s)" % [_who(side), int(ev.get("count", 0))], side)
+		"summon":
+			if ev.card.get("face_down", false):
+				_log("%s set a card face down" % _who(side), side)
+			else:
+				_log("%s deployed %s" % [_who(side), _cname(ev.card)], side)
+		"set":
+			_log("%s set a card face down" % _who(side), side)
+		"hustle":
+			_log("%s played %s" % [_who(side), _cname(ev.card)], side)
+		"tribute":
+			_log("%s sacrificed %s for %s" % [_who(side), _cname(ev.card), _cname(ev.get("for"))], side)
+		"attack":
+			var target := "directly"
+			if int(ev.target) == DuelState.LEADER:
+				target = "the dormant leader"
+			elif int(ev.target) >= 0:
+				var tv: CardView = field[DuelState.other(side)].get(int(ev.target))
+				target = _cname(tv.card if tv and tv.face_up else {})
+			_log("%s attacked %s" % [_cname(ev.card), target], side)
+		"clash":
+			if int(ev.target) >= 0:
+				_log("   %d vs %d" % [int(ev.att), int(ev.def)], side)
+		"flip":
+			_log("%s was revealed" % _cname(ev.card), side)
+		"ambush":
+			_log("%s sprang %s!" % [_who(side), _cname(ev.card)], side)
+		"blocked":
+			_log("The attack was blocked", side)
+		"downed":
+			_log("%s went Down" % _cname(ev.card), side)
+		"ko":
+			_log("%s was KO'd" % _cname(ev.card), side)
+		"damage":
+			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side)
+		"heal":
+			_log("%s gained %d Morale (%d)" % [_who(side), int(ev.amount), int(ev.morale)], side)
+		"status":
+			_log("%s: %s" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper())], side)
+		"status_tick":
+			_log("%s: %s %d" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper()), int(ev.get("amount", 0))], side)
+		"bounce":
+			_log("%s went back to the hand" % _cname(ev.card), side)
+		"mill":
+			_log("%s was sent from the deck to the Gutter" % _cname(ev.card), side)
+		"recover":
+			_log("%s got %s back from the Gutter" % [_who(side), _cname(ev.card)], side)
+		"promote":
+			_log("%s promoted to %s" % [_cname(ev.get("from")), _cname(ev.card)], side)
+		"effect":
+			_log("%s: %s" % [_cname(ev.card), str(ev.get("text", ""))], side)
+		"stand":
+			_log("%s stood back up" % _cname(ev.card), side)
+		"discard":
+			_log("%s discarded %s" % [_who(side), _cname(ev.card)], side)
+		"position":
+			_log("%s switched to %s" % [_cname(ev.card), "DEF" if ev.card.get("position") == "def" else "ATK"], side)
+		"awaken":
+			_log("%s awakened!" % _cname(ev.card), side)
+		"leader_hit":
+			_log("%s leader took %d" % [_whose(side), int(ev.amount)], side)
+		"leader_down":
+			_log("%s leader %s fell" % [_whose(side), _cname(ev.card)], side)
+		"game_over":
+			_log("%s won!" % ("You" if ev.winner == "player" else "Your opponent"), str(ev.winner))
+		"notice":
+			_log(str(ev.text).capitalize(), "")
 
 
 # ── Emotes ───────────────────────────────────────────────────────────────────
@@ -388,7 +605,8 @@ func _on_net_event(name: String, data) -> void:
 		"mp:update":
 			duel.load_view(data.view)
 			_awaiting = false
-			_clock_left = ONLINE_TURN_SECS
+			_clock_left = float(data.get("clock", ONLINE_TURN_SECS))
+			_on_away(data.get("away", false))
 			_queue.append_array(data.events)
 			_pump()
 		"mp:over":
@@ -397,7 +615,8 @@ func _on_net_event(name: String, data) -> void:
 				_mode = "over"
 				_cancel_interaction()
 				var won: bool = data.get("result") == "win"
-				var why: String = {"concede": "CONCEDED", "disconnect": "DISCONNECTED"}.get(str(data.reason), "LEFT")
+				var why: String = {"concede": "CONCEDED", "disconnect": "DISCONNECTED", "afk": "WENT AWAY"}.get(str(data.reason), "LEFT")
+				_log("%s %s" % ["Your opponent" if won else "You", why.to_lower()], "opponent" if won else "player")
 				_sweep_banner(("OPPONENT " if won else "YOU ") + why, GOLD if won else RED)
 				await _wait(1.6)
 				_finish_match(won)
@@ -409,6 +628,20 @@ func _on_net_event(name: String, data) -> void:
 			else:
 				_hide_net_banner()
 				UI.toast(overlay, "Your opponent is back.", BLUE)
+
+
+## The server played a move for whoever has to act (they let their clock run out): from now on
+## they get a short clock, and lose if they keep not playing (backend/socket/onlineMatch.js).
+func _on_away(away: bool) -> void:
+	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
+	_ui.away = away
+	if not away:
+		_away_warned = false
+		return
+	if side == "player" and not _away_warned:
+		_away_warned = true
+		Game.alert()
+		UI.toast(overlay, "A move was played for you. Keep playing, or you'll lose for being away.", RED)
 
 
 ## Net calls this when the server (re)sends the whole match, e.g. after a reconnect.
@@ -480,10 +713,10 @@ func _process(delta: float) -> void:
 		while not Net.inbox.is_empty():
 			var msg: Array = Net.inbox.pop_front()
 			_on_net_event(msg[0], msg[1])
-		# Whoever has to act has ONLINE_TURN_SECS before the server plays a safe move for them
+		# Whoever has to act has the server's clock (data.clock) before it plays a safe move for them
 		if duel.winner == "" and _mode != "over" and _ui.has("clock"):
-			_clock_left = maxf(0.0, _clock_left - delta)
-			_ui.clock.text = "⏱ %d" % ceili(_clock_left)
+			_clock_left = maxf(0.0, _clock_left - delta / maxf(Engine.time_scale, 0.01))   # real seconds
+			_ui.clock.text = "⏱ %d%s" % [ceili(_clock_left), "  AWAY" if _ui.get("away", false) else ""]
 			_ui.clock.label_settings.font_color = RED if _clock_left < 15.0 else GOLD
 
 
@@ -675,6 +908,7 @@ func _track(ev: Dictionary) -> void:
 
 func _play(ev: Dictionary) -> void:
 	_track(ev)
+	_log_event(ev)
 	match ev.type:
 		"draw":
 			await _ev_draw(ev)
@@ -813,6 +1047,8 @@ func _ev_turn(ev: Dictionary) -> void:
 	_ui.turn_who.text = "YOUR TURN" if mine else "OPPONENT'S TURN"
 	_ui.turn_who.label_settings.font_color = BLUE if mine else RED
 	Sfx.play("turn", 1.0 if mine else 0.84)
+	if mine and _replay.is_empty():
+		Game.alert(false)
 	await _sweep_banner("YOUR TURN" if mine else "OPPONENT'S TURN", BLUE if mine else RED)
 
 
@@ -1492,6 +1728,7 @@ func _finish_match(won: bool) -> void:
 			await get_tree().process_frame
 			waited += get_process_delta_time()
 		Game.match_result.online = true
+		Game.match_result.mode = str(Game.duel_setup.get("start", {}).get("mode", ""))
 		Game.match_result.match_id = ""
 		Game.match_result.reason = str(_over.get("reason", "morale"))
 		Game.match_result.rewards = _over.get("rewards")
@@ -1595,7 +1832,7 @@ func _wait(seconds: float) -> void:
 func _hit_stop(seconds: float) -> void:
 	Engine.time_scale = 0.08
 	await get_tree().create_timer(seconds, true, false, true).timeout
-	Engine.time_scale = 1.0
+	Engine.time_scale = _base_speed
 
 
 func _impact(pos: Vector2, heavy: bool) -> void:
@@ -1917,7 +2154,7 @@ func _finisher(panel: Control) -> void:
 	_screen_flash(Color.WHITE, 0.6)
 	Engine.time_scale = 0.3
 	await get_tree().create_timer(0.7, true, false, true).timeout
-	Engine.time_scale = 1.0
+	Engine.time_scale = _base_speed
 
 
 # ── Text, banners and callouts ───────────────────────────────────────────────
@@ -2586,6 +2823,9 @@ func _clear_highlights() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_L:
+		_toggle_log()
+		return
 	if not _replay.is_empty() and not event is InputEventMouseMotion:
 		return   # watching a replay: hovering shows cards, nothing else
 	if event is InputEventMouseMotion:
@@ -2610,6 +2850,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					_cancel_and_refresh()
 				else:
 					_toggle_menu()
+			KEY_E:
+				if _online and not str(Game.duel_setup.get("start", {}).get("mode", "")).begins_with("cpu"):
+					_toggle_emote_menu()
 			KEY_F11:
 				var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)

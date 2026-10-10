@@ -14,7 +14,10 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const FROM = process.env.SMTP_FROM || '"AlleyWay Brawlers" <noreply@alleywaybrwlers.com>';
+// Send from the SMTP account's own address unless SMTP_FROM says otherwise: mail "from" a domain
+// the mail server doesn't own is what spam filters catch first.
+const FROM = process.env.SMTP_FROM
+    || (process.env.SMTP_USER ? `"AlleyWay Brawlers" <${process.env.SMTP_USER}>` : '"AlleyWay Brawlers" <noreply@alleywaybrawlers.duckdns.org>');
 const DEFAULT_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
 async function sendVerificationEmail(email, token, baseUrl = DEFAULT_BASE_URL) {

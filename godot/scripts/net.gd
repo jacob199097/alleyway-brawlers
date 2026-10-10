@@ -13,6 +13,8 @@ var is_open := false
 ## nothing is lost while the screen is still loading.
 var inbox: Array = []
 var rps_inbox: Array = []   # Scissors Paper Rock messages for screens/rps.gd
+var rematch_inbox: Array = []   # rematch messages for screens/post_match.gd (may arrive before it opens)
+var _rejoin := false        # ask the server for a match still in progress once connected
 var _ws := WebSocketPeer.new()
 var _connecting := false
 var _want := false
@@ -47,6 +49,14 @@ func disconnect_from_server() -> void:
 	if is_open:
 		is_open = false
 		closed.emit()
+
+
+## Back in a match that's still running (the game was closed or crashed mid-match): the server
+## keeps the seat for 45 seconds, and answers mp:resync with mp:start (which opens the duel) or
+## mp:none. The main menu calls this.
+func rejoin() -> void:
+	if not send("mp:resync"):
+		_rejoin = true
 
 
 func send(name: String, data := {}) -> bool:
@@ -98,6 +108,9 @@ func _handle(msg: String) -> void:
 				is_open = true
 				_retry_delay = 1.0
 				opened.emit()
+				if _rejoin:
+					_rejoin = false
+					send("mp:resync")
 			elif kind == "4":
 				push_warning("Realtime login refused: " + msg.substr(2))
 				_want = false
@@ -136,16 +149,23 @@ func _on_global_event(name: String, data) -> void:
 		"mp:rps", "mp:rps_result", "mp:rps_choose", "mp:rps_decided", "mp:rps_cancel":
 			rps_inbox.append([name, data])
 			var on_rps: bool = get_tree().current_scene != null and get_tree().current_scene.has_method("on_rps")
+			if name == "mp:rps":
+				Game.alert()
 			if name == "mp:rps" and not on_rps:
 				Game.duel_setup = {"online_rps": true}
 				Game.go("rps")
+		"mp:rematch_offer", "mp:rematch_sent", "mp:rematch_declined":
+			rematch_inbox.append([name, data])
 		"mp:start":
 			inbox.clear()
 			rps_inbox.clear()
+			rematch_inbox.clear()
 			Game.duel_setup = {"online": true, "start": data}
 			if get_tree().current_scene and get_tree().current_scene.has_method("on_online_start"):
 				get_tree().current_scene.on_online_start(data)
 			else:
+				if data is Dictionary and data.get("resync", false):
+					_toast("Rejoining your match…", UI.GOLD)
 				Game.go("duel")
 		"mp:challenge":
 			_show_challenge(data)
@@ -164,6 +184,7 @@ func _show_challenge(data: Dictionary) -> void:
 	if not (scene is Control) or scene.name == "Duel":
 		send("mp:decline", {"fromPlayerId": data.fromPlayerId})
 		return
+	Game.alert(false)
 	Sfx.play("ambush", 1.2)
 	UI.dialog(scene, "⚔  CHALLENGE!", "%s wants to brawl. Use your active deck?" % data.get("fromUsername", "A friend"), [
 		["ACCEPT", func(): send("mp:accept", {"fromPlayerId": data.fromPlayerId}), UI.GREEN],

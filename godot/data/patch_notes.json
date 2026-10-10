@@ -1,0 +1,25 @@
+[
+    {
+        "version": "0.6.1",
+        "notes": [
+            "Rematch: after a match against a player, either of you can offer a rematch from the results screen.",
+            "Rejoin: if the game closes mid-match, start it again within 45 seconds to carry on where you left off.",
+            "Turn alerts: the game flashes in the taskbar, with a sound, when it's your move and the game isn't in front (Settings → Gameplay).",
+            "Away players: if your opponent stops playing, their moves get a 15-second clock, and they lose if they keep not playing.",
+            "Battle log: press L (or the LOG button) in a duel to see everything that has happened.",
+            "Settings → Gameplay: animation speed, turn alerts, rival emotes, and a list of the keyboard shortcuts. E opens emotes.",
+            "Deck Builder: filter by keyword, role and Authority; AUTO-FILL tops a deck up to 40; share decks with deck codes.",
+            "Replays: skip back and forward a turn at a time.",
+            "Friends: see who's in a match, and decline friend requests.",
+            "Login: resend your activation email if it didn't arrive."
+        ]
+    },
+    {
+        "version": "0.6.0",
+        "notes": [
+            "Scissors Paper Rock decides who goes first against players.",
+            "CPU difficulty levels, emotes, match replays and in-game updates.",
+            "A character that stands back up can switch position straight away."
+        ]
+    }
+]

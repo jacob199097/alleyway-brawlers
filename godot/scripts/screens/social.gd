@@ -56,12 +56,14 @@ func _load() -> void:
 
 func _row(f: Dictionary) -> Control:
 	var pending: bool = f.get("status") == "pending"
+	var incoming: bool = pending and f.get("incoming", true)
+	var in_match: bool = f.get("in_match", false)
 	var p := UI.panel(UI.GOLD if pending else Color("333355"), Color("1a1a2e"))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	p.add_child(row)
 	var dot := ColorRect.new()
-	dot.color = UI.GREEN if f.get("is_online", false) else Color("555555")
+	dot.color = UI.GOLD if in_match else UI.GREEN if f.get("is_online", false) else Color("555555")
 	dot.custom_minimum_size = Vector2(16, 16)
 	var dot_box := CenterContainer.new()
 	dot_box.add_child(dot)
@@ -72,15 +74,19 @@ func _row(f: Dictionary) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)
 	info.add_child(UI.label(str(f.get("friend_username", "?")), 28, Color.WHITE, true))
-	info.add_child(UI.label("(Pending)" if pending else "Lv.%d  ·  %s" % [int(f.get("level", 1)), "Online" if f.get("is_online", false) else "Offline"],
-		18, UI.GOLD if pending else UI.MUTED))
-	if pending:
+	var status := "In a match" if in_match else "Online" if f.get("is_online", false) else "Offline"
+	info.add_child(UI.label(("Wants to be your friend" if incoming else "Request sent") if pending else "Lv.%d  ·  %s" % [int(f.get("level", 1)), status],
+		18, UI.GOLD if pending or in_match else UI.MUTED))
+	if incoming:
 		row.add_child(UI.button("✓ ACCEPT", func():
 			var r := await Api.request("PATCH", "/api/social/friends/%s/accept" % f.friendship_id)
 			if r.ok:
 				_load()
 			else:
 				UI.toast(self, r.error, UI.RED), Vector2(200, 56), UI.GREEN))
+		row.add_child(UI.button("✕ DECLINE", _remove.bind(f), Vector2(200, 56), UI.RED))
+	elif pending:
+		row.add_child(UI.button("CANCEL", _remove.bind(f), Vector2(200, 56)))
 	else:
 		var online: bool = f.get("is_online", false)
 		var vs := UI.button("⚔ CHALLENGE", func():
@@ -88,11 +94,25 @@ func _row(f: Dictionary) -> Control:
 				UI.toast(self, "Challenge sent to %s — waiting for them to accept." % f.friend_username, UI.GOLD)
 			else:
 				UI.toast(self, "Not connected to the server.", UI.RED), Vector2(220, 56), UI.RED)
-		vs.disabled = not online
-		vs.tooltip_text = "" if online else "%s is offline" % f.friend_username
+		vs.disabled = not online or in_match
+		vs.tooltip_text = "%s is offline" % f.friend_username if not online else "%s is in a match" % f.friend_username if in_match else ""
 		row.add_child(vs)
 		row.add_child(UI.button("💬 CHAT", _open_chat.bind(f), Vector2(180, 56)))
+		var rm := UI.button("✕", func():
+			UI.dialog(self, "REMOVE FRIEND?", "Remove %s from your friends?" % f.friend_username,
+				[["REMOVE", _remove.bind(f), UI.RED], ["CANCEL", func(): pass]]), Vector2(64, 56), UI.RED)
+		rm.tooltip_text = "Remove friend"
+		row.add_child(rm)
 	return p
+
+
+## Decline or cancel a request, or remove a friend.
+func _remove(f: Dictionary) -> void:
+	var r := await Api.request("DELETE", "/api/social/friends/%s" % f.friendship_id)
+	if r.ok:
+		_load()
+	else:
+		UI.toast(self, r.error, UI.RED)
 
 
 func _add_friend() -> void:

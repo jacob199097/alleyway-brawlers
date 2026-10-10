@@ -87,6 +87,32 @@ router.get('/verify-email', async (req, res) => {
     }
 });
 
+// ── POST /api/auth/resend-verification ───────────────────────────────────────
+// A new activation link for an account that isn't verified yet. Same answer whether or not
+// the email is registered; at most one email a minute per address.
+const _resent = new Map();   // email → time of the last resend
+router.post('/resend-verification', async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'email is required.' });
+    const ok = { message: "If that account still needs activating, a new link is on its way. Check your spam folder too." };
+    const last = _resent.get(email) || 0;
+    if (Date.now() - last < 60_000) return res.status(429).json({ error: 'Wait a minute before asking for another email.' });
+    _resent.set(email, Date.now());
+    try {
+        const token = uuidv4();
+        const { rows } = await pool.query(
+            `UPDATE players SET email_token = $1 WHERE email = $2 AND email_verified = false RETURNING id`,
+            [token, email]);
+        if (!rows.length) return res.json(ok);
+        const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+        await sendVerificationEmail(email, token, baseUrl);
+        res.json(ok);
+    } catch (err) {
+        console.error('[Auth] Resend verification:', err.message);
+        res.status(500).json({ error: 'Could not send the email. Try again later.' });
+    }
+});
+
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;

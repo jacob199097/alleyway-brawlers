@@ -100,17 +100,30 @@ func _do_submit() -> void:
 	_submit.text = "REGISTER" if _register else "LOGIN"
 	if not r.ok:
 		_error.text = r.error
+		if r.data is Dictionary and r.data.get("code") == "email_unverified":
+			UI.dialog(self, "ACTIVATE YOUR ACCOUNT",
+				"Click the link in the email we sent to %s. Can't find it? Check your spam or junk folder, or get a new one." % email,
+				[["SEND AGAIN", _resend.bind(email), UI.GREEN], ["CLOSE", func(): pass]], UI.BLUE)
 		return
 	if _register:
 		Game.last_email = email
 		_toggle_mode()
 		_password.text = ""
 		UI.dialog(self, "EMAIL VERIFICATION SENT",
-			"Check your inbox to confirm your account. You can log in once your email is verified.",
-			[["CLOSE", func(): pass]], UI.BLUE)
+			"Check your inbox to confirm your account (if it isn't there, look in spam or junk). You can log in once your email is verified.",
+			[["CLOSE", func(): pass], ["SEND AGAIN", _resend.bind(email)]], UI.BLUE)
 		return
 	Game.sign_in(str(r.data.token), r.data.player, email)
 	Game.go("main_menu" if r.data.player.get("chosen_clan") else "clan_select")
+
+
+## A new activation link (backend/routes/auth.js, resend-verification).
+func _resend(email: String) -> void:
+	var r := await Api.request("POST", "/api/auth/resend-verification", {"email": email})
+	if r.ok:
+		UI.toast(self, "New activation email sent. Check spam too.", UI.GREEN)
+	else:
+		_error.text = r.error
 
 
 func _forgot() -> void:

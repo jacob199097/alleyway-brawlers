@@ -53,7 +53,8 @@ function dpath(a,b,p=""){if(JSON.stringify(a)===JSON.stringify(b))return null;if
     svc.register(b, { playerId: 'bob' });
     await a.handlers['mp:queue']();
     await b.handlers['mp:queue']();
-    for (let i = 0; i < 50; i++) await new Promise(r => setImmediate(r));
+    // Emote as soon as it starts: with instant timers nobody acting soon loses for being away
+    for (let i = 0; i < 50 && !a.got.some(([e]) => e === 'mp:start'); i++) await new Promise(r => setImmediate(r));
     const start = a.got.find(([e]) => e === 'mp:start');
     if (start) {
         const id = start[1].matchId;

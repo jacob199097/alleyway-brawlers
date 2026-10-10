@@ -2,10 +2,16 @@ extends Screen
 ## Deck builder: your collection on the left, the deck on the right.
 ## Click (or drag) a card to add it, click (or drag back) a deck row to remove one copy.
 ## 40 cards, max 3 copies, plus an optional leader. Right-click any card to zoom.
-## The server validates and saves the deck.
+## Filters: search, clan, type/role, keyword and Authority. AUTO-FILL tops the deck up to 40,
+## and deck codes (AWB1:...) share a deck as text. The server validates and saves the deck.
 
 const TILE := Vector2(150, 212)
 const COLS := 7
+const Keywords := preload("res://scripts/keywords.gd")
+const CODE_PREFIX := "AWB1:"
+const KINDS := [["all", "ANY TYPE"], ["gang_member", "ALL UNITS"], ["striver", "STRIVERS"], ["brawler", "BRAWLERS"],
+	["heavy", "HEAVIES"], ["effect", "ALL EFFECTS"], ["hustle", "HUSTLES"], ["ambush", "AMBUSHES"]]
+const COSTS := [["all", "ANY AUTHORITY"], ["1-2", "AUTHORITY 1–2"], ["3-4", "AUTHORITY 3–4"], ["5-6", "AUTHORITY 5–6"], ["7-99", "AUTHORITY 7+"]]
 
 var _inventory: Array = []
 var _decks: Array = []
@@ -17,6 +23,8 @@ var _dirty := false
 var _filter_text := ""
 var _faction := "all"
 var _kind := "all"
+var _keyword := "all"
+var _cost := "all"
 
 var _grid: GridContainer
 var _list: VBoxContainer
@@ -89,10 +97,14 @@ func _build_header() -> void:
 	for f in [["all", "ALL"], ["lion_pride", "LIONS"]]:
 		bar.add_child(_chip("faction", f[0], f[1]))
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(16, 0)
+	gap.custom_minimum_size = Vector2(8, 0)
 	bar.add_child(gap)
-	for k in [["gang_member", "UNITS"], ["effect", "EFFECTS"], ["all", "ANY"]]:
-		bar.add_child(_chip("kind", k[0], k[1]))
+	bar.add_child(_dropdown(KINDS, func(v): _kind = v))
+	var kws := [["all", "ANY KEYWORD"]]
+	for k in Keywords.LIST:
+		kws.append([k, k])
+	bar.add_child(_dropdown(kws, func(v): _keyword = v))
+	bar.add_child(_dropdown(COSTS, func(v): _cost = v))
 	_sync_chips()
 
 	var sel := HBoxContainer.new()
@@ -126,6 +138,22 @@ func _chip(group: String, value: String, text: String) -> Button:
 		_render_collection())
 	_chips["%s:%s" % [group, value]] = b
 	return b
+
+
+## A filter dropdown: options [[value, label], ...]; assign(value) stores it, then the grid redraws.
+func _dropdown(options: Array, assign: Callable) -> OptionButton:
+	var o := OptionButton.new()
+	o.custom_minimum_size = Vector2(186, 52)
+	o.add_theme_font_size_override("font_size", 17)
+	o.fit_to_longest_item = false
+	for opt in options:
+		o.add_item(opt[1])
+	o.get_popup().add_theme_font_size_override("font_size", 20)
+	o.item_selected.connect(func(i: int):
+		Sfx.play("click")
+		assign.call(options[i][0])
+		_render_collection())
+	return o
 
 
 func _sync_chips() -> void:
@@ -173,6 +201,22 @@ func _build_deck_panel() -> void:
 	_list.add_theme_constant_override("separation", 6)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
+	var tools := HBoxContainer.new()
+	tools.add_theme_constant_override("separation", 10)
+	col.add_child(tools)
+	var fill := UI.button("AUTO-FILL", _auto_fill, Vector2(160, 52), UI.GREEN)
+	fill.tooltip_text = "Top the deck up to 40 with cards from your collection"
+	tools.add_child(fill)
+	tools.add_child(UI.button("CLEAR", func():
+		if _deck.is_empty():
+			return
+		UI.dialog(self, "CLEAR THE DECK?", "Take every card out of this deck? (Nothing is saved until you press SAVE.)",
+			[["CLEAR", func():
+				_deck.clear()
+				_dirty = true
+				_render_all(), UI.RED], ["CANCEL", func(): pass]]), Vector2(120, 52), UI.RED))
+	tools.add_child(UI.button("COPY CODE", _copy_code, Vector2(170, 52)))
+	tools.add_child(UI.button("PASTE CODE", _paste_code, Vector2(170, 52)))
 	# Drop a collection card here to add it
 	p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.get("source") == "collection",
 		func(_at, d): _add(d.item))
@@ -238,6 +282,132 @@ func _remove(card_id) -> void:
 			Sfx.play("flip")
 			break
 	_render_all()
+
+
+# ── Auto-fill and deck codes ─────────────────────────────────────────────────
+
+func _item_for(card_id) -> Dictionary:
+	for i in _inventory:
+		if i.id == card_id:
+			return i
+	return {}
+
+
+## Tops the deck up to 40: characters first (about 28), strongest for their Authority, then
+## Hustles and Ambushes, then anything left. Promoted forms are skipped: they wait in the
+## Hideout by themselves.
+func _auto_fill() -> void:
+	if _deck_id == null:
+		UI.toast(self, "Make a deck first (+ NEW)", UI.RED)
+		return
+	if _deck.size() >= 40:
+		UI.toast(self, "The deck is already full", UI.GOLD)
+		return
+	var pool := _inventory.filter(func(i):
+		return i.get("card_type") != "leader" and not CardDB.get_card(str(i.get("art_url", ""))).is_empty() \
+			and int(i.get("level", 1)) <= 1)
+	var units := pool.filter(func(i): return i.get("card_type") == "gang_member")
+	var effects := pool.filter(func(i): return i.get("card_type") != "gang_member")
+	var value := func(i): return float(int(i.get("attack", 0)) + int(i.get("defense", 0))) / maxf(1.0, float(i.get("authority", 1))) + 300.0 * int(i.get("rarity", 1))
+	units.sort_custom(func(a, b): return value.call(a) > value.call(b))
+	effects.sort_custom(func(a, b): return int(a.get("rarity", 1)) > int(b.get("rarity", 1)))
+	var before := _deck.size()
+	var unit_count := _deck.filter(func(c): return _item_for(c.cardId).get("card_type") == "gang_member").size()
+	for item in units:
+		while unit_count < 28 and _deck.size() < 40 and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
+			_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
+			unit_count += 1
+	for item in effects + units:
+		while _deck.size() < 40 and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
+			_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
+	var added := _deck.size() - before
+	if added == 0:
+		UI.toast(self, "No more cards in your collection to add", UI.RED)
+		return
+	_dirty = true
+	Sfx.play("draw", 1.2)
+	_render_all()
+	UI.toast(self, "Added %d card(s)%s" % [added, "" if _deck.size() == 40 else " — your collection ran out at %d/40" % _deck.size()],
+		UI.GREEN if _deck.size() == 40 else UI.GOLD)
+
+
+## The deck as text: AWB1:<base64 of "leader|card*copies,card*copies,...">, by card ID, so a code
+## works for anyone who owns the cards.
+func _deck_code() -> String:
+	var counts := {}
+	var order: Array = []
+	for c in _deck:
+		var art := str(c.get("art_url", ""))
+		if not counts.has(art):
+			order.append(art)
+		counts[art] = counts.get(art, 0) + 1
+	var parts: Array = order.map(func(a): return "%s*%d" % [a, counts[a]])
+	var leader := str(_leader.get("art_url", "")) if _leader is Dictionary else ""
+	return CODE_PREFIX + Marshalls.utf8_to_base64("%s|%s" % [leader, ",".join(parts)])
+
+
+func _copy_code() -> void:
+	if _deck.is_empty():
+		UI.toast(self, "The deck is empty", UI.RED)
+		return
+	DisplayServer.clipboard_set(_deck_code())
+	UI.toast(self, "Deck code copied. Paste it to a friend!", UI.GREEN)
+
+
+func _paste_code() -> void:
+	if _deck_id == null:
+		UI.toast(self, "Make a deck first (+ NEW)", UI.RED)
+		return
+	var edit := LineEdit.new()
+	edit.placeholder_text = "AWB1:…"
+	edit.custom_minimum_size = Vector2(700, 56)
+	edit.text = DisplayServer.clipboard_get().strip_edges() if DisplayServer.clipboard_get().strip_edges().begins_with(CODE_PREFIX) else ""
+	var dlg := UI.dialog(self, "PASTE A DECK CODE", "This replaces the cards in \"%s\" (nothing is saved until you press SAVE)." % _deck_name.text.trim_suffix("  ★"),
+		[["LOAD", func(): _load_code(edit.text.strip_edges()), UI.GREEN], ["CANCEL", func(): pass]])
+	var col: VBoxContainer = dlg.get_child(0).get_child(0)
+	col.add_child(edit)
+	col.move_child(edit, 2)
+	edit.grab_focus()
+
+
+func _load_code(code: String) -> void:
+	if not code.begins_with(CODE_PREFIX):
+		UI.toast(self, "That isn't a deck code", UI.RED)
+		return
+	var text := Marshalls.base64_to_utf8(code.trim_prefix(CODE_PREFIX))
+	var halves := text.split("|")
+	if halves.size() != 2:
+		UI.toast(self, "That deck code is damaged", UI.RED)
+		return
+	var by_art := {}
+	for i in _inventory:
+		by_art[str(i.get("art_url", ""))] = i
+	var missing: Array = []
+	var deck: Array = []
+	for part in halves[1].split(",", false):
+		var bits := part.split("*")
+		var want := clampi(int(bits[1]) if bits.size() > 1 else 1, 1, 3)
+		var item: Dictionary = by_art.get(bits[0], {})
+		var have := mini(want, int(item.get("quantity", 0)))
+		for n in have:
+			deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
+		if have < want:
+			var name := str(item.get("name", CardDB.get_card(bits[0]).get("name", bits[0])))
+			missing.append("%s ×%d" % [name, want - have])
+	_deck = deck.slice(0, 40)
+	var leader: Dictionary = by_art.get(halves[0], {})
+	if halves[0] != "":
+		if leader.get("card_type") == "leader":
+			_leader = leader
+		else:
+			missing.append("%s (leader)" % CardDB.get_card(halves[0]).get("name", halves[0]))
+	_dirty = true
+	_render_all()
+	if missing.is_empty():
+		UI.toast(self, "Deck loaded (%d cards)" % _deck.size(), UI.GREEN)
+	else:
+		UI.dialog(self, "DECK LOADED — SOME CARDS MISSING", "You don't own enough of:\n" + "\n".join(missing) \
+			+ "\n\nThe deck has %d/40. AUTO-FILL can top it up." % _deck.size(), [["OK", func(): pass]])
 
 
 func _save(after := Callable()) -> void:
@@ -328,10 +498,28 @@ func _matches(item: Dictionary) -> bool:
 		return false
 	if _faction != "all" and item.get("clan") != _faction:
 		return false
-	if _kind == "gang_member" and item.get("card_type") != "gang_member":
-		return false
-	if _kind == "effect" and item.get("card_type") == "gang_member":
-		return false
+	match _kind:
+		"gang_member":
+			if item.get("card_type") != "gang_member":
+				return false
+		"effect":
+			if item.get("card_type") == "gang_member":
+				return false
+		"striver", "brawler", "heavy":
+			if item.get("card_type") != "gang_member" or str(item.get("subtype", "brawler")) != _kind:
+				return false
+		"hustle", "ambush":
+			if item.get("card_type") != _kind:
+				return false
+	if _cost != "all":
+		var r := _cost.split("-")
+		var a := int(item.get("authority", 0))
+		if a < int(r[0]) or a > int(r[1]):
+			return false
+	if _keyword != "all":
+		var text := str(item.get("effect_text", "")) + " " + str(CardDB.get_card(str(item.get("art_url", ""))).get("effectText", ""))
+		if not _keyword in text.to_upper():
+			return false
 	if _filter_text != "":
 		var hay := "%s %s %s" % [item.get("name", ""), item.get("subtype", ""), item.get("card_type", "")]
 		return _filter_text in hay.to_lower()

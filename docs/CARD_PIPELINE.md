@@ -71,6 +71,7 @@ downloads the patch (a few hundred KB), checks it and restarts into it.
 
 1. Raise `config/version` in `godot/project.godot` and `latest` in `shared/game_version.json` to the
    same number. Leave `minimum` and `patchBase` alone, unless old versions must stop playing online.
+   Add what changed to the top of `godot/data/patch_notes.json`: players see it once ("What's new").
 2. `node tools/make_patch.mjs <Godot console exe>` writes `builds/AlleywayBrawlers-<version>-patch.pck`.
 3. Commit and push; copy the patch into `downloads/` on the server, then pull and restart there:
 

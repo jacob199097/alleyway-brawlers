@@ -106,6 +106,7 @@ const online = createOnlineService(io, {
     recordDailyWin,
     saveReplay,
 });
+app.locals.online = online;   // routes/social.js: which friends are in a match
 
 // ── Socket connections ────────────────────────────────────────────────────────
 io.on('connection', (socket) => {

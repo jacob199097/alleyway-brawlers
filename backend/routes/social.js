@@ -12,6 +12,7 @@ router.get('/friends', requireAuth, async (req, res) => {
                 f.id AS friendship_id,
                 f.status,
                 f.created_at,
+                f.requester_id,
                 CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END AS friend_id,
                 CASE WHEN f.requester_id = $1 THEN a.username     ELSE r.username     END AS friend_username,
                 CASE WHEN f.requester_id = $1 THEN a.avatar_url   ELSE r.avatar_url   END AS friend_avatar,
@@ -25,6 +26,13 @@ router.get('/friends', requireAuth, async (req, res) => {
              ORDER BY f.status, friend_username`,
             [req.playerId]
         );
+        // Who's in a match right now (set in server.js; the realtime service knows)
+        const online = req.app.locals.online;
+        for (const r of rows) {
+            r.incoming = r.status === 'pending' && r.requester_id !== req.playerId;
+            r.in_match = !!(r.is_online && online?.isInMatch(r.friend_id));
+            delete r.requester_id;
+        }
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
