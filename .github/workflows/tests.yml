@@ -29,6 +29,8 @@ jobs:
         run: node backend/socket/replay.test.cjs
       - name: Spectators
         run: node backend/socket/spectate.test.cjs
+      - name: Card Forge passives do what their text says
+        run: node shared/duel/passives.test.mjs
 
   database:
     runs-on: ubuntu-latest

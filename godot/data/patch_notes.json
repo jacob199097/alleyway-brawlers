@@ -3,7 +3,8 @@
         "version": "0.7.1",
         "notes": [
             "Cards can now need several Downs or KOs before their effect happens, for example \"After this card Downs 2 characters: PROMOTE this card.\" The count builds up while the card stays on the field.",
-            "Clan names in card text, like NEBULA or MILITIA, are shown in their clan's colour."
+            "Clan names in card text, like NEBULA or MILITIA, are shown in their clan's colour.",
+            "New always-on card abilities: Guard (must be attacked first), attacks twice each turn, PIERCE on every attack, can't be targeted by your opponent's effects, immune to statuses, can't be Downed while you have another character, auras that weaken your opponent's characters, and cards that make your other cards cheaper (the lower cost shows in green on the cards in your hand)."
         ]
     },
     {

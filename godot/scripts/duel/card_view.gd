@@ -25,6 +25,7 @@ var show_badge := false: set = set_show_badge
 var glow := 0.0: set = set_glow
 var badge_text := "": set = set_badge_text   # replaces the ATK/DEF badge (e.g. a leader's Influence)
 var statuses: Array = []: set = set_statuses  # keyword statuses, e.g. ["poison", "stasis"]
+var cost_now := -1: set = set_cost_now        # a lowered Authority cost, shown over the printed one (-1: none)
 var glow_color := Color("f4d35e")
 var home := Vector2.ZERO
 var home_rot := 0.0
@@ -347,6 +348,13 @@ func _fit(s: Sprite2D) -> void:
 		s.scale = SIZE / s.texture.get_size()
 
 
+func set_cost_now(v: int) -> void:
+	if v == cost_now:
+		return
+	cost_now = v
+	_status_layer.queue_redraw()
+
+
 func set_statuses(v: Array) -> void:
 	statuses = v.duplicate()
 	_status_layer.queue_redraw()
@@ -398,9 +406,17 @@ func _make_emitter(kind: String) -> CPUParticles2D:
 
 
 func _draw_statuses() -> void:
-	if statuses.is_empty() or busy:
+	if busy:
 		return
 	var r := Rect2(-SIZE / 2, SIZE)
+	if cost_now >= 0 and face_up:
+		# The lowered cost in a green coin over the printed Authority (top-left corner)
+		var at := r.position + Vector2(SIZE.x * 0.1, SIZE.y * 0.07)
+		_status_layer.draw_circle(at, 13.0, Color(0.06, 0.32, 0.12, 0.95))
+		_status_layer.draw_arc(at, 13.0, 0.0, TAU, 24, Color(0.45, 1.0, 0.5), 2.0, true)
+		_status_layer.draw_string(ThemeDB.fallback_font, at + Vector2(-13, 6), str(cost_now), HORIZONTAL_ALIGNMENT_CENTER, 26, 17, Color.WHITE)
+	if statuses.is_empty():
+		return
 	var t := Time.get_ticks_msec() / 1000.0
 	var L := _status_layer
 	if statuses.has("burn"):

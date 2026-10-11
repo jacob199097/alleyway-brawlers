@@ -3225,6 +3225,9 @@ func _player_ready() -> void:
 	if duel.active != "player":
 		return
 	_mode = "idle"
+	for v in hand.player:   # cards a passive makes cheaper show their new cost
+		var cost: int = duel.cost_of("player", v.card)
+		v.cost_now = cost if cost < int(v.card.get("authority", 0)) else -1
 	if duel.can_deploy_now("player"):
 		for v in hand.player:
 			if _playable(v.card):
@@ -3542,8 +3545,8 @@ func _open_hand_menu(v: CardView) -> void:
 	var s: Dictionary = duel.sides.player
 	var opts: Array = []
 	var reason := ""
-	if s.authority < int(c.get("authority", 0)):
-		reason = "Needs %d Authority (you have %d)" % [c.authority, s.authority]
+	if s.authority < duel.cost_of("player", c):
+		reason = "Needs %d Authority (you have %d)" % [duel.cost_of("player", c), s.authority]
 	match c.get("cardType", ""):
 		"gang_member":
 			var ok := _playable(c)

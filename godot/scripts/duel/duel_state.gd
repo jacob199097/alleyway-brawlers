@@ -26,6 +26,8 @@ const DIRECT := -1               # attack target: the opponent's morale
 const NO_SLOT := -10             # effects of a card that isn't on the field (a Hustle, a sprung Ambush)
 ## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
 const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
+## What an "immune" passive keeps off a card
+const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -184,7 +186,7 @@ static func needs_tribute(c) -> bool:
 func can_summon(side: String, c: Dictionary, slot: int, tribute := -1) -> bool:
 	if not can_deploy_now(side) or c.get("cardType") != "gang_member":
 		return false
-	if not slot in FRONT or sides[side].authority < c.authority:
+	if not slot in FRONT or sides[side].authority < cost_of(side, c):
 		return false
 	if needs_tribute(c):
 		var t = card_at(side, tribute) if tribute in FRONT else null
@@ -205,7 +207,7 @@ func can_set(side: String, c: Dictionary, slot: int) -> bool:
 		return false
 	if not slot in BACK or sides[side].field[slot] != null:
 		return false
-	return sides[side].authority >= c.authority
+	return sides[side].authority >= cost_of(side, c)
 
 
 func hustle_ready(side: String, c: Dictionary) -> bool:
@@ -219,7 +221,42 @@ func hustle_ready(side: String, c: Dictionary) -> bool:
 
 func can_hustle(side: String, c: Dictionary) -> bool:
 	return can_deploy_now(side) and c.get("cardType") == "hustle" \
-		and sides[side].authority >= c.authority and hustle_ready(side, c)
+		and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)
+
+
+## What a card in hand costs to play: its Authority, less any "cost_down" passives on the field.
+func cost_of(side: String, c: Dictionary) -> int:
+	var off := 0
+	var s: Dictionary = sides[side]
+	var sources: Array = []
+	for x in characters(side):
+		if not x.card.face_down:
+			sources.append([x.slot, x.card])
+	if s.leader_state == "dormant" and s.leader != null:
+		sources.append([-1, s.leader])
+	for src in sources:
+		for e in _fx(src[1], "passive"):
+			if str(e.get("do", "")) != "cost_down" or not _fx_cond(side, src[0], e, null):
+				continue
+			if str(e.get("clan", "")) != "" and c.get("clanTag") != str(e.get("clan", "")):
+				continue
+			off += maxi(1, int(e.get("amount", 1)))
+	return maxi(0, int(c.get("authority", 0)) - off)
+
+
+## A Card Forge passive of this kind that's switched on for the card in this slot (or {}).
+func _passive(side: String, slot: int, c, kind: String) -> Dictionary:
+	if c == null or c.get("face_down", false):
+		return {}
+	for e in _fx(c, "passive"):
+		if str(e.get("do", "")) == kind and _fx_cond(side, slot, e, null):
+			return e
+	return {}
+
+
+## "no_down": this card can't be Downed while its owner controls another character.
+func _stays_up(side: String, slot: int, c) -> bool:
+	return not _passive(side, slot, c, "no_down").is_empty() and characters(side).size() > 1
 
 
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
@@ -267,6 +304,10 @@ func attack_targets(side: String) -> Array:
 	var foe := other(side)
 	# A character in STASIS can't be attacked and doesn't block a direct attack
 	var foes := characters(foe).filter(func(e): return not in_stasis(e.card))
+	# A standing Guard must be attacked first
+	var guards := foes.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "guard").is_empty())
+	if not guards.is_empty():
+		return guards.map(func(e): return e.slot)
 	var targets: Array = foes.map(func(e): return e.slot)
 	if not foes.any(func(e): return not e.card.downed):
 		targets.append(DIRECT)
@@ -360,8 +401,9 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute := -1)
 	var i := _hand_index(side, uid)
 	if i < 0 or not can_summon(side, sides[side].hand[i], slot, tribute):
 		return false
-	var c: Dictionary = sides[side].hand.pop_at(i)
-	_spend(side, c.authority)
+	var c: Dictionary = sides[side].hand[i]
+	_spend(side, cost_of(side, c))
+	sides[side].hand.remove_at(i)
 	if needs_tribute(c):
 		var t: Dictionary = card_at(side, tribute)
 		sides[side].field[tribute] = null
@@ -385,8 +427,9 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 	var i := _hand_index(side, uid)
 	if i < 0 or not can_set(side, sides[side].hand[i], slot):
 		return false
-	var c: Dictionary = sides[side].hand.pop_at(i)
-	_spend(side, c.authority)
+	var c: Dictionary = sides[side].hand[i]
+	_spend(side, cost_of(side, c))
+	sides[side].hand.remove_at(i)
 	c.face_down = true
 	sides[side].field[slot] = c
 	_emit("set", {"side": side, "slot": slot, "card": c.duplicate(true)})
@@ -409,8 +452,9 @@ func _hustle(side: String, uid: int) -> bool:
 	if i < 0 or not can_hustle(side, sides[side].hand[i]):
 		return false
 	var s: Dictionary = sides[side]
-	var c: Dictionary = s.hand.pop_at(i)
-	_spend(side, c.authority)
+	var c: Dictionary = s.hand[i]
+	_spend(side, cost_of(side, c))
+	s.hand.remove_at(i)
 	s.gutter.append(c)
 	_emit("hustle", {"side": side, "card": c.duplicate(true)})
 	# A Card Forge Hustle: all of its effects happen when it's played
@@ -485,8 +529,14 @@ func _attack(side: String, from: int, target: int) -> bool:
 		return false
 	var att: Dictionary = card_at(side, from)
 	att.has_attacked = true
+	# Attacks twice each turn: the first attack leaves it ready for one more
+	if not _passive(side, from, att, "double_attack").is_empty() and int(att.get("second_attack", -1)) != turn:
+		att.has_attacked = false
+		att.second_attack = turn
 	_emit("attack", {"side": side, "from": from, "target": target, "card": att.duplicate(true)})
 	var ctx := {"side": side, "foe": other(side), "from": from, "target": target, "att": att, "bonus": 0}
+	if not _passive(side, from, att, "pierce").is_empty():
+		ctx.pierce = true
 	var def_now = card_at(other(side), target) if target >= 0 else null
 	var k := 0
 	for e in _fx(att, "attack"):
@@ -574,6 +624,9 @@ func _atk_ambush(ctx: Dictionary) -> void:
 				_spring_fx(ctx, foe, a)
 				return
 			if a.effectKey == "no_witnesses_ambush":
+				if _stays_up(ctx.side, ctx.from, ctx.att):
+					_effect(foe, a, "No Witnesses: the attack is negated", slot)
+					return
 				_effect(foe, a, "No Witnesses: the attacker is Downed and the attack negated", slot)
 				ctx.att.downed = true
 				_emit("downed", {"side": ctx.side, "slot": ctx.from, "card": ctx.att.duplicate(true)})
@@ -731,6 +784,9 @@ func _defeat(side: String, slot: int) -> String:
 			return "saved"
 		_ko(side, slot)
 		return "ko"
+	if _stays_up(side, slot, c):
+		_effect(side, c, "%s stays standing" % c.name, slot)
+		return "saved"
 	c.downed = true
 	_emit("downed", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_downed")
@@ -810,7 +866,7 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 					if absi(e.slot - target) == 1:
 						e.card.mods.append({"def": -500, "until_turn": turn})
 	if key in ["hunter_lv2", "hunter_lv3"]:
-		var standing := characters(foe).filter(func(e): return not e.card.downed)
+		var standing := characters(foe).filter(func(e): return not e.card.downed and not _stays_up(foe, e.slot, e.card))
 		standing.sort_custom(_strongest_first)
 		_ask_target(side, "hunter_down", "%s KO: choose an enemy character to Down" % att.name, att,
 			standing, foe, func(e: Dictionary):
@@ -884,7 +940,7 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 		"sovereign":
 			var hit := 0
 			for e in characters(foe):
-				if not e.card.downed and e.card.defense <= 1500:
+				if not e.card.downed and e.card.defense <= 1500 and not _stays_up(foe, e.slot, e.card):
 					e.card.downed = true
 					hit += 1
 					_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)})
@@ -994,6 +1050,7 @@ func _recalc() -> void:
 		var lions := lion_count(side)
 		var roan: bool = s.leader_state == "dormant" and s.leader.get("effectKey") == "king_roan_leader" and lions >= 2
 		var auras := _auras(side)
+		var foe_auras := _auras(other(side)).filter(func(a): return str(a[1].get("target", "")) == "enemies")
 		values[side] = {}
 		for slot in FRONT:
 			var c = s.field[slot]
@@ -1026,6 +1083,11 @@ func _recalc() -> void:
 				if _aura_hits(a, slot, c):
 					atk += int(a[1].get("atk", 0))
 					df += int(a[1].get("def", 0))
+			for a in foe_auras:
+				var clan := str(a[1].get("clan", ""))
+				if clan == "" or c.get("clanTag") == clan:
+					atk += int(a[1].get("atk", 0))
+					df += int(a[1].get("def", 0))
 			for adj in [slot - 1, slot + 1]:
 				if adj in FRONT and s.field[adj] != null and s.field[adj].get("effectKey") == "bulwark":
 					df += 400
@@ -1052,6 +1114,10 @@ func _recalc() -> void:
 #           hand_le | morale_le | foe_morale_le | enemies_ge | gutter_ge | leader_dormant
 #   n:      the number for allies / hand_le / morale_le / foe_morale_le / enemies_ge / gutter_ge
 #   once:   true = once per turn
+#   passive (when "passive"): buff (target self / allies / enemies) | pierce | untargetable |
+#           immune (no POISON, BURN, BLEED, SHOCK, FREEZE, STASIS or STUN) | guard (must be
+#           attacked first while standing) | double_attack | cost_down (amount, clan: your cards
+#           cost that much less) | no_down (can't be Downed while you control another character)
 #   times:  ko / down: happens once the card has KO'd / Downed this many characters while on the
 #           field (it then counts again from 0; leaving the field resets the count)
 
@@ -1283,7 +1349,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 		"shock":
 			var fn := func(x: Dictionary) -> String:
 				_emit("status", {"side": x.side, "slot": x.slot, "kind": "shock", "card": x.card.duplicate(true)})
-				if not x.card.downed and n >= int(x.card.get("defense", 0)):
+				if not x.card.downed and n >= int(x.card.get("defense", 0)) and not _stays_up(x.side, x.slot, x.card):
 					x.card.downed = true
 					_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 					return "%s SHOCKS %s: it goes Down" % [c.name, x.card.name]
@@ -1366,6 +1432,13 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		"enemy", "enemies":
 			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
 	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader" and not in_stasis(x.card))
+	var what_ := str(e.get("do", ""))
+	if what_ in IMMUNE_TO:
+		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune").is_empty())
+	if what_ == "down":
+		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
+	if target == "attacker":
+		entries = entries.filter(func(x): return x.side == side or _passive(x.side, x.slot, x.card, "untargetable").is_empty())
 	if target == "ally" or target == "enemy":
 		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
 			var va := _target_value(side, e, a)
@@ -1597,6 +1670,9 @@ func _ask(side: String, key: String, prompt: String, card: Dictionary, options: 
 ## Pick one character from `entries` ([{slot, card}], best first). One option resolves at once.
 func _ask_target(side: String, key: String, prompt: String, source: Dictionary, entries: Array,
 		target_side: String, cb: Callable) -> void:
+	# Your opponent's effects can't choose a card that can't be targeted
+	if target_side != side:
+		entries = entries.filter(func(e): return _passive(target_side, e.slot, e.card, "untargetable").is_empty())
 	if entries.is_empty():
 		return
 	if entries.size() == 1:
