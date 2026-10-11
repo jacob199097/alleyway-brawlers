@@ -140,6 +140,7 @@ function cleanEffect(e) {
     if (e.once) out.once = true;
     if (e.choose) out.choose = true;   // search / recover / revive: the player picks the card
     for (const k of ['if_clan', 'when_clan']) if (e[k] != null) out[k] = String(e[k]);   // ("" = any clan, so kept)
+    if (Array.isArray(e.statuses) && e.statuses.length) out.statuses = e.statuses.map(String);   // immune: only these
     return out;
 }
 

@@ -247,18 +247,18 @@ func cost_of(side: String, c: Dictionary) -> int:
 
 
 ## A Card Forge passive of this kind that's switched on for the card in this slot (or {}).
-func _passive(side: String, slot: int, c, kind: String) -> Dictionary:
+func _passive(side: String, slot: int, c, kind: String, ok := Callable()) -> Dictionary:
 	if c == null or c.get("face_down", false):
 		return {}
 	for e in _fx(c, "passive"):
-		if str(e.get("do", "")) == kind and _fx_cond(side, slot, e, null):
+		if str(e.get("do", "")) == kind and (not ok.is_valid() or ok.call(e)) and _fx_cond(side, slot, e, null):
 			return e
 	# A Dormant leader can give your characters PIERCE, immunity or "can't be targeted"
 	var s = sides.get(side)
 	if kind in DORMANT_GIFTS and s != null and s.leader_state == "dormant" and s.leader != null and not is_same(s.leader, c):
 		for e in _fx(s.leader, "dormant"):
-			if str(e.get("do", "")) == kind and (str(e.get("clan", "")) == "" or c.get("clanTag") == str(e.get("clan", ""))) \
-					and _fx_cond(side, -1, e, null):
+			if str(e.get("do", "")) == kind and (not ok.is_valid() or ok.call(e)) \
+					and (str(e.get("clan", "")) == "" or c.get("clanTag") == str(e.get("clan", ""))) and _fx_cond(side, -1, e, null):
 				return e
 	return {}
 
@@ -1577,8 +1577,12 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
 	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader" and not in_stasis(x.card))
 	var what_ := str(e.get("do", ""))
+	# immune: to the statuses it lists (none listed: all of them)
+	var covers := func(im: Dictionary) -> bool:
+		var list = im.get("statuses")
+		return not (list is Array) or list.is_empty() or what_ in list
 	if what_ in IMMUNE_TO:
-		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune").is_empty())
+		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune", covers).is_empty())
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
 	if target == "attacker":

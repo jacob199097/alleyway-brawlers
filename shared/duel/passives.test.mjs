@@ -270,4 +270,15 @@ assert.ok(!ambushOffered('lion'), 'not offered for another clan');
     }
 }
 
+// Immune to chosen statuses only
+{
+    const b = board([{ effects: [{ when: 'deploy', do: 'poison', target: 'enemies', amount: 200 }, { when: 'deploy', do: 'burn', target: 'enemies', amount: 200 }] }],
+        [{ effects: [{ when: 'passive', do: 'immune', statuses: ['poison'] }] }]);
+    const me = b.cardAt('player', 0);
+    b._doFx('player', 0, me, me.effects[0]);
+    b._doFx('player', 0, me, me.effects[1]);
+    assert.equal(b.cardAt('opponent', 0).poison, undefined, 'immune to POISON');
+    assert.ok(b.cardAt('opponent', 0).burn, 'but not to BURN');
+}
+
 console.log('all good');

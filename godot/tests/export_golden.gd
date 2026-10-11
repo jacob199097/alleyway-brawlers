@@ -75,6 +75,7 @@ const FX_SAMPLES := [
 	[{"when": "direct", "do": "attack_again"}, {"when": "attack", "do": "attack_again"}],
 	[{"when": "attack", "do": "promote", "times": 2, "if": "vs_downed"}, {"when": "defend", "do": "draw", "amount": 1, "times": 2}],
 	[{"when": "attack", "do": "draw", "amount": 1, "times": 3}],
+	[{"when": "passive", "do": "immune", "statuses": ["poison", "stun"]}, {"when": "deploy", "do": "burn", "target": "enemies", "amount": 100}],
 	[{"when": "deploy", "do": "silence", "target": "enemy"}, {"when": "turn_start", "do": "ramp", "amount": 1, "if": "authority_ge", "n": 3, "once": true}],
 	[{"when": "passive", "do": "elusive"}, {"when": "deploy", "do": "break_ambush", "if": "foe_ambush"}],
 	[{"when": "turn_start", "do": "influence", "amount": 500}, {"when": "deploy", "do": "discard", "amount": 1, "if": "foe_hand_le", "n": 3}],

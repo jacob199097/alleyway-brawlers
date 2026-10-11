@@ -249,16 +249,16 @@ export class DuelState {
     }
 
     /** A Card Forge passive of this kind that's switched on for the card in this slot (or null). */
-    _passive(side, slot, c, kind) {
+    _passive(side, slot, c, kind, ok = null) {
         if (c == null || c.face_down) return null;
         for (const e of this._fx(c, 'passive')) {
-            if (String(e.do ?? '') === kind && this._fxCond(side, slot, e, null)) return e;
+            if (String(e.do ?? '') === kind && (ok == null || ok(e)) && this._fxCond(side, slot, e, null)) return e;
         }
         // A Dormant leader can give your characters PIERCE, immunity or "can't be targeted"
         const s = this.sides[side];
         if (DORMANT_GIFTS.includes(kind) && s && s.leader_state === 'dormant' && s.leader != null && s.leader !== c) {
             for (const e of this._fx(s.leader, 'dormant')) {
-                if (String(e.do ?? '') === kind && (String(e.clan ?? '') === '' || c.clanTag === String(e.clan))
+                if (String(e.do ?? '') === kind && (ok == null || ok(e)) && (String(e.clan ?? '') === '' || c.clanTag === String(e.clan))
                     && this._fxCond(side, -1, e, null)) return e;
             }
         }
@@ -1513,7 +1513,9 @@ export class DuelState {
         }
         entries = entries.filter(x => pick(x) && x.card.cardType !== 'leader' && !this.inStasis(x.card));
         const what_ = String(e.do ?? '');
-        if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune'));
+        // immune: to the statuses it lists (none listed: all of them)
+        const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(what_);
+        if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
         if (target === 'attacker') entries = entries.filter(x => x.side === side || !this._passive(x.side, x.slot, x.card, 'untargetable'));
         if (target === 'ally' || target === 'enemy') {
