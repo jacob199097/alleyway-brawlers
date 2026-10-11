@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.7",
+        "notes": [
+            "Rare cards and up now shimmer: a soft glint sweeps across them every few seconds, Epic cards also keep their holographic foil, and Legendary cards twinkle. It shows everywhere: in your hand, on the field, in the collection and in the deck builder.",
+            "The large card preview in a duel now shows moving card backs too, like the Nebula galaxy turning."
+        ]
+    },
+    {
         "version": "0.7.6",
         "notes": [
             "The Nebula card back's galaxy now turns smoothly along its own swirl and blends into the rest of the card back.",

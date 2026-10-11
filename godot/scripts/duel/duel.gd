@@ -63,6 +63,8 @@ var hand := {"player": [], "opponent": []}     # CardViews, in hand order
 var field := {"player": {}, "opponent": {}}    # slot -> CardView
 var leaders := {}                              # side -> CardView
 var counts := {}                               # pile sizes from the last event
+var _detail_spin := ""                         # the large preview's moving card back style ("" = none)
+var _detail_angle := 0.0
 
 var _queue: Array = []
 var _playing := false
@@ -777,6 +779,10 @@ func _process(delta: float) -> void:
 		m.set_shader_parameter("y_rot", sin(tm * 0.7) * 7.0)
 		m.set_shader_parameter("x_rot", cos(tm * 0.55) * 4.0)
 		m.set_shader_parameter("glare", 0.35 + 0.25 * sin(tm * 0.7))
+		if _detail_spin != "":   # a hovered back turns at the field's hover speed
+			_detail_angle = fmod(_detail_angle + CardView.BACK_SPEEDS[_detail_spin][1] * delta, TAU)
+			m.set_shader_parameter("galaxy_angle", _detail_angle)
+			m.set_shader_parameter("galaxy_glow", 0.8)
 	if not _valid.is_empty():
 		queue_redraw()
 	if _dragging and _press:
@@ -2923,6 +2929,10 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		return
 	_detail_key = key
 	if c.is_empty():
+		_detail_spin = ""
+		for style in CardDB.BACK_STYLES.values():
+			_ui.detail_art.material.set_shader_parameter(style, 0.0)
+		UI.rarity_fx(_ui.detail_art.material, 1)
 		_ui.detail_art.texture = CardDB.back()
 		_ui.detail_title.text = ""
 		_ui.detail_kind.text = ""
@@ -2933,7 +2943,12 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
 	var back: Texture2D = _back_for(str(c.back_side)) if c.has("back_side") else CardDB.back()
 	_ui.detail_art.texture = tex if tex else back
-	_ui.detail_art.material.set_shader_parameter("foil", 1.0 if tex and int(c.get("rarity", 1)) >= 4 else 0.0)
+	var dm: ShaderMaterial = _ui.detail_art.material
+	UI.rarity_fx(dm, int(c.get("rarity", 1)) if tex else 1, 0.37)
+	# A clan back moves here too, like on the field (the Nebula galaxy turns, the Militia radar sweeps)
+	_detail_spin = CardDB.back_style(_back_clan(str(c.back_side))) if not tex and c.has("back_side") else ""
+	for style in CardDB.BACK_STYLES.values():
+		dm.set_shader_parameter(style, 1.0 if style == _detail_spin else 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
 	var parts: Array = [TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
 	if c.get("subtype") is String:

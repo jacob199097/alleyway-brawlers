@@ -211,8 +211,17 @@ static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/card.gdshader")
 	m.set_shader_parameter("quad_size", size)
-	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
+	rarity_fx(m, rarity, randf())
 	return m
+
+
+## How a card shimmers by rarity (shaders/card.gdshader): Rare and up glint now and then, Epic and up
+## also have the holographic foil, Legendary also twinkles. seed (0..1) staggers the glints.
+static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
+	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
+	m.set_shader_parameter("shine", 0.0 if rarity < 3 else 0.7 if rarity == 3 else 1.0)
+	m.set_shader_parameter("sparkle", 1.0 if rarity >= 5 else 0.0)
+	m.set_shader_parameter("shine_seed", seed)
 
 
 static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> TextureRect:

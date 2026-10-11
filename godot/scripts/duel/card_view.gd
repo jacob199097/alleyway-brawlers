@@ -118,7 +118,7 @@ func set_back(tex: Texture2D, style := "") -> void:
 	if BACK_SPEEDS.has(style) and _back_mat == null:
 		_back_mat = _mat.duplicate()
 		_back_mat.set_shader_parameter(style, 1.0)
-		_back_mat.set_shader_parameter("foil", 0.0)
+		UI.rarity_fx(_back_mat, 1)   # the back doesn't shimmer like a rare front
 		_back.material = _back_mat
 		_spin_idle = BACK_SPEEDS[style][0]
 		_spin_hover = BACK_SPEEDS[style][1]
@@ -150,7 +150,8 @@ func set_face(up: bool) -> void:
 	face_up = up
 	_front.visible = up and _front.texture != null
 	_back.visible = not up
-	_mat.set_shader_parameter("foil", 1.0 if up and int(card.get("rarity", 1)) >= 4 else 0.0)
+	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
+	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if up else 1, fposmod(float(uid) * 0.618, 1.0))
 	if _fallback:
 		_fallback.visible = up and _front.texture == null
 	queue_redraw()

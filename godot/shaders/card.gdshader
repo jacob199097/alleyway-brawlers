@@ -13,6 +13,9 @@ uniform float glare = 0.0;
 uniform float foil = 0.0;
 uniform float holo = 0.0;     // 0..1: hovered Epic/Legendary: a strong rainbow sweep and twinkling glints
 uniform float flash = 0.0;     // white hit-flash
+uniform float shine = 0.0;        // Rare and up: a soft glint sweeps across the card every few seconds
+uniform float shine_seed = 0.0;   // 0..1, so cards don't all glint at once
+uniform float sparkle = 0.0;      // Legendary: a few faint twinkles, all the time
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
 uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
@@ -122,6 +125,21 @@ void fragment() {
 		float rnd = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 		float tw = pow(max(0.0, sin(TIME * 2.6 + rnd * 40.0)), 22.0);
 		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75;
+	}
+	if (shine > 0.0) {
+		// A glint crosses the card in the first ~2 s of every 6.5 s, then rests
+		float t = fract(TIME / 6.5 + shine_seed);
+		float pos = mix(-1.4, 1.4, smoothstep(0.0, 0.32, t));
+		float d = uv.x * 0.75 + uv.y * 0.45 - pos;
+		float lum3 = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+		col.rgb += vec3(1.0, 0.95, 0.85) * exp(-d * d * 60.0) * shine * (0.26 + 0.42 * lum3) * (1.0 - smoothstep(0.3, 0.34, t));
+	}
+	if (sparkle > 0.0) {
+		vec2 cell2 = floor((uv + 0.5) * vec2(11.0, 16.0));
+		float rnd2 = fract(sin(dot(cell2, vec2(41.31, 17.77)) + shine_seed * 9.0) * 24634.6345);
+		float tw2 = pow(max(0.0, sin(TIME * 1.7 + rnd2 * 50.0)), 30.0);
+		vec2 inc = fract((uv + 0.5) * vec2(11.0, 16.0)) - 0.5;
+		col.rgb += vec3(1.0, 0.93, 0.7) * tw2 * step(0.86, rnd2) * sparkle * 0.6 * smoothstep(0.3, 0.0, length(inc));
 	}
 	col.rgb = mix(col.rgb, vec3(1.0), flash);
 	col.a *= inside;
