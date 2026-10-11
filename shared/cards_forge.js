@@ -192,7 +192,7 @@ export const FORGE_CARDS = {
             "chars": 4,
             "authority": 8
         },
-        "influence": 4000
+        "influence": 3000
     },
     "card_nebu_010": {
         "id": "card_nebu_010",
@@ -292,7 +292,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_013",
         "code": "NEBU-013",
         "flavourText": "Gravity always wins. I just help it along",
-        "effectText": "When this card hits your opponent directly: If this card is next to another NEBULA character, PROMOTE this card.\nOnce per turn, when your opponent deploys a character: Switch one enemy character to DEF position.",
+        "effectText": "When this card hits your opponent directly: If this card is next to another NEBULA character, PROMOTE this card.\nOnce per turn, when this card attacks: Switch one enemy character to DEF position.",
         "effects": [
             {
                 "when": "direct",
@@ -301,7 +301,7 @@ export const FORGE_CARDS = {
                 "if_clan": "nebula"
             },
             {
-                "when": "foe_deployed",
+                "when": "attack",
                 "do": "force_def",
                 "target": "enemy",
                 "once": true
@@ -364,13 +364,14 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_018",
         "code": "NEBU-018",
         "flavourText": "I see everything coming. Usually before you do.",
-        "effectText": "When your opponent deploys a character: If this card is next to another NEBULA character, DOWN one enemy character.",
+        "effectText": "Once per turn, when your opponent deploys a character: If this card is next to another NEBULA character, DOWN one enemy character.",
         "effects": [
             {
                 "when": "foe_deployed",
                 "do": "down",
                 "target": "enemy",
                 "if": "adjacent",
+                "once": true,
                 "if_clan": "nebula"
             }
         ],
@@ -592,5 +593,32 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null
+    },
+    "card_nebu_029": {
+        "id": "card_nebu_029",
+        "name": "HULL BREACH",
+        "clan": "nebula",
+        "cardType": "ambush",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_029",
+        "code": "NEBU-029",
+        "flavourText": "Probably Shouldn't have hammered there",
+        "effectText": "When an enemy attacks one of your NEBULA characters: If your opponent controls 3 or more characters, put all enemy characters in STASIS.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "stasis",
+                "target": "enemies",
+                "if": "enemies_ge",
+                "n": 3
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "ambushClan": "nebula"
     }
 };

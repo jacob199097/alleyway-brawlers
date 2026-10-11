@@ -2147,7 +2147,7 @@ func _ev_leader_down(ev: Dictionary) -> void:
 
 
 static func _influence_text(influence: int) -> String:
-	return "[center][color=#ffd86b]INFLUENCE %d[/color][/center]" % influence
+	return "[center][font_size=10][color=#e8c77a]INFLUENCE[/color][/font_size] [b][color=#ffd86b]%d[/color][/b][/center]" % influence
 
 
 func _ev_game_over(ev: Dictionary) -> void:
@@ -2930,7 +2930,9 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_text.text = "[color=#8a8aa0]Hover a card to see it here.[/color]"
 		return
 	var tex := CardDB.art(str(c.get("art_url", c.get("id", ""))))
-	_ui.detail_art.texture = tex if tex else CardDB.back()
+	# A face-down card shows its side's card back (its clan's, or the one its player chose)
+	var back: Texture2D = _back_for(str(c.back_side)) if c.has("back_side") else CardDB.back()
+	_ui.detail_art.texture = tex if tex else back
 	_ui.detail_art.material.set_shader_parameter("foil", 1.0 if tex and int(c.get("rarity", 1)) >= 4 else 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
 	var parts: Array = [TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
@@ -3407,8 +3409,10 @@ func _update_hover() -> void:
 			v.move_to(Vector2(v.home.x, HAND_LIFT_Y), HOVER_SCALE, 0.0, 0.14)
 			Sfx.play("click", 1.4, -12.0)
 	if v:
-		if not v.face_up:
-			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid})
+		if not v.face_up and v.side == "player" and not v.card.is_empty():
+			_show_detail(v.card, v.stats(), v.statuses)   # your own face-down card: you know what it is
+		elif not v.face_up:
+			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid, "back_side": v.side})
 		else:
 			_show_detail(v.card, v.stats(), v.statuses)
 		return

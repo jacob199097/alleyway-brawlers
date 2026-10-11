@@ -41,6 +41,9 @@ var _front := Sprite2D.new()
 var _back := Sprite2D.new()
 var _fallback: Label
 var _badge: RichTextLabel
+var _badge_box: StyleBoxFlat
+const BADGE_W := 112.0
+const BADGE_OVERLAP := 4.0   # how far the badge tucks under the card's bottom edge
 var _stats := []
 var _tw: Tween
 var _mat := ShaderMaterial.new()
@@ -81,17 +84,24 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	_badge.fit_content = true
 	_badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_badge.custom_minimum_size = Vector2(SIZE.x + 6, 0)
-	_badge.size = Vector2(SIZE.x + 6, 26)
-	_badge.add_theme_font_size_override("normal_font_size", 17)
-	_badge.add_theme_constant_override("outline_size", 4)
-	_badge.add_theme_color_override("font_outline_color", Color.BLACK)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.03, 0.03, 0.08, 0.88)
-	sb.set_corner_radius_all(5)
-	sb.content_margin_top = 1
-	sb.content_margin_bottom = 1
-	_badge.add_theme_stylebox_override("normal", sb)
+	# A slim pill just under the card (the rows are 17 px apart), so it never covers the art
+	_badge.custom_minimum_size = Vector2(BADGE_W, 0)
+	_badge.size = Vector2(BADGE_W, 20)
+	_badge.add_theme_font_size_override("normal_font_size", 15)
+	_badge.add_theme_font_size_override("bold_font_size", 15)
+	_badge.add_theme_constant_override("outline_size", 3)
+	_badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_badge_box = StyleBoxFlat.new()
+	_badge_box.bg_color = Color(0.045, 0.04, 0.085, 0.94)
+	_badge_box.set_corner_radius_all(10)
+	_badge_box.set_border_width_all(1)
+	_badge_box.border_color = Color(1, 1, 1, 0.16)
+	_badge_box.shadow_color = Color(0, 0, 0, 0.55)
+	_badge_box.shadow_size = 4
+	_badge_box.shadow_offset = Vector2(0, 2)
+	_badge_box.content_margin_top = 0
+	_badge_box.content_margin_bottom = 0
+	_badge.add_theme_stylebox_override("normal", _badge_box)
 	_badge.visible = false
 	add_child(_badge)
 
@@ -240,13 +250,16 @@ func _update_badge() -> void:
 	if not _badge.visible:
 		return
 	if badge_text != "":
+		_badge_box.border_color = Color(1.0, 0.85, 0.42, 0.5)
 		_badge.text = badge_text
 		return
-	var atk_col := _stat_color(_stats[0], _stats[2], "ffd86b")
-	var def_col := _stat_color(_stats[1], _stats[3], "9ddcff")
-	var tag := "[color=#ff5a5a]DOWNED[/color]  " if downed else ""
-	_badge.text = "[center]%s[color=#%s]%d[/color] [color=#777]/[/color] [color=#%s]%d[/color][/center]" \
-		% [tag, atk_col, _stats[0], def_col, _stats[1]]
+	# Small ATK / DEF labels, the numbers coloured when raised (green) or lowered (red);
+	# a Downed card's badge gets a red edge
+	_badge_box.border_color = Color(1.0, 0.36, 0.36, 0.85) if downed else Color(1, 1, 1, 0.16)
+	var atk_col := _stat_color(_stats[0], _stats[2], "ffe6a8")
+	var def_col := _stat_color(_stats[1], _stats[3], "cfe9ff")
+	_badge.text = "[center][font_size=10][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d[/color][/b]   [font_size=10][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d[/color][/b][/center]" \
+		% [atk_col, _stats[0], def_col, _stats[1]]
 
 
 static func _stat_color(v: int, base: int, normal: String) -> String:
@@ -299,7 +312,7 @@ func _process(delta: float) -> void:
 	if _badge.visible:
 		var sideways := absf(sin(rotation)) > 0.7
 		var half_h: float = (SIZE.x if sideways else SIZE.y) * scale.y / 2.0
-		_badge.global_position = global_position + Vector2(-_badge.size.x / 2.0, half_h - 12.0)
+		_badge.global_position = global_position + Vector2(-_badge.size.x / 2.0, half_h - BADGE_OVERLAP)
 		_badge.z_index = z_index + 1
 
 

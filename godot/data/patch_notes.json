@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.7.4",
+        "notes": [
+            "A cleaner ATK / DEF badge under each card on the field: it no longer covers the card, raised and lowered stats show in green and red, and a Downed card's badge has a red edge.",
+            "Hovering your own face-down cards now shows what they are, and your opponent's face-down cards show their clan's card back.",
+            "New NEBULA cards: Orbital Strike, Nebula Protector and the Ambush HULL BREACH, plus new art for Nebula Sniper."
+        ]
+    },
+    {
         "version": "0.7.3",
         "notes": [
             "The first NEBULA cards are here: 17 new cards, including the Kade and Lyra Quell evolution lines, the leader Archon of Nebula, and new Hustles and Ambushes.",
