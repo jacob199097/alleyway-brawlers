@@ -90,6 +90,8 @@ for (const [key, raw] of Object.entries(exported)) {
         c.tributeCost = c.subtype === 'heavy' ? 1 : 0;
     }
     if (raw.cardType === 'leader' && raw.awakenCondition) c.awakenCondition = raw.awakenCondition;
+    if (raw.cardType === 'leader' && raw.influence != null) c.influence = int(raw.influence);   // Influence while Dormant
+    if (raw.cardType === 'ambush' && raw.ambushClan) c.ambushClan = String(raw.ambushClan);   // springs only for this clan
     cards[id] = c;
 }
 for (const c of Object.values(cards)) {

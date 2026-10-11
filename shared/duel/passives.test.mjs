@@ -82,4 +82,18 @@ assert.equal(st.cardAt('player', 0).attack, 1000, 'clan filter respected');
 st = board([{}], [{ ...passive('guard'), face_down: true }, {}]);
 assert.ok(st.attackTargets('player').includes(1), 'face-down Guard does nothing');
 
+// An Ambush for one clan is only offered when a character of that clan is attacked
+const ambushOffered = (defClan) => {
+    const b = board([{ attack: 2000 }], [{ clanTag: defClan }]);
+    b.sides.opponent.field[5] = b.makeCard({ id: 'lion_grunt', cardType: 'ambush', effectKey: '', ambushClan: 'nebula',
+        effects: [{ when: 'ambush', do: 'bounce', target: 'attacker' }] });
+    b.sides.opponent.field[5].face_down = true;
+    let asked = false;
+    b._ask = (side, kind) => { if (kind === 'ambush') asked = true; };
+    b._atkAmbush({ side: 'player', foe: 'opponent', from: 0, target: 0, att: b.cardAt('player', 0), bonus: 0 });
+    return asked;
+};
+assert.ok(ambushOffered('nebula'), 'offered when a Nebula character is attacked');
+assert.ok(!ambushOffered('lion'), 'not offered for another clan');
+
 console.log('all good');

@@ -117,7 +117,7 @@ export class DuelState {
             const field = Array(10).fill(null);
             const leaderId = leaders[side] || '';
             const leader = leaderId !== '' ? this.makeCard(leaderId) : null;
-            if (leader) leader.influence = leader.base_defense;
+            if (leader) leader.influence = leader.influence != null ? toInt(leader.influence) : leader.base_defense;   // (Forge leaders set it; else DEF)
             this.sides[side] = {
                 morale: START_MORALE, authority: 1, authority_max: 1,
                 deck, hand: [], field, gutter: [], hideout,
@@ -576,9 +576,11 @@ export class DuelState {
             }
         }
         // Card Forge Ambushes can be sprung when any of your characters is attacked
+        // (ambushClan: only when the attacked character is of that clan)
         for (const slot of BACK) {
             const a = this.cardAt(foe, slot);
-            if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))) {
+            if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
+                && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
             }
         }

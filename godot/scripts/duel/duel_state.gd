@@ -72,7 +72,7 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		var leader_id: String = leaders.get(side, "")
 		var leader = make_card(leader_id) if leader_id != "" else null
 		if leader != null:
-			leader.influence = leader.base_defense
+			leader.influence = int(leader.influence) if leader.get("influence") != null else leader.base_defense   # (Forge leaders set it; else DEF)
 		sides[side] = {
 			"morale": START_MORALE, "authority": 1, "authority_max": 1,
 			"deck": deck, "hand": [], "field": field, "gutter": [], "hideout": hideout,
@@ -603,10 +603,12 @@ func _atk_ambush(ctx: Dictionary) -> void:
 				if a != null and a.get("effectKey") == key:
 					options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	# Card Forge Ambushes can be sprung when any of your characters is attacked
+	# (ambushClan: only when the attacked character is of that clan)
 	for slot in BACK:
 		var a = card_at(foe, slot)
 		if a != null and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
-				and not str(a.get("effectKey", "")) in HAND_AMBUSHES:
+				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
+				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))):
 			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
