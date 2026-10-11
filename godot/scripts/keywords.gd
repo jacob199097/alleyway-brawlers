@@ -34,8 +34,12 @@ static func find(word: String) -> String:
 	return ""
 
 
-## Card text as BBCode with every keyword coloured, bold and hoverable.
+## Card text as BBCode with every keyword coloured, bold and hoverable. Clan names in capitals
+## (NEBULA) are bold in their clan's colour, as in the Card Forge.
 static func markup(text: String) -> String:
+	var clans := {}   # CLAN NAME -> its colour
+	for c in CardDB.clans():
+		clans[str(c.name).to_upper()] = c.color
 	var re := RegEx.create_from_string("[A-Za-z']+")
 	var out := ""
 	var at := 0
@@ -45,6 +49,8 @@ static func markup(text: String) -> String:
 		out += _escape(text.substr(at, m.get_start() - at))
 		if kw != "":
 			out += "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, LIST[kw][0].to_html(false), word]
+		elif word == word.to_upper() and clans.has(word):
+			out += "[b][color=#%s]%s[/color][/b]" % [Color(clans[word]).to_html(false), word]
 		else:
 			out += _escape(word)
 		at = m.get_end()

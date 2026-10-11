@@ -2,7 +2,8 @@
     {
         "version": "0.7.1",
         "notes": [
-            "Cards can now need several Downs or KOs before their effect happens, for example \"After this card Downs 2 characters: PROMOTE this card.\" The count builds up while the card stays on the field."
+            "Cards can now need several Downs or KOs before their effect happens, for example \"After this card Downs 2 characters: PROMOTE this card.\" The count builds up while the card stays on the field.",
+            "Clan names in card text, like NEBULA or MILITIA, are shown in their clan's colour."
         ]
     },
     {
