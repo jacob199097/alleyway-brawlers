@@ -22,7 +22,8 @@ export const LEADER_DEFEAT_PENALTY = 1000;
 export const FRONT = [0, 1, 2, 3, 4];
 export const BACK = [5, 6, 7, 8, 9];
 export const DIRECT = -1;
-const NO_SLOT = -10;   // effects of a card that isn't on the field (a Hustle, a sprung Ambush)
+const NO_SLOT = -10;
+const DORMANT_GIFTS = ['pierce', 'immune', 'untargetable'];   // passives a Dormant leader can give your characters   // effects of a card that isn't on the field (a Hustle, a sprung Ambush)
 // Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
 const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 // What an "immune" passive keeps off a card
@@ -252,7 +253,21 @@ export class DuelState {
         for (const e of this._fx(c, 'passive')) {
             if (String(e.do ?? '') === kind && this._fxCond(side, slot, e, null)) return e;
         }
+        // A Dormant leader can give your characters PIERCE, immunity or "can't be targeted"
+        const s = this.sides[side];
+        if (DORMANT_GIFTS.includes(kind) && s && s.leader_state === 'dormant' && s.leader != null && s.leader !== c) {
+            for (const e of this._fx(s.leader, 'dormant')) {
+                if (String(e.do ?? '') === kind && (String(e.clan ?? '') === '' || c.clanTag === String(e.clan))
+                    && this._fxCond(side, -1, e, null)) return e;
+            }
+        }
         return null;
+    }
+
+    /** A Dormant leader's triggered effects ("While Dormant, at the start of your turn: ..."). */
+    _leaderFx(side, when, def = null) {
+        const s = this.sides[side];
+        if (s.leader_state === 'dormant' && s.leader != null && this.winner === '') this._runFx(side, -1, s.leader, when, def);
     }
 
     /** "no_down": this card can't be Downed while its owner controls another character. */
@@ -416,6 +431,7 @@ export class DuelState {
         // A Card Forge Hustle: all of its effects happen when it's played
         if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'hustle_played', c);
+        this._leaderFx(side, 'dormant_hustle', c);
         switch (c.effectKey) {
             case 'corner_deal':
                 this._draw(side);
@@ -713,6 +729,8 @@ export class DuelState {
             this.sides[foe].gutter.push(leader);
             this._emit('leader_down', { side: foe, card: clone(leader) });
             this._damage(foe, LEADER_DEFEAT_PENALTY);
+        } else {
+            this._leaderFx(foe, 'dormant_hit', ctx.att);
         }
     }
 
@@ -887,6 +905,8 @@ export class DuelState {
         }
         const foe = other(side);
         for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
+        this._leaderFx(side, 'dormant_ally_deployed', c);
+        this._leaderFx(foe, 'dormant_foe_deployed', c);
         switch (c.effectKey || '') {
             case 'pride_lieutenant_deploy': {
                 const allies = this.characters(side).filter(e => e.slot !== slot && isLion(e.card));
@@ -975,7 +995,10 @@ export class DuelState {
         const chars = this.characters(side).filter(e => (clan === '' || e.card.clanTag === clan) && !e.card.downed && !e.card.face_down).length;
         const ready = chars >= toInt(cond.lions ?? cond.chars ?? 99)
             || s.authority_max >= toInt(cond.authorityThreshold ?? cond.authority ?? 99)
-            || (cond.morale != null && s.morale <= toInt(cond.morale));
+            || (cond.morale != null && s.morale <= toInt(cond.morale))
+            || (cond.gutter != null && s.gutter.length >= toInt(cond.gutter))
+            || (cond.foe_morale != null && this.sides[other(side)].morale <= toInt(cond.foe_morale))
+            || (cond.influence != null && toInt(s.leader.influence) <= toInt(cond.influence));
         if (!ready) return;
         const empties = [];
         const taken = [];
@@ -1003,7 +1026,7 @@ export class DuelState {
             const king = s.leader;
             s.leader_state = 'awake';
             king.position = 'atk';
-            king.has_attacked = true;
+            king.has_attacked = !cond.ready;   // ready: it may attack the turn it Awakens
             king.deployed_turn = this.turn;
             s.field[slot] = king;
             this._emit('awaken', { side, slot, card: clone(king) });
@@ -1624,6 +1647,7 @@ export class DuelState {
         this._statusTicks(this.active);
         if (this.winner !== '') return;
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
+        this._leaderFx(this.active, 'dormant_turn_start');
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {
                 delete e.card.kings_test;
@@ -1643,6 +1667,7 @@ export class DuelState {
 
     _endTurn() {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_end');
+        this._leaderFx(this.active, 'dormant_turn_end');
         if (this.winner !== '') return;
         const s = this.sides[this.active];
         for (const c of s.field) if (c != null) c.has_attacked = false;

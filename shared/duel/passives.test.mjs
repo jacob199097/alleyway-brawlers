@@ -175,4 +175,29 @@ assert.ok(!ambushOffered('lion'), 'not offered for another clan');
     assert.ok(b._fxCond('player', 0, { if: 'hand_ge', n: 1 }, null) && !b._fxCond('player', 0, { if: 'hand_ge', n: 5 }, null));
 }
 
+// Dormant leader: triggered effects, gifts to your characters, more awaken conditions
+{
+    const b = board([{ clanTag: 'nebula' }], [{}]);
+    b.sides.player.leader = b.makeCard({ id: 'lion_grunt', cardType: 'leader', attack: 3000, defense: 3000, clanTag: 'nebula',
+        awakenCondition: { influence: 1000, ready: true },
+        effects: [{ when: 'dormant_turn_start', do: 'heal', amount: 300 }, { when: 'dormant', do: 'immune', clan: 'nebula' },
+            { when: 'dormant_hit', do: 'draw', amount: 1 }] });
+    b.sides.player.leader.influence = 3000;
+    b.sides.player.leader_state = 'dormant';
+    b.sides.player.morale = 5000;
+    b._leaderFx('player', 'dormant_turn_start');
+    assert.equal(b.sides.player.morale, 5300, 'Dormant: start of turn heal');
+    assert.ok(b._passive('player', 0, b.cardAt('player', 0), 'immune'), 'Dormant leader makes NEBULA characters immune');
+    b.sides.player.deck = [b.makeCard('lion_grunt')];
+    const hand = b.sides.player.hand.length;
+    b._hitLeader({ side: 'opponent', foe: 'player', from: 0, att: { attack: 2500 }, bonus: 0 });
+    assert.equal(b.sides.player.hand.length, hand + 1, 'Dormant: drew when attacked');
+    let asked = null;
+    b._ask = (side, kind, text, card, options, cb) => { asked = { kind, cb }; };
+    b._checkAwaken('player');
+    assert.equal(asked && asked.kind, 'awaken', 'awakens at 1000 Influence or less');
+    asked.cb('2');
+    assert.equal(b.cardAt('player', 2).has_attacked, false, 'ready: may attack the turn it Awakens');
+}
+
 console.log('all good');

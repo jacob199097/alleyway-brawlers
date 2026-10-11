@@ -21,6 +21,7 @@ const OPENING_HAND := 5
 const SECOND_PLAYER_AUTHORITY := 1 # going second: extra Authority on your first turn only
 const LEADER_DEFEAT_PENALTY := 1000
 const FRONT := [0, 1, 2, 3, 4]   # character slots
+const DORMANT_GIFTS := ["pierce", "immune", "untargetable"]   # passives a Dormant leader can give your characters
 const BACK := [5, 6, 7, 8, 9]    # ambush slots
 const DIRECT := -1               # attack target: the opponent's morale
 const NO_SLOT := -10             # effects of a card that isn't on the field (a Hustle, a sprung Ambush)
@@ -251,7 +252,21 @@ func _passive(side: String, slot: int, c, kind: String) -> Dictionary:
 	for e in _fx(c, "passive"):
 		if str(e.get("do", "")) == kind and _fx_cond(side, slot, e, null):
 			return e
+	# A Dormant leader can give your characters PIERCE, immunity or "can't be targeted"
+	var s = sides.get(side)
+	if kind in DORMANT_GIFTS and s != null and s.leader_state == "dormant" and s.leader != null and not is_same(s.leader, c):
+		for e in _fx(s.leader, "dormant"):
+			if str(e.get("do", "")) == kind and (str(e.get("clan", "")) == "" or c.get("clanTag") == str(e.get("clan", ""))) \
+					and _fx_cond(side, -1, e, null):
+				return e
 	return {}
+
+
+## A Dormant leader's triggered effects ("While Dormant, at the start of your turn: ...").
+func _leader_fx(side: String, when: String, def = null) -> void:
+	var s: Dictionary = sides[side]
+	if s.leader_state == "dormant" and s.leader != null and winner == "":
+		_run_fx(side, -1, s.leader, when, def)
 
 
 ## "no_down": this card can't be Downed while its owner controls another character.
@@ -462,6 +477,7 @@ func _hustle(side: String, uid: int) -> bool:
 		_run_fx(side, NO_SLOT, c, "*")
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "hustle_played", c)
+	_leader_fx(side, "dormant_hustle", c)
 	match c.effectKey:
 		"corner_deal":
 			_draw(side)
@@ -772,6 +788,8 @@ func _hit_leader(ctx: Dictionary) -> void:
 		sides[foe].gutter.append(leader)
 		_emit("leader_down", {"side": foe, "card": leader.duplicate(true)})
 		_damage(foe, LEADER_DEFEAT_PENALTY)
+	else:
+		_leader_fx(foe, "dormant_hit", ctx.att)
 
 
 # ── Battle results ───────────────────────────────────────────────────────────
@@ -928,6 +946,8 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 	var foe := other(side)
 	for x in characters(foe):
 		_run_fx(foe, x.slot, x.card, "foe_deployed", c)
+	_leader_fx(side, "dormant_ally_deployed", c)
+	_leader_fx(foe, "dormant_foe_deployed", c)
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
 			var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
@@ -1017,7 +1037,10 @@ func _check_awaken(side: String) -> void:
 	var need_chars = cond.get("lions") if cond.get("lions") != null else cond.get("chars", 99)
 	var need_auth = cond.get("authorityThreshold") if cond.get("authorityThreshold") != null else cond.get("authority", 99)
 	var ready: bool = chars >= int(need_chars) or s.authority_max >= int(need_auth) \
-			or (cond.get("morale") != null and s.morale <= int(cond.morale))
+			or (cond.get("morale") != null and s.morale <= int(cond.morale)) \
+			or (cond.get("gutter") != null and s.gutter.size() >= int(cond.gutter)) \
+			or (cond.get("foe_morale") != null and sides[other(side)].morale <= int(cond.foe_morale)) \
+			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence))
 	if not ready:
 		return
 	var options: Array = []
@@ -1048,7 +1071,7 @@ func _check_awaken(side: String) -> void:
 		var king: Dictionary = s.leader
 		s.leader_state = "awake"
 		king.position = "atk"
-		king.has_attacked = true
+		king.has_attacked = not bool(cond.get("ready", false))   # ready: it may attack the turn it Awakens
 		king.deployed_turn = turn
 		s.field[slot] = king
 		_emit("awaken", {"side": side, "slot": slot, "card": king.duplicate(true)})
@@ -1736,6 +1759,7 @@ func _begin_turn() -> void:
 		return
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_start")
+	_leader_fx(active, "dormant_turn_start")
 	# King's Test survivors may promote at the start of their owner's next turn
 	for e in characters(active):
 		if e.card.get("kings_test", false):
@@ -1755,6 +1779,7 @@ func _begin_turn() -> void:
 func _end_turn() -> void:
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_end")
+	_leader_fx(active, "dormant_turn_end")
 	if winner != "":
 		return
 	var s: Dictionary = sides[active]

@@ -70,6 +70,7 @@ const FX_SAMPLES := [
 	[{"when": "foe_deployed", "do": "buff", "target": "self", "atk": 200, "until": "turn"}],
 	[{"when": "hustle_played", "do": "heal", "amount": 200}, {"when": "turn_start", "do": "damage", "amount": 100, "if": "hand_ge", "n": 3}],
 	[{"when": "deploy", "do": "recover", "role": "brawler", "amount": 2, "choose": true}],
+	[{"when": "passive", "do": "immune"}, {"when": "attack", "do": "pierce", "if": "leader_dormant"}],
 ]
 
 
@@ -89,6 +90,25 @@ const FX_CARD_SAMPLES := [
 	[{"do": "revive", "choose": true}],
 	[{"do": "break_ambush", "amount": 2}],
 	[{"do": "search", "kind": "gang_member", "max_auth": 2, "amount": 2}],
+]
+
+
+## Card Forge leaders for every fourth game (merged over the leader card).
+const LEADER_SAMPLES := [
+	{"effectKey": "", "awakenCondition": {"chars": 3, "influence": 1500, "ready": true}, "effects": [
+		{"when": "dormant", "do": "buff", "target": "allies", "atk": 200}, {"when": "dormant", "do": "pierce"},
+		{"when": "dormant_turn_start", "do": "heal", "amount": 200}, {"when": "dormant_hit", "do": "draw", "amount": 1},
+		{"when": "awaken", "do": "down", "target": "enemy"}]},
+	{"effectKey": "", "awakenCondition": {"authority": 6, "gutter": 4}, "effects": [
+		{"when": "dormant", "do": "cost_down", "amount": 1}, {"when": "dormant", "do": "immune"},
+		{"when": "dormant_ally_deployed", "do": "damage", "amount": 100, "once": true},
+		{"when": "dormant_foe_deployed", "do": "buff", "target": "enemies", "atk": -200},
+		{"when": "dormant_hustle", "do": "draw", "amount": 1}, {"when": "awaken", "do": "search", "max_auth": 4, "choose": true},
+		{"when": "passive", "do": "buff", "target": "allies", "atk": 300}]},
+	{"effectKey": "", "awakenCondition": {"morale": 4000, "foe_morale": 2500}, "effects": [
+		{"when": "dormant", "do": "untargetable"}, {"when": "dormant", "do": "buff", "target": "enemies", "def": -300},
+		{"when": "dormant_turn_end", "do": "stand", "target": "allies"}, {"when": "awaken", "do": "revive"},
+		{"when": "attack", "do": "buff", "target": "self", "atk": 500}]},
 ]
 
 
@@ -115,6 +135,13 @@ func _init() -> void:
 		var first := "player" if g % 2 == 0 else "opponent"
 		var levels := {"player": DuelAI.LEVELS[g % 3], "opponent": DuelAI.LEVELS[(g + 1) % 3]}
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1)
+		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
+		var leader_fx := {}
+		if g % 4 == 3:
+			for side in ["player", "opponent"]:
+				if d.sides[side].leader != null:
+					leader_fx[side] = LEADER_SAMPLES[(g / 4 + (1 if side == "opponent" else 0)) % LEADER_SAMPLES.size()]
+					d.sides[side].leader.merge(leader_fx[side].duplicate(true), true)
 		d.start()
 		var steps: Array = [{"action": null, "side": "", "events": d.take_events()}]
 		var n := 0
@@ -126,7 +153,7 @@ func _init() -> void:
 				break
 			steps.append({"action": a, "side": side, "events": d.take_events()})
 			n += 1
-		records.append({"decks": setup.decks, "hideouts": setup.hideouts, "leaders": setup.leaders,
+		records.append({"decks": setup.decks, "hideouts": setup.hideouts, "leaders": setup.leaders, "leader_fx": leader_fx,
 			"first": first, "levels": levels, "steps": steps, "winner": d.winner})
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(records))
