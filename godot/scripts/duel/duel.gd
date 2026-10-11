@@ -3421,6 +3421,14 @@ func _update_hover() -> void:
 			var top: String = counts.get(side, {}).get("gutter_top", "")
 			if top != "":
 				_show_detail(CardDB.get_card(top))
+		# The deck and Hideout show that side's card back, with how many cards are in them
+		for pile in ["deck", "hideout"]:
+			if Rect2(pile_pos(side, pile) - CARD / 2, CARD).has_point(m):
+				var n: int = counts.get(side, {}).get(pile, 0)
+				var whose := "Your" if side == "player" else "Their"
+				_show_detail({"name": "%s %s" % [whose, "Deck" if pile == "deck" else "Hideout"], "cardType": "",
+					"uid": "%s:%s:%d" % [side, pile, n], "back_side": side,
+					"effectText": "%d card%s" % [n, "" if n == 1 else "s"]})
 
 
 func _on_press() -> void:

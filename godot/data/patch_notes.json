@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.6",
+        "notes": [
+            "The Nebula card back's galaxy now turns smoothly along its own swirl and blends into the rest of the card back.",
+            "Hovering a deck or a Hideout shows that player's card back and how many cards are in it."
+        ]
+    },
+    {
         "version": "0.7.5",
         "notes": [
             "A Dormant leader that is defeated no longer costs its owner Morale: it never took the field. Its Dormant effects still end. Once a leader Awakens it fights like any other character, so battles involving it deal Morale damage as usual.",

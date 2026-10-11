@@ -68,9 +68,15 @@ void fragment() {
 		// masked by shape on both ends: they stay put, and the turning swirl never drags copies of them
 		vec2 p = vec2(uv.x, uv.y * aspect);   // card widths, centred
 		float ang = -galaxy_angle;
-		vec2 q = mat2(vec2(cos(ang), sin(ang)), vec2(-sin(ang), cos(ang))) * p;
-		vec4 spun = texture(TEXTURE, vec2(q.x, q.y / aspect) + 0.5);
-		float w = (1.0 - crest(p)) * (1.0 - crest(q)) * (1.0 - frame_mask(p, aspect)) * (1.0 - frame_mask(q, aspect));
+		// The swirl is painted as a tall oval, like the card, so it turns along that oval (in texture
+		// space): it rolls onto itself instead of being squashed sideways as it goes round
+		vec2 te = mat2(vec2(cos(ang), sin(ang)), vec2(-sin(ang), cos(ang))) * uv;
+		vec4 spun = texture(TEXTURE, te + 0.5);
+		vec2 q = vec2(te.x, te.y * aspect);
+		// ...and towards the edges it hands back to the still art, so the turning part flows into it
+		float re = length(uv) * 2.0;   // 0 at the centre, 1 at the middle of each edge
+		float settle = 1.0 - smoothstep(0.6, 0.98, re);
+		float w = (1.0 - crest(p)) * (1.0 - crest(q)) * (1.0 - frame_mask(p, aspect)) * (1.0 - frame_mask(q, aspect)) * settle;
 		col.rgb = mix(col.rgb, spun.rgb * (1.0 + 0.35 * galaxy_glow), w * galaxy);
 		float rr = length(p);
 		// The crest breathes
