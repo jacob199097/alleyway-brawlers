@@ -74,6 +74,7 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		var leader = make_card(leader_id) if leader_id != "" else null
 		if leader != null:
 			leader.influence = int(leader.influence) if leader.get("influence") != null else leader.base_defense   # (Forge leaders set it; else DEF)
+			leader.influence_max = leader.influence
 		sides[side] = {
 			"morale": START_MORALE, "authority": 1, "authority_max": 1,
 			"deck": deck, "hand": [], "field": field, "gutter": [], "hideout": hideout,
@@ -277,7 +278,7 @@ func _stays_up(side: String, slot: int, c) -> bool:
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
 const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
 const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until"]
 
 
 func in_stasis(c) -> bool:
@@ -302,6 +303,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("stun")
 	if c.get("shield", false):
 		out.append("shield")
+	if int(c.get("silence_until", 0)) >= turn:
+		out.append("silence")
 	return out
 
 
@@ -319,11 +322,14 @@ func attack_targets(side: String) -> Array:
 	var foe := other(side)
 	# A character in STASIS can't be attacked and doesn't block a direct attack
 	var foes := characters(foe).filter(func(e): return not in_stasis(e.card))
+	# Elusive characters can't be attacked while their owner has another character that can be
+	var open := foes.filter(func(e): return _passive(foe, e.slot, e.card, "elusive").is_empty())
+	var pool: Array = open if not open.is_empty() else foes
 	# A standing Guard must be attacked first
-	var guards := foes.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "guard").is_empty())
+	var guards := pool.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "guard").is_empty())
 	if not guards.is_empty():
 		return guards.map(func(e): return e.slot)
-	var targets: Array = foes.map(func(e): return e.slot)
+	var targets: Array = pool.map(func(e): return e.slot)
 	if not foes.any(func(e): return not e.card.downed):
 		targets.append(DIRECT)
 	if leader_dormant(foe):
@@ -1165,6 +1171,8 @@ func _fx(c, when: String) -> Array:
 	var out: Array = []
 	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects
 		return out
+	if int(c.get("silence_until", 0)) >= turn:   # SILENCED: its effects don't work
+		return out
 	for e in c.get("effects", []):
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
 			out.append(e)
@@ -1241,6 +1249,14 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return s.leader_state == "dormant"
 		"leader_awake":
 			return s.leader_state == "awake"
+		"foe_hand_le":
+			return sides[other(side)].hand.size() <= n
+		"foe_ambush":
+			return BACK.any(func(b): return sides[other(side)].field[b] != null)
+		"authority_ge":
+			return s.authority_max >= n
+		"ally_downed":
+			return characters(side).any(func(x): return x.slot != slot and x.card.downed)
 		"hand_ge":
 			return s.hand.size() >= n
 	return true
@@ -1322,6 +1338,34 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				x.card.shield = true
 				return "%s is shielded from the next defeat" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "any", "shield", fn, "%s shields %%s" % c.name)
+		"influence":
+			# A Dormant leader regains Influence, up to what it started with
+			var l = s.leader
+			if s.leader_state != "dormant" or l == null:
+				return
+			var gain: int = mini(n, int(l.get("influence_max", l.influence)) - int(l.influence))
+			if gain <= 0:
+				return
+			l.influence += gain
+			_effect(side, c, "%s: %s regains %d Influence" % [c.name, l.name, gain], slot)
+			_emit("leader_heal", {"side": side, "amount": gain, "influence": l.influence})
+		"ramp":
+			# More Authority every turn from now on (and this turn)
+			var before: int = s.authority_max
+			s.authority_max = mini(MAX_AUTHORITY, s.authority_max + n)
+			var d: int = s.authority_max - before
+			if d <= 0:
+				return
+			s.authority += d
+			_effect(side, c, "%s: +%d max Authority" % [c.name, d], slot)
+			_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": d})
+		"silence":
+			var until_turn: int = turn + (1 if str(e.get("until", "turn")) == "next_turn" else 0)
+			var fn := func(x: Dictionary) -> String:
+				x.card.silence_until = until_turn
+				_recalc()
+				return "%s silences %s: its effects stop" % [c.name, x.card.name]
+			_fx_apply(side, slot, c, e, vs, "any", "silence", fn, "%s silences %%s" % c.name)
 		"draw":
 			_effect(side, c, "%s: draw %d" % [c.name, n], slot)
 			for i in n:
@@ -1415,8 +1459,10 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			if card_at(side, slot) == c:
 				_promote(side, slot, c.name)
 		"attack_again":
-			if card_at(side, slot) == c and c.has_attacked:
+			# At most one extra attack per card each turn, so no trigger can attack forever
+			if card_at(side, slot) == c and c.has_attacked and int(c.get("again_turn", 0)) != turn:
 				c.has_attacked = false
+				c.again_turn = turn
 				_effect(side, c, "%s may attack again this turn" % c.name, slot)
 		"poison", "burn":
 			var kind := str(e.get("do", ""))

@@ -11,6 +11,7 @@ const LIST := {
 	"STASIS": [Color("9a7bff"), "STASIS (Nebula): frozen in time until the end of its owner's next turn. It can't attack, be attacked or be targeted, and its effects don't work. It doesn't block direct attacks."],
 	"STUN": [Color("ffa040"), "STUN: it can't attack during its owner's next turn."],
 	"SHIELD": [Color("ffd75a"), "SHIELD: the next time it would be defeated (Downed or KO'd), it isn't."],
+	"SILENCE": [Color("b8b4cc"), "SILENCE: its effects and abilities don't work for a while."],
 	"PIERCE": [Color("ff74d4"), "PIERCE: if it beats a DEF or Downed character, the opponent also loses Morale equal to the difference."],
 	"DRAIN": [Color("e07aff"), "DRAIN X: your opponent loses X Morale and you gain X Morale."],
 	"HEAL": [Color("6ff0c0"), "HEAL X: you gain X Morale (up to the starting 6000)."],

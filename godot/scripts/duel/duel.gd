@@ -539,6 +539,8 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s awakened!" % _cname(ev.card), side)
 		"leader_hit":
 			_log("%s leader took %d" % [_whose(side), int(ev.amount)], side)
+		"leader_heal":
+			_log("%s leader regained %d Influence" % [_whose(side), int(ev.amount)], side)
 		"leader_down":
 			_log("%s leader %s fell" % [_whose(side), _cname(ev.card)], side)
 		"game_over":
@@ -1054,6 +1056,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_awaken(ev)
 		"leader_hit":
 			await _ev_leader_hit(ev)
+		"leader_heal":
+			await _ev_leader_heal(ev)
 		"leader_down":
 			await _ev_leader_down(ev)
 		"prompt":
@@ -2108,6 +2112,16 @@ func _ev_leader_hit(ev: Dictionary) -> void:
 	v.badge_text = _influence_text(ev.influence)
 	_float_text(v.home + Vector2(0, -40), "-%d" % ev.amount, RED, 56)
 	Sfx.play("damage", 1.2)
+	await _wait(0.35)
+
+
+func _ev_leader_heal(ev: Dictionary) -> void:
+	var v: CardView = leaders.get(ev.side)
+	if v == null:
+		return
+	v.badge_text = _influence_text(ev.influence)
+	_float_text(v.home + Vector2(0, -40), "+%d" % ev.amount, Color(1.0, 0.85, 0.42), 56)
+	Sfx.play("heal", 1.1)
 	await _wait(0.35)
 
 

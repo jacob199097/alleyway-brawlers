@@ -72,6 +72,11 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "recover", "role": "brawler", "amount": 2, "choose": true}],
 	[{"when": "passive", "do": "immune"}, {"when": "attack", "do": "pierce", "if": "leader_dormant"}],
 	[{"when": "deploy", "do": "down", "target": "enemy", "clan": "lion", "if": "adjacent", "if_clan": ""}],
+	[{"when": "direct", "do": "attack_again"}, {"when": "attack", "do": "attack_again"}],
+	[{"when": "deploy", "do": "silence", "target": "enemy"}, {"when": "turn_start", "do": "ramp", "amount": 1, "if": "authority_ge", "n": 3, "once": true}],
+	[{"when": "passive", "do": "elusive"}, {"when": "deploy", "do": "break_ambush", "if": "foe_ambush"}],
+	[{"when": "turn_start", "do": "influence", "amount": 500}, {"when": "deploy", "do": "discard", "amount": 1, "if": "foe_hand_le", "n": 3}],
+	[{"when": "turn_end", "do": "stand", "target": "allies", "if": "ally_downed"}, {"when": "defend", "do": "silence", "target": "attacker", "until": "next_turn"}],
 	[{"when": "ally_deployed", "do": "buff", "target": "allies", "atk": 200, "clan": "", "when_clan": "lion"}, {"when": "passive", "do": "buff", "target": "self", "atk": 300, "if": "allies", "n": 2, "if_clan": "lion", "clan": ""}],
 ]
 

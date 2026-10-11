@@ -14,6 +14,7 @@ const STATUS_STYLE := {
 	"bleed": [Color("ff4a6e"), "BLD", "BLEEDING"], "shock": [Color("4fc3ff"), "SHK", "SHOCKED"],
 	"freeze": [Color("a6ecff"), "FRZ", "FROZEN"], "stasis": [Color("9a7bff"), "STS", "STASIS"],
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
+	"silence": [Color("b8b4cc"), "SIL", "SILENCED"],
 }
 
 var card: Dictionary = {}

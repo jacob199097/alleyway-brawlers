@@ -210,4 +210,51 @@ assert.ok(!ambushOffered('lion'), 'not offered for another clan');
     assert.ok(!b._fxCond('player', 0, { ...e, clan: 'militia', if_clan: undefined }, null), 'old cards: the effect clan counts');
 }
 
+// No endless attacks: "attack again" gives at most one extra attack per card each turn
+{
+    const b = board([{ attack: 3000, effects: [{ when: 'direct', do: 'attack_again' }] }], []);
+    let attacks = 0;
+    while (attacks < 10 && b.canAttackWith('player', 0) && b._attack('player', 0, DIRECT)) attacks++;
+    assert.equal(attacks, 2, 'one attack plus one extra');
+}
+
+// New conditions
+{
+    const b = board([{}, { downed: true }], [{}]);
+    b.sides.opponent.hand = [b.makeCard('lion_grunt')];
+    assert.ok(b._fxCond('player', 0, { if: 'foe_hand_le', n: 1 }, null) && !b._fxCond('player', 0, { if: 'foe_hand_le', n: 0 }, null));
+    assert.ok(!b._fxCond('player', 0, { if: 'foe_ambush' }, null));
+    b.sides.opponent.field[7] = b.makeCard({ id: 'lion_grunt', cardType: 'ambush' });
+    assert.ok(b._fxCond('player', 0, { if: 'foe_ambush' }, null), 'opponent has a face-down card');
+    b.sides.player.authority_max = 6;
+    assert.ok(b._fxCond('player', 0, { if: 'authority_ge', n: 6 }, null) && !b._fxCond('player', 0, { if: 'authority_ge', n: 7 }, null));
+    assert.ok(b._fxCond('player', 0, { if: 'ally_downed' }, null) && !b._fxCond('player', 1, { if: 'ally_downed' }, null));
+}
+
+// Influence back (up to the start), more max Authority, SILENCE, elusive
+{
+    const b = board([{}], [{ effects: [{ when: 'passive', do: 'buff', target: 'self', atk: 500 }] }, {}]);
+    b.sides.player.leader = b.makeCard({ id: 'lion_grunt', cardType: 'leader', defense: 3000 });
+    b.sides.player.leader.influence = 1000; b.sides.player.leader.influence_max = 3000;
+    b.sides.player.leader_state = 'dormant';
+    const me = b.cardAt('player', 0);
+    b._doFx('player', 0, me, { do: 'influence', amount: 1500 });
+    assert.equal(b.sides.player.leader.influence, 2500);
+    b._doFx('player', 0, me, { do: 'influence', amount: 1500 });
+    assert.equal(b.sides.player.leader.influence, 3000, 'never above where it started');
+    b.sides.player.authority_max = 4; b.sides.player.authority = 1;
+    b._doFx('player', 0, me, { do: 'ramp', amount: 2 });
+    assert.equal(b.sides.player.authority_max, 6); assert.equal(b.sides.player.authority, 3);
+    b.sides.opponent.field[1] = null;
+    b._recalc();
+    const atk = b.cardAt('opponent', 0).attack;
+    b._doFx('player', 0, me, { do: 'silence', target: 'enemy' });
+    assert.equal(b.cardAt('opponent', 0).attack, atk - 500, 'silenced: its +500 ATK passive is off');
+    assert.ok(b.statuses(b.cardAt('opponent', 0)).includes('silence'));
+    const e = board([{}], [{ effects: [{ when: 'passive', do: 'elusive' }] }, {}]);
+    assert.deepEqual(e.attackTargets('player'), [1], 'elusive card hides behind the other');
+    const e2 = board([{}], [{ effects: [{ when: 'passive', do: 'elusive' }] }, { effects: [{ when: 'passive', do: 'elusive' }] }]);
+    assert.deepEqual(e2.attackTargets('player'), [0, 1], 'all elusive: all can be attacked (no lock)');
+}
+
 console.log('all good');

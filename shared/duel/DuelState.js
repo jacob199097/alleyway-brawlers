@@ -54,7 +54,7 @@ const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
 // Keyword statuses (Card Forge effects); same rules as duel_state.gd
 const FOREVER = 1000000;
 const STATUS_TICKS = 3;
-const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until'];
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -119,6 +119,7 @@ export class DuelState {
             const leaderId = leaders[side] || '';
             const leader = leaderId !== '' ? this.makeCard(leaderId) : null;
             if (leader) leader.influence = leader.influence != null ? toInt(leader.influence) : leader.base_defense;   // (Forge leaders set it; else DEF)
+            if (leader) leader.influence_max = leader.influence;
             this.sides[side] = {
                 morale: START_MORALE, authority: 1, authority_max: 1,
                 deck, hand: [], field, gutter: [], hideout,
@@ -285,6 +286,7 @@ export class DuelState {
         if (this.inStasis(c)) out.push('stasis');
         if (toInt(c.stun_until ?? 0) >= this.turn) out.push('stun');
         if (c.shield) out.push('shield');
+        if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
         return out;
     }
 
@@ -300,10 +302,13 @@ export class DuelState {
     attackTargets(side) {
         const foe = other(side);
         const foes = this.characters(foe).filter(e => !this.inStasis(e.card));
+        // Elusive characters can't be attacked while their owner has another character that can be
+        const open = foes.filter(e => !this._passive(foe, e.slot, e.card, 'elusive'));
+        const pool = open.length ? open : foes;
         // A standing Guard must be attacked first
-        const guards = foes.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'guard'));
+        const guards = pool.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'guard'));
         if (guards.length) return guards.map(e => e.slot);
-        const targets = foes.map(e => e.slot);
+        const targets = pool.map(e => e.slot);
         if (!foes.some(e => !e.card.downed)) targets.push(DIRECT);
         if (this.leaderDormant(foe)) targets.push(LEADER);
         return targets;
@@ -1097,6 +1102,7 @@ export class DuelState {
 
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
+        if (toInt(c.silence_until ?? 0) >= this.turn) return [];   // SILENCED: its effects don't work
         // "*": all of them (Hustles, Ambushes)
         return (c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when));
     }
@@ -1169,6 +1175,10 @@ export class DuelState {
             case 'gutter_ge': return s.gutter.length >= n;
             case 'leader_dormant': return s.leader_state === 'dormant';
             case 'leader_awake': return s.leader_state === 'awake';
+            case 'foe_hand_le': return this.sides[other(side)].hand.length <= n;
+            case 'foe_ambush': return BACK.some(b => this.sides[other(side)].field[b] != null);
+            case 'authority_ge': return s.authority_max >= n;
+            case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed);
             case 'hand_ge': return s.hand.length >= n;
         }
         return true;
@@ -1253,6 +1263,35 @@ export class DuelState {
                     x.card.shield = true;
                     return `${x.card.name} is shielded from the next defeat`;
                 }, `${c.name} shields %s`);
+                break;
+            case 'influence': {
+                // A Dormant leader regains Influence, up to what it started with
+                const l = s.leader;
+                if (s.leader_state !== 'dormant' || l == null) break;
+                const gain = Math.min(n, toInt(l.influence_max ?? l.influence) - toInt(l.influence));
+                if (gain <= 0) break;
+                l.influence += gain;
+                this._effect(side, c, `${c.name}: ${l.name} regains ${gain} Influence`, slot);
+                this._emit('leader_heal', { side, amount: gain, influence: l.influence });
+                break;
+            }
+            case 'ramp': {
+                // More Authority every turn from now on (and this turn)
+                const before = s.authority_max;
+                s.authority_max = Math.min(MAX_AUTHORITY, s.authority_max + n);
+                const d = s.authority_max - before;
+                if (d <= 0) break;
+                s.authority += d;
+                this._effect(side, c, `${c.name}: +${d} max Authority`, slot);
+                this._emit('authority', { side, value: s.authority, max: s.authority_max, delta: d });
+                break;
+            }
+            case 'silence':
+                this._fxApply(side, slot, c, e, vs, 'any', 'silence', (x) => {
+                    x.card.silence_until = this.turn + (String(e.until ?? 'turn') === 'next_turn' ? 1 : 0);
+                    this._recalc();
+                    return `${c.name} silences ${x.card.name}: its effects stop`;
+                }, `${c.name} silences %s`);
                 break;
             case 'draw':
                 this._effect(side, c, `${c.name}: draw ${n}`, slot);
@@ -1359,8 +1398,10 @@ export class DuelState {
                 if (this.cardAt(side, slot) === c) this._promote(side, slot, c.name);
                 break;
             case 'attack_again':
-                if (this.cardAt(side, slot) === c && c.has_attacked) {
+                // At most one extra attack per card each turn, so no trigger can attack forever
+                if (this.cardAt(side, slot) === c && c.has_attacked && c.again_turn !== this.turn) {
                     c.has_attacked = false;
+                    c.again_turn = this.turn;
                     this._effect(side, c, `${c.name} may attack again this turn`, slot);
                 }
                 break;
