@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.7.1",
+        "notes": [
+            "Cards can now need several Downs or KOs before their effect happens, for example \"After this card Downs 2 characters: PROMOTE this card.\" The count builds up while the card stays on the field."
+        ]
+    },
+    {
         "version": "0.7.0",
         "notes": [
             "Crafting: scrap cards you don't need into Dust, and spend Dust crafting the ones you're missing. In the Card Library, click a card, then SCRAP or CRAFT along the bottom. SCRAP EXTRAS turns every copy beyond 3 (1 for leaders) into Dust in one go, and cards your decks use are never scrapped.",

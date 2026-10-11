@@ -21,6 +21,8 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "buff", "target": "allies", "def": 200, "clan": "lion"}],
 	[{"when": "passive", "do": "buff", "target": "self", "atk": 400, "if": "adjacent"}],
 	[{"when": "down", "do": "promote"}],
+	[{"when": "down", "do": "promote", "times": 2}],
+	[{"when": "ko", "do": "draw", "amount": 1, "times": 2}],
 	[{"when": "deploy", "do": "down", "target": "enemies", "if": "foe_downed"}],
 	[{"when": "attack", "do": "draw", "amount": 1}, {"when": "deploy", "do": "buff", "target": "self", "def": 300}],
 	[{"when": "defend", "do": "buff", "target": "self", "atk": 300, "def": 500}],

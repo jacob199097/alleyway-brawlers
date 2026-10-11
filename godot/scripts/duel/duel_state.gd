@@ -860,6 +860,7 @@ func _spring(side: String, slot: int) -> void:
 # ── Effects ──────────────────────────────────────────────────────────────────
 
 func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
+	c.erase("fx_count")   # "times" counts start fresh each time a card enters the field
 	_run_fx(side, slot, c, "deploy")
 	for x in characters(side):
 		if x.slot != slot:
@@ -1036,7 +1037,7 @@ func _recalc() -> void:
 
 # ── Card effects from data (Card Forge) ──────────────────────────────────────
 # A card's "effects" list holds building blocks: {when, do, target, atk, def, amount, until,
-# clan, kind, if, n, once}. shared/duel/DuelState.js runs exactly the same rules.
+# clan, kind, if, n, once, times}. shared/duel/DuelState.js runs exactly the same rules.
 #   when:   deploy | attack | defend | ko | down | direct | self_downed | self_ko |
 #           ally_deployed | turn_start | turn_end | passive
 #   do:     buff | down | ko | stand | bounce | force_def | stun | shield | pierce | draw |
@@ -1051,6 +1052,8 @@ func _recalc() -> void:
 #           hand_le | morale_le | foe_morale_le | enemies_ge | gutter_ge | leader_dormant
 #   n:      the number for allies / hand_le / morale_le / foe_morale_le / enemies_ge / gutter_ge
 #   once:   true = once per turn
+#   times:  ko / down: happens once the card has KO'd / Downed this many characters while on the
+#           field (it then counts again from 0; leaving the field resets the count)
 
 func _fx(c, when: String) -> Array:
 	var out: Array = []
@@ -1063,6 +1066,17 @@ func _fx(c, when: String) -> Array:
 
 
 ## Once-per-turn effects: true the first time this turn (and marks it used), false after.
+## times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters).
+func _fx_count(c: Dictionary, key: String, e: Dictionary) -> bool:
+	var need := int(e.get("times", 1))
+	if need <= 1:
+		return true
+	var count: Dictionary = c.get("fx_count", {})
+	count[key] = int(count.get(key, 0)) + 1
+	c.fx_count = count
+	return int(count[key]) >= need
+
+
 func _fx_once(c: Dictionary, key: String, e: Dictionary) -> bool:
 	if not e.get("once", false):
 		return true
@@ -1125,7 +1139,12 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 			return
 		if when == "ally_deployed" and str(e.get("clan", "")) != "" and (def == null or def.get("clanTag") != str(e.get("clan", ""))):
 			continue
-		if _fx_cond(side, slot, e, def) and _fx_once(c, "%s%d" % [when, k], e):
+		var key := "%s%d" % [when, k]
+		if not _fx_cond(side, slot, e, def) or not _fx_count(c, key, e):
+			continue
+		if _fx_once(c, key, e):
+			if int(e.get("times", 1)) > 1:
+				c.fx_count.erase(key)   # start counting again
 			_do_fx(side, slot, c, e, vs)
 
 
@@ -1429,7 +1448,7 @@ func _bounce(side: String, slot: int) -> void:
 	c.position = "atk"
 	c.face_down = false
 	c.has_attacked = false
-	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used"]:
+	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used", "fx_count"]:
 		c.erase(k)
 	_clear_status(c)
 	sides[side].hand.append(c)

@@ -825,6 +825,7 @@ export class DuelState {
     // ── Effects ────────────────────────────────────────────────────────────
 
     _onDeploy(side, slot, c) {
+        delete c.fx_count;   // "times" counts start fresh each time a card enters the field
         this._runFx(side, slot, c, 'deploy');
         for (const x of this.characters(side)) {
             if (x.slot !== slot) this._runFx(side, x.slot, x.card, 'ally_deployed', c);
@@ -994,7 +995,7 @@ export class DuelState {
 
     // ── Card effects from data (Card Forge) ────────────────────────────────
     // Same building blocks and rules as duel_state.gd (see the list there):
-    // {when, do, target, atk, def, amount, until, clan, kind, if, n, once}
+    // {when, do, target, atk, def, amount, until, clan, kind, if, n, once, times}
 
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
@@ -1024,6 +1025,16 @@ export class DuelState {
             return;
         }
         this._atkResolve(ctx);
+    }
+
+    /** times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters). */
+    _fxCount(c, key, e) {
+        const need = toInt(e.times ?? 1);
+        if (need <= 1) return true;
+        const count = c.fx_count || {};
+        count[key] = toInt(count[key] ?? 0) + 1;
+        c.fx_count = count;
+        return count[key] >= need;
     }
 
     _fxOnce(c, key, e) {
@@ -1068,7 +1079,11 @@ export class DuelState {
             k += 1;
             if (this.winner !== '') return;
             if (when === 'ally_deployed' && String(e.clan ?? '') !== '' && (def == null || def.clanTag !== String(e.clan ?? ''))) continue;
-            if (this._fxCond(side, slot, e, def) && this._fxOnce(c, `${when}${k}`, e)) this._doFx(side, slot, c, e, vs);
+            if (!this._fxCond(side, slot, e, def) || !this._fxCount(c, `${when}${k}`, e)) continue;
+            if (this._fxOnce(c, `${when}${k}`, e)) {
+                if (toInt(e.times ?? 1) > 1) delete c.fx_count[`${when}${k}`];   // start counting again
+                this._doFx(side, slot, c, e, vs);
+            }
         }
     }
 
@@ -1392,7 +1407,7 @@ export class DuelState {
         c.position = 'atk';
         c.face_down = false;
         c.has_attacked = false;
-        for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used']) delete c[k];
+        for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used', 'fx_count']) delete c[k];
         this._clearStatus(c);
         this.sides[side].hand.push(c);
         this._emit('bounce', { side, slot, card: clone(c) });
