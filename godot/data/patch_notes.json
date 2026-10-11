@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.7.2",
+        "notes": [
+            "Leaders can now have their own abilities: effects that work while they're Dormant (boosting or protecting your characters, making your cards cheaper, or triggering at the start of your turn, when you deploy, when they're attacked and more), effects when they Awaken, and their own Awaken conditions for any clan. Leaders also show their own Influence.",
+            "Deck searches can now look for a card by clan, Authority, role, level or name, find more than one card, and let you choose which card to take. Bringing cards back from the Gutter works the same way.",
+            "New card abilities: bring a character back from your Gutter onto the field, destroy your opponent's face-down cards, effects when your opponent deploys a character or when you play a Hustle, and Ambushes that only protect one clan's characters."
+        ]
+    },
+    {
         "version": "0.7.1",
         "notes": [
             "Cards can now need several Downs or KOs before their effect happens, for example \"After this card Downs 2 characters: PROMOTE this card.\" The count builds up while the card stays on the field.",
