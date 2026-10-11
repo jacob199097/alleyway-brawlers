@@ -96,4 +96,83 @@ const ambushOffered = (defClan) => {
 assert.ok(ambushOffered('nebula'), 'offered when a Nebula character is attacked');
 assert.ok(!ambushOffered('lion'), 'not offered for another clan');
 
+// Leaders: "dormant" effects work only while Dormant; an awaken condition for any clan; "awaken" effects
+{
+    const b = board([{ attack: 1000, clanTag: 'nebula' }, { clanTag: 'nebula' }], []);
+    b.sides.player.leader = b.makeCard({ id: 'lion_grunt', cardType: 'leader', attack: 3000, defense: 3000, clanTag: 'nebula',
+        awakenCondition: { chars: 3, clan: 'nebula' },
+        effects: [{ when: 'dormant', do: 'buff', target: 'allies', atk: 200 }, { when: 'awaken', do: 'draw', amount: 2 }] });
+    b.sides.player.leader_state = 'dormant';
+    b._recalc();
+    assert.equal(b.cardAt('player', 0).attack, 1200, 'Dormant leader aura');
+    let asked = null;
+    b._ask = (side, kind, text, card, options, cb) => { asked = { kind, cb }; };
+    b._checkAwaken('player');
+    assert.equal(asked, null, 'two Nebula characters: not yet');
+    b.sides.player.field[2] = b.makeCard({ id: 'lion_grunt', clanTag: 'nebula' });
+    b._checkAwaken('player');
+    assert.equal(asked && asked.kind, 'awaken', 'three Nebula characters: awakens');
+    const hand = b.sides.player.hand.length;
+    b.sides.player.deck = [b.makeCard('lion_grunt'), b.makeCard('lion_grunt')];
+    asked.cb('3');
+    assert.equal(b.sides.player.leader_state, 'awake');
+    assert.equal(b.sides.player.hand.length, hand + 2, 'awaken effect: draw 2');
+    assert.equal(b.cardAt('player', 0).attack, 1000, 'the Dormant aura ends');
+}
+
+// Search filters: Authority N or less, clan, name, how many, and choosing
+{
+    const b = board([{}], []);
+    const mk = (spec) => b.makeCard({ id: 'lion_grunt', cardType: 'gang_member', ...spec });
+    b.sides.player.deck = [mk({ name: 'Big', authority: 6, clanTag: 'nebula' }), mk({ name: 'Kade', authority: 2, clanTag: 'nebula' }),
+        mk({ name: 'Small Lion', authority: 1, clanTag: 'lion' }), mk({ name: 'Nix', authority: 4, clanTag: 'nebula' })];
+    b.sides.player.hand = [];
+    const src = b.cardAt('player', 0);
+    b._doFx('player', 0, src, { do: 'search', clan: 'nebula', max_auth: 4 });
+    assert.deepEqual(b.sides.player.hand.map(c => c.name), ['Nix'], 'top-most NEBULA card with 4 or less Authority');
+    b._doFx('player', 0, src, { do: 'search', name: 'kade' });
+    assert.equal(b.sides.player.hand[1].name, 'Kade', 'by name');
+    b.sides.player.deck.push(mk({ name: 'A', authority: 1 }), mk({ name: 'B', authority: 3 }));
+    let ask = null;
+    b._ask = (side, key, prompt, card, options, cb) => { ask = { options, cb }; };
+    b._doFx('player', 0, src, { do: 'search', max_auth: 3, choose: true });
+    assert.deepEqual(ask.options.map(o => o.label), ['B  (3)', 'A  (1)', 'SMALL LION  (1)'], 'choices, best first');
+    ask.cb('1');
+    assert.equal(b.sides.player.hand[2].name, 'A', 'the chosen card');
+}
+
+// Revive: a character from the Gutter onto the first empty lane; Break Ambush
+{
+    const b = board([{}], [{}]);
+    b.sides.player.gutter = [b.makeCard({ id: 'lion_grunt', name: 'Old Friend', cardType: 'gang_member', authority: 3 })];
+    b.sides.player.gutter[0].downed = true;
+    b._doFx('player', 0, b.cardAt('player', 0), { do: 'revive', max_auth: 4 });
+    assert.equal(b.cardAt('player', 1) && b.cardAt('player', 1).name, 'Old Friend', 'revived into lane 2');
+    assert.ok(!b.cardAt('player', 1).downed && b.sides.player.gutter.length === 0);
+    b.sides.opponent.field[6] = b.makeCard({ id: 'lion_grunt', cardType: 'ambush' });
+    b.sides.opponent.field[8] = b.makeCard({ id: 'lion_grunt', cardType: 'ambush' });
+    b._doFx('player', 0, b.cardAt('player', 0), { do: 'break_ambush', amount: 1 });
+    assert.equal(b.cardAt('opponent', 6), null, 'leftmost face-down card destroyed');
+    assert.ok(b.cardAt('opponent', 8), 'only one');
+}
+
+// Triggers: when the opponent deploys; when you play a Hustle. Conditions: leader Awake, hand N+
+{
+    const b = board([{ effects: [{ when: 'foe_deployed', do: 'heal', amount: 300 }, { when: 'hustle_played', do: 'draw', amount: 1 }] }], [{}]);
+    b.sides.player.morale = 5000;
+    b._onDeploy('opponent', 0, b.cardAt('opponent', 0));
+    assert.equal(b.sides.player.morale, 5300, 'foe_deployed fired');
+    b.sides.player.deck = [b.makeCard('lion_grunt')];
+    const h = b.makeCard({ id: 'lion_grunt', cardType: 'hustle', authority: 0, effects: [{ do: 'heal', amount: 100 }] });
+    b.sides.player.hand = [h];
+    b.sides.player.authority = 5;
+    b.phase = 'deployment';
+    const before = b.sides.player.hand.length;
+    assert.ok(b._hustle('player', h.uid), 'hustle played');
+    assert.equal(b.sides.player.hand.length, before, 'hustle left the hand and hustle_played drew one');
+    b.sides.player.leader_state = 'awake';
+    assert.ok(b._fxCond('player', 0, { if: 'leader_awake' }, null));
+    assert.ok(b._fxCond('player', 0, { if: 'hand_ge', n: 1 }, null) && !b._fxCond('player', 0, { if: 'hand_ge', n: 5 }, null));
+}
+
 console.log('all good');

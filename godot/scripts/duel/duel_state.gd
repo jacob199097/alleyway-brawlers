@@ -235,7 +235,7 @@ func cost_of(side: String, c: Dictionary) -> int:
 	if s.leader_state == "dormant" and s.leader != null:
 		sources.append([-1, s.leader])
 	for src in sources:
-		for e in _fx(src[1], "passive"):
+		for e in _fx(src[1], "dormant" if src[0] == -1 else "passive"):
 			if str(e.get("do", "")) != "cost_down" or not _fx_cond(side, src[0], e, null):
 				continue
 			if str(e.get("clan", "")) != "" and c.get("clanTag") != str(e.get("clan", "")):
@@ -460,6 +460,8 @@ func _hustle(side: String, uid: int) -> bool:
 	# A Card Forge Hustle: all of its effects happen when it's played
 	if not c.get("effects", []).is_empty():
 		_run_fx(side, NO_SLOT, c, "*")
+	for x in characters(side):
+		_run_fx(side, x.slot, x.card, "hustle_played", c)
 	match c.effectKey:
 		"corner_deal":
 			_draw(side)
@@ -924,6 +926,8 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 		if x.slot != slot:
 			_run_fx(side, x.slot, x.card, "ally_deployed", c)
 	var foe := other(side)
+	for x in characters(foe):
+		_run_fx(foe, x.slot, x.card, "foe_deployed", c)
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
 			var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
@@ -1005,8 +1009,16 @@ func _check_awaken(side: String) -> void:
 	var cond: Dictionary = s.leader.get("awakenCondition", {})
 	if cond.is_empty():
 		return
-	var lions := characters(side).filter(func(e): return is_lion(e.card) and not e.card.downed and not e.card.face_down).size()
-	if lions < int(cond.get("lions", 99)) and s.authority_max < int(cond.get("authorityThreshold", 99)):
+	# Any of: N+ standing (clan) characters, Authority N+, Morale N or less
+	# (King Roan's older form: lions = LIONS characters, authorityThreshold = Authority)
+	var clan := "lion" if cond.get("lions") != null else str(cond.get("clan", ""))
+	var chars := characters(side).filter(func(e): return (clan == "" or e.card.get("clanTag") == clan) \
+			and not e.card.downed and not e.card.face_down).size()
+	var need_chars = cond.get("lions") if cond.get("lions") != null else cond.get("chars", 99)
+	var need_auth = cond.get("authorityThreshold") if cond.get("authorityThreshold") != null else cond.get("authority", 99)
+	var ready: bool = chars >= int(need_chars) or s.authority_max >= int(need_auth) \
+			or (cond.get("morale") != null and s.morale <= int(cond.morale))
+	if not ready:
 		return
 	var options: Array = []
 	var empties: Array = []
@@ -1022,7 +1034,7 @@ func _check_awaken(side: String) -> void:
 	options.append_array(empties)
 	options.append_array(taken)
 	options.append({"id": "wait", "label": "STAY DORMANT FOR NOW"})
-	_ask(side, "awaken", "%s AWAKENS! Choose his lane" % s.leader.name, s.leader, options, func(choice: String):
+	_ask(side, "awaken", "%s AWAKENS! Choose a lane" % s.leader.name, s.leader, options, func(choice: String):
 		if choice == "wait":
 			return
 		var slot := int(choice)
@@ -1040,7 +1052,10 @@ func _check_awaken(side: String) -> void:
 		king.deployed_turn = turn
 		s.field[slot] = king
 		_emit("awaken", {"side": side, "slot": slot, "card": king.duplicate(true)})
-		_effect(side, king, "%s takes the street himself" % king.name, slot))
+		_effect(side, king, "%s takes the street" % king.name, slot)
+		king.erase("fx_count")
+		_run_fx(side, slot, king, "awaken")
+		_recalc())
 
 
 ## Recompute ATK/DEF from base stats, temporary mods and passives, and report them.
@@ -1194,6 +1209,10 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return s.gutter.size() >= n
 		"leader_dormant":
 			return s.leader_state == "dormant"
+		"leader_awake":
+			return s.leader_state == "awake"
+		"hand_ge":
+			return s.hand.size() >= n
 	return true
 
 
@@ -1276,26 +1295,62 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			for i in n:
 				_draw(side)
 		"search":
-			var deck: Array = s.deck
-			for i in range(deck.size() - 1, -1, -1):
-				if _fx_kind_ok(deck[i], e):
-					var found: Dictionary = deck.pop_at(i)
-					s.hand.append(found)
-					_effect(side, c, "%s: searches the deck for %s" % [c.name, found.name], slot)
-					_emit("draw", {"side": side, "card": found.duplicate(true), "opening": false})
-					return
-			_effect(side, c, "%s: nothing to find in the deck" % c.name, slot)
+			var found := _fx_take(side, c, e, s.deck, "%s: choose a card to add to your hand" % c.name, func(card: Dictionary) -> bool:
+				s.hand.append(card)
+				_effect(side, c, "%s: searches the deck for %s" % [c.name, card.name], slot)
+				_emit("draw", {"side": side, "card": card.duplicate(true), "opening": false})
+				return true)
+			if not found:
+				_effect(side, c, "%s: nothing to find in the deck" % c.name, slot)
+		"revive":
+			# A character from your Gutter onto the field, in the first empty lane, in ATK
+			if not FRONT.any(func(l): return s.field[l] == null):
+				return
+			_fx_take(side, c, e, s.gutter, "%s: choose a character to bring back" % c.name, func(card: Dictionary) -> bool:
+				var lane := -1
+				for l in FRONT:
+					if s.field[l] == null:
+						lane = l
+						break
+				if lane < 0:
+					s.gutter.append(card)
+					return false
+				card.downed = false
+				card.mods = []
+				_clear_status(card)
+				card.erase("fx_count")
+				_emit("recover", {"side": side, "card": card.duplicate(true)})
+				card.position = "atk"
+				card.face_down = false
+				card.has_attacked = false
+				card.deployed_turn = turn
+				s.field[lane] = card
+				_emit("summon", {"side": side, "slot": lane, "card": card.duplicate(true)})
+				_effect(side, c, "%s: %s is back on the street" % [c.name, card.name], slot)
+				_recalc()
+				return true)
+		"break_ambush":
+			# The opponent's face-down cards in the back row, left to right
+			var k := n
+			for b in BACK:
+				var a = sides[foe].field[b]
+				if k <= 0 or a == null:
+					continue
+				sides[foe].field[b] = null
+				sides[foe].gutter.append(a)
+				_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
+				_effect(side, c, "%s: destroys a face-down card" % c.name, slot)
+				k -= 1
 		"recover":
-			var gutter: Array = s.gutter
-			for i in range(gutter.size() - 1, -1, -1):
-				if gutter[i] != c and _fx_kind_ok(gutter[i], e):
-					var back: Dictionary = gutter.pop_at(i)
-					back.downed = false
-					back.mods = []
-					s.hand.append(back)
-					_effect(side, c, "%s: %s returns to the hand" % [c.name, back.name], slot)
-					_emit("recover", {"side": side, "card": back.duplicate(true)})
-					return
+			var back := _fx_take(side, c, e, s.gutter, "%s: choose a card to return to your hand" % c.name, func(card: Dictionary) -> bool:
+				card.downed = false
+				card.mods = []
+				s.hand.append(card)
+				_effect(side, c, "%s: %s returns to the hand" % [c.name, card.name], slot)
+				_emit("recover", {"side": side, "card": card.duplicate(true)})
+				return true)
+			if back:
+				return
 		"discard":
 			var k: int = mini(n, sides[foe].hand.size())
 			if k > 0:
@@ -1499,10 +1554,73 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 
 
 func _fx_kind_ok(card: Dictionary, e: Dictionary) -> bool:
-	var kind := str(e.get("kind", ""))
+	var kind := "gang_member" if str(e.get("do", "")) == "revive" else str(e.get("kind", ""))
 	var clan := str(e.get("clan", ""))
-	return (kind == "" or card.get("cardType") == kind) and (clan == "" or card.get("clanTag") == clan) \
-		and card.get("cardType") != "leader"
+	if not ((kind == "" or card.get("cardType") == kind) and (clan == "" or card.get("clanTag") == clan) \
+			and card.get("cardType") != "leader"):
+		return false
+	# search / recover / revive filters: Authority N or less, role, level, name
+	if e.get("max_auth") != null and int(card.get("authority", 0)) > int(e.max_auth):
+		return false
+	if str(e.get("role", "")) != "" and (card.get("cardType") != "gang_member" or str(card.get("subtype", "brawler")) != str(e.role)):
+		return false
+	if e.get("level") != null and (card.get("cardType") != "gang_member" or maxi(1, int(card.get("level", 1))) != int(e.level)):
+		return false
+	if str(e.get("name", "")) != "" and not str(card.get("name", "")).to_lower().contains(str(e.name).to_lower()):
+		return false
+	return true
+
+
+## search / recover / revive: take matching cards from a pile (top first), `amount` times; with
+## `choose` the player picks each one (options best first, so the CPU takes the best).
+## Same as _fxTake in shared/duel/DuelState.js.
+func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: String, take: Callable, left := -1) -> bool:
+	if left < 0:
+		left = maxi(1, int(e.get("amount", 1)))
+	var matches: Array = []
+	for i in range(pile.size() - 1, -1, -1):
+		if not is_same(pile[i], c) and _fx_kind_ok(pile[i], e):
+			matches.append(pile[i])
+	if matches.is_empty():
+		return false
+	var next := func(card: Dictionary) -> void:
+		var at := -1
+		for i in pile.size():
+			if pile[i].uid == card.uid:
+				at = i
+				break
+		if at < 0 or not take.call(pile.pop_at(at)):
+			return
+		if left > 1:
+			_fx_take(side, c, e, pile, prompt, take, left - 1)
+	if not e.get("choose", false) or matches.size() == 1:
+		next.call(matches[0])
+		return true
+	var seen := {}
+	var opts: Array = []
+	for k in matches.size():
+		var m: Dictionary = matches[k]
+		var key := "%s|%s" % [m.id, m.name]
+		if not seen.has(key):
+			seen[key] = true
+			opts.append({"m": m, "k": k})
+	opts.sort_custom(func(a, b):
+		var da := int(a.m.get("authority", 0)) - int(b.m.get("authority", 0))
+		if da != 0:
+			return da > 0
+		var dk := int(a.m.get("base_attack", 0)) - int(b.m.get("base_attack", 0))
+		if dk != 0:
+			return dk > 0
+		return a.k < b.k)
+	var shown: Array = opts.slice(0, 8)
+	var options: Array = []
+	for k in shown.size():
+		options.append({"id": str(k), "label": "%s  (%d)" % [str(shown[k].m.name).to_upper(), int(shown[k].m.get("authority", 0))]})
+	_ask(side, "fx_pick", prompt, c, options, func(choice: String):
+		var k := int(choice)
+		if k >= 0 and k < shown.size():
+			next.call(shown[k].m))
+	return true
 
 
 func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
@@ -1541,7 +1659,7 @@ func _auras(side: String) -> Array:
 			if str(e.get("do", "")) == "buff" and _fx_cond(side, x.slot, e, null):
 				out.append([x.slot, e])
 	if s.leader_state == "dormant" and s.leader != null:
-		for e in _fx(s.leader, "passive"):
+		for e in _fx(s.leader, "dormant"):   # (its "passive" effects work once it's on the field)
 			if str(e.get("do", "")) == "buff" and _fx_cond(side, -1, e, null):
 				out.append([-1, e])
 	return out

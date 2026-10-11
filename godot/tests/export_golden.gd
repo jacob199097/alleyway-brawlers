@@ -61,6 +61,15 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "stasis", "target": "enemy"}],
 	[{"when": "turn_end", "do": "stasis", "target": "self", "once": true, "if": "morale_le", "n": 3000}, {"when": "passive", "do": "buff", "target": "self", "atk": 300}],
 	[{"when": "defend", "do": "down", "target": "attacker", "if": "vs_def"}, {"when": "defend", "do": "ko", "target": "attacker", "once": true, "if": "vs_downed"}],
+	[{"when": "deploy", "do": "search", "max_auth": 3, "choose": true}],
+	[{"when": "deploy", "do": "search", "kind": "gang_member", "role": "striver", "level": 1, "amount": 2}],
+	[{"when": "deploy", "do": "search", "name": "pride"}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "if": "leader_awake"}],
+	[{"when": "self_ko", "do": "revive", "max_auth": 4}],
+	[{"when": "deploy", "do": "revive", "choose": true, "if": "gutter_ge", "n": 2}],
+	[{"when": "deploy", "do": "break_ambush", "amount": 1}],
+	[{"when": "foe_deployed", "do": "buff", "target": "self", "atk": 200, "until": "turn"}],
+	[{"when": "hustle_played", "do": "heal", "amount": 200}, {"when": "turn_start", "do": "damage", "amount": 100, "if": "hand_ge", "n": 3}],
+	[{"when": "deploy", "do": "recover", "role": "brawler", "amount": 2, "choose": true}],
 ]
 
 
@@ -77,6 +86,9 @@ const FX_CARD_SAMPLES := [
 	[{"do": "bounce", "target": "attacker", "if": "vs_atk"}, {"do": "draw", "amount": 1}],
 	[{"do": "freeze", "target": "attacker"}, {"do": "shock", "target": "enemy", "amount": 700}],
 	[{"do": "stand", "target": "allies"}, {"do": "shield", "target": "ally"}],
+	[{"do": "revive", "choose": true}],
+	[{"do": "break_ambush", "amount": 2}],
+	[{"do": "search", "kind": "gang_member", "max_auth": 2, "amount": 2}],
 ]
 
 

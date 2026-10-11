@@ -234,15 +234,15 @@ export class DuelState {
     costOf(side, c) {
         let off = 0;
         const s = this.sides[side];
-        const add = (slot, src) => {
-            for (const e of this._fx(src, 'passive')) {
+        const add = (slot, src, when = 'passive') => {
+            for (const e of this._fx(src, when)) {
                 if (String(e.do ?? '') !== 'cost_down' || !this._fxCond(side, slot, e, null)) continue;
                 if (String(e.clan ?? '') !== '' && c.clanTag !== String(e.clan)) continue;
                 off += Math.max(1, toInt(e.amount ?? 1));
             }
         };
         for (const x of this.characters(side)) if (!x.card.face_down) add(x.slot, x.card);
-        if (s.leader_state === 'dormant' && s.leader != null) add(-1, s.leader);
+        if (s.leader_state === 'dormant' && s.leader != null) add(-1, s.leader, 'dormant');
         return Math.max(0, toInt(c.authority) - off);
     }
 
@@ -415,6 +415,7 @@ export class DuelState {
         this._emit('hustle', { side, card: clone(c) });
         // A Card Forge Hustle: all of its effects happen when it's played
         if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
+        for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'hustle_played', c);
         switch (c.effectKey) {
             case 'corner_deal':
                 this._draw(side);
@@ -885,6 +886,7 @@ export class DuelState {
             if (x.slot !== slot) this._runFx(side, x.slot, x.card, 'ally_deployed', c);
         }
         const foe = other(side);
+        for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
         switch (c.effectKey || '') {
             case 'pride_lieutenant_deploy': {
                 const allies = this.characters(side).filter(e => e.slot !== slot && isLion(e.card));
@@ -967,8 +969,14 @@ export class DuelState {
         if (s.leader_state !== 'dormant') return;
         const cond = s.leader.awakenCondition || {};
         if (isEmpty(cond)) return;
-        const lions = this.characters(side).filter(e => isLion(e.card) && !e.card.downed && !e.card.face_down).length;
-        if (lions < toInt(cond.lions ?? 99) && s.authority_max < toInt(cond.authorityThreshold ?? 99)) return;
+        // Any of: N+ standing (clan) characters, Authority N+, Morale N or less
+        // (King Roan's older form: lions = LIONS characters, authorityThreshold = Authority)
+        const clan = cond.lions != null ? 'lion' : String(cond.clan ?? '');
+        const chars = this.characters(side).filter(e => (clan === '' || e.card.clanTag === clan) && !e.card.downed && !e.card.face_down).length;
+        const ready = chars >= toInt(cond.lions ?? cond.chars ?? 99)
+            || s.authority_max >= toInt(cond.authorityThreshold ?? cond.authority ?? 99)
+            || (cond.morale != null && s.morale <= toInt(cond.morale));
+        if (!ready) return;
         const empties = [];
         const taken = [];
         for (const slot of FRONT) {
@@ -981,7 +989,7 @@ export class DuelState {
         }
         taken.sort((a, b) => (a.value - b.value) || (a.slot - b.slot));
         const options = [...empties, ...taken, { id: 'wait', label: 'STAY DORMANT FOR NOW' }];
-        this._ask(side, 'awaken', `${s.leader.name} AWAKENS! Choose his lane`, s.leader, options, (choice) => {
+        this._ask(side, 'awaken', `${s.leader.name} AWAKENS! Choose a lane`, s.leader, options, (choice) => {
             if (choice === 'wait') return;
             const slot = toInt(choice);
             const displaced = s.field[slot];
@@ -999,7 +1007,10 @@ export class DuelState {
             king.deployed_turn = this.turn;
             s.field[slot] = king;
             this._emit('awaken', { side, slot, card: clone(king) });
-            this._effect(side, king, `${king.name} takes the street himself`, slot);
+            this._effect(side, king, `${king.name} takes the street`, slot);
+            delete king.fx_count;
+            this._runFx(side, slot, king, 'awaken');
+            this._recalc();
         });
     }
 
@@ -1133,6 +1144,8 @@ export class DuelState {
             case 'enemies_ge': return this.characters(other(side)).length >= n;
             case 'gutter_ge': return s.gutter.length >= n;
             case 'leader_dormant': return s.leader_state === 'dormant';
+            case 'leader_awake': return s.leader_state === 'awake';
+            case 'hand_ge': return s.hand.length >= n;
         }
         return true;
     }
@@ -1220,32 +1233,62 @@ export class DuelState {
                 for (let i = 0; i < n; i++) this._draw(side);
                 break;
             case 'search': {
-                const deck = s.deck;
-                for (let i = deck.length - 1; i >= 0; i--) {
-                    if (this._fxKindOk(deck[i], e)) {
-                        const found = deck.splice(i, 1)[0];
-                        s.hand.push(found);
-                        this._effect(side, c, `${c.name}: searches the deck for ${found.name}`, slot);
-                        this._emit('draw', { side, card: clone(found), opening: false });
-                        return;
-                    }
+                const found = this._fxTake(side, c, e, s.deck, `${c.name}: choose a card to add to your hand`, (card) => {
+                    s.hand.push(card);
+                    this._effect(side, c, `${c.name}: searches the deck for ${card.name}`, slot);
+                    this._emit('draw', { side, card: clone(card), opening: false });
+                    return true;
+                });
+                if (!found) this._effect(side, c, `${c.name}: nothing to find in the deck`, slot);
+                break;
+            }
+            case 'revive': {
+                // A character from your Gutter onto the field, in the first empty lane, in ATK
+                if (!FRONT.some(l => s.field[l] == null)) break;
+                this._fxTake(side, c, e, s.gutter, `${c.name}: choose a character to bring back`, (card) => {
+                    const lane = FRONT.find(l => s.field[l] == null);
+                    if (lane == null) { s.gutter.push(card); return false; }
+                    card.downed = false;
+                    card.mods = [];
+                    this._clearStatus(card);
+                    delete card.fx_count;
+                    this._emit('recover', { side, card: clone(card) });
+                    card.position = 'atk';
+                    card.face_down = false;
+                    card.has_attacked = false;
+                    card.deployed_turn = this.turn;
+                    s.field[lane] = card;
+                    this._emit('summon', { side, slot: lane, card: clone(card) });
+                    this._effect(side, c, `${c.name}: ${card.name} is back on the street`, slot);
+                    this._recalc();
+                    return true;
+                });
+                break;
+            }
+            case 'break_ambush': {
+                // The opponent's face-down cards in the back row, left to right
+                let k = n;
+                for (const b of BACK) {
+                    const a = this.sides[foe].field[b];
+                    if (k <= 0 || a == null) continue;
+                    this.sides[foe].field[b] = null;
+                    this.sides[foe].gutter.push(a);
+                    this._emit('ko', { side: foe, slot: b, card: clone(a) });
+                    this._effect(side, c, `${c.name}: destroys a face-down card`, slot);
+                    k -= 1;
                 }
-                this._effect(side, c, `${c.name}: nothing to find in the deck`, slot);
                 break;
             }
             case 'recover': {
-                const gutter = s.gutter;
-                for (let i = gutter.length - 1; i >= 0; i--) {
-                    if (gutter[i] !== c && this._fxKindOk(gutter[i], e)) {
-                        const back = gutter.splice(i, 1)[0];
-                        back.downed = false;
-                        back.mods = [];
-                        s.hand.push(back);
-                        this._effect(side, c, `${c.name}: ${back.name} returns to the hand`, slot);
-                        this._emit('recover', { side, card: clone(back) });
-                        return;
-                    }
-                }
+                const back = this._fxTake(side, c, e, s.gutter, `${c.name}: choose a card to return to your hand`, (card) => {
+                    card.downed = false;
+                    card.mods = [];
+                    s.hand.push(card);
+                    this._effect(side, c, `${c.name}: ${card.name} returns to the hand`, slot);
+                    this._emit('recover', { side, card: clone(card) });
+                    return true;
+                });
+                if (back) return;
                 break;
             }
             case 'discard': {
@@ -1452,9 +1495,40 @@ export class DuelState {
     }
 
     _fxKindOk(card, e) {
-        const kind = String(e.kind ?? '');
+        const kind = String(e.do ?? '') === 'revive' ? 'gang_member' : String(e.kind ?? '');
         const clan = String(e.clan ?? '');
-        return (kind === '' || card.cardType === kind) && (clan === '' || card.clanTag === clan) && card.cardType !== 'leader';
+        if (!((kind === '' || card.cardType === kind) && (clan === '' || card.clanTag === clan) && card.cardType !== 'leader')) return false;
+        // search / recover / revive filters: Authority N or less, role, level, name
+        if (e.max_auth != null && toInt(card.authority) > toInt(e.max_auth)) return false;
+        if (String(e.role ?? '') !== '' && (card.cardType !== 'gang_member' || String(card.subtype ?? 'brawler') !== String(e.role))) return false;
+        if (e.level != null && (card.cardType !== 'gang_member' || Math.max(1, toInt(card.level)) !== toInt(e.level))) return false;
+        if (String(e.name ?? '') !== '' && !String(card.name ?? '').toLowerCase().includes(String(e.name).toLowerCase())) return false;
+        return true;
+    }
+
+    /** search / recover / revive: take matching cards from a pile (top first), `amount` times;
+     *  with `choose` the player picks each one (options best first, so the CPU takes the best).
+     *  Same as _fx_take in duel_state.gd. */
+    _fxTake(side, c, e, pile, prompt, take, left = Math.max(1, toInt(e.amount ?? 1))) {
+        const matches = [];
+        for (let i = pile.length - 1; i >= 0; i--) if (pile[i] !== c && this._fxKindOk(pile[i], e)) matches.push(pile[i]);
+        if (!matches.length) return false;
+        const next = (card) => {
+            const i = pile.findIndex(x => x.uid === card.uid);
+            if (i < 0 || !take(pile.splice(i, 1)[0])) return;
+            if (left > 1) this._fxTake(side, c, e, pile, prompt, take, left - 1);
+        };
+        if (!e.choose || matches.length === 1) {
+            next(matches[0]);
+            return true;
+        }
+        const seen = new Set(), opts = [];
+        matches.forEach((m, k) => { const key = `${m.id}|${m.name}`; if (!seen.has(key)) { seen.add(key); opts.push({ m, k }); } });
+        opts.sort((a, b) => (toInt(b.m.authority) - toInt(a.m.authority)) || (toInt(b.m.base_attack) - toInt(a.m.base_attack)) || (a.k - b.k));
+        const shown = opts.slice(0, 8);
+        this._ask(side, 'fx_pick', prompt, c, shown.map((o, k) => ({ id: String(k), label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})` })),
+            (choice) => { const o = shown[toInt(choice)]; if (o) next(o.m); });
+        return true;
     }
 
     _heal(side, c, n, slot) {
@@ -1491,7 +1565,7 @@ export class DuelState {
             }
         }
         if (s.leader_state === 'dormant' && s.leader != null) {
-            for (const e of this._fx(s.leader, 'passive')) {
+            for (const e of this._fx(s.leader, 'dormant')) {   // (its "passive" effects work once it's on the field)
                 if (String(e.do ?? '') === 'buff' && this._fxCond(side, -1, e, null)) out.push([-1, e]);
             }
         }
