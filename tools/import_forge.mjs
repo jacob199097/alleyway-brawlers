@@ -139,6 +139,7 @@ function cleanEffect(e) {
     for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
     if (e.once) out.once = true;
     if (e.choose) out.choose = true;   // search / recover / revive: the player picks the card
+    for (const k of ['if_clan', 'when_clan']) if (e[k] != null) out[k] = String(e[k]);   // ("" = any clan, so kept)
     return out;
 }
 

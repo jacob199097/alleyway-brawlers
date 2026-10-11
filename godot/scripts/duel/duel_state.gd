@@ -1195,6 +1195,12 @@ func _fx_once(c: Dictionary, key: String, e: Dictionary) -> bool:
 
 
 ## Characters on \`side\`, other than the one in \`except\`, that pass the effect's clan filter.
+func _cond_clan(e: Dictionary) -> Dictionary:
+	var ce := e.duplicate()
+	ce["clan"] = e.get("if_clan", e.get("clan", ""))
+	return ce
+
+
 func _fx_pool(side: String, e: Dictionary, except: int, standing_only := false) -> Array:
 	var clan := str(e.get("clan", ""))
 	return characters(side).filter(func(x):
@@ -1212,12 +1218,13 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return def != null and def.get("downed", false)
 		"vs_atk":
 			return def != null and def.get("position") == "atk" and not def.get("downed", false)
+		# (if_clan: whose characters count; without it, the effect's clan as before)
 		"allies":
-			return _fx_pool(side, e, slot).size() >= n
+			return _fx_pool(side, _cond_clan(e), slot).size() >= n
 		"alone":
 			return characters(side).all(func(x): return x.slot == slot)
 		"adjacent":
-			return _fx_pool(side, e, slot).any(func(x): return absi(x.slot - slot) == 1)
+			return _fx_pool(side, _cond_clan(e), slot).any(func(x): return absi(x.slot - slot) == 1)
 		"foe_downed":
 			return characters(other(side)).any(func(x): return x.card.downed)
 		"hand_le":
@@ -1247,7 +1254,9 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 		k += 1
 		if winner != "":
 			return
-		if when == "ally_deployed" and str(e.get("clan", "")) != "" and (def == null or def.get("clanTag") != str(e.get("clan", ""))):
+		# when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
+		var wc := str(e.get("when_clan", e.get("clan", "")))
+		if (when == "ally_deployed" or when == "dormant_ally_deployed") and wc != "" and (def == null or def.get("clanTag") != wc):
 			continue
 		var key := "%s%d" % [when, k]
 		if not _fx_cond(side, slot, e, def) or not _fx_count(c, key, e):

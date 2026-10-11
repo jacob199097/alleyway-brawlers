@@ -71,6 +71,8 @@ const FX_SAMPLES := [
 	[{"when": "hustle_played", "do": "heal", "amount": 200}, {"when": "turn_start", "do": "damage", "amount": 100, "if": "hand_ge", "n": 3}],
 	[{"when": "deploy", "do": "recover", "role": "brawler", "amount": 2, "choose": true}],
 	[{"when": "passive", "do": "immune"}, {"when": "attack", "do": "pierce", "if": "leader_dormant"}],
+	[{"when": "deploy", "do": "down", "target": "enemy", "clan": "lion", "if": "adjacent", "if_clan": ""}],
+	[{"when": "ally_deployed", "do": "buff", "target": "allies", "atk": 200, "clan": "", "when_clan": "lion"}, {"when": "passive", "do": "buff", "target": "self", "atk": 300, "if": "allies", "n": 2, "if_clan": "lion", "clan": ""}],
 ]
 
 

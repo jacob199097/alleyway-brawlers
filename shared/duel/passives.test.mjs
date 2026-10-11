@@ -200,4 +200,14 @@ assert.ok(!ambushOffered('lion'), 'not offered for another clan');
     assert.equal(b.cardAt('player', 2).has_attacked, false, 'ready: may attack the turn it Awakens');
 }
 
+// The "Only if" clan is separate from the target clan
+{
+    const b = board([{ clanTag: 'nebula' }, { clanTag: 'nebula' }], [{ clanTag: 'lion' }]);
+    const e = { do: 'down', target: 'enemy', if: 'adjacent', if_clan: 'nebula' };
+    assert.ok(b._fxCond('player', 0, e, null), 'next to a NEBULA ally');
+    assert.ok(!b._fxCond('player', 0, { ...e, if_clan: 'militia' }, null), 'no MILITIA ally next to it');
+    assert.ok(b._fxCond('player', 0, { ...e, clan: 'militia', if_clan: '' }, null), 'if_clan "" = any clan, whatever the target clan');
+    assert.ok(!b._fxCond('player', 0, { ...e, clan: 'militia', if_clan: undefined }, null), 'old cards: the effect clan counts');
+}
+
 console.log('all good');

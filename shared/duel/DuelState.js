@@ -1157,9 +1157,10 @@ export class DuelState {
             case 'vs_def': return def != null && (def.position === 'def' || !!def.face_down || !!def.downed);
             case 'vs_downed': return def != null && !!def.downed;
             case 'vs_atk': return def != null && def.position === 'atk' && !def.downed;
-            case 'allies': return this._fxPool(side, e, slot).length >= n;
+            // (if_clan: whose characters count; without it, the effect's clan as before)
+            case 'allies': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length >= n;
             case 'alone': return this.characters(side).every(x => x.slot === slot);
-            case 'adjacent': return this._fxPool(side, e, slot).some(x => Math.abs(x.slot - slot) === 1);
+            case 'adjacent': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).some(x => Math.abs(x.slot - slot) === 1);
             case 'foe_downed': return this.characters(other(side)).some(x => x.card.downed);
             case 'hand_le': return s.hand.length <= n;
             case 'morale_le': return s.morale <= n;
@@ -1178,7 +1179,9 @@ export class DuelState {
         for (const e of this._fx(c, when)) {
             k += 1;
             if (this.winner !== '') return;
-            if (when === 'ally_deployed' && String(e.clan ?? '') !== '' && (def == null || def.clanTag !== String(e.clan ?? ''))) continue;
+            // when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
+            const wc = String(e.when_clan ?? e.clan ?? '');
+            if ((when === 'ally_deployed' || when === 'dormant_ally_deployed') && wc !== '' && (def == null || def.clanTag !== wc)) continue;
             if (!this._fxCond(side, slot, e, def) || !this._fxCount(c, `${when}${k}`, e)) continue;
             if (this._fxOnce(c, `${when}${k}`, e)) {
                 if (toInt(e.times ?? 1) > 1) delete c.fx_count[`${when}${k}`];   // start counting again
