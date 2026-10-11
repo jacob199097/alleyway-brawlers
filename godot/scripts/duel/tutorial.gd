@@ -117,7 +117,7 @@ func _strip_effects() -> void:
 			s.leader.effectKey = ""
 			s.leader.effects = []
 			s.leader.awakenCondition = {}
-			s.leader.effectText = "Dormant leader. While it's Dormant it can be attacked: hits remove its Influence, and at 0 it's defeated and its owner loses 1000 Morale."
+			s.leader.effectText = "Dormant leader. While it's Dormant it can be attacked: hits remove its Influence, and at 0 it's defeated and its Dormant effects end."
 
 
 ## Make sure each lesson plays out as described, whatever the card stats are.
@@ -223,7 +223,7 @@ func _build_steps() -> void:
 		{"type": DO, "mark": func(): return _field_rect("player", p1) if not _attacking() else _leader_rect(),
 			"allow": func(a): return a.kind == "attack" and int(a.from) == _slot("player", p1) and int(a.target) == DuelState.LEADER,
 			"done": func(): return d.sides.opponent.leader_state == "defeated",
-			"text": "See their [b]Leader[/b]? While it's Dormant you can attack it at any time. Hits remove its [b]Influence[/b]; at 0 it's defeated and its owner [b]loses 1000 Morale[/b].\n\nAttack it with %s: click %s, then click their leader." % [_n("p1"), _n("p1")]},
+			"text": "See their [b]Leader[/b]? While it's Dormant you can attack it at any time. Hits remove its [b]Influence[/b]; at 0 it's [b]defeated[/b] and its Dormant effects end.\n\nAttack it with %s: click %s, then click their leader." % [_n("p1"), _n("p1")]},
 		{"type": DO, "mark": func(): return _field_rect("player", p3) if not _attacking() else _direct_rect(),
 			"allow": func(a): return a.kind == "attack" and int(a.from) == _slot("player", p3) and int(a.target) == DuelState.DIRECT,
 			"done": func(): return d.phase == "brawl" and not screen._playing and _p3_attacked(),

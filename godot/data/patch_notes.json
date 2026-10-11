@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.5",
+        "notes": [
+            "A Dormant leader that is defeated no longer costs its owner Morale: it never took the field. Its Dormant effects still end. Once a leader Awakens it fights like any other character, so battles involving it deal Morale damage as usual.",
+            "The LOG button moved left so it no longer overlaps your hand."
+        ]
+    },
+    {
         "version": "0.7.4",
         "notes": [
             "A cleaner ATK / DEF badge under each card on the field: it no longer covers the card, raised and lowered stats show in green and red, and a Downed card's badge has a red edge.",

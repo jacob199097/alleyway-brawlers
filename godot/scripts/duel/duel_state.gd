@@ -19,7 +19,7 @@ const MAX_AUTHORITY := 15
 const HAND_LIMIT := 9
 const OPENING_HAND := 5
 const SECOND_PLAYER_AUTHORITY := 1 # going second: extra Authority on your first turn only
-const LEADER_DEFEAT_PENALTY := 1000
+const LEADER_DEFEAT_PENALTY := 0   # Morale lost when a Dormant leader is defeated (none: it was never on the field)
 const FRONT := [0, 1, 2, 3, 4]   # character slots
 const DORMANT_GIFTS := ["pierce", "immune", "untargetable"]   # passives a Dormant leader can give your characters
 const BACK := [5, 6, 7, 8, 9]    # ambush slots
@@ -779,8 +779,8 @@ func _bleed(side: String, c: Dictionary) -> void:
 	_emit("status_tick", {"side": side, "slot": slot, "kind": "bleed", "amount": n, "card": c.duplicate(true)})
 
 
-## A dormant leader soaks attacks with its Influence (its DEF). At 0 it is defeated:
-## its owner loses 1000 morale and the Dormant bonus.
+## A dormant leader soaks attacks with its Influence (its DEF). At 0 it is defeated and its
+## Dormant effects end; its owner loses no Morale, since it never took the field.
 func _hit_leader(ctx: Dictionary) -> void:
 	var foe: String = ctx.foe
 	var leader: Dictionary = sides[foe].leader
@@ -793,7 +793,6 @@ func _hit_leader(ctx: Dictionary) -> void:
 		sides[foe].leader_state = "defeated"
 		sides[foe].gutter.append(leader)
 		_emit("leader_down", {"side": foe, "card": leader.duplicate(true)})
-		_damage(foe, LEADER_DEFEAT_PENALTY)
 	else:
 		_leader_fx(foe, "dormant_hit", ctx.att)
 

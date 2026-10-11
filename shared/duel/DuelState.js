@@ -18,7 +18,7 @@ export const MAX_AUTHORITY = 15;
 export const HAND_LIMIT = 9;
 export const OPENING_HAND = 5;
 export const SECOND_PLAYER_AUTHORITY = 1; // going second: extra Authority on your first turn only
-export const LEADER_DEFEAT_PENALTY = 1000;
+export const LEADER_DEFEAT_PENALTY = 0;   // Morale lost when a Dormant leader is defeated (none: it was never on the field)
 export const FRONT = [0, 1, 2, 3, 4];
 export const BACK = [5, 6, 7, 8, 9];
 export const DIRECT = -1;
@@ -732,8 +732,7 @@ export class DuelState {
         if (leader.influence <= 0) {
             this.sides[foe].leader_state = 'defeated';
             this.sides[foe].gutter.push(leader);
-            this._emit('leader_down', { side: foe, card: clone(leader) });
-            this._damage(foe, LEADER_DEFEAT_PENALTY);
+            this._emit('leader_down', { side: foe, card: clone(leader) });   // (no Morale lost: it never took the field)
         } else {
             this._leaderFx(foe, 'dormant_hit', ctx.att);
         }

@@ -412,7 +412,7 @@ func _jump_to(i: int) -> void:
 
 func _build_log() -> void:
 	var b := UI.button("LOG", _toggle_log, Vector2(100, 48), GOLD)
-	b.position = Vector2(560, 1004)
+	b.position = Vector2(440, 1004)   # left of the hand, even when it's full
 	b.tooltip_text = "Battle log (L)"
 	ui.add_child(b)
 	var p := PanelContainer.new()
