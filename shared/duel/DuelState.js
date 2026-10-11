@@ -528,7 +528,7 @@ export class DuelState {
             k += 1;
             const selfBuff = String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self';
             if (selfBuff && String(e.if ?? '') !== '') continue;   // settled in the brawl (_brawlBonus)
-            if (!this._fxCond(side, from, e, defNow) || !this._fxOnce(att, `attack${k}`, e)) continue;
+            if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `attack${k}`, e) || !this._fxOnce(att, `attack${k}`, e)) continue;
             if (selfBuff) {
                 if (toInt(e.atk) !== 0) {
                     ctx.bonus += toInt(e.atk);
@@ -659,7 +659,7 @@ export class DuelState {
         let defAtk = 0, defDef = 0, k = 0;
         for (const e of this._fx(def, 'defend')) {
             k += 1;
-            if (this.winner !== '' || !this._fxCond(foe, target, e, att) || !this._fxOnce(def, `defend${k}`, e)) continue;
+            if (this.winner !== '' || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self') {
                 defAtk += toInt(e.atk);
                 defDef += toInt(e.def);
@@ -1129,6 +1129,13 @@ export class DuelState {
             return;
         }
         this._atkResolve(ctx);
+    }
+
+    /** times on attack / defend triggers: counts this one; true once it has happened enough (then counts again). */
+    _fxCountFire(c, key, e) {
+        if (!this._fxCount(c, key, e)) return false;
+        if (toInt(e.times ?? 1) > 1) delete c.fx_count[key];
+        return true;
     }
 
     /** times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters). */

@@ -568,7 +568,7 @@ func _attack(side: String, from: int, target: int) -> bool:
 		var self_buff: bool = str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self"
 		if self_buff and str(e.get("if", "")) != "":
 			continue   # depends on the defender: settled in the brawl (_brawl_bonus)
-		if not _fx_cond(side, from, e, def_now) or not _fx_once(att, "attack%d" % k, e):
+		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "attack%d" % k, e) or not _fx_once(att, "attack%d" % k, e):
 			continue
 		if self_buff:
 			if int(e.get("atk", 0)) != 0:
@@ -713,7 +713,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	var k := 0
 	for e in _fx(def, "defend"):
 		k += 1
-		if winner != "" or not _fx_cond(foe, target, e, att) or not _fx_once(def, "defend%d" % k, e):
+		if winner != "" or not _fx_cond(foe, target, e, att) or not _fx_count_fire(def, "defend%d" % k, e) or not _fx_once(def, "defend%d" % k, e):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self":
 			def_atk += int(e.get("atk", 0))
@@ -1181,6 +1181,15 @@ func _fx(c, when: String) -> Array:
 
 ## Once-per-turn effects: true the first time this turn (and marks it used), false after.
 ## times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters).
+## times on attack / defend triggers: counts this one; true once it has happened enough (then counts again).
+func _fx_count_fire(c: Dictionary, key: String, e: Dictionary) -> bool:
+	if not _fx_count(c, key, e):
+		return false
+	if int(e.get("times", 1)) > 1:
+		c.fx_count.erase(key)
+	return true
+
+
 func _fx_count(c: Dictionary, key: String, e: Dictionary) -> bool:
 	var need := int(e.get("times", 1))
 	if need <= 1:

@@ -257,4 +257,17 @@ assert.ok(!ambushOffered('lion'), 'not offered for another clan');
     assert.deepEqual(e2.attackTargets('player'), [0, 1], 'all elusive: all can be attacked (no lock)');
 }
 
+// "After this card attacks 3 times: draw a card" (times on attack triggers)
+{
+    const b = board([{ attack: 500, effects: [{ when: 'attack', do: 'draw', amount: 1, times: 3 }] }], []);
+    b.sides.player.deck = [b.makeCard('lion_grunt'), b.makeCard('lion_grunt')];
+    const drawn = () => b.sides.player.hand.length;
+    const start = drawn();
+    for (let i = 1; i <= 3; i++) {
+        b.cardAt('player', 0).has_attacked = false;
+        b._attack('player', 0, DIRECT);
+        assert.equal(drawn() - start, i === 3 ? 1 : 0, `after attack ${i}`);
+    }
+}
+
 console.log('all good');
