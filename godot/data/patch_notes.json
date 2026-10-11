@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.7.3",
+        "notes": [
+            "The first NEBULA cards are here: 17 new cards, including the Kade and Lyra Quell evolution lines, the leader Archon of Nebula, and new Hustles and Ambushes.",
+            "New card abilities: SILENCE (a character's effects stop for a while), leaders that regain Influence, more max Authority, characters that can't be attacked while you have another character that can be, and immunity to chosen statuses.",
+            "Cards can now need several attacks, or to be attacked several times, before an effect happens.",
+            "Fixes: an extra attack can only be gained once per turn per card, so no card can attack endlessly."
+        ]
+    },
+    {
         "version": "0.7.2",
         "notes": [
             "Leaders can now have their own abilities: effects that work while they're Dormant (boosting or protecting your characters, making your cards cheaper, or triggering at the start of your turn, when you deploy, when they're attacked and more), effects when they Awaken, and their own Awaken conditions for any clan. Leaders also show their own Influence.",
