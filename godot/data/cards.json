@@ -1093,5 +1093,60 @@
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
   "ambushClan": "nebula"
+ },
+ "card_nebu_027": {
+  "id": "card_nebu_027",
+  "name": "Orbital Strike",
+  "clan": "nebula",
+  "cardType": "hustle",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_027",
+  "code": "NEBU-027",
+  "flavourText": "Out of allies? Call down the sky",
+  "effectText": "If you control no characters, DOWN all enemy characters.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "down",
+    "target": "enemies",
+    "if": "alone"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff"
+ },
+ "card_nebu_028": {
+  "id": "card_nebu_028",
+  "name": "Nebula Protector",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_028",
+  "code": "NEBU-028",
+  "flavourText": "You'll have to go through me. Most don't",
+  "effectText": "Once per turn, when this card is attacked: It gains SHIELD.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "shield",
+    "target": "self",
+    "once": true
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1600,
+  "defense": 2000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
  }
 }
