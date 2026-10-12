@@ -28,7 +28,7 @@ const NO_SLOT := -10             # effects of a card that isn't on the field (a 
 ## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
 const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
 ## What an "immune" passive keeps off a card
-const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun"]
+const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "suppress"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -278,7 +278,7 @@ func _stays_up(side: String, slot: int, c) -> bool:
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
 const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
 const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until"]
 
 
 func in_stasis(c) -> bool:
@@ -301,6 +301,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("stasis")
 	if int(c.get("stun_until", 0)) >= turn:
 		out.append("stun")
+	if int(c.get("suppress_until", 0)) >= turn:
+		out.append("suppress")
 	if c.get("shield", false):
 		out.append("shield")
 	if int(c.get("silence_until", 0)) >= turn:
@@ -313,7 +315,7 @@ func can_attack_with(side: String, slot: int) -> bool:
 		return false
 	var c = card_at(side, slot)
 	return c != null and c.position == "atk" and not c.downed and not c.has_attacked and not c.face_down \
-		and int(c.get("stun_until", 0)) < turn and not frozen(c) and not in_stasis(c)
+		and int(c.get("stun_until", 0)) < turn and int(c.get("suppress_until", 0)) < turn and not frozen(c) and not in_stasis(c)
 
 
 ## Attack targets: any enemy character; DIRECT when none of them is still standing (an empty
@@ -461,7 +463,8 @@ func fx_has_targets(side: String, slot: int, e: Dictionary) -> bool:
 	var c = card_at(side, slot)
 	if c == null or not e.has("target"):
 		return true
-	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "ready": "spent"}.get(str(e.get("do", "")), "any")
+	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
+		"ready": "spent"}.get(str(e.get("do", "")), "any")
 	return not _fx_targets(side, slot, c, e, {}, pool).is_empty()
 
 
@@ -926,6 +929,9 @@ func _ko(side: String, slot: int) -> void:
 	# "When another of your characters is KO'd"
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "ally_ko", c)
+	# "When an enemy character is KO'd" (by anything)
+	for x in characters(other(side)):
+		_run_fx(other(side), x.slot, x.card, "foe_ko", c)
 
 
 func _damage(side: String, amount: int) -> void:
@@ -1247,8 +1253,10 @@ func _recalc() -> void:
 #           passive | activate (the player uses it from the card: see activations())
 #   do:     buff | down | ko | stand | bounce | force_def | stun | shield | pierce | draw |
 #           search | recover | discard | mill | damage | heal | drain | authority | promote |
-#           attack_again | ready (allies that attacked may attack again) | poison | burn | bleed |
-#           shock | freeze | stasis
+#           attack_again | ready (allies that attacked may attack again) | force_atk | poison |
+#           burn | bleed | shock | freeze | stasis | suppress (Militia: -X ATK, can't attack)
+#   (more when: foe_ko (an enemy is KO'd) | foe_turn_end; more if: self_def | self_atk |
+#           enemies_le | turn_ge | deck_le)
 #   until:  buff: turn | next_turn | forever (while the card stays on the field)
 #   amount: poison (ATK lost per turn), burn (Morale lost per turn), bleed (ATK/DEF lost per
 #           brawl), shock (damage to DEF: Downs the target if it is at least its DEF)
@@ -1367,6 +1375,18 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return characters(side).any(func(x): return x.slot != slot and x.card.downed)
 		"hand_ge":
 			return s.hand.size() >= n
+		"self_def":
+			var me = card_at(side, slot)
+			return me != null and me.get("position") == "def"
+		"self_atk":
+			var me = card_at(side, slot)
+			return me != null and me.get("position") == "atk" and not me.get("downed", false)
+		"enemies_le":
+			return characters(other(side)).size() <= n
+		"turn_ge":
+			return turn >= n
+		"deck_le":
+			return s.deck.size() <= n
 	return true
 
 
@@ -1442,6 +1462,14 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				_emit("position", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s forces %s into DEF" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "attackers", "force into DEF", fn, "%s forces %%s into DEF" % c.name)
+		"force_atk":
+			# Pulled out of cover: a face-up character in DEF switches to ATK
+			var fn := func(x: Dictionary) -> String:
+				x.card.position = "atk"
+				x.card.position_turn = turn
+				_emit("position", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
+				return "%s forces %s into ATK" % [c.name, x.card.name]
+			_fx_apply(side, slot, c, e, vs, "defenders", "force into ATK", fn, "%s forces %%s into ATK" % c.name)
 		"stun":
 			var fn := func(x: Dictionary) -> String:
 				x.card.stun_until = _owner_next_turn(x.side)
@@ -1606,6 +1634,16 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				_recalc()
 				return "%s SHOCKS %s: -%d DEF this turn" % [c.name, x.card.name, n]
 			_fx_apply(side, slot, c, e, vs, "any", "SHOCK", fn, "%s shocks %%s" % c.name)
+		"suppress":
+			# SUPPRESS X (Militia): pinned down through its owner's next turn: -X ATK and it can't attack
+			var fn := func(x: Dictionary) -> String:
+				var until_turn := _owner_next_turn(x.side)
+				x.card.suppress_until = until_turn
+				x.card.mods.append({"atk": -n, "def": 0, "until_turn": until_turn})
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "suppress", "card": x.card.duplicate(true)})
+				_recalc()
+				return "%s is SUPPRESSED: -%d ATK and it can't attack through its owner's next turn" % [x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", "SUPPRESS", fn, "%s suppresses %%s" % c.name)
 		"freeze":
 			var fn := func(x: Dictionary) -> String:
 				x.card.freeze_until = _owner_next_turn(x.side)
@@ -1706,6 +1744,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				return x.card.downed
 			"attackers":
 				return x.card.position == "atk" and not x.card.downed
+			"defenders":
+				return x.card.position == "def" and not x.card.downed and not x.card.get("face_down", false) and not frozen(x.card)
 			"spent":
 				return x.card.has_attacked and not x.card.downed and int(x.card.get("again_turn", 0)) != turn
 		return true
@@ -1974,6 +2014,8 @@ func _begin_turn() -> void:
 func _end_turn() -> void:
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_end")
+	for e in characters(other(active)):
+		_run_fx(other(active), e.slot, e.card, "foe_turn_end")
 	_leader_fx(active, "dormant_turn_end")
 	if winner != "":
 		return

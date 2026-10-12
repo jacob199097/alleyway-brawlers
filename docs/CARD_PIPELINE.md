@@ -40,6 +40,7 @@ keep it in step with `EFFECT_KEYWORDS` in the Forge.
 | SHIELD | `shield` | The next time it would be defeated, it isn't. |
 | PIERCE | `pierce` | Beating a DEF or Downed character also costs the opponent the difference in Morale. |
 | DRAIN X / HEAL X | `drain` / `heal` | Take X Morale from the opponent / gain X Morale. |
+| SUPPRESS X | `suppress` | Militia only. It loses X ATK and can't attack until the end of its owner's next turn. |
 
 The importer warns about problems such as a missing image, a "promotes to" card that isn't in the
 export, or two cards with the same name. The server needs unique names, so add "Lv.2" and so on.
@@ -137,13 +138,13 @@ Each effect is one building block. Both rules engines run them the same way (`du
 
 | Field | Options |
 |---|---|
-| **When** | When deployed · When it attacks · When it's attacked · When it KOs a character · When it Downs a character · When it hits directly · When it's Downed · When it's KO'd · When you deploy another character · At the start of your turn · At the end of your turn · Always (passive) · When another of your characters is KO'd · **Activate** (the player uses it from the card on their turn: click the card, then ACTIVATE; once per turn) |
-| **Do** | Change ATK / DEF · DOWN · KO · Stand up (un-Down) · Return to hand · Force into DEF · Stun (can't attack next turn) · Shield (ignore the next defeat) · Pierce (beating a DEF card still costs Morale) · Draw cards · Search your deck · Recover from the Gutter · Opponent discards · Mill the opponent's deck · Morale damage · Gain Morale · Drain Morale · Gain Authority · PROMOTE this card · Attack again · Let allies that already attacked attack again |
+| **When** | When deployed · When it attacks · When it's attacked · When it KOs a character · When it Downs a character · When it hits directly · When it's Downed · When it's KO'd · When you deploy another character · At the start of your turn · At the end of your turn · Always (passive) · When another of your characters is KO'd · **Activate** (the player uses it from the card on their turn: click the card, then ACTIVATE; once per turn) · When an enemy character is KO'd · At the end of your opponent's turn |
+| **Do** | Change ATK / DEF · DOWN · KO · Stand up (un-Down) · Return to hand · Force into DEF · Stun (can't attack next turn) · Shield (ignore the next defeat) · Pierce (beating a DEF card still costs Morale) · Draw cards · Search your deck · Recover from the Gutter · Opponent discards · Mill the opponent's deck · Morale damage · Gain Morale · Drain Morale · Gain Authority · PROMOTE this card · Attack again · Let allies that already attacked attack again · Force into ATK (a face-up enemy in DEF) · SUPPRESS |
 | **Who** | This card · One other ally (you choose) · All other allies · One enemy (you choose) · All enemies · The attacker (for "When it's attacked") |
 | **For how long** (ATK/DEF changes) | Until end of turn · Until the end of the opponent's next turn · Permanently (while it stays on the field: "When it KOs a character: +200 ATK permanently" grows with every KO). A change to itself when attacking or attacked lasts for that Brawl; a passive one lasts while its condition holds. |
 | **Activate cost** | None · Pay N Authority · Pay N Morale · Discard N cards · Sacrifice another of your characters · This card can't attack this turn. The CPU uses Activate abilities too, but never sacrifices. |
 | **Card kind** (search, recover) | Any card · Character · Hustle · Ambush |
-| **Only if** | Always · The other card is in DEF / Downed / ATK · You control N+ other allies · You control no other characters · Next to an ally · An enemy is Downed · Your hand has N or fewer cards · Your Morale is N or less · The opponent's Morale is N or less · The opponent controls N+ characters · Your Gutter has N+ cards · Your leader is Dormant |
+| **Only if** | Always · The other card is in DEF / Downed / ATK · You control N+ other allies · You control no other characters · Next to an ally · An enemy is Downed · Your hand has N or fewer cards · Your Morale is N or less · The opponent's Morale is N or less · The opponent controls N+ characters · Your Gutter has N+ cards · Your leader is Dormant · This card is in DEF / ATK position · The opponent controls N or fewer characters · It is turn N or later · Your deck has N or fewer cards |
 | **Clan filter** | Limits who it affects or counts, what search/recover finds, or which deployed allies trigger it |
 
 **Hustles and Ambushes** have no "When": a Hustle does all of its effects when it's played; an Ambush is

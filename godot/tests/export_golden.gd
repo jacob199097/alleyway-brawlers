@@ -86,6 +86,11 @@ const FX_SAMPLES := [
 	[{"when": "activate", "do": "draw", "amount": 1, "cost": "discard", "cost_n": 1}, {"when": "activate", "do": "damage", "amount": 300, "cost": "morale", "cost_n": 200}],
 	[{"when": "activate", "do": "ready", "target": "ally"}, {"when": "ally_ko", "do": "draw", "amount": 1, "once": true}],
 	[{"when": "activate", "do": "buff", "target": "allies", "atk": 300, "cost": "exhaust"}, {"when": "passive", "do": "guard"}],
+	[{"when": "deploy", "do": "suppress", "target": "enemy", "amount": 400}, {"when": "defend", "do": "suppress", "target": "attacker", "amount": 300}],
+	[{"when": "attack", "do": "suppress", "target": "enemies", "amount": 200, "if": "self_atk"}, {"when": "foe_ko", "do": "heal", "amount": 200}],
+	[{"when": "deploy", "do": "force_atk", "target": "enemies"}, {"when": "foe_turn_end", "do": "buff", "target": "self", "def": 300, "until": "next_turn", "if": "self_def"}],
+	[{"when": "turn_start", "do": "draw", "amount": 1, "if": "turn_ge", "n": 6}, {"when": "deploy", "do": "damage", "amount": 300, "if": "enemies_le", "n": 1}],
+	[{"when": "turn_start", "do": "heal", "amount": 300, "if": "deck_le", "n": 20}, {"when": "foe_ko", "do": "buff", "target": "self", "atk": 200, "until": "forever"}],
 ]
 
 

@@ -27,7 +27,7 @@ const DORMANT_GIFTS = ['pierce', 'immune', 'untargetable'];   // passives a Dorm
 // Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
 const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 // What an "immune" passive keeps off a card
-const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun'];
+const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'suppress'];
 export const LEADER = -2;
 
 // ── Card data ──────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
 // Keyword statuses (Card Forge effects); same rules as duel_state.gd
 const FOREVER = 1000000;
 const STATUS_TICKS = 3;
-const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until'];
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -285,6 +285,7 @@ export class DuelState {
         if (this.frozen(c)) out.push('freeze');
         if (this.inStasis(c)) out.push('stasis');
         if (toInt(c.stun_until ?? 0) >= this.turn) out.push('stun');
+        if (toInt(c.suppress_until ?? 0) >= this.turn) out.push('suppress');
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
         return out;
@@ -294,7 +295,7 @@ export class DuelState {
         if (!this.canAct(side) || this.phase !== 'brawl' || this.turn === 1 || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
         return c != null && c.position === 'atk' && !c.downed && !c.has_attacked && !c.face_down
-            && toInt(c.stun_until ?? 0) < this.turn && !this.frozen(c) && !this.inStasis(c);
+            && toInt(c.stun_until ?? 0) < this.turn && toInt(c.suppress_until ?? 0) < this.turn && !this.frozen(c) && !this.inStasis(c);
     }
 
     // Any enemy character; DIRECT when none is still standing (empty row or only Downed);
@@ -416,7 +417,7 @@ export class DuelState {
     fxHasTargets(side, slot, e) {
         const c = this.cardAt(side, slot);
         if (c == null || !('target' in e)) return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
         return this._fxTargets(side, slot, c, e, {}, pool).length > 0;
     }
 
@@ -857,6 +858,8 @@ export class DuelState {
         this._runFx(side, slot, c, 'self_ko');
         // "When another of your characters is KO'd"
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'ally_ko', c);
+        // "When an enemy character is KO'd" (by anything)
+        for (const x of this.characters(other(side))) this._runFx(other(side), x.slot, x.card, 'foe_ko', c);
     }
 
     _damage(side, amount) {
@@ -1272,6 +1275,11 @@ export class DuelState {
             case 'authority_ge': return s.authority_max >= n;
             case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed);
             case 'hand_ge': return s.hand.length >= n;
+            case 'self_def': { const me = this.cardAt(side, slot); return me != null && me.position === 'def'; }
+            case 'self_atk': { const me = this.cardAt(side, slot); return me != null && me.position === 'atk' && !me.downed; }
+            case 'enemies_le': return this.characters(other(side)).length <= n;
+            case 'turn_ge': return this.turn >= n;
+            case 'deck_le': return s.deck.length <= n;
         }
         return true;
     }
@@ -1535,6 +1543,26 @@ export class DuelState {
                     return `${c.name} SHOCKS ${x.card.name}: -${n} DEF this turn`;
                 }, `${c.name} shocks %s`);
                 break;
+            case 'force_atk':
+                // Pulled out of cover: a face-up character in DEF switches to ATK
+                this._fxApply(side, slot, c, e, vs, 'defenders', 'force into ATK', (x) => {
+                    x.card.position = 'atk';
+                    x.card.position_turn = this.turn;
+                    this._emit('position', { side: x.side, slot: x.slot, card: clone(x.card) });
+                    return `${c.name} forces ${x.card.name} into ATK`;
+                }, `${c.name} forces %s into ATK`);
+                break;
+            case 'suppress':
+                // SUPPRESS X (Militia): pinned down through its owner's next turn: -X ATK and it can't attack
+                this._fxApply(side, slot, c, e, vs, 'any', 'SUPPRESS', (x) => {
+                    const untilTurn = this._ownerNextTurn(x.side);
+                    x.card.suppress_until = untilTurn;
+                    x.card.mods.push({ atk: -n, def: 0, until_turn: untilTurn });
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'suppress', card: clone(x.card) });
+                    this._recalc();
+                    return `${x.card.name} is SUPPRESSED: -${n} ATK and it can't attack through its owner's next turn`;
+                }, `${c.name} suppresses %s`);
+                break;
             case 'freeze':
                 this._fxApply(side, slot, c, e, vs, 'any', 'FREEZE', (x) => {
                     x.card.freeze_until = this._ownerNextTurn(x.side);
@@ -1616,6 +1644,7 @@ export class DuelState {
                 case 'standing': return !x.card.downed;
                 case 'downed': return !!x.card.downed;
                 case 'attackers': return x.card.position === 'atk' && !x.card.downed;
+                case 'defenders': return x.card.position === 'def' && !x.card.downed && !x.card.face_down && !this.frozen(x.card);
                 case 'spent': return !!x.card.has_attacked && !x.card.downed && (x.card.again_turn ?? 0) !== this.turn;
             }
             return true;
@@ -1827,6 +1856,7 @@ export class DuelState {
 
     _endTurn() {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_end');
+        for (const e of this.characters(other(this.active))) this._runFx(other(this.active), e.slot, e.card, 'foe_turn_end');
         this._leaderFx(this.active, 'dormant_turn_end');
         if (this.winner !== '') return;
         const s = this.sides[this.active];

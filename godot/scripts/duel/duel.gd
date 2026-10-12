@@ -2932,7 +2932,7 @@ func _show_keyword_tip(p: Control, tip: PanelContainer, tip_text: RichTextLabel,
 
 
 const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD"}
+	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS"}
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:

@@ -15,6 +15,7 @@ const LIST := {
 	"PIERCE": [Color("ff74d4"), "PIERCE: if it beats a DEF or Downed character, the opponent also loses Morale equal to the difference."],
 	"DRAIN": [Color("e07aff"), "DRAIN X: your opponent loses X Morale and you gain X Morale."],
 	"HEAL": [Color("6ff0c0"), "HEAL X: you gain X Morale (up to the starting 6000)."],
+	"SUPPRESS": [Color("b5e655"), "SUPPRESS X (Militia): pinned down: it loses X ATK and can't attack until the end of its owner's next turn."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]
