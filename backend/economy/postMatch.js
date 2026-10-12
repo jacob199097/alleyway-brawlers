@@ -4,19 +4,20 @@ const { pool } = require('../db/pool');
 const { recordDailyWin } = require('../routes/quests');
 
 // ── XP Rewards ────────────────────────────────────────────────────────────────
-// Kept low so levels take a while (hard CPU 90 XP a win: level 5 after ~20 wins, level 10 after ~120)
+// What an online match pays; CPU matches pay less (CPU_REWARD_SCALE below), so playing people is
+// always worth more. Hard CPU: level 5 after ~12 wins, level 10 after ~80; online a little faster.
 const BASE_XP = {
-    win:   60,
-    loss:  15,
-    draw:  30,
+    win:  160,
+    loss:  40,
+    draw:  80,
 };
 const FIRST_WIN_BONUS_XP  = 75;    // awarded once per calendar day on first win
 
 // ── Karat & Rank Point Rewards ────────────────────────────────────────────────
 const REWARDS = {
-    win:  { karat: 25,  rankPoints:  25 },   // a pack is 200 Karat (routes/shop.js)
-    loss: { karat:  5,  rankPoints: -10 },
-    draw: { karat: 10,  rankPoints:   5 },
+    win:  { karat: 40,  rankPoints:  25 },   // a pack is 200 Karat (routes/shop.js)
+    loss: { karat: 10,  rankPoints: -10 },
+    draw: { karat: 20,  rankPoints:   5 },
 };
 
 // ── Rank Tier Thresholds ──────────────────────────────────────────────────────
@@ -284,8 +285,9 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
 // logged in solo_matches, and only DAILY_CPU_REWARD_CAP per day pay out.
 const DAILY_CPU_REWARD_CAP = 15;
 
-// CPU difficulty scales Karat and XP (Ranked always plays the hard CPU)
-const CPU_REWARD_SCALE = { easy: 0.5, normal: 1, hard: 1.5 };
+// CPU matches pay this share of an online match, by difficulty (Ranked always plays the hard CPU).
+// Keep every value below 1 so online wins always pay more.
+const CPU_REWARD_SCALE = { easy: 0.4, normal: 0.65, hard: 0.85 };
 
 async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty = 'normal' }) {
     const { rows: [{ rewarded_today }] } = await pool.query(
@@ -303,7 +305,7 @@ async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty =
         return { outcome, karatEarned: 0, xpEarned: 0, firstWinBonus: false, leveledUp: false,
             rankChanged: false, rankPointDelta: 0, dailyCapReached: true };
     }
-    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, rewardScale: ranked ? 1 : CPU_REWARD_SCALE[difficulty] ?? 1 } });
+    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, rewardScale: CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
 }
 
 module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, calcLevel, calcRank, LEVEL_THRESHOLDS };

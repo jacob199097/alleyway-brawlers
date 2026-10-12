@@ -3,7 +3,7 @@
         "version": "0.7.11",
         "notes": [
             "New emblems for levels 1 to 10, from a taped-up fist to a skull in a backwards cap. More levels are on the way.",
-            "Levels now take longer: matches give less XP and Karat, and up to 15 CPU matches a day pay out (down from 25).",
+            "Match rewards rebalanced: online matches now always pay more XP and Karat than CPU matches, CPU rewards depend on difficulty, and up to 15 CPU matches a day pay out (down from 25).",
             "The Classic card back has been retired. If you were using it, your cards now show your deck's clan back."
         ]
     },
