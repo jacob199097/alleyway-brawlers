@@ -452,7 +452,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_024",
         "code": "NEBU-024",
         "flavourText": "You called?",
-        "effectText": "When this card attacks: Switch one enemy character to DEF position.\nWhile you control 1 or more other NEBULA character, your opponent must attack this card first if it is standing.",
+        "effectText": "When this card attacks: Switch one enemy character to DEF position.\nYour opponent must attack this card first if it is standing.",
         "effects": [
             {
                 "when": "attack",
@@ -461,10 +461,7 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "passive",
-                "do": "guard",
-                "if": "allies",
-                "n": 1,
-                "if_clan": "nebula"
+                "do": "guard"
             }
         ],
         "clanName": "Nebula",
@@ -620,5 +617,404 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "ambushClan": "nebula"
+    },
+    "card_nebu_020": {
+        "id": "card_nebu_020",
+        "name": "Skully",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_020",
+        "code": "NEBU-020",
+        "flavourText": "Life’s fragile. Good thing I’m stubborn.",
+        "effectText": "When deployed: If you control a Downed character, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "promote",
+                "clan": "nebula",
+                "if": "ally_downed"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 500,
+        "defense": 1000,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_021"
+    },
+    "card_nebu_021": {
+        "id": "card_nebu_021",
+        "name": "Skully",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_021",
+        "code": "NEBU-021",
+        "flavourText": "Life’s fragile. Good thing I’m stubborn",
+        "effectText": "When this card is Downed: If your opponent controls 3 or more characters, PROMOTE this card.\nAt the start of your turn: One of your other Downed NEBULA characters stands back up.",
+        "effects": [
+            {
+                "when": "self_downed",
+                "do": "promote",
+                "clan": "nebula",
+                "if": "enemies_ge",
+                "n": 3
+            },
+            {
+                "when": "turn_start",
+                "do": "stand",
+                "target": "ally",
+                "clan": "nebula"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1400,
+        "defense": 2000,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_022"
+    },
+    "card_nebu_022": {
+        "id": "card_nebu_022",
+        "name": "Skully",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_022",
+        "code": "NEBU-022",
+        "flavourText": "",
+        "effectText": "Once per turn, when this card is Downed: It stands back up.\nAt the start of your turn: Your other Downed NEBULA characters stand back up.\nThis card can't be targeted by your opponent's effects.",
+        "effects": [
+            {
+                "when": "self_downed",
+                "do": "stand",
+                "target": "self",
+                "once": true
+            },
+            {
+                "when": "turn_start",
+                "do": "stand",
+                "target": "allies",
+                "clan": "nebula"
+            },
+            {
+                "when": "passive",
+                "do": "untargetable"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 2200,
+        "defense": 3000,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_nebu_030": {
+        "id": "card_nebu_030",
+        "name": "Marty",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_030",
+        "code": "NEBU-030",
+        "flavourText": "The stars don’t make legends. The fight does.",
+        "effectText": "When this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 900,
+        "defense": 200,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_031"
+    },
+    "card_nebu_031": {
+        "id": "card_nebu_031",
+        "name": "Marty",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_031",
+        "code": "NEBU-031",
+        "flavourText": "The stars don’t make legends. The fight does.",
+        "effectText": "After this card KOs 2 characters: PROMOTE this card.\nOnce per turn, when this card Downs a character: Gain 2 Authority this turn.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "promote",
+                "times": 2
+            },
+            {
+                "when": "down",
+                "do": "authority",
+                "amount": 2,
+                "once": true
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1900,
+        "defense": 1000,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_032"
+    },
+    "card_nebu_032": {
+        "id": "card_nebu_032",
+        "name": "Marty",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_032",
+        "code": "NEBU-032",
+        "flavourText": "The stars don’t make legends. The fight does.",
+        "effectText": "Once per turn, when this card Downs a character: Gain 3 Authority this turn.\nWhen this card attacks: It gains +700 ATK for this Brawl.",
+        "effects": [
+            {
+                "when": "down",
+                "do": "authority",
+                "amount": 3,
+                "once": true
+            },
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "atk": 700
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 3000,
+        "defense": 2000,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_nebu_033": {
+        "id": "card_nebu_033",
+        "name": "Nebula Bounty Hunter",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_033",
+        "code": "NEBU-033",
+        "flavourText": "The galaxy doesn’t care who’s guilty. It only cares who pays.",
+        "effectText": "Once per turn, when this card KOs a character: Your opponent discards 1 card.\nWhen this card attacks: It gains +500 ATK for this Brawl.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "discard",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "atk": 500
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1900,
+        "defense": 1300,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_nebu_034": {
+        "id": "card_nebu_034",
+        "name": "Nebula Scout ship",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_034",
+        "code": "NEBU-034",
+        "flavourText": "“The galaxy is a big place. Someone has to go looking.",
+        "effectText": "At the end of your turn: Add the first NEBULA card from your deck to your hand.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "search",
+                "clan": "nebula",
+                "amount": 1
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 500,
+        "defense": 1200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_nebu_035": {
+        "id": "card_nebu_035",
+        "name": "Nebula DS-022",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 1,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_035",
+        "code": "NEBU-035",
+        "flavourText": "DS? Yeah.. It stands for Destroyer Services as you're about to find out.",
+        "effectText": "This card is immune to BLEED.\nAt the start of your turn: SHOCK one enemy character for 500.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "immune",
+                "statuses": [
+                    "bleed"
+                ]
+            },
+            {
+                "when": "turn_start",
+                "do": "shock",
+                "target": "enemy",
+                "amount": 500
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 2800,
+        "defense": 3000,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
+    },
+    "card_nebu_036": {
+        "id": "card_nebu_036",
+        "name": "Nebula Hitman",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_036",
+        "code": "NEBU-036",
+        "flavourText": "The galaxy’s a big place. Shame you won’t be seeing much more of it.",
+        "effectText": "Once per turn, when this card KOs a character: Your opponent discards 1 card.\nWhen this card attacks: It gains +300 ATK for this Brawl.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "discard",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "atk": 300
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1600,
+        "defense": 500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_nebu_037": {
+        "id": "card_nebu_037",
+        "name": "Nebula Researcher",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_037",
+        "code": "NEBU-037",
+        "flavourText": "Science isn’t about playing with forces. It’s about convincing them to play with you.",
+        "effectText": "At the end of your turn: Put one enemy character in STASIS.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "stasis",
+                "target": "enemy"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1100,
+        "defense": 500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_nebu_038": {
+        "id": "card_nebu_038",
+        "name": "Emergency Resuscitation",
+        "clan": "nebula",
+        "cardType": "hustle",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_038",
+        "code": "NEBU-038",
+        "flavourText": "GET BACK OUT THERE BEFORE WE ALL GET BLASTED!",
+        "effectText": "Put the most recent NEBULA character from your Gutter onto the field in ATK position.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "revive",
+                "clan": "nebula",
+                "amount": 1
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff"
     }
 };

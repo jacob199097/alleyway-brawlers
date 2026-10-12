@@ -30,6 +30,25 @@ const CURATED = {
         ],
         hideout: [['maya_lv2', 3], ['maya_lv3', 3], ['hunter_lv2', 3], ['hunter_lv3', 3], ['eric_lv2', 3], ['eric_lv3', 3]],
     },
+    // Every Nebula base card: 30 characters, 10 Hustles/Ambushes
+    nebula: {
+        leader: 'card_nebu_009',   // Archon of Nebula
+        deck: [
+            // Strivers: Kade, Lyra Quell, Marty, Skully
+            ['card_nebu_001', 3], ['card_nebu_012', 3], ['card_nebu_030', 3], ['card_nebu_020', 2],
+            // Characters
+            ['card_nebu_011', 2], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
+            ['card_nebu_028', 2], ['card_nebu_034', 2], ['card_nebu_036', 2], ['card_nebu_037', 1],
+            ['card_nebu_033', 1], ['card_nebu_025', 1], ['card_nebu_035', 1], ['card_nebu_024', 1],
+            // Hustles and Ambushes
+            ['card_nebu_007', 3], ['card_nebu_010', 2], ['card_nebu_008', 1], ['card_nebu_026', 1],
+            ['card_nebu_029', 1], ['card_nebu_038', 1], ['card_nebu_027', 1],
+        ],
+        hideout: [
+            ['card_nebu_002', 3], ['card_nebu_003', 3], ['card_nebu_013', 3], ['card_nebu_014', 3],
+            ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_021', 3], ['card_nebu_022', 3],
+        ],
+    },
 };
 
 const level = (c) => Math.trunc(Number(c.level) || 1);
