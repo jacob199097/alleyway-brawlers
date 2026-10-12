@@ -8,6 +8,11 @@ for dir in cards ranks levels; do
     mkdir -p "$dst/$dir"
     cp "$src/$dir"/*.png "$dst/$dir/"
 done
+# Level profile pictures (assets/avatars), once there are any
+if ls "$src/avatars"/*.png >/dev/null 2>&1; then
+    mkdir -p "$dst/avatars"
+    cp "$src/avatars"/*.png "$dst/avatars/"
+fi
 mkdir -p "$dst/sfx"
 cp "$src/sfx"/*.ogg "$dst/sfx/"
 # Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)

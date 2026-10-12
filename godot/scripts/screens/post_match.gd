@@ -22,6 +22,7 @@ var _fx: ShaderMaterial      # full-screen shockwave, colour split, impact frame
 var _shake := 0.0
 var _dot: Texture2D          # soft round particle
 var _add := CanvasItemMaterial.new()
+var _showcase: HBoxContainer   # level-up rewards: new emblem, profile picture, free pack button
 
 
 func _ready() -> void:
@@ -592,6 +593,16 @@ func _show_rewards(rw: Dictionary) -> void:
 	if rw.get("leveledUp", false):
 		lines.append("→ Level %d!" % int(rw.newLevel))
 		_level_up_icon(int(rw.newLevel))
+	# Level rewards (backend economy/postMatch.js): a free pack per level, a picture every 5 levels
+	var pics: Array = rw.get("avatarsUnlocked", [])
+	if not pics.is_empty():
+		lines.append("New profile picture unlocked!")
+		_new_avatar(str(pics[-1]))
+	var packs := int(rw.get("packsEarned", 0))
+	if packs > 0:
+		lines.append("🎁 %d free pack%s: pick %s in the Shop" % [packs, "" if packs == 1 else "s", "it" if packs == 1 else "them"])
+		Game.player.free_packs = int(Game.player.get("free_packs", 0)) + packs
+		_free_pack_button()
 	_rewards.text = "\n".join(lines)
 	_rewards.visible_ratio = 0.0
 	var reveal := create_tween()
@@ -665,6 +676,32 @@ func _rank_up(rank: String) -> void:
 	t.tween_callback(l.queue_free)
 
 
+## A free pack to claim: straight to the shop.
+func _free_pack_button() -> void:
+	var box := CenterContainer.new()
+	var b := UI.button("🎁  PICK FREE PACK", func(): Game.go("shop"), Vector2(250, 60), UI.GREEN)
+	b.modulate.a = 0.0
+	box.add_child(b)
+	_showcase_row().add_child(box)
+	var t := b.create_tween()
+	t.tween_interval(1.6 + INTRO)
+	t.tween_property(b, "modulate:a", 1.0, 0.3)
+
+
+## A newly unlocked profile picture, next to the new level's emblem.
+func _new_avatar(key: String) -> void:
+	var box := CenterContainer.new()
+	var pic := UI.texture_rect(UI.avatar(key), Vector2(120, 120), true)
+	pic.pivot_offset = Vector2(60, 60)
+	pic.scale = Vector2.ZERO
+	box.add_child(pic)
+	_showcase_row().add_child(box)
+	var t := pic.create_tween()
+	t.tween_interval(1.4 + INTRO)
+	t.tween_callback(func(): Sfx.play("promote", 1.3, -4.0))
+	t.tween_property(pic, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 ## The new level's emblem pops in under the rewards.
 func _level_up_icon(level: int) -> void:
 	var box := CenterContainer.new()
@@ -672,7 +709,19 @@ func _level_up_icon(level: int) -> void:
 	icon.pivot_offset = Vector2(70, 70)
 	icon.scale = Vector2.ZERO
 	box.add_child(icon)
-	_rewards.get_parent().add_child(box)
+	_showcase_row().add_child(box)
 	var t := icon.create_tween()
 	t.tween_interval(1.2 + INTRO)
 	t.tween_property(icon, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## The row under the title where a level-up shows off what it earned.
+func _showcase_row() -> HBoxContainer:
+	if _showcase == null:
+		_showcase = HBoxContainer.new()
+		_showcase.alignment = BoxContainer.ALIGNMENT_CENTER
+		_showcase.add_theme_constant_override("separation", 28)
+		_showcase.position = Vector2(620, 870)
+		_showcase.size = Vector2(680, 170)
+		add_child(_showcase)
+	return _showcase

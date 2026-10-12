@@ -211,6 +211,17 @@ func _build_right() -> void:
 		var b := UI.image_button(it[0], Vector2(420, 229), func(): Game.go(it[2]), it[1])
 		b.position = Vector2(1470, 236 + i * 244)
 		add_child(b)
+		var free := int(Game.player.get("free_packs", 0))
+		if it[2] == "shop" and free > 0 and not Game.offline:   # free packs from levelling up, waiting
+			var tag := PanelContainer.new()
+			tag.add_theme_stylebox_override("panel", UI.box(UI.GREEN, Color.WHITE, 2, 14))
+			tag.add_child(UI.label("🎁 %d FREE PACK%s" % [free, "" if free == 1 else "S"], 20, Color.WHITE, true))
+			tag.position = b.position + Vector2(250, 6)
+			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(tag)
+			var pulse := tag.create_tween().set_loops()
+			pulse.tween_property(tag, "modulate:a", 0.6, 0.6)
+			pulse.tween_property(tag, "modulate:a", 1.0, 0.6)
 
 
 # ── Quests ───────────────────────────────────────────────────────────────────

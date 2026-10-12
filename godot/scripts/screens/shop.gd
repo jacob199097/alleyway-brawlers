@@ -7,6 +7,8 @@ extends Screen
 const PACKS := []
 
 var _balance: Label
+var _free := 0                   # free packs from levelling up (any pack, the player's choice)
+var _free_buttons: Array[Button] = []
 var _busy := false
 var _reveal: Control
 
@@ -30,6 +32,10 @@ func _ready() -> void:
 	add_child(cb)
 	var packs: Array = PACKS.duplicate()
 	var r := await Api.request("GET", "/api/shop/packs")
+	if r.ok and r.data is Dictionary:
+		_free = int(r.data.get("freePacks", 0))
+		Game.player.free_packs = _free
+		_refresh_balance()
 	if r.ok and r.data is Dictionary and r.data.get("packs") is Array and not r.data.packs.is_empty():
 		var known := {}
 		for p in PACKS:
@@ -47,6 +53,11 @@ func _ready() -> void:
 
 func _refresh_balance() -> void:
 	_balance.text = "KARAT  %d     ·     CONTRABAND  %d" % [int(Game.player.get("karat", 0)), int(Game.player.get("contraband", 0))]
+	if _free > 0:
+		_balance.text += "     ·     FREE PACKS  %d" % _free
+	for b in _free_buttons:
+		b.visible = _free > 0
+		b.text = "OPEN FREE  (%d LEFT)" % _free
 
 
 func _pack(p: Dictionary, at: Vector2) -> void:
@@ -73,6 +84,12 @@ func _pack(p: Dictionary, at: Vector2) -> void:
 	row.add_child(UI.button("200 KARAT", _buy.bind(p, "karat"), Vector2(184, 60), UI.GOLD))
 	row.add_child(UI.button("100 CB", _buy.bind(p, "contraband"), Vector2(184, 60), UI.PURPLE))
 	add_child(row)
+	# A free pack from levelling up: any pack the player picks
+	var free := UI.button("", _buy.bind(p, "free"), Vector2(384, 60), UI.GREEN)
+	free.position = at + Vector2(8, 712)
+	add_child(free)
+	_free_buttons.append(free)
+	_refresh_balance()
 
 
 func _buy(p: Dictionary, currency: String) -> void:
@@ -86,6 +103,9 @@ func _buy(p: Dictionary, currency: String) -> void:
 		return
 	Game.player.karat = r.data.get("newKarat", Game.player.get("karat", 0))
 	Game.player.contraband = r.data.get("newContraband", Game.player.get("contraband", 0))
+	if r.data.get("freePacks") != null:
+		_free = int(r.data.freePacks)
+		Game.player.free_packs = _free
 	_refresh_balance()
 	_open_pack(p, r.data.get("cardsReceived", []))
 

@@ -52,7 +52,7 @@ function loginAs(email) {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
             contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
             avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
-            created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null,
+            created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null, free_packs: 2,
         });
     }
     return players.get(token);
@@ -174,12 +174,12 @@ const routes = {
         return [200, { success: true, totalCopies: n }];
     },
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },
-    'GET /api/shop/packs': () => [200, { karat: player.karat, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
+    'GET /api/shop/packs': () => [200, { karat: player.karat, freePacks: player.free_packs, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
         .map(id => ({ id, name: id, cost: 200, cards: 3 })) }],
     'POST /api/shop/open': (b) => {
-        const cost = b.currency === 'contraband' ? 100 : 200;
-        const field = b.currency === 'contraband' ? 'contraband' : 'karat';
-        if (player[field] < cost) return [400, { error: `Not enough ${field}.` }];
+        const cost = b.currency === 'contraband' ? 100 : b.currency === 'free' ? 1 : 200;
+        const field = b.currency === 'contraband' ? 'contraband' : b.currency === 'free' ? 'free_packs' : 'karat';
+        if (player[field] < cost) return [400, { error: `Not enough .` }];
         player[field] -= cost;
         const pool = cards.filter(c => c.card_type !== 'leader');
         const got = [0, 1, 2].map(() => pool[Math.floor(Math.random() * pool.length)]);
@@ -187,7 +187,7 @@ const routes = {
         got.forEach(c => inventory.set(c.id, inventory.get(c.id) + 1));
         quests.daily[3].progress = 1;
         return [200, { cardsReceived: got.map(c => ({ ...c, cardId: c.art_url, cardType: c.card_type, clanTag: c.clan_tag })),
-            newKarat: player.karat, newContraband: player.contraband }];
+            newKarat: player.karat, newContraband: player.contraband, freePacks: player.free_packs }];
     },
     'POST /api/shop/contraband/purchase': (b) => {
         const amounts = { cb_500: 500, cb_1200: 1200, cb_2500: 2500, cb_7000: 7000, cb_15000: 15000 };

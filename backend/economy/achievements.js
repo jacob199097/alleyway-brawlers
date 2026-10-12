@@ -195,8 +195,12 @@ async function cosmetics(playerId, defs, unlocked) {
         unlocked = new Set(rows.map(r => r.achievement_id));
     }
     const got = defs.filter(a => unlocked.has(a.id));
+    // Every 5 levels: a profile picture ("level:5", "level:10", ...; economy/postMatch.js)
+    const { rows: [lv] } = await pool.query('SELECT level FROM players WHERE id = $1', [playerId]);
+    const levelAvatars = [];
+    for (let n = 5; n <= (lv?.level || 1); n += 5) levelAvatars.push(`level:${n}`);
     return {
-        avatars: [...FREE_AVATARS, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
+        avatars: [...FREE_AVATARS, ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
         portraits: got.some(a => a.reward.avatar === 'portraits'),
         titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
         backs: got.map(a => a.reward.back).filter(Boolean),

@@ -44,6 +44,16 @@ const LEVEL_THRESHOLDS = (() => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Level rewards: a free pack (any pack in the shop) for every level gained, and a profile picture
+// every 5 levels ("level:5", "level:10", ... — economy/achievements.js lets the player wear them)
+const AVATAR_EVERY = 5;
+function levelRewards(oldLevel, newLevel) {
+    const packsEarned = Math.max(0, newLevel - oldLevel);
+    const avatars = [];
+    for (let lv = oldLevel + 1; lv <= newLevel; lv++) if (lv % AVATAR_EVERY === 0) avatars.push(`level:${lv}`);
+    return { packsEarned, avatarsUnlocked: avatars };
+}
+
 function calcLevel(totalXp) {
     let level = 1;
     for (let lvl = 50; lvl >= 1; lvl--) {
@@ -148,13 +158,14 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                     wins           = $6,
                     losses         = $7,
                     draws          = $8,
-                    first_win_date = CASE WHEN $9 THEN $10::DATE ELSE first_win_date END
+                    first_win_date = CASE WHEN $9 THEN $10::DATE ELSE first_win_date END,
+                    free_packs     = free_packs + $12
                  WHERE id = $11`,
                 [
                     newKarat, newXp, newLevel, clampedRankPts, newRank,
                     newWins, newLosses, newDraws,
                     firstWinBonus, today,
-                    playerId,
+                    playerId, levelRewards(p.level, newLevel).packsEarned,
                 ]
             );
 
@@ -167,6 +178,7 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                 newXp,
                 newLevel,
                 leveledUp:      newLevel > p.level,
+                ...levelRewards(p.level, newLevel),
                 newRank,
                 rankChanged:    newRank !== p.rank,
                 rankPointDelta: rankDelta,
@@ -243,13 +255,14 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
                 wins           = $6,
                 losses         = $7,
                 draws          = $8,
-                first_win_date = CASE WHEN $9 THEN $10::DATE ELSE first_win_date END
+                first_win_date = CASE WHEN $9 THEN $10::DATE ELSE first_win_date END,
+                free_packs     = free_packs + $12
              WHERE id = $11`,
             [
                 newKarat, newXp, newLevel, clampedRankPts, newRank,
                 newWins, newLosses, newDraws,
                 firstWinBonus, today,
-                playerId,
+                playerId, levelRewards(p.level, newLevel).packsEarned,
             ]
         );
 
@@ -268,6 +281,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
             newXp,
             newLevel,
             leveledUp:      newLevel > p.level,
+            ...levelRewards(p.level, newLevel),
             newRank,
             rankChanged:    newRank !== p.rank,
             rankPointDelta: rankDelta,
@@ -308,4 +322,4 @@ async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty =
     return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, rewardScale: CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
 }
 
-module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, calcLevel, calcRank, LEVEL_THRESHOLDS };
+module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY };

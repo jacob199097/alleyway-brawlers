@@ -12,7 +12,7 @@ router.get('/me', requireAuth, async (req, res) => {
             `SELECT p.id, p.username, p.email, p.karat, p.contraband, p.level, p.xp,
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at,
-                    p.dust, p.title AS title_id, p.card_back,
+                    p.dust, p.title AS title_id, p.card_back, p.free_packs,
                     -- Collection completion %
                     (
                         SELECT COUNT(DISTINCT pi.card_id)::float /

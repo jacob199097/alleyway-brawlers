@@ -8,6 +8,11 @@ foreach ($dir in 'cards', 'ranks', 'levels') {
     New-Item -ItemType Directory -Force (Join-Path $dst $dir) | Out-Null
     Copy-Item (Join-Path $src "$dir\*.png") (Join-Path $dst $dir) -Force
 }
+# Level profile pictures (assets\avatars), once there are any
+if (Get-ChildItem (Join-Path $src 'avatars\*.png') -ErrorAction SilentlyContinue) {
+    New-Item -ItemType Directory -Force (Join-Path $dst 'avatars') | Out-Null
+    Copy-Item (Join-Path $src 'avatars\*.png') (Join-Path $dst 'avatars') -Force
+}
 New-Item -ItemType Directory -Force (Join-Path $dst 'sfx') | Out-Null
 Copy-Item (Join-Path $src 'sfx\*.ogg') (Join-Path $dst 'sfx') -Force
 # Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)

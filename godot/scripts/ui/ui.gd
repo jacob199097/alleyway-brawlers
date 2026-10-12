@@ -344,8 +344,14 @@ static func shown_title(p: Dictionary) -> String:
 ## A player's avatar. Keys (players.avatar_url): "profile_001" (an image in assets/),
 ## "clan:<clan>" (the emblem from that clan's card back) or "card:<card id>" (the card's art).
 ## Both of those are unlocked by achievements (backend/economy/achievements.js).
+## "level:5", "level:10", ...: unlocked every 5 levels; assets/avatars/level_05.png, or the
+## level's emblem until that picture exists.
 static func avatar(key) -> Texture2D:
 	var k := str(key) if key != null else ""
+	if k.begins_with("level:"):
+		var n := int(k.substr(6))
+		var pic := tex("avatars/level_%02d.png" % n)
+		return pic if pic else level_icon(n)
 	var src: Texture2D = null
 	var region := Rect2()
 	if k.begins_with("clan:"):

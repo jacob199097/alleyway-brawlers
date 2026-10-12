@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.7.14",
+        "notes": [
+            "Level rewards: every time you level up you get a FREE pack, and you choose which one in the Shop. Every 5 levels you also unlock a new profile picture (wear it from Achievements).",
+            "New Militia keyword, SUPPRESS: the target loses ATK and can't attack through its next turn.",
+            "More card abilities: reactions when an enemy is KO'd or at the end of your opponent's turn, pulling an enemy out of DEF, and abilities that depend on position, turn number or deck size."
+        ]
+    },
+    {
         "version": "0.7.13",
         "notes": [
             "Victory and Defeat now hit properly: the result slams onto the screen with a shockwave, sparks and confetti when you win, and a heavy red thud, flickering sign and falling ash when you lose. It no longer shows up twice.",

@@ -127,7 +127,9 @@ async function openPack(playerId, packType, currency = 'karat') {
         // ── Use a pre-bought pack if the player has one, otherwise charge ────
         let newKarat = null;
         let newContraband = null;
-        const { rowCount: usedOwnedPack } = await client.query(
+        let freePacks = null;
+        // (a free pack from levelling up is spent on purpose, never in place of a bought one)
+        const { rowCount: usedOwnedPack } = currency === 'free' ? { rowCount: 0 } : await client.query(
             `UPDATE player_packs
              SET    quantity = quantity - 1
              WHERE  player_id = $1 AND pack_type = $2 AND quantity > 0`,
@@ -139,6 +141,20 @@ async function openPack(playerId, packType, currency = 'karat') {
             );
             newKarat      = rows[0].karat;
             newContraband = rows[0].contraband;
+        } else if (currency === 'free') {
+            const { rows } = await client.query(
+                `UPDATE players
+                 SET    free_packs = free_packs - 1
+                 WHERE  id = $1 AND free_packs > 0
+                 RETURNING karat, contraband, free_packs`,
+                [playerId]
+            );
+            if (!rows.length) {
+                throw new Error('Insufficient free packs: you earn one each time you level up.');
+            }
+            newKarat      = rows[0].karat;
+            newContraband = rows[0].contraband;
+            freePacks     = rows[0].free_packs;
         } else if (currency === 'contraband') {
             const { rows } = await client.query(
                 `UPDATE players
@@ -211,6 +227,7 @@ async function openPack(playerId, packType, currency = 'karat') {
             })),
             newKarat,
             newContraband,
+            freePacks,
         };
 
     } catch (err) {

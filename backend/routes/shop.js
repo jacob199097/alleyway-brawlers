@@ -39,10 +39,11 @@ async function validPacks() {
 router.get('/packs', requireAuth, async (req, res) => {
     try {
         const { rows } = await pool.query(
-            'SELECT karat FROM players WHERE id = $1', [req.playerId]
+            'SELECT karat, free_packs FROM players WHERE id = $1', [req.playerId]
         );
         res.json({
             karat: rows[0]?.karat ?? 0,
+            freePacks: rows[0]?.free_packs ?? 0,
             packs: (await validPacks()).map(p => ({
                 id:    p,
                 name:  p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -76,7 +77,7 @@ router.post('/open', requireAuth, async (req, res) => {
     if (!(await validPacks()).includes(packType)) {
         return res.status(400).json({ error: 'Invalid pack type.' });
     }
-    if (!['karat', 'contraband'].includes(currency)) {
+    if (!['karat', 'contraband', 'free'].includes(currency)) {
         return res.status(400).json({ error: 'Invalid currency.' });
     }
     try {
