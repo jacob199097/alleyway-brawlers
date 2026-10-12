@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.9",
+        "notes": [
+            "Each rarity now looks different. Common and Uncommon cards stay still, Rare cards catch a passing glint, and Epic cards come alive: the glowing parts of their art (neon, eyes, energy, crystals) throb with a breathing glow.",
+            "Legendary cards go further: their glow shifts colour, the scene drifts gently, sparks rise through the art and the card twinkles."
+        ]
+    },
+    {
         "version": "0.7.8",
         "notes": [
             "The Lions have left the streets: Nebula is now the clan every player fights with. Everyone has been given the full 40-card Nebula Starter deck, with every Nebula card in it.",

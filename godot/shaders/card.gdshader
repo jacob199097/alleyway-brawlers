@@ -16,6 +16,12 @@ uniform float flash = 0.0;     // white hit-flash
 uniform float shine = 0.0;        // Rare and up: a soft glint sweeps across the card every few seconds
 uniform float shine_seed = 0.0;   // 0..1, so cards don't all glint at once
 uniform float sparkle = 0.0;      // Legendary: a few faint twinkles, all the time
+// art_fx: the card's art itself moves. 1 = Epic: its glowing parts (neon, eyes, energy, crystals) throb,
+// with energy rippling up through them and a halo that breathes. 2 = Legendary: stronger, the glow
+// shifts colour, the scene drifts gently and sparks rise. Only inside art_rect (the Forge card's art
+// window, centred uv), so the frame and text stay still.
+uniform float art_fx = 0.0;
+uniform vec4 art_rect = vec4(-0.455, -0.374, 0.455, 0.07);
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
 uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
@@ -46,6 +52,25 @@ float crest(vec2 p) {
 	return max(disc, max(vbar, hbar));
 }
 
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// How much a colour looks like a light source: bright and saturated (neon, glowing eyes), or near white
+float glowness(vec3 c) {
+	float mx = max(c.r, max(c.g, c.b));
+	float mn = min(c.r, min(c.g, c.b));
+	float sat = (mx - mn) / max(mx, 0.001);
+	return max(smoothstep(0.55, 0.85, mx) * smoothstep(0.35, 0.65, sat), smoothstep(0.86, 0.97, mx) * 0.6);
+}
+
 // The card's frame, plus a little inside it
 float frame_mask(vec2 p, float asp) {
 	return max(smoothstep(0.395, 0.435, abs(p.x)), smoothstep(0.405, 0.445, abs(p.y / asp)));
@@ -66,6 +91,56 @@ void fragment() {
 	vec2 uv = x.xy / vec2(1.0, aspect);
 	float inside = step(0.0, lam) * step(max(abs(uv.x), abs(uv.y)), 0.5);
 	vec4 col = texture(TEXTURE, uv + 0.5);
+	if (art_fx > 0.0) {
+		float in_art = smoothstep(art_rect.x, art_rect.x + 0.012, uv.x) * (1.0 - smoothstep(art_rect.z - 0.012, art_rect.z, uv.x))
+				* smoothstep(art_rect.y, art_rect.y + 0.01, uv.y) * (1.0 - smoothstep(art_rect.w - 0.01, art_rect.w, uv.y));
+		if (in_art > 0.0) {
+			float t = TIME + shine_seed * 20.0;
+			bool legend = art_fx > 1.5;
+			vec2 auv = uv;
+			if (legend) {   // the whole scene drifts very slightly, like air moving through it
+				vec2 w = vec2(vnoise(uv * 5.0 + vec2(t * 0.3, 0.0)), vnoise(uv * 5.0 + vec2(3.7, t * 0.25))) - 0.5;
+				auv += w * 0.005 * in_art;
+				col = mix(col, texture(TEXTURE, auv + 0.5), in_art);
+			}
+			vec3 base = col.rgb;
+			float g = glowness(base);
+			// Glowing parts nearby, for a halo that spills past their edges
+			float halo = 0.0;
+			vec3 hc = vec3(0.0);
+			for (int i = 0; i < 8; i++) {
+				float ang = float(i) * 0.7854;
+				vec2 o = vec2(cos(ang), sin(ang) / aspect) * 0.014;
+				vec3 sc = texture(TEXTURE, auv + 0.5 + o).rgb;
+				float sg = glowness(sc);
+				halo += sg;
+				hc += sc * sg;
+			}
+			hc /= max(halo, 0.001);
+			halo /= 8.0;
+			float flow = vnoise(vec2(uv.x * 10.0, uv.y * 10.0 * aspect) + vec2(0.0, t * 0.9));   // energy rising
+			float pulse = 0.5 + 0.5 * sin(t * 2.1 + flow * 6.28318);
+			float k = legend ? 1.25 : 0.75;
+			vec3 lit = base;
+			if (legend) {   // the glow drifts through neighbouring hues
+				vec3 rb = 0.5 + 0.5 * cos(6.28318 * (flow * 0.6 + t * 0.07 + vec3(0.0, 0.33, 0.67)));
+				lit = mix(base, rb * max(base.r, max(base.g, base.b)), 0.35);
+			}
+			col.rgb += lit * g * (0.3 * pulse + 0.2 * flow) * k * in_art;
+			col.rgb += hc * halo * (0.12 + 0.3 * pulse) * k * in_art;
+			if (legend) {   // sparks rising through the art
+				for (int L = 0; L < 2; L++) {
+					float fl = float(L);
+					vec2 q = vec2(uv.x, uv.y * aspect) * (9.0 + fl * 5.0) + vec2(fl * 3.1, t * (0.55 + fl * 0.3));
+					vec2 cell = floor(q);
+					float r = hash21(cell + fl * 17.0);
+					vec2 f = fract(q) - 0.5 - vec2((hash21(cell + 5.0) - 0.5) * 0.6 + 0.12 * sin(t + r * 30.0), 0.0);
+					float mote = smoothstep(0.11, 0.0, length(f)) * step(0.72, r) * (0.55 + 0.45 * sin(t * 3.0 + r * 40.0));
+					col.rgb += mix(vec3(1.0, 0.85, 0.6), hc + 0.3, 0.5) * mote * 1.1 * in_art;
+				}
+			}
+		}
+	}
 	if (galaxy > 0.0) {
 		// Turn the swirl around the crest. The crest (a disc plus a cross of spikes) and the frame are
 		// masked by shape on both ends: they stay put, and the turning swirl never drags copies of them

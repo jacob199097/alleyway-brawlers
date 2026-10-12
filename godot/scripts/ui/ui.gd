@@ -215,11 +215,14 @@ static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 	return m
 
 
-## How a card shimmers by rarity (shaders/card.gdshader): Rare and up glint now and then, Epic and up
-## also have the holographic foil, Legendary also twinkles. seed (0..1) staggers the glints.
+## How a card comes alive by rarity (shaders/card.gdshader): Common and Uncommon stay still; Rare
+## glints now and then; Epic's art moves (its glowing parts throb, with a breathing halo) over the
+## holographic foil; Legendary's art moves more (shifting colours, drifting scene, rising sparks) and
+## twinkles. seed (0..1) keeps cards out of step with each other.
 static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
 	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
-	m.set_shader_parameter("shine", 0.0 if rarity < 3 else 0.7 if rarity == 3 else 1.0)
+	m.set_shader_parameter("shine", 0.7 if rarity == 3 else 0.0)
+	m.set_shader_parameter("art_fx", 0.0 if rarity < 4 else 1.0 if rarity == 4 else 2.0)
 	m.set_shader_parameter("sparkle", 1.0 if rarity >= 5 else 0.0)
 	m.set_shader_parameter("shine_seed", seed)
 
