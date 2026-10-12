@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.7.11",
+        "notes": [
+            "New emblems for levels 1 to 10, from a taped-up fist to a skull in a backwards cap. More levels are on the way.",
+            "Levels now take longer: matches give less XP and Karat, and up to 15 CPU matches a day pay out (down from 25).",
+            "The Classic card back has been retired. If you were using it, your cards now show your deck's clan back."
+        ]
+    },
+    {
         "version": "0.7.10",
         "notes": [
             "Every level from 1 to 50 now has its own emblem, from a fist and brass knuckles up to a crowned, winged star at level 50. The frame changes each time your title does, growing crests, spikes and wings as you climb. Your emblem shows on the menu bar, your profile, your friends list and your duel plate, and a new one pops up when you level up.",

@@ -4,18 +4,19 @@ const { pool } = require('../db/pool');
 const { recordDailyWin } = require('../routes/quests');
 
 // ── XP Rewards ────────────────────────────────────────────────────────────────
+// Kept low so levels take a while (hard CPU 90 XP a win: level 5 after ~20 wins, level 10 after ~120)
 const BASE_XP = {
-    win:  100,
-    loss:  20,
-    draw:  60,
+    win:   60,
+    loss:  15,
+    draw:  30,
 };
-const FIRST_WIN_BONUS_XP  = 100;   // awarded once per calendar day on first win
+const FIRST_WIN_BONUS_XP  = 75;    // awarded once per calendar day on first win
 
 // ── Karat & Rank Point Rewards ────────────────────────────────────────────────
 const REWARDS = {
-    win:  { karat: 50,  rankPoints:  25 },
-    loss: { karat: 10,  rankPoints: -10 },
-    draw: { karat: 20,  rankPoints:   5 },
+    win:  { karat: 25,  rankPoints:  25 },   // a pack is 200 Karat (routes/shop.js)
+    loss: { karat:  5,  rankPoints: -10 },
+    draw: { karat: 10,  rankPoints:   5 },
 };
 
 // ── Rank Tier Thresholds ──────────────────────────────────────────────────────
@@ -281,7 +282,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
 
 // CPU matches run on the server (socket/onlineMatch.js), so the result is trusted. Each one is
 // logged in solo_matches, and only DAILY_CPU_REWARD_CAP per day pay out.
-const DAILY_CPU_REWARD_CAP = 25;
+const DAILY_CPU_REWARD_CAP = 15;
 
 // CPU difficulty scales Karat and XP (Ranked always plays the hard CPU)
 const CPU_REWARD_SCALE = { easy: 0.5, normal: 1, hard: 1.5 };
