@@ -35,6 +35,8 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(root.path_join("levels"))
 	DirAccess.make_dir_recursive_absolute(root.path_join("ranks"))
 	for lv in range(1, MAX_LEVEL + 1):
+		if FileAccess.file_exists(root.path_join("levels/chatgpt/level_%02d.png" % lv)):
+			continue   # drawn in ChatGPT instead (tools/import_level_icons.gd)
 		_save(_level_svg(lv), root.path_join("levels/level_%02d.png" % lv), 1.0)
 	for r in RANKS:
 		_save(_rank_svg(r), root.path_join("ranks/%s.png" % r[0]), 2.0)
