@@ -614,7 +614,7 @@ func _render_leader() -> void:
 	var art := UI.texture_rect(UI.card_art(_leader) if _leader is Dictionary else null, Vector2(96, 136))
 	_leader_box.add_child(art)
 	var info := VBoxContainer.new()
-	info.custom_minimum_size = Vector2(360, 0)
+	info.custom_minimum_size = Vector2(220, 0)
 	info.alignment = BoxContainer.ALIGNMENT_CENTER
 	_leader_box.add_child(info)
 	info.add_child(UI.label("LEADER", 18, UI.GOLD, true))
@@ -623,6 +623,10 @@ func _render_leader() -> void:
 		info.add_child(UI.label("Authority %d" % int(_leader.get("authority", 0)), 20, Color("aaccff")))
 	else:
 		info.add_child(UI.label("No leader chosen", 24, UI.MUTED))
+	# The leader's clan deck box (assets/<clan>_deckbox.png), when there is one
+	var clan := str(CardDB.get_card(str(_leader.get("art_url", ""))).get("clanTag", "")) if _leader is Dictionary else ""
+	var box := UI.tex("%s_deckbox.png" % clan) if clan != "" else null
+	_leader_box.add_child(UI.texture_rect(box, Vector2(136, 136)))
 	_leader_box.add_child(UI.button("CHANGE" if _leader is Dictionary else "CHOOSE", _pick_leader, Vector2(150, 56), UI.GOLD))
 
 

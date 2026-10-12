@@ -174,6 +174,8 @@ const routes = {
         return [200, { success: true, totalCopies: n }];
     },
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },
+    'GET /api/shop/packs': () => [200, { karat: player.karat, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
+        .map(id => ({ id, name: id, cost: 200, cards: 3 })) }],
     'POST /api/shop/open': (b) => {
         const cost = b.currency === 'contraband' ? 100 : 200;
         const field = b.currency === 'contraband' ? 'contraband' : 'karat';
