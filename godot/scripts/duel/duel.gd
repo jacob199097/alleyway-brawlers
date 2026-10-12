@@ -2985,10 +2985,6 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = UI.avatar(avatar)
 	p.add_child(av)
-	if level > 0:   # their level emblem on the avatar's corner
-		var emblem := UI.texture_rect(UI.level_icon(level), Vector2(38, 38))
-		emblem.position = Vector2(52, 52)
-		p.add_child(emblem)
 	var n := _label(26, Color.WHITE, true)
 	n.text = display_name
 	n.position = Vector2(92, 10)
@@ -2996,6 +2992,11 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	var sub := _label(14, accent)
 	sub.text = subtitle
 	sub.position = Vector2(92, 46)
+	if level > 0:   # their level emblem just before the "LV n" text
+		var emblem := UI.texture_rect(UI.level_icon(level), Vector2(24, 24))
+		emblem.position = Vector2(92, 43)
+		p.add_child(emblem)
+		sub.position.x = 120
 	p.add_child(sub)
 	var cap := _label(13, Color(0.55, 0.57, 0.7))
 	cap.text = "MORALE"
