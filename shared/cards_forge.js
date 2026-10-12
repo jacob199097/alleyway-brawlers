@@ -223,7 +223,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_011": {
         "id": "card_nebu_011",
-        "name": "Nebula runner",
+        "name": "Sprintz",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 1,
@@ -353,7 +353,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_018": {
         "id": "card_nebu_018",
-        "name": "Nebula Lookout",
+        "name": "Megan",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 1,
@@ -385,7 +385,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_019": {
         "id": "card_nebu_019",
-        "name": "Nebula Twins",
+        "name": "Marty & Mike",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 4,
@@ -413,7 +413,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_023": {
         "id": "card_nebu_023",
-        "name": "Nebula sniper",
+        "name": "Ajax",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 3,
@@ -441,7 +441,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_024": {
         "id": "card_nebu_024",
-        "name": "Nebula Enforcer",
+        "name": "Clay ",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 8,
@@ -474,7 +474,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_025": {
         "id": "card_nebu_025",
-        "name": "Nebula Bouncer",
+        "name": "Jax",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 7,
@@ -563,7 +563,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_028": {
         "id": "card_nebu_028",
-        "name": "Nebula Protector",
+        "name": "Sarah",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 5,
@@ -593,7 +593,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_029": {
         "id": "card_nebu_029",
-        "name": "HULL BREACH",
+        "name": "Hull Breach",
         "clan": "nebula",
         "cardType": "ambush",
         "authority": 3,
@@ -826,7 +826,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_033": {
         "id": "card_nebu_033",
-        "name": "Nebula Bounty Hunter",
+        "name": "Adira",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 5,
@@ -862,7 +862,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_034": {
         "id": "card_nebu_034",
-        "name": "Nebula Scout ship",
+        "name": "Scout-157",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 2,
@@ -892,7 +892,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_035": {
         "id": "card_nebu_035",
-        "name": "Nebula DS-022",
+        "name": "DS-022",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 7,
@@ -929,7 +929,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_036": {
         "id": "card_nebu_036",
-        "name": "Nebula Hitman",
+        "name": "Damian",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 4,
@@ -965,7 +965,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_037": {
         "id": "card_nebu_037",
-        "name": "Nebula Researcher",
+        "name": "Dr. Orion Krell",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 3,

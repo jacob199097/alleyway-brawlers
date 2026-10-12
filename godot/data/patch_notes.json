@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.7.13",
+        "notes": [
+            "Victory and Defeat now hit properly: the result slams onto the screen with a shockwave, sparks and confetti when you win, and a heavy red thud, flickering sign and falling ash when you lose. It no longer shows up twice.",
+            "New card abilities: some cards can now be ACTIVATED. Click the card on your turn and choose ACTIVATE (once per turn, sometimes for a cost). Cards can also grow permanently stronger, react when one of your characters is KO'd, and let allies attack again.",
+            "Many Nebula characters have new names.",
+            "The Card Library now has its own spot on the main menu (Social is the chat bubble at the top).",
+            "A fresh start: every player is back to level 1 and the Rookie rank."
+        ]
+    },
+    {
         "version": "0.7.12",
         "notes": [
             "Your level emblem now sits next to your level in battle, and is a better fit on the menu bar."
