@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.10",
+        "notes": [
+            "Every level from 1 to 50 now has its own emblem, from a fist and brass knuckles up to a crowned, winged star at level 50. The frame changes each time your title does, growing crests, spikes and wings as you climb. Your emblem shows on the menu bar, your profile, your friends list and your duel plate, and a new one pops up when you level up.",
+            "Ranked emblems have been redrawn for each tier, from Rookie to Legend."
+        ]
+    },
+    {
         "version": "0.7.9",
         "notes": [
             "Each rarity now looks different. Common and Uncommon cards stay still, Rare cards catch a passing glint, and Epic cards come alive: the glowing parts of their art (neon, eyes, energy, crystals) throb with a breathing glow.",

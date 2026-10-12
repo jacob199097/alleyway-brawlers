@@ -79,7 +79,9 @@ downloads the patch (a few hundred KB), checks it and restarts into it.
        scp builds/AlleywayBrawlers-<version>-patch.pck jacob199097@192.168.0.200:/opt/Turf_War/downloads/
 
 A patch can't change project settings (`project.godot`), the autoload list, add `class_name` scripts
-(use `preload` instead) or bring new art and audio from `assets/`. Those need a full build.
+(use `preload` instead) or bring new art and audio from `assets/`, except the level and rank emblems (`assets/levels`,
+`assets/ranks`): the Patch preset leaves out every other `assets/` file by its first letter, so new art
+whose name starts with l or r would ride along too. Everything else needs a full build.
 
 **Full build.** Raise the version in both files and set `minimum` and `patchBase` to it. Export the
 "Windows Desktop" preset, zip `builds/windows` as `builds/AlleywayBrawlers-<version>-windows.zip` and
