@@ -20,16 +20,6 @@ const CHARACTER_TARGET = 28;   // a built starter fills up to this many characte
 // Hand-picked starters. Used while every card in the recipe exists; otherwise the clan gets a
 // starter built from its cards.
 const CURATED = {
-    lion_pride: {
-        leader: 'king_roan',
-        deck: [
-            ['maya_lv1', 3], ['hunter_lv1', 3], ['pride_runner', 3], ['eric_lv1', 3], ['pride_mentor', 2],
-            ['kings_test', 2], ['blood_scent', 2], ['lion_rescue', 3], ['corner_deal', 2], ['no_witnesses', 3],
-            ['goldfang', 2], ['block_enforcer', 3], ['lion_grunt', 3], ['brutus', 2], ['pride_lieutenant', 2],
-            ['debt_collector', 2],
-        ],
-        hideout: [['maya_lv2', 3], ['maya_lv3', 3], ['hunter_lv2', 3], ['hunter_lv3', 3], ['eric_lv2', 3], ['eric_lv3', 3]],
-    },
     // Every Nebula base card: 30 characters, 10 Hustles/Ambushes
     nebula: {
         leader: 'card_nebu_009',   // Archon of Nebula

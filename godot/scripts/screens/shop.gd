@@ -4,9 +4,7 @@ extends Screen
 
 ## Known packs and their art. The server's list decides what's on sale: a new Card Forge clan
 ## shows up with its name, and art from assets/<id>_booster.png once that file exists.
-const PACKS := [
-	{"id": "lion_pride", "label": "Lion Clan", "image": "Lion_booster.png", "color": Color("ffd166")},
-]
+const PACKS := []
 
 var _balance: Label
 var _busy := false

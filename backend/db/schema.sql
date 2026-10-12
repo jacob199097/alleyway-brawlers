@@ -1,9 +1,9 @@
 -- ============================================================
 -- TURF WAR TACTICS — PostgreSQL Schema
 -- Creates a fresh database with every table and column the backend uses
--- (the migrate_*.sql files are folded in). Then load the card set:
+-- (the migrate_*.sql files are folded in). Then load the cards from the Card Forge:
 --   psql -d turf_war -f db/schema.sql
---   psql -d turf_war -f db/seed_cards.sql
+--   node backend/scripts/sync_cards.mjs
 -- ============================================================
 
 -- EXTENSIONS

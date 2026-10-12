@@ -20,7 +20,7 @@ function getStripe() {
 // A pack for every clan with at least 3 collectable cards that are in the game (in
 // shared/cards.js, which includes the Card Forge cards); retired cards left in the database
 // don't count. New Forge clans appear after backend/scripts/sync_cards.mjs. Cached for a minute.
-let _packs = { at: 0, list: ['lion_pride'] };
+let _packs = { at: 0, list: [] };
 async function validPacks() {
     if (Date.now() - _packs.at < 60_000) return _packs.list;
     try {

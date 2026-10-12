@@ -2,7 +2,7 @@
 
 /**
  * Crafting and achievements against a real Postgres. It builds a scratch database from
- * db/schema.sql + db/seed_cards.sql + db/migrate.js, so point it at a server where it may do that:
+ * db/schema.sql + db/migrate.js + backend/scripts/sync_cards.mjs (the Card Forge cards), so point it at a server where it may do that:
  *
  *   DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASS=... node backend/economy/progression.test.cjs
  *
@@ -30,7 +30,6 @@ async function freshDatabase() {
     const c = conn(process.env.DB_NAME);
     await c.connect();
     await c.query(fs.readFileSync(path.join(DB, 'schema.sql'), 'utf8'));
-    await c.query(fs.readFileSync(path.join(DB, 'seed_cards.sql'), 'utf8'));
     await c.end();
 }
 
@@ -50,6 +49,7 @@ async function rejects(promise, pattern) {
     const { migrate } = require('../db/migrate');
     await migrate(pool);
     await migrate(pool);   // running it again changes nothing
+    require('child_process').execFileSync(process.execPath, [path.join(__dirname, '../scripts/sync_cards.mjs')], { stdio: 'inherit' });
     const crafting = require('./crafting');
     const achievements = require('./achievements');
 
@@ -62,44 +62,44 @@ async function rejects(promise, pattern) {
          ON CONFLICT (player_id, card_id) DO UPDATE SET quantity = $3`, [id, await cardId(gameId), n]);
     const owned = async (gameId) => (await q(
         'SELECT quantity FROM player_inventory WHERE player_id = $1 AND card_id = $2', [id, await cardId(gameId)])).rows[0]?.quantity || 0;
-    const { rows: [{ rarity: mayaRarity }] } = await q(`SELECT rarity FROM cards WHERE art_url = 'maya_lv1'`);
-    const value = crafting.VALUES[mayaRarity];
+    const { rows: [{ rarity: kadeRarity }] } = await q(`SELECT rarity FROM cards WHERE art_url = 'card_nebu_001'`);
+    const value = crafting.VALUES[kadeRarity];
 
     // ── Crafting ──
-    await give('maya_lv1', 5);   // 2 extras
-    await give('king_roan', 2);  // a leader: 1 extra
+    await give('card_nebu_001', 5);   // 2 extras
+    await give('card_nebu_009', 2);  // a leader: 1 extra
     let s = await crafting.summary(id);
     assert.equal(s.dust, 0);
     assert.equal(s.extras, 3);
 
-    // A deck using 3 Mayas protects them
+    // A deck using 3 Kades protects them
     const { rows: [deck] } = await q(`INSERT INTO decks (player_id, name) VALUES ($1, 'd') RETURNING id`, [id]);
-    await q('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, 3)', [deck.id, await cardId('maya_lv1')]);
-    await rejects(crafting.scrap(id, 'maya_lv1', 3), /decks use 3/);
-    let r = await crafting.scrap(id, 'maya_lv1', 1);
+    await q('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, 3)', [deck.id, await cardId('card_nebu_001')]);
+    await rejects(crafting.scrap(id, 'card_nebu_001', 3), /decks use 3/);
+    let r = await crafting.scrap(id, 'card_nebu_001', 1);
     assert.equal(r.quantity, 4);
     assert.equal(r.gained, value.scrap);
-    await rejects(crafting.scrap(id, 'hunter_lv1'), /don't own/);
+    await rejects(crafting.scrap(id, 'card_nebu_011'), /don't own/);
 
     r = await crafting.scrapExtras(id);
-    assert.equal(await owned('maya_lv1'), 3);
-    assert.equal(await owned('king_roan'), 1);
+    assert.equal(await owned('card_nebu_001'), 3);
+    assert.equal(await owned('card_nebu_009'), 1);
     assert.equal(r.scrapped, 2);
     s = await crafting.summary(id);
     assert.equal(s.extras, 0);
     assert.equal(s.dust, r.dust);
 
     // Crafting costs Dust, stops at 3 copies and only makes cards that are in the game
-    await rejects(crafting.craft(id, 'hunter_lv1'), /need \d+ Dust/);
+    await rejects(crafting.craft(id, 'card_nebu_011'), /need \d+ Dust/);
     await q('UPDATE players SET dust = 10000 WHERE id = $1', [id]);
-    r = await crafting.craft(id, 'hunter_lv1');
+    r = await crafting.craft(id, 'card_nebu_011');
     assert.equal(r.quantity, 1);
-    assert.equal(await owned('hunter_lv1'), 1);
-    await rejects(crafting.craft(id, 'maya_lv1'), /all a deck can use/);
-    await rejects(crafting.craft(id, 'king_roan'), /all a deck can use/);
+    assert.equal(await owned('card_nebu_011'), 1);
+    await rejects(crafting.craft(id, 'card_nebu_001'), /all a deck can use/);
+    await rejects(crafting.craft(id, 'card_nebu_009'), /all a deck can use/);
     await rejects(crafting.craft(id, 'not_a_card'), /can't be crafted/);
     const dustBefore = (await crafting.summary(id)).dust;
-    await rejects(crafting.craft(id, 'maya_lv1'), /all a deck can use/);
+    await rejects(crafting.craft(id, 'card_nebu_001'), /all a deck can use/);
     assert.equal((await crafting.summary(id)).dust, dustBefore, 'a refused craft costs nothing');
 
     // ── Achievements ──
@@ -110,7 +110,7 @@ async function rejects(promise, pattern) {
     const karat0 = (await q('SELECT karat FROM players WHERE id = $1', [id])).rows[0].karat;
     await q('UPDATE players SET wins = 1 WHERE id = $1', [id]);   // resolveMatch counts the win
     fresh = await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'cpu', difficulty: 'hard',
-        clan: 'lion_pride', kos: 5, promotes: 1, awakens: 1, morale: 6000 });
+        clan: 'nebula', kos: 5, promotes: 1, awakens: 1, morale: 6000 });
     const got = fresh.map(a => a.id).sort();
     assert.deepEqual(got, ['awaken', 'first_win', 'flawless', 'hard_cpu', 'rampage'].sort());
     const karat1 = (await q('SELECT karat FROM players WHERE id = $1', [id])).rows[0].karat;
@@ -119,18 +119,18 @@ async function rejects(promise, pattern) {
     // Cosmetics: only what's unlocked can be worn
     assert.deepEqual(await achievements.equip(id, { title: 'flawless' }), { ok: true });
     assert.ok((await achievements.equip(id, { title: 'wins_100' })).error);
-    assert.ok((await achievements.equip(id, { back: 'lion_pride' })).error);
-    assert.ok((await achievements.equip(id, { avatar: 'clan:lion_pride' })).error);
-    assert.ok((await achievements.equip(id, { avatar: 'card:maya_lv1' })).error, 'portraits come with Collector');
+    assert.ok((await achievements.equip(id, { back: 'nebula' })).error);
+    assert.ok((await achievements.equip(id, { avatar: 'clan:nebula' })).error);
+    assert.ok((await achievements.equip(id, { avatar: 'card:card_nebu_001' })).error, 'portraits come with Collector');
     for (let i = 0; i < 9; i++) {
-        await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'casual', clan: 'lion_pride', morale: 3000 });
+        await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'casual', clan: 'nebula', morale: 3000 });
     }
     const ov = await achievements.overview(id);
-    const loyal = ov.achievements.find(a => a.id === 'clan_lion_pride_10');
-    assert.ok(loyal && loyal.unlocked, 'Lion Pride Loyalist unlocks after 10 Lion Pride wins');
+    const loyal = ov.achievements.find(a => a.id === 'clan_nebula_10');
+    assert.ok(loyal && loyal.unlocked, 'Nebula Loyalist unlocks after 10 Nebula wins');
     assert.equal(ov.achievements.find(a => a.id === 'online_25').progress, 9);
-    assert.ok(ov.cosmetics.backs.includes('lion_pride'));
-    assert.deepEqual(await achievements.equip(id, { back: 'lion_pride', avatar: 'clan:lion_pride' }), { ok: true });
+    assert.ok(ov.cosmetics.backs.includes('nebula'));
+    assert.deepEqual(await achievements.equip(id, { back: 'nebula', avatar: 'clan:nebula' }), { ok: true });
     assert.deepEqual(await achievements.equip(id, { title: null, back: null }), { ok: true });
     assert.equal(ov.equipped.title, 'flawless');
     assert.equal(await achievements.titleText('flawless'), 'Untouchable');
@@ -141,7 +141,7 @@ async function rejects(promise, pattern) {
     await achievements.check(id);
     const coll = (await achievements.overview(id)).achievements.find(a => a.id === 'collect_25');
     assert.equal(coll.unlocked, (await q('SELECT COUNT(*)::int AS n FROM cards')).rows[0].n >= 25);
-    if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: 'card:maya_lv1' }), { ok: true });
+    if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: 'card:card_nebu_001' }), { ok: true });
 
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);

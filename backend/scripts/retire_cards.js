@@ -3,6 +3,7 @@
 // Forge cards) from the database: out of decks and collections, then the cards themselves.
 // Unopened packs of clans that no longer have a pack are refunded (PACK_REFUND Karat each), and
 // players whose starting clan is gone pick a clan again (with that clan's starter) next login.
+// A card back or portrait of a removed clan or card is taken off (back to the default).
 //
 //   node backend/scripts/retire_cards.js            shows what would change
 //   node backend/scripts/retire_cards.js --apply    does it (all or nothing)
@@ -22,7 +23,7 @@ const apply = process.argv.includes('--apply');
     try {
         await client.query('BEGIN');
         const { rows: retired } = await client.query(
-            'SELECT id, name, clan::text AS clan FROM cards WHERE NOT (art_url = ANY($1)) ORDER BY clan, name', [inGame]);
+            'SELECT id, name, art_url, clan::text AS clan FROM cards WHERE NOT (art_url = ANY($1)) ORDER BY clan, name', [inGame]);
         const ids = retired.map(r => r.id);
         console.log(`${retired.length} card(s) not in the game:`);
         for (const r of retired) console.log(`  - ${r.name} (${r.clan})`);
@@ -46,6 +47,14 @@ const apply = process.argv.includes('--apply');
         const reclan = await count(`SELECT COUNT(*) AS n FROM players WHERE chosen_clan IS NOT NULL AND NOT (chosen_clan = ANY($1))`, [CLANS_IN_GAME]);
         console.log(`${reclan} player(s) started with a clan that's gone: they choose again at next login.`);
 
+        const gameIds = retired.map(r => r.art_url);
+        const goneClans = [...new Set(retired.map(r => r.clan))].filter(c => !packClans.includes(c));
+        const looks = await count(
+            `SELECT COUNT(*) AS n FROM players WHERE card_back = ANY($1)
+                OR avatar_url = ANY(SELECT 'clan:' || x FROM unnest($1::text[]) x)
+                OR avatar_url = ANY(SELECT 'card:' || x FROM unnest($2::text[]) x)`, [goneClans, gameIds]);
+        console.log(`${looks} player(s) wear a card back or portrait that's going: back to the default.`);
+
         if (!apply) {
             await client.query('ROLLBACK');
             console.log('\nNothing changed. Run again with --apply to do it.');
@@ -54,6 +63,11 @@ const apply = process.argv.includes('--apply');
         await client.query('DELETE FROM deck_cards WHERE card_id = ANY($1)', [ids]);
         await client.query('UPDATE decks SET leader_card_id = NULL WHERE leader_card_id = ANY($1)', [ids]);
         await client.query('DELETE FROM player_inventory WHERE card_id = ANY($1)', [ids]);
+        await client.query('UPDATE players SET card_back = NULL WHERE card_back = ANY($1)', [goneClans]);
+        await client.query(
+            `UPDATE players SET avatar_url = NULL
+             WHERE avatar_url = ANY(SELECT 'clan:' || x FROM unnest($1::text[]) x)
+                OR avatar_url = ANY(SELECT 'card:' || x FROM unnest($2::text[]) x)`, [goneClans, gameIds]);
         await client.query('DELETE FROM cards WHERE id = ANY($1)', [ids]);
         for (const p of packs) {
             await client.query('UPDATE players SET karat = karat + $1 WHERE id = $2', [p.quantity * PACK_REFUND, p.player_id]);

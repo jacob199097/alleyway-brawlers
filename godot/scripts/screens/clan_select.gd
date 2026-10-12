@@ -5,7 +5,6 @@ extends Screen
 
 ## Art and words for clans that have them; others use their leader's art and a plain line.
 const KNOWN := {
-	"lion_pride": {"image": "lions_deck.png", "blurb": "Aggressive pride that swarms the field."},
 }
 
 var _selected := ""
