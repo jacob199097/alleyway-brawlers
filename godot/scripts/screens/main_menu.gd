@@ -198,17 +198,14 @@ func _build_center() -> void:
 	var deck := UI.image_button("deck_editor.png", Vector2(560, 306), func(): Game.go("deck_builder"), "DECK EDITOR")
 	deck.position = Vector2(760, 560)
 	add_child(deck)
-	var lib := UI.button("CARD LIBRARY", func(): Game.go("card_library"), Vector2(272, 68))
-	lib.position = Vector2(760, 895)
-	add_child(lib)
 	var ach := UI.button("ACHIEVEMENTS", func(): Game.go("achievements"), Vector2(272, 68), UI.GOLD)
-	ach.position = Vector2(1048, 895)
+	ach.position = Vector2(904, 895)
 	ach.disabled = Game.offline
 	add_child(ach)
 
 
 func _build_right() -> void:
-	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["social_menu.png", "SOCIAL", "social"]]
+	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["card_library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar
 	for i in items.size():
 		var it: Array = items[i]
 		var b := UI.image_button(it[0], Vector2(420, 229), func(): Game.go(it[2]), it[1])

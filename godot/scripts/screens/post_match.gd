@@ -6,58 +6,347 @@ extends Screen
 const ART_SIZE := Vector2(920, 613)     # victory.png / defeat.png are 1536×1024
 const ART_POS := Vector2(500, 0)
 
+const INTRO := 0.9   # seconds until the result has landed and the panels are in; counters wait for it
+const GOLD_LIGHT := Color(1.0, 0.85, 0.45)
+const BLOOD := Color(0.85, 0.05, 0.1)
+
 var _xp_fill: ColorRect
 var _xp_label: Label
 var _rewards: Label
 var _rematch: Button
 var _rematch_note: Label
 var _rematch_done := false   # asked, declined or expired: nothing more to tell the server
+var _won := false
+var _backdrop: ShaderMaterial
+var _fx: ShaderMaterial      # full-screen shockwave, colour split, impact frame, red pulse (shaders/post.gdshader)
+var _shake := 0.0
+var _dot: Texture2D          # soft round particle
+var _add := CanvasItemMaterial.new()
 
 
 func _ready() -> void:
 	var d: Dictionary = Game.match_result
-	var won: bool = d.get("result") == "win"
-	var snap = d.get("snapshot")
-	if snap is Texture2D:
-		var bg := UI.texture_rect(snap, Vector2(1920, 1080), true)
-		add_child(bg)
-		var veil := ColorRect.new()
-		veil.color = Color(0, 0, 0, 0.6)
-		veil.size = size
-		add_child(veil)
-	else:
-		UI.background(self, "duel_background.png", 0.7)
-	Sfx.play("victory" if won else "defeat")
-	var art := UI.texture_rect(UI.tex("victory.png" if won else "defeat.png"), ART_SIZE)
+	_won = d.get("result") == "win"
+	_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_dot = _soft_dot()
+	_build_backdrop(d.get("snapshot"))
+	var rays := _rays(ART_POS + ART_SIZE * Vector2(0.5, 0.42)) if _won else null
+	var art := UI.texture_rect(UI.tex("victory.png" if _won else "defeat.png"), ART_SIZE)
 	art.position = ART_POS
-	art.pivot_offset = ART_SIZE / 2
-	art.scale = Vector2.ONE * 0.6
+	art.pivot_offset = ART_SIZE * Vector2(0.5, 0.42)
 	art.modulate.a = 0.0
+	var shine := ShaderMaterial.new()
+	shine.shader = preload("res://shaders/shine.gdshader")
+	shine.set_shader_parameter("shine", Color(1.0, 0.93, 0.72) if _won else Color(1.0, 0.3, 0.25))
+	shine.set_shader_parameter("strength", 0.9 if _won else 0.5)
+	art.material = shine
 	add_child(art)
-	if won:
-		_rays(ART_POS + ART_SIZE * Vector2(0.5, 0.32))
-		move_child(art, -1)
-	var t := create_tween().set_parallel()
-	t.tween_property(art, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.tween_property(art, "modulate:a", 1.0, 0.25)
-	var bob := create_tween().set_loops()
-	bob.tween_property(art, "position:y", ART_POS.y - 8, 1.6).set_trans(Tween.TRANS_SINE).set_delay(0.4)
-	bob.tween_property(art, "position:y", ART_POS.y, 1.6).set_trans(Tween.TRANS_SINE)
 	if art.texture == null:
-		var l := UI.label("VICTORY" if won else "DEFEAT", 160, UI.GOLD if won else UI.RED, true)
+		var l := UI.label("VICTORY" if _won else "DEFEAT", 160, UI.GOLD if _won else UI.RED, true)
 		l.size = ART_SIZE
-		l.position = ART_POS
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		add_child(l)
+		art.add_child(l)
 	# The two buttons drawn into the artwork (in its 1536×1024 pixels)
 	_art_button(Rect2(205, 745, 555, 160), "BRAWL AGAIN", func(): Game.go("fight_mode"))
 	_art_button(Rect2(805, 745, 495, 160), "MENU", func(): Game.go("main_menu"))
-	_outcome_panel(d, won)
-	_mvp_panel(d.get("mvp", {}))
+	var panels: Array[Control] = [_outcome_panel(d, _won), _mvp_panel(d.get("mvp", {}))]
 	_submit(d)
 	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "":
 		_rematch_box()
+	_build_fx()
+	_reveal(art, shine, rays, panels)
+
+
+# ── The reveal ───────────────────────────────────────────────────────────────
+# Victory: the title rushes in from huge and slams down — flash, shockwave, gold sparks, turning
+# rays, confetti and rising embers, with light gleaming across the lettering.
+# Defeat: the title drops in and lands with a heavy thud — red flash, the board drains of colour,
+# the sign flickers like a dying neon and settles crooked, ash drifts down and the edges pulse
+# red like a heartbeat.
+
+func _reveal(art: Control, shine: ShaderMaterial, rays: Node2D, panels: Array[Control]) -> void:
+	Sfx.play("riser", 1.35 if _won else 0.75, -8.0)
+	var t := create_tween().set_parallel()
+	if _won:
+		art.scale = Vector2.ONE * 2.8
+		t.tween_property(art, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		t.tween_property(art, "modulate:a", 1.0, 0.16)
+	else:
+		art.position.y = ART_POS.y - 760.0
+		art.rotation = deg_to_rad(-9.0)
+		t.tween_property(art, "position:y", ART_POS.y, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(art, "rotation", deg_to_rad(-2.0), 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(art, "modulate:a", 1.0, 0.2)
+	t.chain().tween_callback(_impact.bind(art, shine, rays))
+	# The panels rise into place one after the other as the dust settles
+	for i in panels.size():
+		var p := panels[i]
+		var to := p.position
+		p.position.y += 460.0
+		p.modulate.a = 0.0
+		var pt := p.create_tween().set_parallel()
+		pt.tween_property(p, "position:y", to.y, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.5 + i * 0.12)
+		pt.tween_property(p, "modulate:a", 1.0, 0.3).set_delay(0.5 + i * 0.12)
+		pt.chain().tween_callback(func(): Sfx.play("set", 1.1 + i * 0.1, -6.0))
+
+
+func _impact(art: Control, shine: ShaderMaterial, rays: Node2D) -> void:
+	var at := art.position + art.pivot_offset
+	Sfx.play("victory" if _won else "defeat")
+	Sfx.play("slam", 0.9 if _won else 0.6)
+	Sfx.play("boom", 1.0 if _won else 0.65, -2.0)
+	_shake = 24.0 if _won else 34.0
+	_flash(Color(1.0, 0.95, 0.8, 0.7) if _won else Color(0.75, 0.0, 0.05, 0.5))
+	_shockwave(at)
+	_grade(0.35 if _won else 0.12, 0.5 if _won else 0.32)
+	if _won:
+		_burst(at, GOLD_LIGHT, 150, 1300.0, 1.1)
+		_burst(at, Color.WHITE, 60, 800.0, 0.6)
+		if rays:
+			rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.5)
+		_confetti()
+		_embers(GOLD_LIGHT, 70)
+		_sweeps(shine, 0.85, 2.4)
+		var bob := art.create_tween().set_loops()
+		bob.tween_property(art, "position:y", ART_POS.y - 10, 1.8).set_trans(Tween.TRANS_SINE).set_delay(0.3)
+		bob.tween_property(art, "position:y", ART_POS.y, 1.8).set_trans(Tween.TRANS_SINE)
+	else:
+		_burst(at + Vector2(0, 160), Color(0.5, 0.45, 0.45), 80, 600.0, 1.2, 900.0)
+		# The sign swings on its hinge and flickers like a failing neon
+		var swing := art.create_tween()
+		swing.tween_property(art, "rotation", deg_to_rad(1.6), 0.22).set_trans(Tween.TRANS_SINE)
+		swing.tween_property(art, "rotation", deg_to_rad(-1.0), 0.3).set_trans(Tween.TRANS_SINE)
+		swing.tween_property(art, "rotation", deg_to_rad(-1.6), 0.4).set_trans(Tween.TRANS_SINE)
+		var flicker := art.create_tween().set_loops()
+		for a in [0.25, 1.0, 0.5, 1.0, 0.8, 1.0]:
+			flicker.tween_property(art, "modulate:a", a, 0.05)
+		flicker.tween_interval(2.5)
+		_ash()
+		_embers(Color(1.0, 0.25, 0.15), 22)
+		_sweeps(shine, 1.6, 3.5)
+		_heartbeat()
+
+
+# ── Effects ──────────────────────────────────────────────────────────────────
+
+## The board as the match ended (or the duel background), blurred, drained and graded,
+## slowly pushing in; a vignette and a wash of the result's colour on top.
+func _build_backdrop(snap) -> void:
+	var tex: Texture2D = snap if snap is Texture2D else UI.tex("duel_background.png")
+	var bg := UI.texture_rect(tex, Vector2(2000, 1125), true)
+	bg.position = Vector2(-40, -22)
+	bg.pivot_offset = bg.size / 2
+	_backdrop = ShaderMaterial.new()
+	_backdrop.shader = preload("res://shaders/backdrop.gdshader")
+	_backdrop.set_shader_parameter("blur", 0.0)
+	_backdrop.set_shader_parameter("saturation", 1.0)
+	_backdrop.set_shader_parameter("brightness", 0.55)
+	_backdrop.set_shader_parameter("grade", Color(1.08, 0.97, 0.82) if _won else Color(1.0, 0.72, 0.76))
+	bg.material = _backdrop
+	add_child(bg)
+	bg.create_tween().tween_property(bg, "scale", Vector2.ONE * 1.06, 14.0).set_trans(Tween.TRANS_SINE)
+	var wg := GradientTexture2D.new()
+	wg.fill_from = Vector2(0.5, 1.0)
+	wg.fill_to = Vector2(0.5, 0.0)
+	wg.gradient = _gradient([Color(GOLD_LIGHT, 0.2) if _won else Color(BLOOD, 0.3), Color(0, 0, 0, 0)])
+	add_child(_overlay(wg))
+	var vg := GradientTexture2D.new()
+	vg.fill = GradientTexture2D.FILL_RADIAL
+	vg.fill_from = Vector2(0.5, 0.45)
+	vg.fill_to = Vector2(1.05, 1.05)
+	vg.gradient = _gradient([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.92)], [0.0, 0.45, 1.0])
+	add_child(_overlay(vg))
+
+
+func _overlay(tex: Texture2D) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = tex
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.size = Vector2(1920, 1080)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+## Blur and drain the backdrop as the result lands.
+func _grade(saturation: float, brightness: float) -> void:
+	var t := create_tween().set_parallel()
+	t.tween_method(func(v): _backdrop.set_shader_parameter("blur", v), 0.0, 4.0, 0.5).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(v): _backdrop.set_shader_parameter("saturation", v), 1.0, saturation, 0.7)
+	t.tween_method(func(v): _backdrop.set_shader_parameter("brightness", v), 0.55, brightness, 0.7)
+
+
+## A full-screen layer over everything that bends what's behind it (shaders/post.gdshader).
+func _build_fx() -> void:
+	var r := ColorRect.new()
+	r.size = Vector2(1920, 1080)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx = ShaderMaterial.new()
+	_fx.shader = preload("res://shaders/post.gdshader")
+	_fx.set_shader_parameter("impact_tint", Color(1.0, 0.9, 0.6) if _won else Color(1.0, 0.35, 0.35))
+	r.material = _fx
+	add_child(r)
+
+
+func _shockwave(at: Vector2) -> void:
+	_fx.set_shader_parameter("wave_center", at / Vector2(1920, 1080))
+	var t := create_tween().set_parallel()
+	t.tween_method(func(v): _fx.set_shader_parameter("wave_radius", v), 0.0, 1.5, 0.9).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(v): _fx.set_shader_parameter("wave_strength", v), 1.3, 0.0, 0.9)
+	t.tween_method(func(v): _fx.set_shader_parameter("aberration", v), 16.0, 0.0, 0.5).set_ease(Tween.EASE_OUT)
+	# Two frames of stark impact-frame ink, then back
+	var i := create_tween()
+	i.tween_callback(func(): _fx.set_shader_parameter("impact", 1.0))
+	i.tween_interval(0.07)
+	i.tween_callback(func(): _fx.set_shader_parameter("impact", 0.0))
+
+
+## Defeat: the screen's edges throb red, lub-dub, and fade between beats.
+func _heartbeat() -> void:
+	var set_danger := func(v): _fx.set_shader_parameter("danger", v)
+	var t := create_tween().set_loops()
+	t.tween_method(set_danger, 0.0, 0.42, 0.1)
+	t.tween_method(set_danger, 0.42, 0.12, 0.16)
+	t.tween_method(set_danger, 0.12, 0.32, 0.1)
+	t.tween_method(set_danger, 0.32, 0.0, 0.7)
+	t.tween_interval(0.7)
+
+
+func _flash(c: Color) -> void:
+	var f := ColorRect.new()
+	f.color = c
+	f.size = Vector2(1920, 1080)
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(f)
+	var t := f.create_tween()
+	t.tween_property(f, "color:a", 0.0, 0.28).set_ease(Tween.EASE_OUT)
+	t.tween_callback(f.queue_free)
+
+
+## Light gleaming across the title now and then.
+func _sweeps(shine: ShaderMaterial, secs: float, gap: float) -> void:
+	var t := create_tween().set_loops()
+	t.tween_interval(0.2)
+	t.tween_method(func(v): shine.set_shader_parameter("progress", v), -0.3, 1.3, secs).set_trans(Tween.TRANS_SINE)
+	t.tween_interval(gap)
+
+
+func _burst(at: Vector2, color: Color, amount: int, speed: float, life: float, gravity := 500.0) -> void:
+	var p := _particles(amount, life, _dot, _add)
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 60.0
+	p.spread = 180.0
+	p.initial_velocity_min = speed * 0.3
+	p.initial_velocity_max = speed
+	p.gravity = Vector2(0, gravity)
+	p.damping_min = 60.0
+	p.damping_max = 200.0
+	p.scale_amount_min = 0.12
+	p.scale_amount_max = 0.45
+	p.color_ramp = _gradient([color, Color(color, 0.0)])
+	p.emitting = true
+	get_tree().create_timer(life + 0.5).timeout.connect(p.queue_free)
+
+
+## Victory: gold and white confetti tumbling down from the top.
+func _confetti() -> void:
+	var img := Image.create(16, 8, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var p := _particles(160, 6.0, ImageTexture.create_from_image(img), null)
+	p.position = Vector2(960, -40)
+	p.one_shot = true
+	p.explosiveness = 0.75
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(1000, 10)
+	p.direction = Vector2.DOWN
+	p.spread = 25.0
+	p.initial_velocity_min = 120.0
+	p.initial_velocity_max = 380.0
+	p.gravity = Vector2(0, 170)
+	p.damping_min = 20.0
+	p.damping_max = 50.0
+	p.angular_velocity_min = -420.0
+	p.angular_velocity_max = 420.0
+	p.angle_min = 0.0
+	p.angle_max = 360.0
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.2
+	p.color_initial_ramp = _gradient([Color("ffd86b"), Color.WHITE, Color("f0a500"), Color("fff1b8")])
+	p.color_ramp = _gradient([Color.WHITE, Color.WHITE, Color(1, 1, 1, 0)], [0.0, 0.8, 1.0])
+	p.emitting = true
+
+
+## Glowing embers drifting up from the bottom of the screen.
+func _embers(color: Color, amount: int) -> void:
+	var p := _particles(amount, 7.0, _dot, _add)
+	p.position = Vector2(960, 1110)
+	p.preprocess = 3.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(1000, 10)
+	p.direction = Vector2.UP
+	p.spread = 25.0
+	p.initial_velocity_min = 50.0
+	p.initial_velocity_max = 170.0
+	p.gravity = Vector2(0, -12)
+	p.scale_amount_min = 0.06
+	p.scale_amount_max = 0.26
+	p.hue_variation_min = -0.03
+	p.hue_variation_max = 0.03
+	p.color_ramp = _gradient([Color(color, 0.0), Color(color, 0.95), Color(color.darkened(0.3), 0.0)], [0.0, 0.15, 1.0])
+	p.emitting = true
+
+
+## Defeat: grey ash drifting down.
+func _ash() -> void:
+	var p := _particles(70, 12.0, _dot, null)
+	p.position = Vector2(960, -30)
+	p.preprocess = 6.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(1100, 10)
+	p.direction = Vector2.DOWN
+	p.spread = 35.0
+	p.initial_velocity_min = 20.0
+	p.initial_velocity_max = 60.0
+	p.gravity = Vector2(14, 22)
+	p.scale_amount_min = 0.05
+	p.scale_amount_max = 0.16
+	p.color_ramp = _gradient([Color(0.7, 0.68, 0.68, 0.0), Color(0.7, 0.68, 0.68, 0.7), Color(0.4, 0.38, 0.38, 0.0)], [0.0, 0.1, 1.0])
+	p.emitting = true
+
+
+func _particles(amount: int, life: float, tex: Texture2D, mat: Material) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.amount = amount
+	p.lifetime = life
+	p.texture = tex
+	if mat:
+		p.material = mat
+	add_child(p)
+	return p
+
+
+func _soft_dot() -> Texture2D:
+	var g := GradientTexture2D.new()
+	g.width = 64
+	g.height = 64
+	g.fill = GradientTexture2D.FILL_RADIAL
+	g.fill_from = Vector2(0.5, 0.5)
+	g.fill_to = Vector2(1.0, 0.5)
+	g.gradient = _gradient([Color.WHITE, Color(1, 1, 1, 0)])
+	return g
+
+
+static func _gradient(colors: Array, offsets: Array = []) -> Gradient:
+	var g := Gradient.new()
+	g.colors = PackedColorArray(colors)
+	if offsets.is_empty():
+		for i in colors.size():
+			offsets.append(float(i) / maxf(1.0, colors.size() - 1.0))
+	g.offsets = PackedFloat32Array(offsets)
+	return g
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -89,7 +378,14 @@ func _rematch_box() -> void:
 			Net.send("mp:rematch_decline"))
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# Camera shake from the result landing
+	if _shake > 0.2:
+		position = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake
+		_shake = lerpf(_shake, 0.0, minf(1.0, delta * 8.0))
+	elif position != Vector2.ZERO:
+		_shake = 0.0
+		position = Vector2.ZERO
 	while _rematch and not Net.rematch_inbox.is_empty():
 		var m: Array = Net.rematch_inbox.pop_front()
 		_on_net(m[0], m[1])
@@ -146,7 +442,7 @@ func _art_button(r: Rect2, text: String, cb: Callable) -> void:
 	add_child(b)
 
 
-func _outcome_panel(d: Dictionary, won: bool) -> void:
+func _outcome_panel(d: Dictionary, won: bool) -> Control:
 	var p := UI.panel(UI.GOLD if won else UI.RED)
 	p.position = Vector2(60, 640)
 	p.custom_minimum_size = Vector2(560, 400)
@@ -202,9 +498,10 @@ func _outcome_panel(d: Dictionary, won: bool) -> void:
 	_rewards = UI.label("", 24, UI.GOLD, true)
 	_rewards.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_rewards)
+	return p
 
 
-func _mvp_panel(mvp: Dictionary) -> void:
+func _mvp_panel(mvp: Dictionary) -> Control:
 	var p := UI.panel(UI.GOLD)
 	p.position = Vector2(1300, 640)
 	p.custom_minimum_size = Vector2(560, 400)
@@ -219,7 +516,7 @@ func _mvp_panel(mvp: Dictionary) -> void:
 		var none := UI.label("No damage dealt", 22, UI.MUTED)
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(none)
-		return
+		return p
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	v.add_child(row)
@@ -240,6 +537,7 @@ func _mvp_panel(mvp: Dictionary) -> void:
 	info.add_child(dmg)
 	_count(dmg, int(mvp.get("damage", 0)), "%d", 0.9, 0.6)
 	info.add_child(UI.label("MORALE DEALT", 18, UI.MUTED, true))
+	return p
 
 
 ## Rewards are decided by the server (solo-match session from match/start).
@@ -276,7 +574,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	var xp := UI.xp_progress({"level": rw.get("newLevel", Game.player.get("level", 1)), "xp": rw.get("newXp", 0)})
 	_count(_xp_label, int(rw.get("xpEarned", 0)), "+%d XP", 0.8, 0.4)
 	var bar := create_tween()
-	bar.tween_interval(0.4)
+	bar.tween_interval(0.4 + INTRO)
 	if rw.get("leveledUp", false):
 		# Fill to the top, flash, and roll over into the new level
 		bar.tween_property(_xp_fill, "size:x", 500.0, 0.5).set_trans(Tween.TRANS_QUAD)
@@ -297,7 +595,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	_rewards.text = "\n".join(lines)
 	_rewards.visible_ratio = 0.0
 	var reveal := create_tween()
-	reveal.tween_interval(1.0)
+	reveal.tween_interval(1.0 + INTRO)
 	reveal.tween_callback(func(): Sfx.play("effect", 1.4, -6.0))
 	reveal.tween_property(_rewards, "visible_ratio", 1.0, 0.5)
 	if rw.get("rankChanged", false):
@@ -305,7 +603,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	# Achievements this match unlocked (sent with the result)
 	var got = Game.match_result.get("achievements", [])
 	if got is Array and not got.is_empty():
-		get_tree().create_timer(1.8).timeout.connect(func(): Net.show_achievements(got))
+		get_tree().create_timer(1.8 + INTRO).timeout.connect(func(): Net.show_achievements(got))
 
 
 ## Roll a number up to its final value, ticking as it goes.
@@ -315,7 +613,7 @@ func _count(l: Label, to: int, fmt: String, secs: float, delay: float) -> void:
 		return
 	var last := [-1]
 	var t := create_tween()
-	t.tween_interval(delay)
+	t.tween_interval(delay + INTRO)
 	t.tween_method(func(x: float):
 		var v := int(round(x))
 		l.text = fmt % v
@@ -330,8 +628,8 @@ func _count(l: Label, to: int, fmt: String, secs: float, delay: float) -> void:
 		pop.tween_property(l, "scale", Vector2.ONE, 0.15))
 
 
-## Slowly turning rays of light behind the victory art.
-func _rays(center: Vector2) -> void:
+## Slowly turning rays of light behind the victory art (hidden until the title lands).
+func _rays(center: Vector2) -> Node2D:
 	var rays := Node2D.new()
 	rays.position = center
 	var m := CanvasItemMaterial.new()
@@ -345,13 +643,13 @@ func _rays(center: Vector2) -> void:
 				PackedColorArray([Color(1, 0.85, 0.4, 0.28), Color(1, 0.7, 0.2, 0.0), Color(1, 0.7, 0.2, 0.0)])))
 	add_child(rays)
 	rays.modulate.a = 0.0
-	create_tween().tween_property(rays, "modulate:a", 1.0, 0.6)
-	var spin := create_tween().set_loops()
+	var spin := rays.create_tween().set_loops()
 	spin.tween_property(rays, "rotation", TAU, 60.0).from(0.0)
+	return rays
 
 
 func _rank_up(rank: String) -> void:
-	await get_tree().create_timer(1.2).timeout
+	await get_tree().create_timer(1.2 + INTRO).timeout
 	var l := UI.label("⬆ RANK UP!\n%s" % rank.replace("_", " ").to_upper(), 72, UI.GOLD, true)
 	l.size = Vector2(1920, 200)
 	l.position = Vector2(0, 380)
@@ -376,5 +674,5 @@ func _level_up_icon(level: int) -> void:
 	box.add_child(icon)
 	_rewards.get_parent().add_child(box)
 	var t := icon.create_tween()
-	t.tween_interval(1.2)
+	t.tween_interval(1.2 + INTRO)
 	t.tween_property(icon, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

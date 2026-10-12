@@ -22,3 +22,15 @@ Using the attached card as the character reference, create product art of a seal
 ```
 Using the attached card as the character reference, create product art of a trading-card deck box for the game "Alleyway Brawlers", Nebula clan. Three-quarter view of an upright rectangular deck box with a flip-top lid, front face and one side visible, slightly glossy printed cardboard with metallic violet foil accents and soft studio lighting. Front face: the Archon of Nebula from the attached card — a hooded figure in a long black-and-violet coat and a steel face mask, seated on a throne of floating asteroid rock, holding a staff topped with a glowing purple cube, a halo of pale crystal shards behind his head — against a swirling purple and blue galaxy, with "NEBULA CLAN" in glowing violet brush lettering along the bottom. Lid: the "ALLEYWAY BRAWLERS" logo in white and red brush lettering. Side panel: dark gunmetal with a tall Nebula crest (a compass star circled by a planet ring) and thin violet and cyan neon stripes. Style: bold comic-book ink linework with cel shading, gritty grunge texture, like a collectible trading-card game. Square 1024x1024. Transparent background around the box. Spell all text exactly as given.
 ```
+
+---
+
+## Main menu: Card Library sign
+
+The main menu's right column (Shop, Profile, Card Library) uses neon signs. Until
+`assets/card_library_menu.png` exists the menu shows the words in gold. Attach `assets/social_menu.png`
+so it matches, and save the result as `card_library_menu.png` (wide, about 2400×1309, transparent).
+
+```
+Using the attached neon sign as the exact style reference, create a matching sign: a rusty iron grille frame with neon tubes, power box, cables and plug, decorative neon corner flourishes, photographed front-on. On the left, a neon icon of a fanned hand of three trading cards, the front card showing a simple star, in glowing blue and violet tubes. On the right, the words "CARD LIBRARY" in warm yellow neon tube lettering on two lines ("CARD" above "LIBRARY"), the same tube lettering style as the reference. Same proportions as the reference, wide landscape. Transparent background. No other text.
+```

@@ -115,6 +115,7 @@ var _strike_at := Vector2.INF       # where the last clash landed (damage flies 
 var _strike_time := 0.0              # game time of that clash
 var _game_time := 0.0
 var _end_reason := "morale"         # from game_over: "morale" or "deck_out"
+var _end_snap: Texture2D = null      # the board as the match ended, before anything covers it (post-match background)
 
 var _font: SystemFont
 var _dot: Texture2D
@@ -2168,12 +2169,24 @@ func _ev_game_over(ev: Dictionary) -> void:
 		Sfx.play("down", 0.7)
 		await _wait(0.9)
 	await _wait(0.5)
-	Sfx.play("victory" if won else "defeat")
+	if DisplayServer.get_name() != "headless":
+		_end_snap = ImageTexture.create_from_image(get_viewport().get_texture().get_image())
+	# Your own matches get their big reveal on the post-match screen; spectators, replays and
+	# CPU-only matches don't go there, so they see it here
+	var reveal_here: bool = _spectating or not _replay.is_empty() or "player" in ai_sides
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0)
 	dim.size = Vector2(1920, 1080)
 	overlay.add_child(dim)
-	create_tween().tween_property(dim, "color:a", 0.7, 0.4)
+	create_tween().tween_property(dim, "color:a", 0.7 if reveal_here else 1.0, 0.4 if reveal_here else 0.8)
+	if not reveal_here:
+		shake(14)
+		_post_pulse("aberration", 10.0, 0.4)
+		Sfx.play("boom", 0.8, -4.0)
+		await _wait(0.9)
+		_finish_match(won)
+		return
+	Sfx.play("victory" if won else "defeat")
 	var title := _label(170, GOLD if won else RED, true)
 	title.text = ("VICTORY" if won else "DEFEAT") if not _spectating else "%s WINS" % str(_names.player if won else _names.opponent).to_upper()
 	title.size = Vector2(1920, 220)
@@ -2206,8 +2219,8 @@ func _finish_match(won: bool) -> void:
 	for key in _damage_log:
 		if mvp.is_empty() or _damage_log[key].damage > mvp.damage:
 			mvp = _damage_log[key]
-	var snap: Texture2D = null
-	if DisplayServer.get_name() != "headless":
+	var snap: Texture2D = _end_snap
+	if snap == null and DisplayServer.get_name() != "headless":
 		snap = ImageTexture.create_from_image(get_viewport().get_texture().get_image())
 	Game.match_result = {
 		"result": "win" if won else "loss",
