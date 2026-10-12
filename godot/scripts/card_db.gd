@@ -88,7 +88,7 @@ static func art(id: String) -> Texture2D:
 
 
 ## The card back: a clan's own (assets/card_back_<clan tag>.png, e.g. card_back_nebula.png) when
-## there is one, otherwise the standard back.
+## there is one, otherwise the first clan's (by name) that has one. There is no clan-less back.
 ## Clan backs that move (shaders/card.gdshader): "galaxy" turns the nebula around the crest;
 ## "radar" sweeps a beam around the emblem's radar rings.
 const BACK_STYLES := {"nebula": "galaxy", "militia": "radar"}
@@ -106,7 +106,15 @@ static func back(clan := "") -> Texture2D:
 		var own := _back_texture("card_back_" + clan)
 		if own:
 			return own
-	return _back_texture("card_back")
+	if _fallback_back == null:
+		for c in clans():
+			_fallback_back = _back_texture("card_back_" + str(c.tag))
+			if _fallback_back:
+				break
+	return _fallback_back
+
+
+static var _fallback_back: Texture2D = null
 
 
 static var _backs: Dictionary = {}

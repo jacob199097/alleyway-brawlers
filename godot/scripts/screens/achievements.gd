@@ -200,10 +200,12 @@ func _render_look() -> void:
 	clan_back.add_child(_caption("YOUR DECK'S"))
 	backs.add_child(clan_back)
 	for key in cos.get("backs", []):
+		if key == "default":   # the retired Classic back (older servers still list it)
+			continue
 		var v := VBoxContainer.new()
-		v.add_child(_pick(CardDB.back("" if key == "default" else str(key)), Vector2(96, 134), back_now is String and back_now == key,
+		v.add_child(_pick(CardDB.back(str(key)), Vector2(96, 134), back_now is String and back_now == key,
 			func(): _equip({"back": key})))
-		v.add_child(_caption("CLASSIC" if key == "default" else str(CardDB.clan(str(key)).get("name", key)).to_upper()))
+		v.add_child(_caption(str(CardDB.clan(str(key)).get("name", key)).to_upper()))
 		backs.add_child(v)
 	var note := UI.label("Your card back shows on your cards in every match, for both players.", 16, UI.MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD

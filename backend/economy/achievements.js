@@ -199,7 +199,7 @@ async function cosmetics(playerId, defs, unlocked) {
         avatars: [...FREE_AVATARS, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
         portraits: got.some(a => a.reward.avatar === 'portraits'),
         titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
-        backs: ['default', ...got.map(a => a.reward.back).filter(Boolean)],
+        backs: got.map(a => a.reward.back).filter(Boolean),
     };
 }
 

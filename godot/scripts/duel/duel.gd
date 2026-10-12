@@ -141,7 +141,7 @@ func _ready() -> void:
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
-	# Card backs players chose (achievements): "default", a clan, or none = their deck's clan back
+	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
 	if not online_start.is_empty():
 		for pair in [["player", "you"], ["opponent", "opponent"]]:
@@ -2255,12 +2255,11 @@ func _back_for(side: String) -> Texture2D:
 	return CardDB.back(_back_clan(side))
 
 
-## Whose card back a side shows: the one its player chose ("default" = the plain back), else its clan's.
+## Whose card back a side shows: the one its player chose, else its clan's ("default", the retired
+## Classic back, counts as no choice).
 func _back_clan(side: String) -> String:
 	var chosen: String = _chosen_back.get(side, "")
-	if chosen == "default":
-		return ""
-	return chosen if chosen != "" else _clan_of(side)
+	return chosen if chosen != "" and chosen != "default" else _clan_of(side)
 
 
 func _clan_of(side: String) -> String:

@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILES = ['migrate_progression.sql'];
+const FILES = ['migrate_progression.sql', 'migrate_retire_classic_back.sql'];
 
 async function migrate(pool) {
     for (const f of FILES) {
