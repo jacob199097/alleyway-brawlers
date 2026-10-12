@@ -90,6 +90,7 @@ async function rejects(promise, pattern) {
     assert.equal(s.dust, r.dust);
 
     // Crafting costs Dust, stops at 3 copies and only makes cards that are in the game
+    await q('UPDATE players SET dust = 0 WHERE id = $1', [id]);   // scrapping the spare leader may have paid enough
     await rejects(crafting.craft(id, 'card_nebu_011'), /need \d+ Dust/);
     await q('UPDATE players SET dust = 10000 WHERE id = $1', [id]);
     r = await crafting.craft(id, 'card_nebu_011');
