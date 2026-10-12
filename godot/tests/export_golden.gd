@@ -81,6 +81,11 @@ const FX_SAMPLES := [
 	[{"when": "turn_start", "do": "influence", "amount": 500}, {"when": "deploy", "do": "discard", "amount": 1, "if": "foe_hand_le", "n": 3}],
 	[{"when": "turn_end", "do": "stand", "target": "allies", "if": "ally_downed"}, {"when": "defend", "do": "silence", "target": "attacker", "until": "next_turn"}],
 	[{"when": "ally_deployed", "do": "buff", "target": "allies", "atk": 200, "clan": "", "when_clan": "nebula"}, {"when": "passive", "do": "buff", "target": "self", "atk": 300, "if": "allies", "n": 2, "if_clan": "nebula", "clan": ""}],
+	[{"when": "ko", "do": "buff", "target": "self", "atk": 300, "until": "forever"}, {"when": "ally_ko", "do": "buff", "target": "self", "atk": 400, "def": 200, "until": "forever"}],
+	[{"when": "activate", "do": "stand", "target": "ally"}, {"when": "activate", "do": "buff", "target": "self", "atk": 500, "cost": "authority", "cost_n": 1}],
+	[{"when": "activate", "do": "draw", "amount": 1, "cost": "discard", "cost_n": 1}, {"when": "activate", "do": "damage", "amount": 300, "cost": "morale", "cost_n": 200}],
+	[{"when": "activate", "do": "ready", "target": "ally"}, {"when": "ally_ko", "do": "draw", "amount": 1, "once": true}],
+	[{"when": "activate", "do": "buff", "target": "allies", "atk": 300, "cost": "exhaust"}, {"when": "passive", "do": "guard"}],
 ]
 
 

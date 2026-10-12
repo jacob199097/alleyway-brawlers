@@ -67,6 +67,9 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	for slot in DuelState.FRONT:
 		if d.can_promote(side, slot):
 			return {"kind": "promote", "slot": slot}
+	var act := _activation(d, side)
+	if not act.is_empty():
+		return act
 	for c in s.hand:
 		if d.can_hustle(side, c) and _hustle_useful(d, side, c):
 			return {"kind": "hustle", "uid": c.uid}
@@ -121,12 +124,37 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	return {}
 
 
+## Activated abilities (Card Forge "Activate"): use one when it has something to work on and its
+## cost is cheap enough. The CPU never sacrifices its own characters, and only gives up an attack
+## ("exhaust") with a character that can't attack anyway.
+static func _activation(d: DuelState, side: String) -> Dictionary:
+	var s: Dictionary = d.sides[side]
+	for slot in DuelState.FRONT:
+		for k in d.activations(side, slot):
+			var e: Dictionary = d._fx(d.card_at(side, slot), "activate")[k - 1]
+			var n: int = maxi(1, int(e.get("cost_n", 1)))
+			var cost := str(e.get("cost", ""))
+			if not d.fx_has_targets(side, slot, e) or cost == "sacrifice":
+				continue
+			if cost == "morale" and s.morale <= n * 3:
+				continue
+			if cost == "discard" and s.hand.size() < n + 2:
+				continue
+			if cost == "exhaust" and (d.phase != "brawl" or d.can_attack_with(side, slot)):
+				continue
+			return {"kind": "activate", "slot": slot, "fx": k}
+	return {}
+
+
 static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 	var foe := DuelState.other(side)
 	# Maya Lv.3 buffs an ally before the punches start
 	for slot in DuelState.FRONT:
 		if d.can_use_ability(side, slot):
 			return {"kind": "ability", "slot": slot}
+	var act := _activation(d, side)
+	if not act.is_empty():
+		return act
 	# Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
 	var plan := {}
 	var plan_score := 0.0

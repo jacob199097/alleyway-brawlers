@@ -373,6 +373,98 @@ func can_use_ability(side: String, slot: int) -> bool:
 	return characters(side).any(func(e): return e.slot != slot and is_lion(e.card))
 
 
+## Activated abilities (Card Forge "When: Activate"): the player uses them from the card during their
+## own turn, once per turn each, paying the cost first. Returns which ones it can use now: 1 for its
+## first "activate" effect, 2 for the second, ...
+##   cost: "" | authority | morale | discard | sacrifice (another of your characters) | exhaust
+##         (it can't attack this turn); cost_n: how much Authority, Morale or how many cards
+func activations(side: String, slot: int) -> Array:
+	var out: Array = []
+	if not can_act(side) or not phase in ["deployment", "brawl", "regroup"] or not slot in FRONT:
+		return out
+	var c = card_at(side, slot)
+	if c == null or c.face_down:
+		return out
+	var k := 0
+	for e in _fx(c, "activate"):
+		k += 1
+		if int(c.get("fx_used", {}).get("activate%d" % k, -1)) != turn and _fx_cond(side, slot, e, null) \
+				and _can_pay(side, slot, c, e):
+			out.append(k)
+	return out
+
+
+func _can_pay(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
+	var s: Dictionary = sides[side]
+	var n: int = maxi(1, int(e.get("cost_n", 1)))
+	match str(e.get("cost", "")):
+		"authority":
+			return s.authority >= n
+		"morale":
+			return s.morale > n
+		"discard":
+			return s.hand.size() >= n
+		"sacrifice":
+			return characters(side).any(func(x): return x.slot != slot)
+		"exhaust":
+			return not c.has_attacked and not c.downed
+	return true
+
+
+func _activate(side: String, slot: int, k: int) -> bool:
+	if not k in activations(side, slot):
+		return false
+	var c: Dictionary = card_at(side, slot)
+	var e: Dictionary = _fx(c, "activate")[k - 1]
+	var used: Dictionary = c.get("fx_used", {})
+	used["activate%d" % k] = turn
+	c.fx_used = used
+	var go := func(): _do_fx(side, slot, c, e)
+	var n: int = maxi(1, int(e.get("cost_n", 1)))
+	match str(e.get("cost", "")):
+		"authority":
+			_spend(side, n)
+			_effect(side, c, "%s: pays %d Authority to activate" % [c.name, n], slot)
+			go.call()
+		"morale":
+			_effect(side, c, "%s: pays %d Morale to activate" % [c.name, n], slot)
+			_damage(side, n)
+			if winner == "":
+				go.call()
+		"discard":
+			_effect(side, c, "%s: discard %d to activate" % [c.name, n], slot)
+			_ask_discard(side, n, go)
+		"sacrifice":
+			var allies := characters(side).filter(func(x): return x.slot != slot) \
+				.map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
+			allies.sort_custom(func(a, b): return _attack_value(a.card) < _attack_value(b.card) \
+				or (_attack_value(a.card) == _attack_value(b.card) and a.slot < b.slot))
+			_ask_target(side, "sacrifice", "%s: choose a character to sacrifice" % c.name, c, allies, side, func(x: Dictionary):
+				var name: String = x.card.name
+				_ko(side, x.slot)
+				_effect(side, c, "%s sacrifices %s" % [c.name, name], slot)
+				if winner == "":
+					go.call())
+		"exhaust":
+			c.has_attacked = true
+			_effect(side, c, "%s activates: it can't attack this turn" % c.name, slot)
+			go.call()
+		_:
+			_effect(side, c, "%s activates its ability" % c.name, slot)
+			go.call()
+	return true
+
+
+## Whether effect `e` of the card in `slot` has anyone to affect right now (abilities that only
+## affect characters do nothing without one). The CPU checks this before activating.
+func fx_has_targets(side: String, slot: int, e: Dictionary) -> bool:
+	var c = card_at(side, slot)
+	if c == null or not e.has("target"):
+		return true
+	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "ready": "spent"}.get(str(e.get("do", "")), "any")
+	return not _fx_targets(side, slot, c, e, {}, pool).is_empty()
+
+
 # ── Actions ──────────────────────────────────────────────────────────────────
 
 func start() -> void:
@@ -406,6 +498,8 @@ func do_action(side: String, a: Dictionary) -> bool:
 				ok = true
 		"ability":
 			ok = _use_ability(side, int(a.slot))
+		"activate":
+			ok = _activate(side, int(a.slot), int(a.get("fx", 1)))
 		"choose":
 			ok = _answer(side, str(a.option))
 		"discard":
@@ -829,6 +923,9 @@ func _ko(side: String, slot: int) -> void:
 	sides[side].gutter.append(c)
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_ko")
+	# "When another of your characters is KO'd"
+	for x in characters(side):
+		_run_fx(side, x.slot, x.card, "ally_ko", c)
 
 
 func _damage(side: String, amount: int) -> void:
@@ -1146,10 +1243,13 @@ func _recalc() -> void:
 # A card's "effects" list holds building blocks: {when, do, target, atk, def, amount, until,
 # clan, kind, if, n, once, times}. shared/duel/DuelState.js runs exactly the same rules.
 #   when:   deploy | attack | defend | ko | down | direct | self_downed | self_ko |
-#           ally_deployed | turn_start | turn_end | passive
+#           ally_deployed | ally_ko (another of your characters is KO'd) | turn_start | turn_end |
+#           passive | activate (the player uses it from the card: see activations())
 #   do:     buff | down | ko | stand | bounce | force_def | stun | shield | pierce | draw |
 #           search | recover | discard | mill | damage | heal | drain | authority | promote |
-#           attack_again | poison | burn | bleed | shock | freeze | stasis
+#           attack_again | ready (allies that attacked may attack again) | poison | burn | bleed |
+#           shock | freeze | stasis
+#   until:  buff: turn | next_turn | forever (while the card stays on the field)
 #   amount: poison (ATK lost per turn), burn (Morale lost per turn), bleed (ATK/DEF lost per
 #           brawl), shock (damage to DEF: Downs the target if it is at least its DEF)
 #   target: self | ally | allies | enemy | enemies | attacker (defend only)
@@ -1297,8 +1397,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 	var n: int = maxi(1, int(e.get("amount", 1)))
 	match str(e.get("do", "")):
 		"buff":
-			var mod := {"atk": int(e.get("atk", 0)), "def": int(e.get("def", 0)),
-				"until_turn": turn + (1 if str(e.get("until", "turn")) == "next_turn" else 0)}
+			var mod := {"atk": int(e.get("atk", 0)), "def": int(e.get("def", 0)), "until_turn": _until(e)}
 			var label := _stat_text(mod)
 			var fn := func(x: Dictionary) -> String:
 				x.card.mods.append(mod.duplicate())
@@ -1316,6 +1415,13 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				_ko(x.side, x.slot)
 				return "%s KOs %s" % [c.name, name]
 			_fx_apply(side, slot, c, e, vs, "any", "KO", fn, "%s KOs %%s" % c.name)
+		"ready":
+			# Characters that already attacked this turn may attack again (at most once more each turn)
+			var fn := func(x: Dictionary) -> String:
+				x.card.has_attacked = false
+				x.card.again_turn = turn
+				return "%s may attack again this turn" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "spent", "attack again", fn, "%s: %%s may attack again this turn" % c.name)
 		"stand":
 			var fn := func(x: Dictionary) -> String:
 				x.card.downed = false
@@ -1518,6 +1624,17 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			_fx_apply(side, slot, c, e, vs, "any", "STASIS", fn, "%s puts %%s in STASIS" % c.name)
 
 
+## The last turn a change lasts: this turn, through the next one, or (forever) while the card stays
+## on the field (its mods are cleared when it leaves).
+func _until(e: Dictionary) -> int:
+	match str(e.get("until", "turn")):
+		"next_turn":
+			return turn + 1
+		"forever":
+			return FOREVER
+	return turn
+
+
 ## The last turn of "through its owner's next turn" for a character on `side`.
 func _owner_next_turn(side: String) -> int:
 	return turn + (2 if side == active else 1)
@@ -1553,6 +1670,34 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		what: String, fn: Callable, all_text: String) -> void:
 	var foe := other(side)
 	var target := str(e.get("target", "self"))
+	var entries := _fx_targets(side, slot, c, e, vs, pool_kind)
+	if target == "ally" or target == "enemy":
+		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
+			var va := _target_value(side, e, a)
+			var vb := _target_value(side, e, b)
+			return va > vb or (va == vb and a.slot < b.slot)
+		entries.sort_custom(best_first)
+		var on := side if target == "ally" else foe
+		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
+		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
+			entries, on, cb)
+	elif target == "allies" or target == "enemies":
+		var count := entries.size()
+		for x in entries:
+			fn.call(x)
+		if count > 0:
+			var who := ("%d of your characters" % count) if target == "allies" else ("%d enem%s" % [count, "y" if count == 1 else "ies"])
+			_effect(side, c, all_text % who, slot)
+	else:
+		for x in entries:
+			_effect(side, c, fn.call(x), slot)
+
+
+## The characters effect `e` of card `c` would affect ({side, slot, card}), before choosing one.
+## pool_kind: any | standing | downed | attackers (in ATK, standing) | spent (attacked this turn)
+func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String) -> Array:
+	var foe := other(side)
+	var target := str(e.get("target", "self"))
 	var pick := func(x) -> bool:
 		match pool_kind:
 			"standing":
@@ -1561,6 +1706,8 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 				return x.card.downed
 			"attackers":
 				return x.card.position == "atk" and not x.card.downed
+			"spent":
+				return x.card.has_attacked and not x.card.downed and int(x.card.get("again_turn", 0)) != turn
 		return true
 	var entries: Array = []
 	match target:
@@ -1586,26 +1733,7 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
 	if target == "attacker":
 		entries = entries.filter(func(x): return x.side == side or _passive(x.side, x.slot, x.card, "untargetable").is_empty())
-	if target == "ally" or target == "enemy":
-		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
-			var va := _target_value(side, e, a)
-			var vb := _target_value(side, e, b)
-			return va > vb or (va == vb and a.slot < b.slot)
-		entries.sort_custom(best_first)
-		var on := side if target == "ally" else foe
-		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
-		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
-			entries, on, cb)
-	elif target == "allies" or target == "enemies":
-		var count := entries.size()
-		for x in entries:
-			fn.call(x)
-		if count > 0:
-			var who := ("%d of your characters" % count) if target == "allies" else ("%d enem%s" % [count, "y" if count == 1 else "ies"])
-			_effect(side, c, all_text % who, slot)
-	else:
-		for x in entries:
-			_effect(side, c, fn.call(x), slot)
+	return entries
 
 
 ## How good a target `x` is for effect `e`, from the deciding side's view (prompts list the

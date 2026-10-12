@@ -95,6 +95,8 @@ function hustleUseful(d, side, c) {
 function deploy(d, side, level) {
     const s = d.sides[side];
     for (const slot of FRONT) if (d.canPromote(side, slot)) return { kind: 'promote', slot };
+    const act = activation(d, side);
+    if (act) return act;
     for (const c of s.hand) if (d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
     const t = threat(d, side);
     if (level !== 'easy') {
@@ -150,10 +152,30 @@ function deploy(d, side, level) {
     return {};
 }
 
+// Activated abilities: same rules as _activation in duel_ai.gd
+function activation(d, side) {
+    const s = d.sides[side];
+    for (const slot of FRONT) {
+        for (const k of d.activations(side, slot)) {
+            const e = d._fx(d.cardAt(side, slot), 'activate')[k - 1];
+            const n = Math.max(1, Math.trunc(Number(e.cost_n ?? 1)) || 1);
+            const cost = String(e.cost ?? '');
+            if (!d.fxHasTargets(side, slot, e) || cost === 'sacrifice') continue;
+            if (cost === 'morale' && s.morale <= n * 3) continue;
+            if (cost === 'discard' && s.hand.length < n + 2) continue;
+            if (cost === 'exhaust' && (d.phase !== 'brawl' || d.canAttackWith(side, slot))) continue;
+            return { kind: 'activate', slot, fx: k };
+        }
+    }
+    return null;
+}
+
 function brawl(d, side, level) {
     const foe = other(side);
     // Maya Lv.3 buffs an ally before the punches start
     for (const slot of FRONT) if (d.canUseAbility(side, slot)) return { kind: 'ability', slot };
+    const act = activation(d, side);
+    if (act) return act;
     // Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
     let plan = {}, planScore = 0;
     for (const slot of FRONT) {

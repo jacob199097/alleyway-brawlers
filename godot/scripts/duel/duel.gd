@@ -3283,7 +3283,7 @@ func _player_ready() -> void:
 				v.glow = 0.75
 	for slot in field.player:
 		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
-			or duel.can_use_ability("player", slot)
+			or duel.can_use_ability("player", slot) or not duel.activations("player", slot).is_empty()
 		if ready:
 			field.player[slot].glow_color = GOLD
 			field.player[slot].glow = 0.9
@@ -3529,8 +3529,17 @@ func _on_release() -> void:
 			_open_hand_menu(v)
 
 
+## "ACTIVATE  (2 AUTHORITY)": the menu entry for the card's k-th activated ability (Card Forge).
+func _activate_label(slot: int, k: int, numbered: bool) -> String:
+	var e: Dictionary = duel._fx(duel.card_at("player", slot), "activate")[k - 1]
+	var n: int = maxi(1, int(e.get("cost_n", 1)))
+	var cost: String = {"authority": "%d AUTHORITY" % n, "morale": "%d MORALE" % n, "discard": "DISCARD %d" % n,
+		"sacrifice": "SACRIFICE AN ALLY", "exhaust": "NO ATTACK THIS TURN"}.get(str(e.get("cost", "")), "")
+	return "ACTIVATE%s%s" % [" %d" % k if numbered else "", "  (%s)" % cost if cost != "" else ""]
+
+
 ## Click your own character: attack right away when that's the only option, otherwise a menu
-## (attack, change position, promote, ability).
+## (attack, change position, promote, ability, activate).
 func _on_field_click(slot: int) -> void:
 	var v: CardView = field.player[slot]
 	var c := v.card
@@ -3546,6 +3555,9 @@ func _on_field_click(slot: int) -> void:
 		opts.append(["PROMOTE", true, _field_action.bind({"kind": "promote", "slot": slot})])
 	if duel.can_use_ability("player", slot):
 		opts.append(["BUFF A LIONS ALLY  (+400 / +400)", true, _field_action.bind({"kind": "ability", "slot": slot})])
+	var abilities: Array = duel.activations("player", slot)
+	for k in abilities:
+		opts.append([_activate_label(slot, k, abilities.size() > 1), true, _field_action.bind({"kind": "activate", "slot": slot, "fx": k})])
 	if opts.is_empty():
 		return
 	if opts.size() == 1 and can_attack:
