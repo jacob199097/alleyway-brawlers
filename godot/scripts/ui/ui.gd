@@ -386,6 +386,11 @@ static func reward_text(r: Dictionary) -> String:
 	return "  ·  ".join(parts)
 
 
+## The emblem for a level (assets/levels, drawn by tools/make_badges.gd); past 50 keeps the top one.
+static func level_icon(level: int) -> Texture2D:
+	return tex("levels/level_%02d.png" % clampi(level, 1, 50))
+
+
 static func player_title(level: int) -> String:
 	var out: String = TITLES[0][1]
 	for entry in TITLES:

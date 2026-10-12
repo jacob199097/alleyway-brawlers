@@ -69,6 +69,8 @@ func _row(f: Dictionary) -> Control:
 	dot_box.add_child(dot)
 	row.add_child(dot_box)
 	row.add_child(UI.texture_rect(UI.avatar(f.get("friend_avatar")), Vector2(64, 64), true))
+	if not pending:
+		row.add_child(UI.texture_rect(UI.level_icon(int(f.get("level", 1))), Vector2(56, 56)))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(info)

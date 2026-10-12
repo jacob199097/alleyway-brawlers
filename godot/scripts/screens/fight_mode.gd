@@ -2,9 +2,8 @@ extends Screen
 ## Pick a battle mode. Duels use the player's saved active deck (checked for 40 cards first).
 
 const RANK_COLORS := {
-	"rookie": Color("8a9ba8"), "runner": Color("6dbf67"), "enforcer": Color("4cc9f0"), "brawler": Color("e07b39"),
-	"striver": Color("9b59b6"), "shot_caller": Color("f4d35e"), "lieutenant": Color("f0a500"),
-	"kingpin": Color("e63946"), "sovereign": Color("00d4ff"), "undisputed": Color("ffffff"),
+	"rookie": Color("9aa7b8"), "street_tough": Color("4ade80"), "enforcer": Color("38bdf8"),
+	"underboss": Color("a46bff"), "kingpin": Color("ff3b3b"), "legend": Color("ffd34d"),
 }
 
 var _starting := false
@@ -92,10 +91,7 @@ func _card(m: Dictionary, at: Vector2) -> void:
 
 func _rank_art(parent: Control) -> void:
 	var rank := str(Game.player.get("rank", "rookie"))
-	var t := UI.tex("ranks/%s.png" % rank)
-	if t == null:
-		t = UI.tex("ranks/%s.png" % rank.capitalize())
-	var img := UI.texture_rect(t, Vector2(300, 300))
+	var img := UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(300, 300))
 	img.position = Vector2(50, 0)
 	parent.add_child(img)
 	var name := UI.label(rank.replace("_", " ").to_upper(), 30, RANK_COLORS.get(rank, Color.WHITE), true)

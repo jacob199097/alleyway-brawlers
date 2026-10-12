@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $src = Join-Path $PSScriptRoot '..\..\assets'
 $dst = Join-Path $PSScriptRoot '..\assets'
 
-foreach ($dir in 'cards', 'ranks') {
+foreach ($dir in 'cards', 'ranks', 'levels') {
     New-Item -ItemType Directory -Force (Join-Path $dst $dir) | Out-Null
     Copy-Item (Join-Path $src "$dir\*.png") (Join-Path $dst $dir) -Force
 }

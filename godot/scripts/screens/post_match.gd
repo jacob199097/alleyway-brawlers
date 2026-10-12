@@ -293,6 +293,7 @@ func _show_rewards(rw: Dictionary) -> void:
 		lines.append("★ First Win Bonus!")
 	if rw.get("leveledUp", false):
 		lines.append("→ Level %d!" % int(rw.newLevel))
+		_level_up_icon(int(rw.newLevel))
 	_rewards.text = "\n".join(lines)
 	_rewards.visible_ratio = 0.0
 	var reveal := create_tween()
@@ -364,3 +365,16 @@ func _rank_up(rank: String) -> void:
 	t.tween_interval(2.0)
 	t.tween_property(l, "modulate:a", 0.0, 0.4)
 	t.tween_callback(l.queue_free)
+
+
+## The new level's emblem pops in under the rewards.
+func _level_up_icon(level: int) -> void:
+	var box := CenterContainer.new()
+	var icon := UI.texture_rect(UI.level_icon(level), Vector2(140, 140))
+	icon.pivot_offset = Vector2(70, 70)
+	icon.scale = Vector2.ZERO
+	box.add_child(icon)
+	_rewards.get_parent().add_child(box)
+	var t := icon.create_tween()
+	t.tween_interval(1.2)
+	t.tween_property(icon, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

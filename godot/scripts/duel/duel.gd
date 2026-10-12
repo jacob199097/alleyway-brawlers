@@ -150,7 +150,7 @@ func _ready() -> void:
 			_chosen_back[pair[0]] = str(b) if b is String else ""
 	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
 		str(me.get("avatar_url", "profile_001")),
-		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()])
+		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()], int(me.get("level", 1)))
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "profile_002", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
@@ -159,12 +159,12 @@ func _ready() -> void:
 			var you: Dictionary = online_start.get("you", {})
 			_build_panel("player", $HUD/UI/PlayerPanel, str(you.get("username", "PLAYER")).to_upper().left(14),
 				str(you.get("avatar_url", "profile_001")) if you.get("avatar_url") else "profile_001",
-				"LV %d  ·  WATCHING" % int(you.get("level", 1)))
+				"LV %d  ·  WATCHING" % int(you.get("level", 1)), int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
 		var opp_title = opp.get("title")
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
 			str(opp.get("avatar_url", "profile_002")) if opp.get("avatar_url") else "profile_002",
-			"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"])
+			"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"], int(opp.get("level", 1)))
 	_build_phase_bar()
 	_build_turn_box()
 	_build_log()
@@ -2975,7 +2975,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	_ui.detail_text.text = body
 
 
-func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String) -> void:
+func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String, level := 0) -> void:
 	var accent := BLUE if side == "player" else RED
 	# Player plates glow in their side's colour
 	p.add_theme_stylebox_override("panel", UI._glow(_box(INK, accent, 2, 10), accent, 0.8))
@@ -2986,6 +2986,10 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = UI.avatar(avatar)
 	p.add_child(av)
+	if level > 0:   # their level emblem on the avatar's corner
+		var emblem := UI.texture_rect(UI.level_icon(level), Vector2(38, 38))
+		emblem.position = Vector2(52, 52)
+		p.add_child(emblem)
 	var n := _label(26, Color.WHITE, true)
 	n.text = display_name
 	n.position = Vector2(92, 10)

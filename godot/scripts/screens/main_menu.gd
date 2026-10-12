@@ -129,7 +129,10 @@ func _build_bar(p: Dictionary) -> void:
 	av.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	add_child(av)
 	_text(str(p.get("username", "")).to_upper(), _bar(540, 92), 30, Color.WHITE)
-	_text(str(int(p.get("level", 1))), _bar(1150, 92), 30, UI.BLUE)
+	var lv_icon := UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(60, 60))
+	lv_icon.position = _bar(1172, 90) - Vector2(30, 30)
+	add_child(lv_icon)
+	_text(str(int(p.get("level", 1))), _bar(1212, 92), 30, UI.BLUE)
 	_text(UI.shown_title(p), _bar(420, 170), 24, UI.RED)
 	var xp := UI.xp_progress(p)
 	_text("%d / %d" % [xp.current, xp.needed], _bar(1090, 158), 18, UI.BLUE)

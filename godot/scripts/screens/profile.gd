@@ -31,6 +31,9 @@ func _render(p: Dictionary) -> void:
 		var l := UI.label(spec[0], spec[1], spec[2], true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		left.add_child(l)
+	var lv_box := CenterContainer.new()
+	lv_box.add_child(UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(150, 150)))
+	left.add_child(lv_box)
 	var xp := UI.xp_progress(p)
 	var lvl := UI.label("Level %d  —  %d / %d XP" % [int(p.get("level", 1)), xp.current, xp.needed], 24)
 	lvl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
