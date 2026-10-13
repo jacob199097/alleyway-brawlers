@@ -28,6 +28,8 @@ var badge_text := "": set = set_badge_text   # replaces the ATK/DEF badge (e.g. 
 var statuses: Array = []: set = set_statuses  # keyword statuses, e.g. ["poison", "stasis"]
 var cost_now := -1: set = set_cost_now        # a lowered Authority cost, shown over the printed one (-1: none)
 var glow_color := Color("f4d35e")
+## A second glow colour the outline breathes toward (an ability is ready); cleared whenever glow is set
+var pulse_color := Color(0, 0, 0, 0): set = set_pulse_color
 var home := Vector2.ZERO
 var home_rot := 0.0
 var home_scale := 1.0
@@ -237,6 +239,12 @@ func set_show_badge(v: bool) -> void:
 
 func set_glow(v: float) -> void:
 	glow = v
+	pulse_color = Color(0, 0, 0, 0)
+	queue_redraw()
+
+
+func set_pulse_color(c: Color) -> void:
+	pulse_color = c
 	queue_redraw()
 
 
@@ -278,6 +286,8 @@ func _badge_wanted() -> bool:
 
 func _process(delta: float) -> void:
 	_update_tilt(delta)
+	if pulse_color.a > 0.0 and glow > 0.01:
+		queue_redraw()
 	if not statuses.is_empty():
 		_status_layer.queue_redraw()
 	for e in _status_fx.values():
@@ -351,8 +361,14 @@ func _draw() -> void:
 	var r := Rect2(-SIZE / 2, SIZE)
 	draw_rect(Rect2(r.position + Vector2(6, 8), r.size), Color(0, 0, 0, 0.45))
 	if glow > 0.01:
+		var col := glow_color
+		var a := glow
+		if pulse_color.a > 0.0:   # breathe toward the pulse colour
+			var w := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 3.2)
+			col = glow_color.lerp(pulse_color, w)
+			a *= 0.7 + 0.3 * w
 		for i in 3:
-			draw_rect(r.grow(3.0 + i * 4.0), Color(glow_color, glow * (0.6 - i * 0.18)), false, 4.0)
+			draw_rect(r.grow(3.0 + i * 4.0), Color(col, a * (0.6 - i * 0.18)), false, 4.0)
 	if face_up and _front.texture == null:
 		draw_rect(r, Color("161a30"))
 		draw_rect(r, Color("b388c9"), false, 2.0)

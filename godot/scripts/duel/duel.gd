@@ -30,6 +30,7 @@ const BLUE := Color("4cc9f0")
 const RED := Color("e63946")
 const GOLD := Color("f4d35e")
 const GREEN := Color("3ddc84")
+const TEAL := Color("3ee6d0")   # a character with an Activate ability ready
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
@@ -3283,10 +3284,14 @@ func _player_ready() -> void:
 				v.glow = 0.75
 	for slot in field.player:
 		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
-			or duel.can_use_ability("player", slot) or not duel.activations("player", slot).is_empty()
-		if ready:
-			field.player[slot].glow_color = GOLD
+			or duel.can_use_ability("player", slot)
+		var can_activate := not duel.activations("player", slot).is_empty()
+		if ready or can_activate:
+			# Gold: can act. Teal pulse: an ability can be activated (gold to teal when both)
+			field.player[slot].glow_color = GOLD if ready else TEAL
 			field.player[slot].glow = 0.9
+			if can_activate:
+				field.player[slot].pulse_color = TEAL
 
 
 ## A prompt from a card effect: buttons for each option, and the cards it refers to light up
