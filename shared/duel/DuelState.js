@@ -478,12 +478,12 @@ export class DuelState {
             this._emit('tribute', { side, slot: tribute, card: clone(t), for: clone(c) });
         }
         c.position = position === 'def' ? 'def' : 'atk';
-        c.face_down = c.position === 'def';
+        c.face_down = false;   // characters are always face-up, in ATK or DEF (only Ambushes are set face-down)
         c.has_attacked = false;
         c.deployed_turn = this.turn;
         this.sides[side].field[slot] = c;
         this._emit('summon', { side, slot, card: clone(c) });
-        if (!c.face_down) this._onDeploy(side, slot, c);
+        this._onDeploy(side, slot, c);
         return true;
     }
 

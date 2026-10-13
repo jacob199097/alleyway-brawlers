@@ -531,13 +531,12 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute := -1)
 		sides[side].gutter.append(t)
 		_emit("tribute", {"side": side, "slot": tribute, "card": t.duplicate(true), "for": c.duplicate(true)})
 	c.position = "def" if position == "def" else "atk"
-	c.face_down = c.position == "def"   # set in DEF = face-down, like Yu-Gi-Oh
+	c.face_down = false   # characters are always face-up, in ATK or DEF (only Ambushes are set face-down)
 	c.has_attacked = false
 	c.deployed_turn = turn
 	sides[side].field[slot] = c
 	_emit("summon", {"side": side, "slot": slot, "card": c.duplicate(true)})
-	if not c.face_down:
-		_on_deploy(side, slot, c)
+	_on_deploy(side, slot, c)
 	return true
 
 

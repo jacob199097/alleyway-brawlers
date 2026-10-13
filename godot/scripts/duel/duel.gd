@@ -3625,7 +3625,7 @@ func _open_hand_menu(v: CardView) -> void:
 				reason = "Needs one of your characters to sacrifice" if heavy else "No free front-row slot"
 			var cost := "  ·  SACRIFICE 1" if heavy else ""
 			opts.append(["SUMMON  ·  ATK" + cost, ok, func(): _begin_place(v, "summon_atk")])
-			opts.append(["SET  ·  DEF (FACE-DOWN)" + cost, ok, func(): _begin_place(v, "summon_def")])
+			opts.append(["SUMMON  ·  DEF" + cost, ok, func(): _begin_place(v, "summon_def")])
 		"ambush":
 			var ok := _playable(c)
 			if ok == false and reason == "":

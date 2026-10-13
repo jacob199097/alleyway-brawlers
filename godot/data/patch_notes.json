@@ -2,6 +2,7 @@
     {
         "version": "0.7.14",
         "notes": [
+            "Characters in DEF now stay face-up: their 'When deployed' effects and abilities like Guard work straight away, even when you play them defensively. Ambushes are still set face-down.",
             "Level rewards: every time you level up you get a FREE pack, and you choose which one in the Shop. Every 5 levels you also unlock a new profile picture (wear it from Achievements).",
             "New Militia keyword, SUPPRESS: the target loses ATK and can't attack through its next turn.",
             "More card abilities: reactions when an enemy is KO'd or at the end of your opponent's turn, pulling an enemy out of DEF, and abilities that depend on position, turn number or deck size."
