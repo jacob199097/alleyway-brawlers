@@ -480,7 +480,7 @@ export class DuelState {
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
-            this.sides[side].gutter.push(t);
+            if (!t.token) this.sides[side].gutter.push(t);   // (tokens vanish)
             this._emit('tribute', { side, slot: tribute, card: clone(t), for: clone(c) });
         }
         c.position = position === 'def' ? 'def' : 'atk';
@@ -621,9 +621,10 @@ export class DuelState {
             if (selfBuff && String(e.if ?? '') !== '') continue;   // settled in the brawl (_brawlBonus)
             if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `attack${k}`, e) || !this._fxOnce(att, `attack${k}`, e)) continue;
             if (selfBuff) {
-                if (toInt(e.atk) !== 0) {
-                    ctx.bonus += toInt(e.atk);
-                    this._effect(side, att, `${att.name}: ${signed(toInt(e.atk))} ATK this brawl`, from);
+                const se = this._scaled(side, from, e);
+                if (toInt(se.atk) !== 0) {
+                    ctx.bonus += toInt(se.atk);
+                    this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
                 }
             } else if (String(e.do ?? '') === 'pierce') {
                 ctx.pierce = true;
@@ -748,19 +749,26 @@ export class DuelState {
         }
         const def = this.cardAt(foe, target);
         let defAtk = 0, defDef = 0, k = 0;
+        const vs = { side, slot: from, card: att };
+        // "When another of your characters is attacked" (covering fire)
+        for (const x of this.characters(foe)) {
+            if (x.slot !== target && this.winner === '' && this.cardAt(side, from) === att) this._runFx(foe, x.slot, x.card, 'ally_attacked', att, vs);
+        }
         for (const e of this._fx(def, 'defend')) {
             k += 1;
-            if (this.winner !== '' || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
+            if (this.winner !== '' || this.cardAt(foe, target) !== def || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self') {
-                defAtk += toInt(e.atk);
-                defDef += toInt(e.def);
-                this._effect(foe, def, `${def.name}: ${statText(e)} this brawl`, target);
+                const se = this._scaled(foe, target, e);
+                defAtk += toInt(se.atk);
+                defDef += toInt(se.def);
+                this._effect(foe, def, `${def.name}: ${statText(se)} this brawl`, target);
             } else {
-                this._doFx(foe, target, def, e, { side, slot: from, card: att });
+                this._doFx(foe, target, def, e, vs);
             }
         }
         // The defender's effects may have removed or stopped the attacker (or itself)
         if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
+        this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
         let bonus = ctx.bonus + this._brawlBonus(side, from, att, def);
         if (def.effectKey === 'bulwark') {
             bonus -= 300;
@@ -859,7 +867,7 @@ export class DuelState {
         c.downed = false;
         c.mods = [];
         this._clearStatus(c);
-        this.sides[side].gutter.push(c);
+        if (!c.token) this.sides[side].gutter.push(c);   // a token vanishes
         this._emit('ko', { side, slot, card: clone(c) });
         this._runFx(side, slot, c, 'self_ko');
         // "When another of your characters is KO'd"
@@ -892,8 +900,11 @@ export class DuelState {
             k += 1;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self'
                     && String(e.if ?? '') !== '' && this._fxCond(side, from, e, def) && this._fxOnce(att, `attack${k}`, e)) {
-                extra += toInt(e.atk);
-                this._effect(side, att, `${att.name}: ${signed(toInt(e.atk))} ATK this brawl`, from);
+                const se = this._scaled(side, from, e);
+                if (toInt(se.atk) !== 0) {
+                    extra += toInt(se.atk);
+                    this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
+                }
             }
         }
         return extra + this._keyBrawlBonus(side, from, att, def);
@@ -1208,7 +1219,7 @@ export class DuelState {
             if (this.winner !== '') return;
             if (!this._fxCond(foe, NO_SLOT, e, ctx.att)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker') {
-                const atk = toInt(e.atk ?? 0);
+                const atk = toInt(this._scaled(foe, NO_SLOT, e).atk ?? 0);
                 if (atk !== 0) {
                     ctx.bonus += atk;
                     this._effect(foe, a, `${a.name}: the attacker gets ${signed(atk)} ATK this brawl`, NO_SLOT);
@@ -1257,6 +1268,57 @@ export class DuelState {
             && !(standingOnly && x.card.downed));
     }
 
+    /** "For each": what effect e counts (same as _per_count in duel_state.gd). */
+    _perCount(side, slot, e) {
+        const clan = String(e.per_clan ?? '');
+        const ofClan = (x) => clan === '' || x.clanTag === clan;
+        const s = this.sides[side];
+        let n;
+        switch (String(e.per ?? '')) {
+            case 'allies': n = this.characters(side).filter(x => x.slot !== slot && ofClan(x.card)).length; break;
+            case 'enemies': n = this.characters(other(side)).length; break;
+            case 'foe_downed': n = this.characters(other(side)).filter(x => x.card.downed).length; break;
+            case 'gutter': n = s.gutter.filter(ofClan).length; break;
+            case 'hand': n = s.hand.filter(ofClan).length; break;
+            default: return 1;
+        }
+        if (e.per_max != null) n = Math.min(n, toInt(e.per_max));
+        return n;
+    }
+
+    _scaled(side, slot, e) {
+        if (String(e.per ?? '') === '') return e;
+        const k = this._perCount(side, slot, e);
+        const out = { ...e, atk: toInt(e.atk ?? 0) * k, def: toInt(e.def ?? 0) * k, amount: toInt(e.amount ?? 1) * k };
+        delete out.per;
+        return out;
+    }
+
+    _emptyLane(side) {
+        const lane = FRONT.find(l => this.sides[side].field[l] == null);
+        return lane == null ? -1 : lane;
+    }
+
+    /** "Choose one" (same as _choose_fx in duel_state.gd) */
+    _chooseFx(side, slot, c, opts, vs) {
+        if (opts.length === 1) { this._doFx(side, slot, c, opts[0], vs); return; }
+        if (!this._fxUseful(side, slot, c, opts[0], vs) && this._fxUseful(side, slot, c, opts[1], vs)) opts = [opts[1], opts[0]];
+        const options = opts.map((o, k) => {
+            const label = String(o.label ?? '');
+            return { id: String(k), label: label !== '' ? label.toUpperCase() : String(o.do ?? '').toUpperCase() };
+        });
+        this._ask(side, 'fx_choice', `${c.name}: choose one`, c, options, (choice) => {
+            const k = toInt(choice);
+            if (k >= 0 && k < opts.length && this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, opts[k], vs);
+        });
+    }
+
+    _fxUseful(side, slot, c, e, vs) {
+        if (!('target' in e) || String(e.target ?? '') === 'self') return true;
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
+        return this._fxTargets(side, slot, c, e, vs, pool).length > 0;
+    }
+
     _fxCond(side, slot, e, def) {
         const n = toInt(e.n ?? 1);
         const s = this.sides[side];
@@ -1292,17 +1354,25 @@ export class DuelState {
     }
 
     _runFx(side, slot, c, when, def = null, vs = {}) {
-        let k = 0;
-        for (const e of this._fx(c, when)) {
-            k += 1;
+        const list = this._fx(c, when);
+        let i = 0;
+        while (i < list.length) {
+            const e = list[i];
+            i += 1;
+            const k = i;
             if (this.winner !== '') return;
+            // "Choose one" (or): this effect or the next; the player picks one whose condition holds
+            let opts = [e];
+            if (e.or && i < list.length) { opts.push(list[i]); i += 1; }
             // when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
             const wc = String(e.when_clan ?? e.clan ?? '');
             if ((when === 'ally_deployed' || when === 'dormant_ally_deployed') && wc !== '' && (def == null || def.clanTag !== wc)) continue;
-            if (!this._fxCond(side, slot, e, def) || !this._fxCount(c, `${when}${k}`, e)) continue;
+            opts = opts.filter(o => this._fxCond(side, slot, o, def));
+            if (!opts.length || !this._fxCount(c, `${when}${k}`, e)) continue;
             if (this._fxOnce(c, `${when}${k}`, e)) {
                 if (toInt(e.times ?? 1) > 1) delete c.fx_count[`${when}${k}`];   // start counting again
-                this._doFx(side, slot, c, e, vs);
+                if (opts.length > 1) this._chooseFx(side, slot, c, opts, vs);
+                else this._doFx(side, slot, c, opts[0], vs);
             }
         }
     }
@@ -1310,6 +1380,10 @@ export class DuelState {
     _doFx(side, slot, c, e, vs = {}) {
         const foe = other(side);
         const s = this.sides[side];
+        if (String(e.per ?? '') !== '') {   // "for each ...": nothing to count, nothing happens
+            if (this._perCount(side, slot, e) <= 0) return;
+            e = this._scaled(side, slot, e);
+        }
         const n = Math.max(1, toInt(e.amount ?? 1));
         switch (String(e.do ?? '')) {
             case 'buff': {
@@ -1421,27 +1495,55 @@ export class DuelState {
                 if (!found) this._effect(side, c, `${c.name}: nothing to find in the deck`, slot);
                 break;
             }
-            case 'revive': {
-                // A character from your Gutter onto the field, in the first empty lane, in ATK
-                if (!FRONT.some(l => s.field[l] == null)) break;
-                this._fxTake(side, c, e, s.gutter, `${c.name}: choose a character to bring back`, (card) => {
-                    const lane = FRONT.find(l => s.field[l] == null);
-                    if (lane == null) { s.gutter.push(card); return false; }
+            case 'revive':
+            case 'call': {
+                // A character from your Gutter (revive) or deck (call) onto the field, in the first
+                // empty lane, in ATK
+                if (this._emptyLane(side) < 0) break;
+                const fromDeck = String(e.do ?? '') === 'call';
+                const pile = fromDeck ? s.deck : s.gutter;
+                this._fxTake(side, c, e, pile, `${c.name}: choose a character to ${fromDeck ? 'call in' : 'bring back'}`, (card) => {
+                    const lane = this._emptyLane(side);
+                    if (lane < 0) { pile.push(card); return false; }
                     card.downed = false;
                     card.mods = [];
                     this._clearStatus(card);
                     delete card.fx_count;
-                    this._emit('recover', { side, card: clone(card) });
+                    if (!fromDeck) this._emit('recover', { side, card: clone(card) });
                     card.position = 'atk';
                     card.face_down = false;
                     card.has_attacked = false;
                     card.deployed_turn = this.turn;
                     s.field[lane] = card;
-                    this._emit('summon', { side, slot: lane, card: clone(card) });
-                    this._effect(side, c, `${c.name}: ${card.name} is back on the street`, slot);
+                    const ev = { side, slot: lane, card: clone(card) };
+                    if (fromDeck) ev.from = 'deck';
+                    this._emit('summon', ev);
+                    this._effect(side, c, fromDeck ? `${c.name}: ${card.name} is called in` : `${c.name}: ${card.name} is back on the street`, slot);
                     this._recalc();
                     return true;
                 });
+                break;
+            }
+            case 'token': {
+                // Copies of a token card (Card Forge: marked Token, never in packs or decks) in the
+                // first empty lanes, in ATK. They vanish when they leave the field.
+                const spec = String(e.token ?? '');
+                if (spec === '' || !CARD_CATALOG[spec]) break;
+                let made = 0;
+                for (let i = 0; i < Math.min(n, FRONT.length); i++) {
+                    const lane = this._emptyLane(side);
+                    if (lane < 0) break;
+                    const t = this.makeCard(spec);
+                    t.token = true;
+                    t.deployed_turn = this.turn;
+                    s.field[lane] = t;
+                    this._emit('summon', { side, slot: lane, card: clone(t), from: 'token' });
+                    made += 1;
+                }
+                if (made > 0) {
+                    this._effect(side, c, `${c.name}: ${made} ${CARD_CATALOG[spec].name ?? 'token'} token${made === 1 ? '' : 's'} join${made === 1 ? 's' : ''} the fight`, slot);
+                    this._recalc();
+                }
                 break;
             }
             case 'break_ambush': {
@@ -1714,7 +1816,7 @@ export class DuelState {
     }
 
     _fxKindOk(card, e) {
-        const kind = String(e.do ?? '') === 'revive' ? 'gang_member' : String(e.kind ?? '');
+        const kind = ['revive', 'call'].includes(String(e.do ?? '')) ? 'gang_member' : String(e.kind ?? '');
         const clan = String(e.clan ?? '');
         if (!((kind === '' || card.cardType === kind) && (clan === '' || card.clanTag === clan) && card.cardType !== 'leader')) return false;
         // search / recover / revive filters: Authority N or less, role, level, name
@@ -1763,6 +1865,10 @@ export class DuelState {
     _bounce(side, slot) {
         const c = this.cardAt(side, slot);
         this.sides[side].field[slot] = null;
+        if (c.token) {   // a token has no hand to go back to: it vanishes
+            this._emit('ko', { side, slot, card: clone(c) });
+            return;
+        }
         c.downed = false;
         c.mods = [];
         c.position = 'atk';
@@ -1780,12 +1886,12 @@ export class DuelState {
         for (const x of this.characters(side)) {
             if (x.card.face_down) continue;
             for (const e of this._fx(x.card, 'passive')) {
-                if (String(e.do ?? '') === 'buff' && this._fxCond(side, x.slot, e, null)) out.push([x.slot, e]);
+                if (String(e.do ?? '') === 'buff' && this._fxCond(side, x.slot, e, null)) out.push([x.slot, this._scaled(side, x.slot, e)]);
             }
         }
         if (s.leader_state === 'dormant' && s.leader != null) {
             for (const e of this._fx(s.leader, 'dormant')) {   // (its "passive" effects work once it's on the field)
-                if (String(e.do ?? '') === 'buff' && this._fxCond(side, -1, e, null)) out.push([-1, e]);
+                if (String(e.do ?? '') === 'buff' && this._fxCond(side, -1, e, null)) out.push([-1, this._scaled(side, -1, e)]);
             }
         }
         return out;

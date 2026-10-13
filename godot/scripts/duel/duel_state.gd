@@ -528,7 +528,8 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute := -1)
 		t.downed = false
 		t.mods = []
 		_clear_status(t)
-		sides[side].gutter.append(t)
+		if not t.get("token", false):   # (tokens vanish)
+			sides[side].gutter.append(t)
 		_emit("tribute", {"side": side, "slot": tribute, "card": t.duplicate(true), "for": c.duplicate(true)})
 	c.position = "def" if position == "def" else "atk"
 	c.face_down = false   # characters are always face-up, in ATK or DEF (only Ambushes are set face-down)
@@ -667,9 +668,10 @@ func _attack(side: String, from: int, target: int) -> bool:
 		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "attack%d" % k, e) or not _fx_once(att, "attack%d" % k, e):
 			continue
 		if self_buff:
-			if int(e.get("atk", 0)) != 0:
-				ctx.bonus += int(e.get("atk", 0))
-				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(e.get("atk", 0)))], from)
+			var se := _scaled(side, from, e)
+			if int(se.get("atk", 0)) != 0:
+				ctx.bonus += int(se.get("atk", 0))
+				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from)
 		elif str(e.get("do", "")) == "pierce":
 			ctx.pierce = true
 			_effect(side, att, "%s: piercing attack" % att.name, from)
@@ -769,7 +771,7 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 		if not _fx_cond(foe, NO_SLOT, e, ctx.att):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "")) == "attacker":
-			var atk := int(e.get("atk", 0))
+			var atk := int(_scaled(foe, NO_SLOT, e).get("atk", 0))
 			if atk != 0:
 				ctx.bonus += atk
 				_effect(foe, a, "%s: the attacker gets %s ATK this brawl" % [a.name, _signed(atk)], NO_SLOT)
@@ -806,20 +808,27 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	var def: Dictionary = card_at(foe, target)
 	var def_atk := 0
 	var def_def := 0
+	var vs := {"side": side, "slot": from, "card": att}
+	# "When another of your characters is attacked" (covering fire)
+	for x in characters(foe):
+		if x.slot != target and winner == "" and card_at(side, from) == att:
+			_run_fx(foe, x.slot, x.card, "ally_attacked", att, vs)
 	var k := 0
 	for e in _fx(def, "defend"):
 		k += 1
-		if winner != "" or not _fx_cond(foe, target, e, att) or not _fx_count_fire(def, "defend%d" % k, e) or not _fx_once(def, "defend%d" % k, e):
+		if winner != "" or card_at(foe, target) != def or not _fx_cond(foe, target, e, att) or not _fx_count_fire(def, "defend%d" % k, e) or not _fx_once(def, "defend%d" % k, e):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self":
-			def_atk += int(e.get("atk", 0))
-			def_def += int(e.get("def", 0))
-			_effect(foe, def, "%s: %s this brawl" % [def.name, _stat_text(e)], target)
+			var se := _scaled(foe, target, e)
+			def_atk += int(se.get("atk", 0))
+			def_def += int(se.get("def", 0))
+			_effect(foe, def, "%s: %s this brawl" % [def.name, _stat_text(se)], target)
 		else:
-			_do_fx(foe, target, def, e, {"side": side, "slot": from, "card": att})
+			_do_fx(foe, target, def, e, vs)
 	# The defender's effects may have removed or stopped the attacker (or itself)
 	if winner != "" or card_at(side, from) != att or att.downed or card_at(foe, target) != def:
 		return
+	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
 	var bonus: int = ctx.bonus + _brawl_bonus(side, from, att, def)
 	if def.get("effectKey") == "bulwark":
 		bonus -= 300
@@ -922,7 +931,8 @@ func _ko(side: String, slot: int) -> void:
 	c.downed = false
 	c.mods = []
 	_clear_status(c)
-	sides[side].gutter.append(c)
+	if not c.get("token", false):   # a token vanishes
+		sides[side].gutter.append(c)
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_ko")
 	# "When another of your characters is KO'd"
@@ -959,8 +969,10 @@ func _brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> 
 		k += 1
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self" \
 				and str(e.get("if", "")) != "" and _fx_cond(side, from, e, def) and _fx_once(att, "attack%d" % k, e):
-			extra += int(e.get("atk", 0))
-			_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(e.get("atk", 0)))], from)
+			var se := _scaled(side, from, e)
+			if int(se.get("atk", 0)) != 0:
+				extra += int(se.get("atk", 0))
+				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from)
 	return extra + _key_brawl_bonus(side, from, att, def)
 
 
@@ -1254,8 +1266,13 @@ func _recalc() -> void:
 #           search | recover | discard | mill | damage | heal | drain | authority | promote |
 #           attack_again | ready (allies that attacked may attack again) | force_atk | poison |
 #           burn | bleed | shock | freeze | stasis | suppress (Militia: -X ATK, can't attack)
-#   (more when: foe_ko (an enemy is KO'd) | foe_turn_end; more if: self_def | self_atk |
-#           enemies_le | turn_ge | deck_le)
+#   (more when: foe_ko (an enemy is KO'd) | foe_turn_end | ally_attacked (another of yours is
+#           attacked); more if: self_def | self_atk | enemies_le | turn_ge | deck_le | allies_le)
+#   more do: token (copies of the card `token` into empty lanes; they vanish when they leave the
+#           field) | call (a character from your deck onto the field, filters like revive)
+#   per:    "for each": atk / def / amount are multiplied by a count (allies | enemies |
+#           foe_downed | gutter | hand; per_clan, per_max)
+#   or:     "choose one": this effect or the next (same trigger); the player picks (label: its text)
 #   until:  buff: turn | next_turn | forever (while the card stays on the field)
 #   amount: poison (ATK lost per turn), burn (Morale lost per turn), bleed (ATK/DEF lost per
 #           brawl), shock (damage to DEF: Downs the target if it is at least its DEF)
@@ -1337,6 +1354,78 @@ func _of_if_clan(cards: Array, e: Dictionary) -> Array:
 	return cards.filter(func(x): return clan == "" or x.get("clanTag") == clan)
 
 
+## "For each": what effect `e` counts (per: allies | enemies | foe_downed | gutter | hand;
+## per_clan: only that clan's; per_max: at most this many).
+func _per_count(side: String, slot: int, e: Dictionary) -> int:
+	var clan := str(e.get("per_clan", ""))
+	var of_clan := func(x: Dictionary) -> bool: return clan == "" or x.get("clanTag") == clan
+	var s: Dictionary = sides[side]
+	var n := 0
+	match str(e.get("per", "")):
+		"allies":
+			n = characters(side).filter(func(x): return x.slot != slot and of_clan.call(x.card)).size()
+		"enemies":
+			n = characters(other(side)).size()
+		"foe_downed":
+			n = characters(other(side)).filter(func(x): return x.card.downed).size()
+		"gutter":
+			n = s.gutter.filter(of_clan).size()
+		"hand":
+			n = s.hand.filter(of_clan).size()
+		_:
+			return 1
+	if e.get("per_max") != null:
+		n = mini(n, int(e.per_max))
+	return n
+
+
+## Effect `e` with its numbers multiplied by its "for each" count.
+func _scaled(side: String, slot: int, e: Dictionary) -> Dictionary:
+	if str(e.get("per", "")) == "":
+		return e
+	var k := _per_count(side, slot, e)
+	var out := e.duplicate()
+	out.atk = int(e.get("atk", 0)) * k
+	out.def = int(e.get("def", 0)) * k
+	out.amount = int(e.get("amount", 1)) * k
+	out.erase("per")
+	return out
+
+
+func _empty_lane(side: String) -> int:
+	for l in FRONT:
+		if sides[side].field[l] == null:
+			return l
+	return -1
+
+
+## "Choose one": the player picks one of two effects (the CPU takes the first: one that has
+## something to act on).
+func _choose_fx(side: String, slot: int, c: Dictionary, opts: Array, vs: Dictionary) -> void:
+	if opts.size() == 1:
+		_do_fx(side, slot, c, opts[0], vs)
+		return
+	if not _fx_useful(side, slot, c, opts[0], vs) and _fx_useful(side, slot, c, opts[1], vs):
+		opts = [opts[1], opts[0]]
+	var options: Array = []
+	for k in opts.size():
+		var label := str(opts[k].get("label", ""))
+		options.append({"id": str(k), "label": label.to_upper() if label != "" else str(opts[k].get("do", "")).to_upper()})
+	_ask(side, "fx_choice", "%s: choose one" % c.name, c, options, func(choice: String):
+		var k := int(choice)
+		if k >= 0 and k < opts.size() and winner == "":
+			_do_fx(side, _slot_of(side, c, slot), c, opts[k], vs))
+
+
+## Whether an effect has anything to act on (one that affects characters needs one).
+func _fx_useful(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> bool:
+	if not e.has("target") or str(e.get("target", "")) == "self":
+		return true
+	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
+		"ready": "spent"}.get(str(e.get("do", "")), "any")
+	return not _fx_targets(side, slot, c, e, vs, pool).is_empty()
+
+
 func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 	var n := int(e.get("n", 1))
 	var s: Dictionary = sides[side]
@@ -1401,27 +1490,43 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 ## Run a card's effects for a trigger. \`def\` is the other card involved (the defender for
 ## attack / ko / down, the attacker for defend, the new ally for ally_deployed).
 func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, vs := {}) -> void:
-	var k := 0
-	for e in _fx(c, when):
-		k += 1
+	var list := _fx(c, when)
+	var i := 0
+	while i < list.size():
+		var e: Dictionary = list[i]
+		i += 1
+		var k := i
 		if winner != "":
 			return
+		# "Choose one" (or): this effect or the next; the player picks one whose condition holds
+		var opts: Array = [e]
+		if e.get("or", false) and i < list.size():
+			opts.append(list[i])
+			i += 1
 		# when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
 		var wc := str(e.get("when_clan", e.get("clan", "")))
 		if (when == "ally_deployed" or when == "dormant_ally_deployed") and wc != "" and (def == null or def.get("clanTag") != wc):
 			continue
 		var key := "%s%d" % [when, k]
-		if not _fx_cond(side, slot, e, def) or not _fx_count(c, key, e):
+		opts = opts.filter(func(o): return _fx_cond(side, slot, o, def))
+		if opts.is_empty() or not _fx_count(c, key, e):
 			continue
 		if _fx_once(c, key, e):
 			if int(e.get("times", 1)) > 1:
 				c.fx_count.erase(key)   # start counting again
-			_do_fx(side, slot, c, e, vs)
+			if opts.size() > 1:
+				_choose_fx(side, slot, c, opts, vs)
+			else:
+				_do_fx(side, slot, c, opts[0], vs)
 
 
 func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
 	var foe := other(side)
 	var s: Dictionary = sides[side]
+	if str(e.get("per", "")) != "":   # "for each ...": nothing to count, nothing happens
+		if _per_count(side, slot, e) <= 0:
+			return
+		e = _scaled(side, slot, e)
 	var n: int = maxi(1, int(e.get("amount", 1)))
 	match str(e.get("do", "")):
 		"buff":
@@ -1528,33 +1633,57 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				return true)
 			if not found:
 				_effect(side, c, "%s: nothing to find in the deck" % c.name, slot)
-		"revive":
-			# A character from your Gutter onto the field, in the first empty lane, in ATK
-			if not FRONT.any(func(l): return s.field[l] == null):
+		"revive", "call":
+			# A character from your Gutter (revive) or deck (call) onto the field, in the first
+			# empty lane, in ATK
+			if _empty_lane(side) < 0:
 				return
-			_fx_take(side, c, e, s.gutter, "%s: choose a character to bring back" % c.name, func(card: Dictionary) -> bool:
-				var lane := -1
-				for l in FRONT:
-					if s.field[l] == null:
-						lane = l
-						break
+			var from_deck := str(e.get("do", "")) == "call"
+			var pile: Array = s.deck if from_deck else s.gutter
+			_fx_take(side, c, e, pile, "%s: choose a character to %s" % [c.name, "call in" if from_deck else "bring back"], func(card: Dictionary) -> bool:
+				var lane := _empty_lane(side)
 				if lane < 0:
-					s.gutter.append(card)
+					pile.append(card)
 					return false
 				card.downed = false
 				card.mods = []
 				_clear_status(card)
 				card.erase("fx_count")
-				_emit("recover", {"side": side, "card": card.duplicate(true)})
+				if not from_deck:
+					_emit("recover", {"side": side, "card": card.duplicate(true)})
 				card.position = "atk"
 				card.face_down = false
 				card.has_attacked = false
 				card.deployed_turn = turn
 				s.field[lane] = card
-				_emit("summon", {"side": side, "slot": lane, "card": card.duplicate(true)})
-				_effect(side, c, "%s: %s is back on the street" % [c.name, card.name], slot)
+				var ev := {"side": side, "slot": lane, "card": card.duplicate(true)}
+				if from_deck:
+					ev.from = "deck"
+				_emit("summon", ev)
+				_effect(side, c, ("%s: %s is called in" if from_deck else "%s: %s is back on the street") % [c.name, card.name], slot)
 				_recalc()
 				return true)
+		"token":
+			# Copies of a token card (Card Forge: marked Token, never in packs or decks) in the
+			# first empty lanes, in ATK. They vanish when they leave the field.
+			var spec := str(e.get("token", ""))
+			if spec == "" or CardDB.get_card(spec).is_empty():
+				return
+			var made := 0
+			for i in mini(n, FRONT.size()):
+				var lane := _empty_lane(side)
+				if lane < 0:
+					break
+				var t := make_card(spec)
+				t.token = true
+				t.deployed_turn = turn
+				s.field[lane] = t
+				_emit("summon", {"side": side, "slot": lane, "card": t.duplicate(true), "from": "token"})
+				made += 1
+			if made > 0:
+				_effect(side, c, "%s: %d %s token%s join%s the fight" % [c.name, made, CardDB.get_card(spec).get("name", "token"),
+					"" if made == 1 else "s", "s" if made == 1 else ""], slot)
+				_recalc()
 		"break_ambush":
 			# The opponent's face-down cards in the back row, left to right
 			var k := n
@@ -1820,7 +1949,7 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 
 
 func _fx_kind_ok(card: Dictionary, e: Dictionary) -> bool:
-	var kind := "gang_member" if str(e.get("do", "")) == "revive" else str(e.get("kind", ""))
+	var kind := "gang_member" if str(e.get("do", "")) in ["revive", "call"] else str(e.get("kind", ""))
 	var clan := str(e.get("clan", ""))
 	if not ((kind == "" or card.get("cardType") == kind) and (clan == "" or card.get("clanTag") == clan) \
 			and card.get("cardType") != "leader"):
@@ -1902,6 +2031,9 @@ func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
 func _bounce(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
+	if c.get("token", false):   # a token has no hand to go back to: it vanishes
+		_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
+		return
 	c.downed = false
 	c.mods = []
 	c.position = "atk"
@@ -1923,11 +2055,11 @@ func _auras(side: String) -> Array:
 			continue
 		for e in _fx(x.card, "passive"):
 			if str(e.get("do", "")) == "buff" and _fx_cond(side, x.slot, e, null):
-				out.append([x.slot, e])
+				out.append([x.slot, _scaled(side, x.slot, e)])
 	if s.leader_state == "dormant" and s.leader != null:
 		for e in _fx(s.leader, "dormant"):   # (its "passive" effects work once it's on the field)
 			if str(e.get("do", "")) == "buff" and _fx_cond(side, -1, e, null):
-				out.append([-1, e])
+				out.append([-1, _scaled(side, -1, e)])
 	return out
 
 

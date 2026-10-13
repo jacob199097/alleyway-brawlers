@@ -94,6 +94,12 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "buff", "target": "allies", "atk": 200, "clan": "nebula", "if": "allies", "n": 2, "if_clan": "nebula"}, {"when": "turn_start", "do": "draw", "amount": 1, "if": "allies_le", "n": 1, "if_clan": "nebula"}],
 	[{"when": "attack", "do": "buff", "target": "self", "atk": 300, "if": "hand_ge", "n": 2, "if_clan": "nebula"}, {"when": "turn_end", "do": "heal", "amount": 200, "if": "gutter_ge", "n": 3, "if_clan": "nebula"}],
 	[{"when": "turn_start", "do": "stand", "target": "ally", "if": "ally_downed", "if_clan": "nebula"}],
+	[{"when": "passive", "do": "buff", "target": "self", "atk": 100, "per": "allies", "per_clan": "nebula"}, {"when": "deploy", "do": "damage", "amount": 100, "per": "enemies", "per_max": 3}],
+	[{"when": "ally_attacked", "do": "suppress", "target": "attacker", "amount": 300, "once": true}, {"when": "attack", "do": "buff", "target": "self", "atk": 200, "per": "foe_downed"}],
+	[{"when": "deploy", "do": "draw", "amount": 1, "or": true, "label": "Draw 1 card"}, {"when": "deploy", "do": "suppress", "target": "enemy", "amount": 300, "label": "SUPPRESS one enemy for 300"}],
+	[{"when": "deploy", "do": "call", "amount": 1, "max_auth": 3}, {"when": "defend", "do": "buff", "target": "self", "def": 100, "per": "hand", "per_max": 5}],
+	[{"when": "turn_start", "do": "token", "token": "card_nebu_036", "amount": 2, "once": true}, {"when": "ally_attacked", "do": "buff", "target": "ally", "def": 300}],
+	[{"when": "ko", "do": "buff", "target": "allies", "atk": 100, "until": "turn", "per": "gutter"}, {"when": "deploy", "do": "down", "target": "enemy", "or": true, "label": "Down an enemy"}, {"when": "deploy", "do": "heal", "amount": 500, "label": "Heal 500"}],
 ]
 
 
@@ -113,6 +119,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "revive", "choose": true}],
 	[{"do": "break_ambush", "amount": 2}],
 	[{"do": "search", "kind": "gang_member", "max_auth": 2, "amount": 2}],
+	[{"do": "draw", "amount": 1, "or": true, "label": "Draw 1"}, {"do": "token", "token": "card_nebu_036", "amount": 1, "label": "A token"}],
+	[{"do": "damage", "amount": 100, "per": "foe_downed"}, {"do": "call", "choose": true}],
 ]
 
 

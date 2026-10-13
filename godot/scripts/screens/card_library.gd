@@ -144,6 +144,8 @@ func _entries() -> Array:
 	var out: Array = []
 	var seen := {}
 	for id in CardDB.all():
+		if CardDB.get_card(id).get("token", false):   # tokens are made only by effects: not collectable
+			continue
 		var c: Dictionary = CardDB.get_card(id).duplicate()
 		var row = _owned.get(id)
 		if row != null:

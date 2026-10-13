@@ -34,6 +34,7 @@ function everyCardSetup() {
     const hideout = [];
     let leader = '';
     for (const [id, c] of Object.entries(CARD_CATALOG)) {
+        if (c.token) continue;   // (made only by effects)
         if (c.cardType === 'leader') {
             if (!leader) leader = id;
         } else if (c.cardType === 'gang_member') {

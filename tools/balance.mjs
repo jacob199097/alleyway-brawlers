@@ -50,7 +50,7 @@ if (wantClan && !allClans.includes(wantClan)) {
     process.exit(2);
 }
 const level = (c) => Math.trunc(Number(c.level) || 1);
-const deckLegal = (c) => c.cardType !== 'leader' && !(c.cardType === 'gang_member' && level(c) > 1);
+const deckLegal = (c) => c.cardType !== 'leader' && !c.token && !(c.cardType === 'gang_member' && level(c) > 1);
 const pools = {};
 for (const clan of allClans) {
     const cards = Object.values(CARD_CATALOG).filter(c => c.clan === clan);

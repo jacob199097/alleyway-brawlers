@@ -42,7 +42,7 @@ const CURATED = {
 };
 
 const level = (c) => Math.trunc(Number(c.level) || 1);
-const isCollectable = (c) => c.cardType !== 'leader';
+const isCollectable = (c) => c.cardType !== 'leader' && !c.token;   // (tokens are made only by effects)
 const inDeck = (c) => isCollectable(c) && !(c.cardType === 'gang_member' && level(c) > 1);
 
 export function clanList(catalog = CARD_CATALOG) {

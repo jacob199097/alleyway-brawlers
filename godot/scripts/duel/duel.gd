@@ -1161,8 +1161,20 @@ func _ev_summon(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var c: Dictionary = ev.card
 	var slot: int = ev.slot
-	var v := _take_from_hand(side, c.uid, c)
 	var target := slot_pos(side, slot)
+	var v: CardView
+	match str(ev.get("from", "")):
+		"deck":   # called in from the deck
+			v = _new_view(c, side, false)
+			v.position = pile_pos(side, "deck")
+		"token":   # made by an effect: it fades in where it stands
+			v = _new_view(c, side, true)
+			v.position = target
+			v.modulate.a = 0.0
+			create_tween().tween_property(v, "modulate:a", 1.0, 0.3)
+			_ring(target, _clan_color(c), 0.9)
+		_:
+			v = _take_from_hand(side, c.uid, c)
 	field[side][slot] = v
 	v.busy = true
 	v.z_index = 420
@@ -1780,6 +1792,17 @@ func _ev_ko(ev: Dictionary) -> void:
 		return
 	v.show_badge = false
 	v.z_index = 440
+	if ev.card.get("token", false):   # a token doesn't go to the Gutter: it dissolves
+		Sfx.play("whoosh", 0.8)
+		_burst(v.position, _clan_color(v.card), 24, 300, 0.6)
+		var t := create_tween().set_parallel()
+		t.tween_property(v, "modulate:a", 0.0, 0.35)
+		t.tween_property(v, "scale", Vector2.ONE * 0.7, 0.35)
+		await t.finished
+		if v == _hovered:
+			_hovered = null
+		v.queue_free()
+		return
 	if _clan_style(v.card, "ko") == "stardust" and v.face_up:
 		await _stardust(v, _clan_color(v.card))
 		return

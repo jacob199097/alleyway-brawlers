@@ -82,7 +82,7 @@ func _characters() -> Array:
 	var out: Array = []
 	for id in CardDB.all():
 		var c: Dictionary = CardDB.get_card(id)
-		if c.get("cardType") == "gang_member" and int(c.get("level", 1)) == 1:
+		if c.get("cardType") == "gang_member" and int(c.get("level", 1)) == 1 and not c.get("token", false):
 			out.append(id)
 	return out
 

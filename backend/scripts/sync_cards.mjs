@@ -15,7 +15,8 @@ dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '..', '.env'
 // The pool reads the database settings when it loads, so load it after .env
 const { pool } = (await import('../db/pool.js')).default;
 
-const cards = Object.values(FORGE_CARDS);
+// Token cards are made only by effects in a duel: never in the card table (packs, crafting, decks)
+const cards = Object.values(FORGE_CARDS).filter(c => !c.token);
 if (!cards.length) {
     console.log('No Forge cards to sync (shared/cards_forge.js is empty). Run tools/import_forge.mjs first.');
     process.exit(0);

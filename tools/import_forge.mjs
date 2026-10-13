@@ -96,6 +96,8 @@ for (const [key, raw] of Object.entries(exported)) {
     if (raw.cardType === 'leader' && raw.awakenCondition) c.awakenCondition = raw.awakenCondition;
     if (raw.cardType === 'leader' && raw.influence != null) c.influence = int(raw.influence);   // Influence while Dormant
     if (raw.cardType === 'ambush' && raw.ambushClan) c.ambushClan = String(raw.ambushClan);   // springs only for this clan
+    // A token: made only by effects in a duel (never in packs, decks or the Card Library)
+    if (raw.cardType === 'gang_member' && raw.token) c.token = true;
     cards[id] = c;
 }
 // A changes-only export updates these cards and keeps all the others
@@ -144,9 +146,12 @@ function int(v) { return Math.trunc(Number(v ?? 0)) || 0; }
 
 function cleanEffect(e) {
     const out = {};
-    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
-    for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
+    // (cost: an Activate ability's cost; per: "for each"; token: the token card's id; label: a
+    // "choose one" option's text)
+    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name', 'cost', 'per', 'per_clan', 'token', 'label']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
+    for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level', 'cost_n', 'per_max']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
     if (e.once) out.once = true;
+    if (e.or) out.or = true;   // "choose one": this effect or the next
     if (e.choose) out.choose = true;   // search / recover / revive: the player picks the card
     for (const k of ['if_clan', 'when_clan']) if (e[k] != null) out[k] = String(e[k]);   // ("" = any clan, so kept)
     if (Array.isArray(e.statuses) && e.statuses.length) out.statuses = e.statuses.map(String);   // immune: only these

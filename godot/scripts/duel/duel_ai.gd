@@ -15,6 +15,8 @@ static func test_setup() -> Dictionary:
 	var leader := ""
 	for id in CardDB.all():
 		var c: Dictionary = CardDB.get_card(id)
+		if c.get("token", false):   # (made only by effects)
+			continue
 		match c.cardType:
 			"leader":
 				if leader == "":
