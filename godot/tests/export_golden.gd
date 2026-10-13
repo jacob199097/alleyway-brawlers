@@ -91,6 +91,9 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "force_atk", "target": "enemies"}, {"when": "foe_turn_end", "do": "buff", "target": "self", "def": 300, "until": "next_turn", "if": "self_def"}],
 	[{"when": "turn_start", "do": "draw", "amount": 1, "if": "turn_ge", "n": 6}, {"when": "deploy", "do": "damage", "amount": 300, "if": "enemies_le", "n": 1}],
 	[{"when": "turn_start", "do": "heal", "amount": 300, "if": "deck_le", "n": 20}, {"when": "foe_ko", "do": "buff", "target": "self", "atk": 200, "until": "forever"}],
+	[{"when": "passive", "do": "buff", "target": "allies", "atk": 200, "clan": "nebula", "if": "allies", "n": 2, "if_clan": "nebula"}, {"when": "turn_start", "do": "draw", "amount": 1, "if": "allies_le", "n": 1, "if_clan": "nebula"}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 300, "if": "hand_ge", "n": 2, "if_clan": "nebula"}, {"when": "turn_end", "do": "heal", "amount": 200, "if": "gutter_ge", "n": 3, "if_clan": "nebula"}],
+	[{"when": "turn_start", "do": "stand", "target": "ally", "if": "ally_downed", "if_clan": "nebula"}],
 ]
 
 

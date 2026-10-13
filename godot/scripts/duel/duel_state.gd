@@ -1331,6 +1331,12 @@ func _fx_pool(side: String, e: Dictionary, except: int, standing_only := false) 
 			and not (standing_only and x.card.downed))
 
 
+## Cards of the condition's clan (if_clan; "" = any) among `cards`
+func _of_if_clan(cards: Array, e: Dictionary) -> Array:
+	var clan := str(e.get("if_clan", ""))
+	return cards.filter(func(x): return clan == "" or x.get("clanTag") == clan)
+
+
 func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 	var n := int(e.get("n", 1))
 	var s: Dictionary = sides[side]
@@ -1344,6 +1350,8 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 		# (if_clan: whose characters count; without it, the effect's clan as before)
 		"allies":
 			return _fx_pool(side, _cond_clan(e), slot).size() >= n
+		"allies_le":
+			return _fx_pool(side, _cond_clan(e), slot).size() <= n
 		"alone":
 			return characters(side).all(func(x): return x.slot == slot)
 		"adjacent":
@@ -1359,7 +1367,7 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 		"enemies_ge":
 			return characters(other(side)).size() >= n
 		"gutter_ge":
-			return s.gutter.size() >= n
+			return _of_if_clan(s.gutter, e).size() >= n
 		"leader_dormant":
 			return s.leader_state == "dormant"
 		"leader_awake":
@@ -1371,9 +1379,10 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 		"authority_ge":
 			return s.authority_max >= n
 		"ally_downed":
-			return characters(side).any(func(x): return x.slot != slot and x.card.downed)
+			var clan := str(e.get("if_clan", ""))
+			return characters(side).any(func(x): return x.slot != slot and x.card.downed 				and (clan == "" or x.card.get("clanTag") == clan))
 		"hand_ge":
-			return s.hand.size() >= n
+			return _of_if_clan(s.hand, e).size() >= n
 		"self_def":
 			var me = card_at(side, slot)
 			return me != null and me.get("position") == "def"

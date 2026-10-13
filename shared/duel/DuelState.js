@@ -87,6 +87,12 @@ function strongestFirst(a, b) {
     return a.slot - b.slot;
 }
 
+/** Cards of a condition's clan (if_clan; '' = any) */
+function ofIfClan(cards, e) {
+    const clan = String(e.if_clan ?? '');
+    return cards.filter(x => clan === '' || x.clanTag === clan);
+}
+
 export class DuelState {
     /**
      * @param {{player: Array, opponent: Array}} decks     card ids or {id, ...server stats}
@@ -1260,6 +1266,7 @@ export class DuelState {
             case 'vs_atk': return def != null && def.position === 'atk' && !def.downed;
             // (if_clan: whose characters count; without it, the effect's clan as before)
             case 'allies': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length >= n;
+            case 'allies_le': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length <= n;
             case 'alone': return this.characters(side).every(x => x.slot === slot);
             case 'adjacent': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).some(x => Math.abs(x.slot - slot) === 1);
             case 'foe_downed': return this.characters(other(side)).some(x => x.card.downed);
@@ -1267,14 +1274,14 @@ export class DuelState {
             case 'morale_le': return s.morale <= n;
             case 'foe_morale_le': return this.sides[other(side)].morale <= n;
             case 'enemies_ge': return this.characters(other(side)).length >= n;
-            case 'gutter_ge': return s.gutter.length >= n;
+            case 'gutter_ge': return ofIfClan(s.gutter, e).length >= n;
             case 'leader_dormant': return s.leader_state === 'dormant';
             case 'leader_awake': return s.leader_state === 'awake';
             case 'foe_hand_le': return this.sides[other(side)].hand.length <= n;
             case 'foe_ambush': return BACK.some(b => this.sides[other(side)].field[b] != null);
             case 'authority_ge': return s.authority_max >= n;
-            case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed);
-            case 'hand_ge': return s.hand.length >= n;
+            case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed && ofIfClan([x.card], e).length > 0);
+            case 'hand_ge': return ofIfClan(s.hand, e).length >= n;
             case 'self_def': { const me = this.cardAt(side, slot); return me != null && me.position === 'def'; }
             case 'self_atk': { const me = this.cardAt(side, slot); return me != null && me.position === 'atk' && !me.downed; }
             case 'enemies_le': return this.characters(other(side)).length <= n;
