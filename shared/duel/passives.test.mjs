@@ -253,6 +253,7 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     b.sides.opponent.field[1] = null;
     b._recalc();
     const atk = b.cardAt('opponent', 0).attack;
+    b._ask = (side, key, prompt, card, options, cb) => cb(options[0].id);   // (a target is always picked, even from one)
     b._doFx('player', 0, me, { do: 'silence', target: 'enemy' });
     assert.equal(b.cardAt('opponent', 0).attack, atk - 500, 'silenced: its +500 ATK passive is off');
     assert.ok(b.statuses(b.cardAt('opponent', 0)).includes('silence'));
