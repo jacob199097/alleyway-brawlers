@@ -1916,7 +1916,7 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		var on := side if target == "ally" else foe
 		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
 		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
-			entries, on, cb)
+			entries, on, cb, true)
 	elif target == "allies" or target == "enemies":
 		var count := entries.size()
 		for x in entries:
@@ -2050,7 +2050,7 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 			return
 		if left > 1:
 			_fx_take(side, c, e, pile, prompt, take, left - 1)
-	if not e.get("choose", false) or matches.size() == 1:
+	if not e.get("choose", false):
 		next.call(matches[0])
 		return true
 	var seen := {}
@@ -2073,8 +2073,9 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 	var options: Array = []
 	for k in shown.size():
 		options.append({"id": str(k), "label": "%s  (%d)" % [str(shown[k].m.name).to_upper(), int(shown[k].m.get("authority", 0))]})
+	options.append({"id": "skip", "label": "SKIP"})
 	_ask(side, "fx_pick", prompt, c, options, func(choice: String):
-		var k := int(choice)
+		var k := int(choice) if choice != "skip" else -1
 		if k >= 0 and k < shown.size():
 			next.call(shown[k].m))
 	return true
@@ -2252,20 +2253,23 @@ func _ask(side: String, key: String, prompt: String, card: Dictionary, options: 
 
 
 ## Pick one character from `entries` ([{slot, card}], best first). One option resolves at once.
+## optional: the player always chooses (even from one) and may skip it (a card effect's target).
 func _ask_target(side: String, key: String, prompt: String, source: Dictionary, entries: Array,
-		target_side: String, cb: Callable) -> void:
+		target_side: String, cb: Callable, optional := false) -> void:
 	# Your opponent's effects can't choose a card that can't be targeted
 	if target_side != side:
 		entries = entries.filter(func(e): return _passive(target_side, e.slot, e.card, "untargetable").is_empty())
 	if entries.is_empty():
 		return
-	if entries.size() == 1:
+	if entries.size() == 1 and not optional:
 		cb.call(entries[0])
 		return
 	var options: Array = []
 	for e in entries:
 		options.append({"id": str(e.slot), "label": "%s  (%d / %d)" % [str(e.card.name).to_upper(), e.card.attack, e.card.defense],
 			"side": target_side, "slot": e.slot})
+	if optional:
+		options.append({"id": "skip", "label": "SKIP"})
 	_ask(side, key, prompt, source, options, func(choice: String):
 		for e in entries:
 			if str(e.slot) == choice and card_at(target_side, e.slot) == e.card:

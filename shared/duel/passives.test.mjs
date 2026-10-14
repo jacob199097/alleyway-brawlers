@@ -141,7 +141,7 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     let ask = null;
     b._ask = (side, key, prompt, card, options, cb) => { ask = { options, cb }; };
     b._doFx('player', 0, src, { do: 'search', max_auth: 3, choose: true });
-    assert.deepEqual(ask.options.map(o => o.label), ['B  (3)', 'A  (1)', 'SMALL FRY  (1)'], 'choices, best first');
+    assert.deepEqual(ask.options.map(o => o.label), ['B  (3)', 'A  (1)', 'SMALL FRY  (1)', 'SKIP'], 'choices, best first (and skipping)');
     ask.cb('1');
     assert.equal(b.sides.player.hand[2].name, 'A', 'the chosen card');
 }

@@ -1777,7 +1777,7 @@ export class DuelState {
             });
             const on = target === 'ally' ? side : foe;
             this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
-                entries, on, (x) => this._effect(side, c, fn(x), slot));
+                entries, on, (x) => this._effect(side, c, fn(x), slot), true);
         } else if (target === 'allies' || target === 'enemies') {
             const count = entries.length;
             for (const x of entries) fn(x);
@@ -1886,7 +1886,7 @@ export class DuelState {
             if (i < 0 || !take(pile.splice(i, 1)[0])) return;
             if (left > 1) this._fxTake(side, c, e, pile, prompt, take, left - 1);
         };
-        if (!e.choose || matches.length === 1) {
+        if (!e.choose) {
             next(matches[0]);
             return true;
         }
@@ -1894,8 +1894,9 @@ export class DuelState {
         matches.forEach((m, k) => { const key = `${m.id}|${m.name}`; if (!seen.has(key)) { seen.add(key); opts.push({ m, k }); } });
         opts.sort((a, b) => (toInt(b.m.authority) - toInt(a.m.authority)) || (toInt(b.m.base_attack) - toInt(a.m.base_attack)) || (a.k - b.k));
         const shown = opts.slice(0, 8);
-        this._ask(side, 'fx_pick', prompt, c, shown.map((o, k) => ({ id: String(k), label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})` })),
-            (choice) => { const o = shown[toInt(choice)]; if (o) next(o.m); });
+        this._ask(side, 'fx_pick', prompt, c, [...shown.map((o, k) => ({ id: String(k), label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})` })),
+            { id: 'skip', label: 'SKIP' }],
+            (choice) => { const o = choice === 'skip' ? null : shown[toInt(choice)]; if (o) next(o.m); });
         return true;
     }
 
@@ -2045,11 +2046,12 @@ export class DuelState {
         else this._asks.push(ask);
     }
 
-    _askTarget(side, key, prompt, source, entries, targetSide, cb) {
+    /** optional: the player always chooses (even from one) and may skip it (a card effect's target). */
+    _askTarget(side, key, prompt, source, entries, targetSide, cb, optional = false) {
         // Your opponent's effects can't choose a card that can't be targeted
         if (targetSide !== side) entries = entries.filter(e => !this._passive(targetSide, e.slot, e.card, 'untargetable'));
         if (!entries.length) return;
-        if (entries.length === 1) {
+        if (entries.length === 1 && !optional) {
             cb(entries[0]);
             return;
         }
@@ -2057,6 +2059,7 @@ export class DuelState {
             id: String(e.slot), label: `${String(e.card.name).toUpperCase()}  (${e.card.attack} / ${e.card.defense})`,
             side: targetSide, slot: e.slot,
         }));
+        if (optional) options.push({ id: 'skip', label: 'SKIP' });
         this._ask(side, key, prompt, source, options, (choice) => {
             for (const e of entries) {
                 if (String(e.slot) === choice && this.cardAt(targetSide, e.slot) === e.card) cb(e);
