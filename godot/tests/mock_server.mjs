@@ -7,7 +7,7 @@ import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
-import { pickableClans, starterRecipe } from '../../shared/clans.js';
+import { pickableClans, starterRecipe, freeAvatars } from '../../shared/clans.js';
 
 const port = Number(process.argv[2] || 3999);
 
@@ -36,7 +36,7 @@ const craftSummary = (p) => {
 };
 const looks = () => {
     const got = achievementDefs.filter(a => unlocked.has(a.id));
-    return { avatars: ['profile_001', 'profile_002', ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
+    return { avatars: [...freeAvatars(), ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
         portraits: got.some(a => a.reward.avatar === 'portraits'),
         titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
         backs: got.map(a => a.reward.back).filter(Boolean) };
@@ -51,7 +51,7 @@ function loginAs(email) {
         players.set(token, {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
             contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
-            avatar_url: 'profile_001', profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
+            avatar_url: null, profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
             created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null, free_packs: 2,
         });
     }
@@ -79,9 +79,9 @@ const mail = [
     { id: randomUUID(), sender: 'Daily Quests', subject: 'Reward delivered', body: '+50 Karat for winning a match today.', read_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400e3).toISOString() },
 ];
 const friends = [
-    { friendship_id: randomUUID(), status: 'accepted', friend_id: randomUUID(), friend_username: 'AlleyCat', friend_avatar: 'profile_002', is_online: true, level: 9 },
-    { friendship_id: randomUUID(), status: 'accepted', friend_id: randomUUID(), friend_username: 'Brickhouse', friend_avatar: 'profile_001', is_online: false, level: 3 },
-    { friendship_id: randomUUID(), status: 'pending', friend_id: randomUUID(), friend_username: 'NewKid', friend_avatar: 'profile_001', is_online: false, level: 1 },
+    { friendship_id: randomUUID(), status: 'accepted', friend_id: randomUUID(), friend_username: 'AlleyCat', friend_avatar: 'level:5', is_online: true, level: 9 },
+    { friendship_id: randomUUID(), status: 'accepted', friend_id: randomUUID(), friend_username: 'Brickhouse', friend_avatar: null, is_online: false, level: 3 },
+    { friendship_id: randomUUID(), status: 'pending', friend_id: randomUUID(), friend_username: 'NewKid', friend_avatar: null, is_online: false, level: 1 },
 ];
 const quests = {
     daily: [

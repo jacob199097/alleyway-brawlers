@@ -341,36 +341,69 @@ static func shown_title(p: Dictionary) -> String:
 	return str(t) if t is String and t != "" else player_title(int(p.get("level", 1)))
 
 
-## A player's avatar. Keys (players.avatar_url): "profile_001" (an image in assets/),
-## "clan:<clan>" (the emblem from that clan's card back) or "card:<card id>" (the card's art).
-## Both of those are unlocked by achievements (backend/economy/achievements.js).
-## "level:5", "level:10", ...: unlocked every 5 levels; assets/avatars/level_05.png, or the
-## level's emblem until that picture exists.
+## A player's avatar (players.avatar_url): always card art. Everyone has each clan's leader and
+## commonest characters (shared/clans.js freeAvatars); achievements unlock a clan's rarest card
+## ("clan:<clan>") and any owned card ("card:<id>"); every 5 levels unlocks "level:<n>".
 static func avatar(key) -> Texture2D:
+	# Every profile picture is a crop of card art:
+	#   card:<id>   that card · clan:<clan> the clan's rarest character (Loyalist reward) ·
+	#   level:<n>   a picture from assets/avatars, else an Epic / Legendary card (every 5 levels) ·
+	#   cpu         the CPU opponent · anything else (none yet, retired pictures) the default
 	var k := str(key) if key != null else ""
-	if k.begins_with("level:"):
+	var id := ""
+	if k.begins_with("card:"):
+		id = k.substr(5)
+	elif k.begins_with("clan:"):
+		id = _avatar_card(func(c): return c.get("clan") == k.substr(5) and c.get("cardType") == "gang_member")
+	elif k.begins_with("level:"):
 		var n := int(k.substr(6))
 		var pic := tex("avatars/level_%02d.png" % n)
-		return pic if pic else level_icon(n)
-	var src: Texture2D = null
-	var region := Rect2()
-	if k.begins_with("clan:"):
-		src = CardDB.back(k.substr(5))
-		if src:   # the emblem sits in the middle of a back
-			var s := src.get_size()
-			region = Rect2(s.x * 0.17, s.y * 0.47 - s.x * 0.33, s.x * 0.66, s.x * 0.66)
-	elif k.begins_with("card:"):
-		src = CardDB.art(k.substr(5))
-		if src:   # the art window, below the name bar
-			var s := src.get_size()
-			region = Rect2(s.x * 0.21, s.y * 0.14, s.x * 0.62, s.x * 0.62)
-	if src:
-		var at := AtlasTexture.new()
-		at.atlas = src
-		at.region = region
-		return at
-	var own := tex("%s.png" % k) if k != "" and not k.contains(":") else null
-	return own if own else tex("profile_001.png")
+		if pic:
+			return pic
+		var rare := _avatar_cards(func(c): return c.get("cardType") == "gang_member" and int(c.get("rarity", 1)) >= 4)
+		if rare.is_empty():
+			return level_icon(n)
+		id = rare[(maxi(1, n / 5) - 1) % rare.size()]
+	elif k == "cpu":
+		var leaders := _avatar_cards(func(c): return c.get("cardType") == "leader")
+		id = leaders[1] if leaders.size() > 1 else _avatar_card(func(c): return c.get("cardType") == "gang_member")
+	var art := card_crop(id) if id != "" else null
+	if art:
+		return art
+	# The default: the first leader's art
+	art = card_crop(_avatar_card(func(c): return c.get("cardType") == "leader"))
+	return art if art else level_icon(1)
+
+
+## A card's art window (below the name bar) as a square, or null when the card has no art.
+static func card_crop(id: String) -> Texture2D:
+	var src: Texture2D = CardDB.art(id) if id != "" else null
+	if src == null:
+		return null
+	var s := src.get_size()
+	var at := AtlasTexture.new()
+	at.atlas = src
+	at.region = Rect2(s.x * 0.21, s.y * 0.14, s.x * 0.62, s.x * 0.62)
+	return at
+
+
+## Cards (not tokens) that pass `ok`, rarest first, then by id: the order pictures are picked in.
+static func _avatar_cards(ok: Callable) -> Array:
+	var out: Array = []
+	for cid in CardDB.all():
+		var c: Dictionary = CardDB.get_card(cid)
+		if not c.get("token", false) and ok.call(c):
+			out.append(cid)
+	out.sort_custom(func(a, b):
+		var ra := int(CardDB.get_card(a).get("rarity", 1))
+		var rb := int(CardDB.get_card(b).get("rarity", 1))
+		return ra > rb or (ra == rb and str(a) < str(b)))
+	return out
+
+
+static func _avatar_card(ok: Callable) -> String:
+	var list := _avatar_cards(ok)
+	return list[0] if not list.is_empty() else ""
 
 
 ## What an achievement gives, in a few words: "300 Karat · Title: Untouchable".

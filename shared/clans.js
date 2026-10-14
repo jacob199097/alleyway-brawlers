@@ -100,6 +100,21 @@ export function starterRecipe(clan, catalog = CARD_CATALOG) {
     return { clan, leader: leader ? leader.id : '', deck, hideout };
 }
 
+/**
+ * The profile pictures everyone has (crops of card art: "card:<id>"): each clan's leader and its
+ * three most common characters. More come from achievements and levels (godot/scripts/ui/ui.gd).
+ */
+export function freeAvatars(catalog = CARD_CATALOG) {
+    const out = [];
+    const byCommon = (a, b) => (a.rarity || 1) - (b.rarity || 1) || a.id.localeCompare(b.id);
+    for (const clan of clanList(catalog)) {
+        const cards = Object.values(catalog).filter(c => c.clan === clan.id && !c.token);
+        for (const l of cards.filter(c => c.cardType === 'leader').sort(byCommon)) out.push(`card:${l.id}`);
+        for (const c of cards.filter(c => c.cardType === 'gang_member' && level(c) === 1).sort(byCommon).slice(0, 3)) out.push(`card:${c.id}`);
+    }
+    return out;
+}
+
 export function pickableClans(catalog = CARD_CATALOG) {
     return clanList(catalog).filter(c => starterRecipe(c.id, catalog));
 }

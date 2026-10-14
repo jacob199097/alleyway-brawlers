@@ -151,21 +151,21 @@ func _ready() -> void:
 			var b = prof.get("card_back") if prof is Dictionary else null
 			_chosen_back[pair[0]] = str(b) if b is String else ""
 	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
-		str(me.get("avatar_url", "profile_001")),
+		str(me.get("avatar_url", "")),
 		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()], int(me.get("level", 1)))
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
-		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "profile_002", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
+		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "cpu", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
 	else:
 		if online_start.get("spectate", false):
 			var you: Dictionary = online_start.get("you", {})
 			_build_panel("player", $HUD/UI/PlayerPanel, str(you.get("username", "PLAYER")).to_upper().left(14),
-				str(you.get("avatar_url", "profile_001")) if you.get("avatar_url") else "profile_001",
+				str(you.get("avatar_url")) if you.get("avatar_url") else "",
 				"LV %d  ·  WATCHING" % int(you.get("level", 1)), int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
 		var opp_title = opp.get("title")
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
-			str(opp.get("avatar_url", "profile_002")) if opp.get("avatar_url") else "profile_002",
+			str(opp.get("avatar_url")) if opp.get("avatar_url") else "",
 			"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"], int(opp.get("level", 1)))
 	_build_phase_bar()
 	_build_turn_box()

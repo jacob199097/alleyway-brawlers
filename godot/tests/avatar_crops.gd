@@ -6,10 +6,10 @@ extends Node
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out := args[0] if args.size() > 0 else OS.get_user_data_dir()
-	var keys: Array = ["profile_001", "clan:nebula", "clan:militia"]
+	var keys: Array = ["", "cpu", "level:5", "level:10", "clan:nebula", "clan:militia"]
 	for c in CardDB.clans():
 		keys.append("clan:" + str(c.id))
-	keys.append("card:" + (args[1] if args.size() > 1 else str(CardDB.all()[0])))
+	keys.append("card:" + (args[1] if args.size() > 1 else str(CardDB.all().keys()[0])))
 	for k in keys:
 		var t := UI.avatar(k)
 		var img: Image = null

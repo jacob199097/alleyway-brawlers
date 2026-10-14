@@ -299,7 +299,7 @@ function createOnlineService(io, deps) {
         const { cpuSetup, randomCpuClan } = await cpu;
         return {
             playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(randomCpuClan()), level,
-            profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'profile_002' },
+            profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'cpu' },
         };
     }
 

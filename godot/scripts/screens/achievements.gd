@@ -162,7 +162,7 @@ func _render_look() -> void:
 	avs.add_theme_constant_override("h_separation", 10)
 	avs.add_theme_constant_override("v_separation", 10)
 	_look.add_child(avs)
-	var current := str(eq.get("avatar", "profile_001"))
+	var current := str(eq.get("avatar", ""))
 	for key in cos.get("avatars", []):
 		avs.add_child(_pick(UI.avatar(key), Vector2(84, 84), str(key) == current, func(): _equip({"avatar": key})))
 	if current.begins_with("card:"):
@@ -171,7 +171,7 @@ func _render_look() -> void:
 		var b := UI.button("A CARD YOU OWN…", _pick_portrait, Vector2(240, 50), UI.BLUE)
 		_look.add_child(b)
 	else:
-		_look.add_child(UI.label("More avatars: clan emblems (win 10 with a clan) and card portraits (Collector).", 16, UI.MUTED))
+		_look.add_child(UI.label("More pictures: every 5 levels, each clan's Loyalist achievement, and any card you own (Collector).", 16, UI.MUTED))
 
 	_look.add_child(UI.label("TITLE", 18, UI.MUTED, true))
 	var titles := OptionButton.new()

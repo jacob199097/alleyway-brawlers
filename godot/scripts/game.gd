@@ -275,7 +275,7 @@ func start_tutorial() -> void:
 func play_offline() -> void:
 	offline = true
 	player = {"username": "Guest", "level": 1, "xp": 0, "karat": 0, "contraband": 0,
-		"rank": "rookie", "rank_points": 0, "wins": 0, "losses": 0, "avatar_url": "profile_001"}
+		"rank": "rookie", "rank_points": 0, "wins": 0, "losses": 0, "avatar_url": ""}
 
 
 ## Refresh the player from the server. Returns false if the session is no longer valid.

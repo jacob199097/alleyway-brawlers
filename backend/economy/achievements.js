@@ -18,7 +18,6 @@
 const { pool } = require('../db/pool');
 const { bump, best, counters } = require('./counters');
 
-const FREE_AVATARS = ['profile_001', 'profile_002'];
 const START_MORALE = 6000;
 const CLUTCH_MORALE = 500;
 
@@ -183,7 +182,7 @@ async function overview(playerId) {
             unlocked: at.has(a.id), unlockedAt: at.get(a.id) || null,
         })),
         cosmetics: await cosmetics(playerId, defs, new Set(at.keys())),
-        equipped: { avatar: p?.avatar_url || 'profile_001', title: p?.title || null, back: p?.card_back || null },
+        equipped: { avatar: p?.avatar_url || '', title: p?.title || null, back: p?.card_back || null },
     };
 }
 
@@ -199,8 +198,9 @@ async function cosmetics(playerId, defs, unlocked) {
     const { rows: [lv] } = await pool.query('SELECT level FROM players WHERE id = $1', [playerId]);
     const levelAvatars = [];
     for (let n = 5; n <= (lv?.level || 1); n += 5) levelAvatars.push(`level:${n}`);
+    const { freeAvatars } = await import('../../shared/clans.js');
     return {
-        avatars: [...FREE_AVATARS, ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
+        avatars: [...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
         portraits: got.some(a => a.reward.avatar === 'portraits'),
         titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
         backs: got.map(a => a.reward.back).filter(Boolean),
