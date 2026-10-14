@@ -50,7 +50,7 @@ func _check_content() -> bool:
 		var mine := ContentSync.game_version()
 		# A small in-place update when the server has one for this build (scripts/patcher.gd)
 		var p = v.get("patch")
-		if p is Dictionary and _can_patch(p, mine) and await _apply_patch(p):
+		if ContentSync.patch_fits(p, mine) and await _apply_patch(p):
 			return false   # restarting into the new version
 		if ContentSync.compare_versions(mine, str(v.get("minimum", "0"))) < 0:
 			return await _update_required(v, mine)
@@ -114,13 +114,6 @@ func _update_available(v: Dictionary, mine: String) -> void:
 
 # ── In-place update (patch) ──────────────────────────────────────────────────
 
-func _can_patch(p: Dictionary, mine: String) -> bool:
-	var version := str(p.get("version", ""))
-	return not OS.has_feature("editor") and ContentSync.compare_versions(mine, version) < 0 \
-		and ContentSync.compare_versions(Patcher.builtin, str(p.get("base", ""))) >= 0 \
-		and not Patcher.failed(version) and str(p.get("path", "")) != ""
-
-
 ## Download the patch, check it, install it and restart. False if it couldn't be done
 ## (the normal "download the new version" offer follows).
 func _apply_patch(p: Dictionary) -> bool:
@@ -147,7 +140,7 @@ func _apply_patch(p: Dictionary) -> bool:
 		var hash := HashingContext.new()
 		hash.start(HashingContext.HASH_SHA256)
 		hash.update(bytes)
-		ok = hash.finish().hex_encode() == str(p.get("sha256", "")) and Patcher.install(version, str(p.base), bytes)
+		ok = hash.finish().hex_encode() == str(p.get("sha256", "")) and ContentSync.install_patch(version, str(p.base), bytes)
 	if not ok:
 		_panel.queue_free()
 		_panel = null

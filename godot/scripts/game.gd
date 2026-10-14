@@ -42,6 +42,9 @@ const DEFAULT_SETTINGS := {
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"
 const ErrorReport := preload("res://scripts/error_report.gd")
 const ERROR_SEND_SECS := 20.0
+const UPDATE_CHECK_SECS := 300.0   # while the game is open: is there a new version?
+## Screens where an update prompt would interrupt play (it waits for the next check)
+const BUSY_SCREENS := ["boot", "duel", "matchmaking", "rps", "post_match"]
 
 var settings := DEFAULT_SETTINGS.duplicate()
 var player := {}            # /api/profile/me
@@ -58,6 +61,7 @@ var _music_path := ""
 var _fade: ColorRect
 var _fps: Label
 var _going := false
+var _update_shown := false   # the update prompt is up (or the player is sent to download)
 
 
 func _ready() -> void:
@@ -96,6 +100,12 @@ func _ready() -> void:
 	send.timeout.connect(_send_error_reports)
 	add_child(send)
 
+	var updates := Timer.new()
+	updates.wait_time = UPDATE_CHECK_SECS
+	updates.autostart = true
+	updates.timeout.connect(_check_for_update)
+	add_child(updates)
+
 	_load_settings()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--server="):
@@ -127,9 +137,15 @@ func go(screen: String) -> void:
 	t.tween_method(func(p: float): wipe.set_shader_parameter("progress", p), 0.0, 1.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	await t.finished
 	Engine.time_scale = 1.0
-	get_tree().change_scene_to_file(SCREENS[screen])
+	var err := get_tree().change_scene_to_file(SCREENS[screen])
 	await get_tree().process_frame
 	_going = false
+	if err != OK:
+		# The game's files changed underneath it (an update was installed): only a restart helps
+		_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wipe.set_shader_parameter("progress", 0.0)
+		_restart_prompt("RESTART TO FINISH UPDATING", "The game was updated while it was open. Restart to keep playing.")
+		return
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t = create_tween()
 	t.tween_method(func(p: float): wipe.set_shader_parameter("progress", p), 1.0, 2.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -139,6 +155,53 @@ func go(screen: String) -> void:
 func _exit_tree() -> void:
 	if _errors:
 		_errors.end_session()
+
+
+## A new version came out while the game is open: in the menus (never mid-match), tell the
+## player and restart into it. A patch installs on the restart (boot screen); a full build
+## that's required is downloaded.
+func _check_for_update() -> void:
+	if offline or _update_shown or OS.has_feature("editor") or DisplayServer.get_name() == "headless":
+		return
+	var scene := get_tree().current_scene
+	if scene == null or _going or BUSY_SCREENS.any(func(s): return scene.scene_file_path == SCREENS[s]):
+		return
+	# (loaded here, not preloaded: it needs the other autoloads, which start after this one)
+	var sync: GDScript = load("res://scripts/content_sync.gd")
+	var v: Dictionary = await sync.fetch_version()
+	if v.is_empty() or _update_shown:
+		return
+	var mine: String = sync.game_version()
+	if sync.patch_fits(v.get("patch"), mine):
+		_restart_prompt("UPDATE READY", "Version %s is out. The game will restart to update (it only takes a moment)." % v.patch.version)
+	elif sync.compare_versions(mine, str(v.get("minimum", "0"))) < 0:
+		var url := str(v.get("downloadUrl", ""))
+		var leave := func():
+			if url != "":
+				OS.shell_open(url)
+			get_tree().quit()
+		_update_shown = true
+		UI.dialog(_prompt_root(), "UPDATE REQUIRED",
+			"Version %s is out (you have %s). Download it to keep playing online." % [v.get("latest", "?"), mine],
+			[["DOWNLOAD" if url != "" else "QUIT", leave, UI.GREEN]], UI.GOLD)
+
+
+## A prompt whose only way on is restarting the game (the boot screen then installs the update).
+func _restart_prompt(heading: String, text: String) -> void:
+	_update_shown = true
+	UI.dialog(_prompt_root(), heading, text, [["RESTART NOW", Patcher.restart, UI.GREEN]], UI.GOLD)
+
+
+## A layer above every screen for prompts that must show whatever screen is up (or broken).
+func _prompt_root() -> Control:
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	add_child(layer)
+	var root := Control.new()
+	root.size = Vector2(1920, 1080)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE   # (the dialog's veil takes the clicks)
+	layer.add_child(root)
+	return root
 
 
 ## Errors since the last send go to the server (backend/routes/telemetry.js).

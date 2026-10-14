@@ -18,6 +18,7 @@ var builtin := ""   # this full build's version
 func _init() -> void:
 	builtin = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 	var info := read_info()
+	_sweep(str(info.get("file", "")))
 	if info.is_empty():
 		return
 	var version := str(info.get("version", ""))
@@ -73,19 +74,27 @@ static func install(version: String, base: String, bytes: PackedByteArray) -> bo
 		return false
 	f.store_buffer(bytes)
 	f.close()
-	var old := read_info()
 	_write_info({"version": version, "base": base, "file": file})
-	if str(old.get("file", "")) not in ["", file]:
-		DirAccess.remove_absolute("%s/%s" % [DIR, old.file])
-	return true
+	return true   # (the old patch stays: a running game may still load from it; see _sweep)
 
 
+## Stop loading the patch. Its file stays until _sweep: another running copy of the game may
+## still be loading screens from it.
 static func clear() -> void:
-	var info := read_info()
-	if info.has("file"):
-		DirAccess.remove_absolute("%s/%s" % [DIR, info.file])
 	DirAccess.remove_absolute(INFO)
 	DirAccess.remove_absolute(BOOTING)
+
+
+## Remove patch files other than `keep` that haven't changed for a day (a game still running
+## from one would break if it went sooner).
+static func _sweep(keep: String) -> void:
+	var dir := DirAccess.open(DIR)
+	if dir == null:
+		return
+	for f in dir.get_files():
+		var path := "%s/%s" % [DIR, f]
+		if f.ends_with(".pck") and f != keep and Time.get_unix_time_from_system() - FileAccess.get_modified_time(path) > 86400:
+			DirAccess.remove_absolute(path)
 
 
 ## Start the game again (to load a freshly installed patch).

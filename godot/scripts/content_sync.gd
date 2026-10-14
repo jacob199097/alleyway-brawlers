@@ -34,6 +34,44 @@ static func compare_versions(a: String, b: String) -> int:
 	return 0
 
 
+## Whether the server's patch (manifest client.patch) can update this build in place.
+static func patch_fits(p, mine: String) -> bool:
+	if not p is Dictionary:
+		return false
+	var version := str(p.get("version", ""))
+	return not OS.has_feature("editor") and compare_versions(mine, version) < 0 \
+		and compare_versions(Patcher.builtin, str(p.get("base", ""))) >= 0 \
+		and not Patcher.failed(version) and str(p.get("path", "")) != ""
+
+
+## What the server's manifest says about game versions ({} when it can't be reached).
+static func fetch_version() -> Dictionary:
+	var r: Dictionary = await Api.request("GET", "/api/content/manifest")
+	if not r.ok or not (r.data is Dictionary):
+		return {}
+	var v = r.data.get("client", {})
+	return v if v is Dictionary else {}
+
+
+## Install a downloaded patch to load on the next start. The patch this game is running from
+## stays on disk (deleting it breaks every screen still to load); Patcher removes old ones at
+## start-up.
+static func install_patch(version: String, base: String, bytes: PackedByteArray) -> bool:
+	DirAccess.make_dir_recursive_absolute(Patcher.DIR)
+	var file := "game-%s.pck" % version
+	var f := FileAccess.open("%s/%s" % [Patcher.DIR, file], FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_buffer(bytes)
+	f.close()
+	var info := FileAccess.open(Patcher.INFO, FileAccess.WRITE)
+	if info == null:
+		return false
+	info.store_string(JSON.stringify({"version": version, "base": base, "file": file}))
+	info.close()
+	return true
+
+
 func run(download := true) -> Dictionary:
 	var out := {"reachable": false, "version": {}, "downloaded": 0, "failed": 0}
 	var r: Dictionary = await Api.request("GET", "/api/content/manifest")
