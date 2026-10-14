@@ -47,6 +47,10 @@ func _run() -> void:
 	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "contraband", "profile", "social", "mailbox", "clan_select", "achievements"]:
 		Game.go(s)
 		await _shot("02_" + s, 2.2)
+	# A friend's profile (from the friends list)
+	Game.view_player_id = "00000000-0000-0000-0000-000000000001"
+	Game.go("profile")
+	await _shot("02_friend_profile", 2.2)
 	# Crafting: pick a card in the library, then an achievement unlocking
 	Game.go("card_library")
 	await get_tree().create_timer(2.0).timeout
@@ -59,7 +63,8 @@ func _run() -> void:
 	# Pack opening
 	Game.go("shop")
 	await get_tree().create_timer(1.2).timeout
-	_screen()._buy(_screen().PACKS[0], "karat")
+	var clan: Dictionary = CardDB.clans()[0]   # (the shop lists the server's packs: the first clan's)
+	_screen()._buy({"id": clan.id, "label": clan.name, "image": "%s_booster.png" % clan.id, "color": clan.color}, "karat")
 	await _shot("03_pack_opening", 5.5)
 	# Settings and a dialog
 	Game.go("main_menu")

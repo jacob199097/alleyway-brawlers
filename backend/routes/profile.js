@@ -30,6 +30,37 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 });
 
+// ── GET /api/profile/player/:id — a friend's profile (only what anyone may see: no currencies) ──
+router.get('/player/:id', requireAuth, async (req, res) => {
+    const id = String(req.params.id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'Unknown player.' });
+    try {
+        if (id !== req.playerId) {
+            const { rowCount } = await pool.query(
+                `SELECT 1 FROM friendships WHERE status = 'accepted'
+                   AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`,
+                [req.playerId, id]);
+            if (!rowCount) return res.status(403).json({ error: "You can only see your friends' profiles." });
+        }
+        const { rows } = await pool.query(
+            `SELECT p.id, p.username, p.level, p.xp, p.rank, p.rank_points, p.wins, p.losses, p.draws,
+                    p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.title AS title_id,
+                    p.card_back, p.is_online,
+                    (SELECT COUNT(*)::int FROM player_achievements pa WHERE pa.player_id = p.id) AS achievements,
+                    (
+                        SELECT COUNT(DISTINCT pi.card_id)::float /
+                               NULLIF((SELECT COUNT(*) FROM cards), 0) * 100
+                        FROM player_inventory pi
+                        WHERE pi.player_id = p.id
+                    ) AS collection_pct
+             FROM players p WHERE p.id = $1`, [id]);
+        if (!rows.length) return res.status(404).json({ error: 'Player not found.' });
+        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── PATCH /api/profile/me — update bio / avatar ───────────────────────────────
 router.patch('/me', requireAuth, async (req, res) => {
     const { bio, avatarUrl } = req.body;

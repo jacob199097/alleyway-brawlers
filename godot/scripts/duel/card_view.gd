@@ -228,7 +228,8 @@ func set_stats(atk: int, def: int, base_atk: int, base_def: int) -> void:
 
 func set_downed(v: bool) -> void:
 	downed = v
-	_body.modulate = Color(1.0, 0.5, 0.5) if v else Color.WHITE
+	_body.modulate = Color(0.78, 0.5, 0.5) if v else Color.WHITE
+	_status_layer.queue_redraw()
 	_update_badge()
 
 
@@ -288,7 +289,7 @@ func _process(delta: float) -> void:
 	_update_tilt(delta)
 	if pulse_color.a > 0.0 and glow > 0.01:
 		queue_redraw()
-	if not statuses.is_empty():
+	if not statuses.is_empty() or downed:
 		_status_layer.queue_redraw()
 	for e in _status_fx.values():
 		e.emitting = not busy
@@ -436,6 +437,28 @@ func _make_emitter(kind: String) -> CPUParticles2D:
 	return e
 
 
+## Downed: a bloodied wash, a crack across the card, a pulsing red edge and a DOWNED band that
+## reads level however the card lies.
+func _draw_downed(r: Rect2) -> void:
+	var L := _status_layer
+	var p := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.6)
+	L.draw_rect(r, Color(0.3, 0.0, 0.02, 0.3))
+	var crack := PackedVector2Array([r.position + Vector2(r.size.x * 0.12, 0), r.position + Vector2(r.size.x * 0.34, r.size.y * 0.22),
+		r.position + Vector2(r.size.x * 0.22, r.size.y * 0.41), r.position + Vector2(r.size.x * 0.58, r.size.y * 0.63),
+		r.position + Vector2(r.size.x * 0.47, r.size.y * 0.8), r.position + Vector2(r.size.x * 0.82, r.size.y)])
+	L.draw_polyline(crack, Color(0.04, 0.0, 0.0, 0.85), 7.0, true)
+	L.draw_polyline(crack, Color(1.0, 0.32, 0.26, 0.8), 2.5, true)
+	L.draw_rect(r.grow(-2.0), Color(1.0, 0.22, 0.18, 0.5 + 0.4 * p), false, 4.0)
+	# The band, turned back against the card's own turn so it stays level on screen
+	var sideways := absf(sin(rotation)) > 0.7
+	var w := (SIZE.y if sideways else SIZE.x) * 0.92
+	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+	L.draw_rect(Rect2(-w / 2, -19, w, 38), Color(0.45, 0.02, 0.04, 0.88))
+	L.draw_rect(Rect2(-w / 2, -19, w, 38), Color(1.0, 0.4, 0.35, 0.9), false, 2.0)
+	L.draw_string(ThemeDB.fallback_font, Vector2(-w / 2, 10), "DOWNED", HORIZONTAL_ALIGNMENT_CENTER, w, 26, Color(1.0, 0.92, 0.9))
+	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_statuses() -> void:
 	if busy:
 		return
@@ -446,6 +469,8 @@ func _draw_statuses() -> void:
 		_status_layer.draw_circle(at, 13.0, Color(0.06, 0.32, 0.12, 0.95))
 		_status_layer.draw_arc(at, 13.0, 0.0, TAU, 24, Color(0.45, 1.0, 0.5), 2.0, true)
 		_status_layer.draw_string(ThemeDB.fallback_font, at + Vector2(-13, 6), str(cost_now), HORIZONTAL_ALIGNMENT_CENTER, 26, 17, Color.WHITE)
+	if downed and face_up:
+		_draw_downed(r)
 	if statuses.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0

@@ -1,15 +1,31 @@
 extends Screen
 ## Profile: avatar, name, title, rank, level/XP, stats and recent matches. The avatar, title and
 ## card back are chosen on the Achievements screen, which unlocks them.
+## Opened from the friends list (Game.view_player_id), it shows that friend's profile instead:
+## the same stats, without currencies, the look button or replays.
+
+var _friend := false
 
 
 func _ready() -> void:
-	back_to = "main_menu"
+	var id := Game.view_player_id
+	Game.view_player_id = ""
+	_friend = id != ""
+	back_to = "social" if _friend else "main_menu"
 	UI.background(self, "menu_background.png", 0.62)
 	Game.play_menu_music()
-	UI.back_button(self, func(): Game.go("main_menu"))
-	await Game.refresh_player()
-	_render(Game.player)
+	UI.back_button(self, func(): Game.go(back_to))
+	if not _friend:
+		await Game.refresh_player()
+		_render(Game.player)
+		return
+	var spin := UI.spinner(self, Vector2(960, 540), "LOADING PROFILE…")
+	var r := await Api.request("GET", "/api/profile/player/" + id)
+	spin.queue_free()
+	if not r.ok or not (r.data is Dictionary):
+		UI.toast(self, str(r.get("error", "")) if str(r.get("error", "")) != "" else "That profile couldn't be loaded.", UI.RED)
+		return
+	_render(r.data)
 
 
 func _render(p: Dictionary) -> void:
@@ -22,7 +38,7 @@ func _render(p: Dictionary) -> void:
 	var av_box := CenterContainer.new()
 	av_box.add_child(av)
 	left.add_child(av_box)
-	if not Game.offline:
+	if not Game.offline and not _friend:
 		var look_box := CenterContainer.new()
 		look_box.add_child(UI.button("CHANGE LOOK  ·  ACHIEVEMENTS", func(): Game.go("achievements"), Vector2(420, 54), UI.GOLD))
 		left.add_child(look_box)
@@ -58,13 +74,19 @@ func _render(p: Dictionary) -> void:
 
 	var wins := int(p.get("wins", 0))
 	var losses := int(p.get("losses", 0))
+	var rate: String = "%.1f%%" % (100.0 * wins / (wins + losses)) if wins + losses > 0 else "—"
+	var collection: String = "%.1f%%" % float(p.get("collection_pct", 0) if p.get("collection_pct") != null else 0)
 	var stats := [
 		["KARAT", str(int(p.get("karat", 0)))], ["CONTRABAND", str(int(p.get("contraband", 0)))],
-		["WINS", str(wins)], ["LOSSES", str(losses)],
-		["WIN RATE", "%.1f%%" % (100.0 * wins / (wins + losses)) if wins + losses > 0 else "—"],
-		["COLLECTION", "%.1f%%" % float(p.get("collection_pct", 0) if p.get("collection_pct") != null else 0)],
+		["WINS", str(wins)], ["LOSSES", str(losses)], ["WIN RATE", rate], ["COLLECTION", collection],
 		["DUST", str(int(p.get("dust", 0)))],
 	]
+	if _friend:   # (a friend's currencies are their own business)
+		var clan := CardDB.clan(str(p.get("chosen_clan", "")))
+		stats = [["WINS", str(wins)], ["LOSSES", str(losses)], ["WIN RATE", rate], ["COLLECTION", collection],
+			["ACHIEVEMENTS", str(int(p.get("achievements", 0)))], ["CLAN", str(clan.get("name", "—")).to_upper()],
+			["MATCHES", str(wins + losses + int(p.get("draws", 0)))],
+			["PLAYING SINCE", str(p.get("created_at", "")).left(10)]]
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.position = Vector2(900, 250)
@@ -84,7 +106,7 @@ func _render(p: Dictionary) -> void:
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(val)
 		grid.add_child(cell)
-	if not Game.offline:
+	if not Game.offline and not _friend:
 		_recent_matches()
 
 

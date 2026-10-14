@@ -375,7 +375,8 @@ static func avatar(key) -> Texture2D:
 	return art if art else level_icon(1)
 
 
-## A card's art window (below the name bar) as a square, or null when the card has no art.
+## A card's art window (below the name bar) as a square, or null when the card has no art. The
+## window runs the card's width and is about 0.64 of it tall: the square is its full height, centred.
 static func card_crop(id: String) -> Texture2D:
 	var src: Texture2D = CardDB.art(id) if id != "" else null
 	if src == null:
@@ -383,7 +384,7 @@ static func card_crop(id: String) -> Texture2D:
 	var s := src.get_size()
 	var at := AtlasTexture.new()
 	at.atlas = src
-	at.region = Rect2(s.x * 0.21, s.y * 0.14, s.x * 0.62, s.x * 0.62)
+	at.region = Rect2(s.x * 0.18, s.y * 0.122, s.x * 0.64, s.x * 0.64)
 	return at
 
 

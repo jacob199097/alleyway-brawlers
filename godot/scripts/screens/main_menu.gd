@@ -120,8 +120,9 @@ static func _bar(x: float, y: float) -> Vector2:
 func _build_bar(p: Dictionary) -> void:
 	var bar := UI.texture_rect(UI.tex("main_menu_bar.png"), Vector2(1920, 208))
 	add_child(bar)
-	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(128, 128), true)
-	av.position = _bar(180, 130) - Vector2(64, 64)
+	# (fills the frame in the bar artwork, edge to edge)
+	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(134, 134), true)
+	av.position = _bar(179, 130) - Vector2(67, 67)
 	av.mouse_filter = Control.MOUSE_FILTER_STOP
 	av.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:

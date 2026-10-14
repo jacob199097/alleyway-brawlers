@@ -1133,6 +1133,14 @@ func _ev_turn(ev: Dictionary) -> void:
 	_ui.turn_who.text = _turn_text(mine)
 	_ui.turn_who.label_settings.font_color = BLUE if mine else RED
 	Sfx.play("turn", 1.0 if mine else 0.84)
+	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
+	# what is shown, and a card about to be Downed gets its look from that event)
+	for side in field:
+		for slot in field[side]:
+			var c = duel.card_at(side, slot) if slot < 5 else null
+			var v = field[side][slot]
+			if is_instance_valid(v) and v.downed and not (c is Dictionary and c.get("downed", false)):
+				v.downed = false
 	if mine and not _watching():
 		Game.alert(false)
 	await _sweep_banner(_turn_text(mine), BLUE if mine else RED)
@@ -1212,6 +1220,8 @@ func _ev_summon(ev: Dictionary) -> void:
 			if heavy:
 				_cam_reset(0.45)
 				_dim(0.0, 0.35)
+	if absf(v.rotation - v.home_rot) > 0.01:   # summoned in DEF: lay it sideways
+		await v.move_to(target, 1.0, v.home_rot, 0.2, Tween.TRANS_BACK).finished
 	v.busy = false
 	v.z_index = 10
 	v.show_badge = true
@@ -2041,6 +2051,7 @@ func _ev_stand(ev: Dictionary) -> void:
 	v.downed = false
 	v.home_rot = PI / 2 if ev.card.position == "def" else 0.0
 	_burst(v.home, GOLD, 24, 260, 0.8, -300.0)
+	_float_text(v.home + Vector2(0, -120 if ev.side == "player" else 120), "%s STANDS UP" % str(ev.card.get("name", "")).to_upper(), GREEN, 32)
 	Sfx.play("promote", 1.3, -6.0)
 	await v.move_to(v.home, 1.0, v.home_rot, 0.3, Tween.TRANS_BACK).finished
 
@@ -3771,7 +3782,8 @@ func _end_drag() -> void:
 		# Dropping a Heavy on one of your characters sacrifices it
 		done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tribute": slot})
 	elif c.cardType == "gang_member" and duel.can_summon("player", c, slot):
-		done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk"})
+		_ask_position(v, slot)   # ATK or DEF?
+		return
 	elif c.cardType == "ambush" and duel.can_set("player", c, slot):
 		done = _act("player", {"kind": "set", "uid": v.uid, "slot": slot})
 	elif c.cardType == "hustle" and m.y < HAND_Y - 140 and duel.can_hustle("player", c):
@@ -3779,6 +3791,28 @@ func _end_drag() -> void:
 	if not done:
 		_layout_hand("player")
 		_player_ready()
+
+
+## A character dropped on the board: summon it in ATK or DEF (or put it back).
+func _ask_position(v: CardView, slot: int) -> void:
+	_mode = "menu"
+	_selected = v   # (cancelling puts it back in the hand)
+	v.move_to(slot_pos("player", slot) + Vector2(0, 40), 1.0, 0.0, 0.15)
+	var put_back := func():
+		_cancel_interaction()
+		_layout_hand("player")
+		_player_ready()
+	_menu = _make_menu([
+		["SUMMON · ATK", true, func():
+			_cancel_interaction()
+			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk"}):
+				put_back.call()],
+		["SUMMON · DEF", true, func():
+			_cancel_interaction()
+			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def"}):
+				put_back.call()],
+		["CANCEL", true, put_back],
+	], "", slot_pos("player", slot) + Vector2(0, -CARD.y / 2 - 12))
 
 
 func _show_direct_button(slot: int) -> void:

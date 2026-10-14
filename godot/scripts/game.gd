@@ -53,6 +53,7 @@ var last_email := ""
 ## Developer option: run against another server without saving it (launch with -- --server=<url>)
 var server_override := ""
 var duel_setup := {}        # fight mode → rock-paper-scissors → duel
+var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
 
 var _music: AudioStreamPlayer

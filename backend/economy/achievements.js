@@ -246,4 +246,4 @@ async function equip(playerId, { avatar, title, back } = {}) {
     return { ok: true };
 }
 
-module.exports = { definitions, check, checkAndAnnounce, recordMatch, overview, cosmetics, equip, titleText, setNotifier, FREE_AVATARS };
+module.exports = { definitions, check, checkAndAnnounce, recordMatch, overview, cosmetics, equip, titleText, setNotifier };

@@ -223,7 +223,64 @@ func hustle_ready(side: String, c: Dictionary) -> bool:
 
 func can_hustle(side: String, c: Dictionary) -> bool:
 	return can_deploy_now(side) and c.get("cardType") == "hustle" \
-		and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)
+		and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c) and card_can(side, NO_SLOT, c, "*")
+
+
+## Whether any of card c's effects for a trigger would do something now (a card with none
+## always can). Hustles can't be played, nor Ambushes sprung, when nothing would happen.
+func card_can(side: String, slot: int, c: Dictionary, when: String, vs := {}, def = null) -> bool:
+	var list := _fx(c, when)
+	if list.is_empty():
+		return c.get("effects", []).is_empty()
+	return list.any(func(e): return fx_can(side, slot, c, e, vs, def))
+
+
+## Whether effect e of card c would do anything now: its condition holds and it has something
+## to act on (a target, a card to find, an empty lane, ...).
+func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def = null) -> bool:
+	if not _fx_cond(side, slot, e, def):
+		return false
+	if str(e.get("per", "")) != "" and _per_count(side, slot, e) <= 0:
+		return false
+	var s: Dictionary = sides[side]
+	var foe: Dictionary = sides[other(side)]
+	var mine := func(x): return not is_same(x, c) and _fx_kind_ok(x, e)
+	match str(e.get("do", "")):
+		"draw":
+			return not s.deck.is_empty()
+		"search":
+			return s.deck.any(mine)
+		"recover":
+			return s.gutter.any(mine)
+		"revive":
+			return _empty_lane(side) >= 0 and s.gutter.any(mine)
+		"call":
+			return _empty_lane(side) >= 0 and s.deck.any(mine)
+		"token":
+			return _empty_lane(side) >= 0 and not CardDB.get_card(str(e.get("token", ""))).is_empty()
+		"discard":
+			return not foe.hand.is_empty()
+		"mill":
+			return not foe.deck.is_empty()
+		"heal":
+			return s.morale < START_MORALE
+		"break_ambush":
+			return BACK.any(func(b): return foe.field[b] != null)
+		"influence":
+			var l = s.leader
+			return s.leader_state == "dormant" and l != null and int(l.influence) < int(l.get("influence_max", l.influence))
+		"ramp":
+			return s.authority_max < MAX_AUTHORITY
+		"attack_again":
+			return card_at(side, slot) == c and c.has_attacked and int(c.get("again_turn", 0)) != turn
+	if not e.has("target"):
+		return true
+	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
+		"ready": "spent"}.get(str(e.get("do", "")), "any")
+	var entries := _fx_targets(side, slot, c, e, vs, pool)
+	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
+		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
+	return not entries.is_empty()
 
 
 ## What a card in hand costs to play: its Authority, less any "cost_down" passives on the field.
@@ -390,7 +447,7 @@ func activations(side: String, slot: int) -> Array:
 	var k := 0
 	for e in _fx(c, "activate"):
 		k += 1
-		if int(c.get("fx_used", {}).get("activate%d" % k, -1)) != turn and _fx_cond(side, slot, e, null) \
+		if int(c.get("fx_used", {}).get("activate%d" % k, -1)) != turn and fx_can(side, slot, c, e) \
 				and _can_pay(side, slot, c, e):
 			out.append(k)
 	return out
@@ -461,11 +518,7 @@ func _activate(side: String, slot: int, k: int) -> bool:
 ## affect characters do nothing without one). The CPU checks this before activating.
 func fx_has_targets(side: String, slot: int, e: Dictionary) -> bool:
 	var c = card_at(side, slot)
-	if c == null or not e.has("target"):
-		return true
-	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent"}.get(str(e.get("do", "")), "any")
-	return not _fx_targets(side, slot, c, e, {}, pool).is_empty()
+	return c == null or fx_can(side, slot, c, e)
 
 
 # ── Actions ──────────────────────────────────────────────────────────────────
@@ -730,7 +783,8 @@ func _atk_ambush(ctx: Dictionary) -> void:
 		var a = card_at(foe, slot)
 		if a != null and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
 				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
-				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))):
+				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))) \
+				and card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att}, ctx.att):
 			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
@@ -753,6 +807,7 @@ func _atk_ambush(ctx: Dictionary) -> void:
 					return
 				_effect(foe, a, "No Witnesses: the attacker is Downed and the attack negated", slot)
 				ctx.att.downed = true
+				ctx.att.position = "def"   # a Downed character is in DEF
 				_emit("downed", {"side": ctx.side, "slot": ctx.from, "card": ctx.att.duplicate(true)})
 				return
 			_effect(foe, a, "Lion's Ambush: the attacker loses 1000 ATK this brawl", slot)
@@ -920,6 +975,7 @@ func _defeat(side: String, slot: int) -> String:
 		_effect(side, c, "%s stays standing" % c.name, slot)
 		return "saved"
 	c.downed = true
+	c.position = "def"   # a Downed character is in DEF
 	_emit("downed", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_downed")
 	return "downed"
@@ -1012,6 +1068,7 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 		_ask_target(side, "hunter_down", "%s KO: choose an enemy character to Down" % att.name, att,
 			standing, foe, func(e: Dictionary):
 				e.card.downed = true
+				e.card.position = "def"   # a Downed character is in DEF
 				_effect(side, att, "%s Downs %s" % [att.name, e.card.name], slot)
 				_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)}))
 	if was_downed:
@@ -1087,6 +1144,7 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 			for e in characters(foe):
 				if not e.card.downed and e.card.defense <= 1500 and not _stays_up(foe, e.slot, e.card):
 					e.card.downed = true
+					e.card.position = "def"   # a Downed character is in DEF
 					hit += 1
 					_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)})
 			if hit > 0:
@@ -1296,8 +1354,13 @@ func _fx(c, when: String) -> Array:
 		return out
 	if int(c.get("silence_until", 0)) >= turn:   # SILENCED: its effects don't work
 		return out
+	# A Downed character's effects don't work, except as it goes Down or is KO'd, and an
+	# Activate that stands it back up
+	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
 	for e in c.get("effects", []):
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
+			if downed and not (when == "activate" and str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
+				continue
 			out.append(e)
 	return out
 
@@ -1419,11 +1482,7 @@ func _choose_fx(side: String, slot: int, c: Dictionary, opts: Array, vs: Diction
 
 ## Whether an effect has anything to act on (one that affects characters needs one).
 func _fx_useful(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> bool:
-	if not e.has("target") or str(e.get("target", "")) == "self":
-		return true
-	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent"}.get(str(e.get("do", "")), "any")
-	return not _fx_targets(side, slot, c, e, vs, pool).is_empty()
+	return fx_can(side, slot, c, e, vs)
 
 
 func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
@@ -1539,6 +1598,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 		"down":
 			var fn := func(x: Dictionary) -> String:
 				x.card.downed = true
+				x.card.position = "def"   # a Downed character is in DEF
 				_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s Downs %s" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "standing", "DOWN", fn, "%s Downs %%s" % c.name)
@@ -1765,6 +1825,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				_emit("status", {"side": x.side, "slot": x.slot, "kind": "shock", "card": x.card.duplicate(true)})
 				if not x.card.downed and n >= int(x.card.get("defense", 0)) and not _stays_up(x.side, x.slot, x.card):
 					x.card.downed = true
+					x.card.position = "def"   # a Downed character is in DEF
 					_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 					return "%s SHOCKS %s: it goes Down" % [c.name, x.card.name]
 				x.card.mods.append({"atk": 0, "def": -n, "until_turn": turn})
@@ -1898,8 +1959,9 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 		"enemy", "enemies":
 			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
-	entries = entries.filter(func(x): return pick.call(x) and x.card.get("cardType") != "leader" and not in_stasis(x.card))
 	var what_ := str(e.get("do", ""))
+	# (a leader on the field can be affected like any character, but has no hand to go back to)
+	entries = entries.filter(func(x): return pick.call(x) and not (x.card.get("cardType") == "leader" and what_ == "bounce") and not in_stasis(x.card))
 	# immune: to the statuses it lists (none listed: all of them)
 	var covers := func(im: Dictionary) -> bool:
 		var list = im.get("statuses")

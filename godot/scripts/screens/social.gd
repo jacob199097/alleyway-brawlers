@@ -104,6 +104,9 @@ func _row(f: Dictionary) -> Control:
 		vs.disabled = not online or in_match
 		vs.tooltip_text = "%s is offline" % f.friend_username if not online else "%s is in a match" % f.friend_username if in_match else ""
 		row.add_child(vs)
+		row.add_child(UI.button("👤 PROFILE", func():
+			Game.view_player_id = str(f.friend_id)
+			Game.go("profile"), Vector2(180, 56), UI.BLUE))
 		row.add_child(UI.button("💬 CHAT", _open_chat.bind(f), Vector2(180, 56)))
 		var rm := UI.button("✕", func():
 			UI.dialog(self, "REMOVE FRIEND?", "Remove %s from your friends?" % f.friend_username,

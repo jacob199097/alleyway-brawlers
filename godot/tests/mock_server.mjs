@@ -151,6 +151,9 @@ const routes = {
         if (b.back !== undefined) player.card_back = b.back;
         return [200, { ok: true }];
     },
+    'GET /api/profile/player/:id': (_b, id) => [200, { id, username: 'AlleyCat', level: 9, xp: 400, rank: 'enforcer', rank_points: 820,
+        wins: 41, losses: 22, draws: 2, avatar_url: 'level:5', profile_bio: 'Never lost on my home turf.', chosen_clan: pickableClans()[0]?.id ?? null,
+        created_at: '2026-09-02T10:00:00Z', title: 'Collector', achievements: 7, collection_pct: 38.5, is_online: true }],
     'GET /api/profile/inventory': () => [200, cards.map(c => ({ ...c, quantity: inventory.get(c.id) })).filter(c => c.quantity > 0)
         .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name))],
     'GET /api/deck': () => [200, decks.map(deckSummary)],

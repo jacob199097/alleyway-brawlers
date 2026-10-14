@@ -235,7 +235,46 @@ export class DuelState {
 
     canHustle(side, c) {
         return this.canDeployNow(side) && c.cardType === 'hustle'
-            && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c);
+            && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c) && this.cardCan(side, NO_SLOT, c, '*');
+    }
+
+    /** Whether any of card c's effects for a trigger would do something now (same as card_can). */
+    cardCan(side, slot, c, when, vs = {}, def = null) {
+        const list = this._fx(c, when);
+        if (!list.length) return !(c.effects || []).length;
+        return list.some(e => this.fxCan(side, slot, c, e, vs, def));
+    }
+
+    /** Whether effect e of card c would do anything now (same as fx_can in duel_state.gd). */
+    fxCan(side, slot, c, e, vs = {}, def = null) {
+        if (!this._fxCond(side, slot, e, def)) return false;
+        if (String(e.per ?? '') !== '' && this._perCount(side, slot, e) <= 0) return false;
+        const s = this.sides[side];
+        const foe = this.sides[other(side)];
+        const mine = (x) => x !== c && this._fxKindOk(x, e);
+        switch (String(e.do ?? '')) {
+            case 'draw': return s.deck.length > 0;
+            case 'search': return s.deck.some(mine);
+            case 'recover': return s.gutter.some(mine);
+            case 'revive': return this._emptyLane(side) >= 0 && s.gutter.some(mine);
+            case 'call': return this._emptyLane(side) >= 0 && s.deck.some(mine);
+            case 'token': return this._emptyLane(side) >= 0 && !!CARD_CATALOG[String(e.token ?? '')];
+            case 'discard': return foe.hand.length > 0;
+            case 'mill': return foe.deck.length > 0;
+            case 'heal': return s.morale < START_MORALE;
+            case 'break_ambush': return BACK.some(b => foe.field[b] != null);
+            case 'influence': {
+                const l = s.leader;
+                return s.leader_state === 'dormant' && l != null && toInt(l.influence) < toInt(l.influence_max ?? l.influence);
+            }
+            case 'ramp': return s.authority_max < MAX_AUTHORITY;
+            case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
+        }
+        if (!('target' in e)) return true;
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
+        let entries = this._fxTargets(side, slot, c, e, vs, pool);
+        if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
+        return entries.length > 0;
     }
 
     /** What a card in hand costs to play: its Authority, less any "cost_down" passives on the field. */
@@ -355,7 +394,7 @@ export class DuelState {
         let k = 0;
         for (const e of this._fx(c, 'activate')) {
             k++;
-            if (((c.fx_used ?? {})['activate' + k] ?? -1) !== this.turn && this._fxCond(side, slot, e, null)
+            if (((c.fx_used ?? {})['activate' + k] ?? -1) !== this.turn && this.fxCan(side, slot, c, e)
                 && this._canPay(side, slot, c, e)) out.push(k);
         }
         return out;
@@ -422,9 +461,7 @@ export class DuelState {
     // Whether effect e of the card in slot has anyone to affect right now (the CPU checks before activating)
     fxHasTargets(side, slot, e) {
         const c = this.cardAt(side, slot);
-        if (c == null || !('target' in e)) return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
-        return this._fxTargets(side, slot, c, e, {}, pool).length > 0;
+        return c == null || this.fxCan(side, slot, c, e);
     }
 
     // ── Actions ────────────────────────────────────────────────────────────
@@ -694,7 +731,8 @@ export class DuelState {
         for (const slot of BACK) {
             const a = this.cardAt(foe, slot);
             if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
-                && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))) {
+                && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))
+                && this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att }, ctx.att)) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
             }
         }
@@ -723,6 +761,7 @@ export class DuelState {
                     }
                     this._effect(foe, a, 'No Witnesses: the attacker is Downed and the attack negated', slot);
                     ctx.att.downed = true;
+                    ctx.att.position = 'def';   // a Downed character is in DEF
                     this._emit('downed', { side: ctx.side, slot: ctx.from, card: clone(ctx.att) });
                     return;
                 }
@@ -856,6 +895,7 @@ export class DuelState {
             return 'saved';
         }
         c.downed = true;
+        c.position = 'def';   // a Downed character is in DEF
         this._emit('downed', { side, slot, card: clone(c) });
         this._runFx(side, slot, c, 'self_downed');
         return 'downed';
@@ -953,6 +993,7 @@ export class DuelState {
             this._askTarget(side, 'hunter_down', `${att.name} KO: choose an enemy character to Down`, att,
                 standing, foe, (e) => {
                     e.card.downed = true;
+                    e.card.position = 'def';   // a Downed character is in DEF
                     this._effect(side, att, `${att.name} Downs ${e.card.name}`, slot);
                     this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
                 });
@@ -1043,6 +1084,7 @@ export class DuelState {
                 for (const e of this.characters(foe)) {
                     if (!e.card.downed && e.card.defense <= 1500 && !this._staysUp(foe, e.slot, e.card)) {
                         e.card.downed = true;
+                        e.card.position = 'def';   // a Downed character is in DEF
                         hit += 1;
                         this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
                     }
@@ -1208,8 +1250,12 @@ export class DuelState {
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
         if (toInt(c.silence_until ?? 0) >= this.turn) return [];   // SILENCED: its effects don't work
+        // A Downed character's effects don't work, except as it goes Down or is KO'd, and an
+        // Activate that stands it back up
+        const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
         // "*": all of them (Hustles, Ambushes)
-        return (c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when));
+        return (c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
+            && !(downed && !(when === 'activate' && String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
     }
 
     /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */
@@ -1314,9 +1360,7 @@ export class DuelState {
     }
 
     _fxUseful(side, slot, c, e, vs) {
-        if (!('target' in e) || String(e.target ?? '') === 'self') return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
-        return this._fxTargets(side, slot, c, e, vs, pool).length > 0;
+        return this.fxCan(side, slot, c, e, vs);
     }
 
     _fxCond(side, slot, e, def) {
@@ -1398,6 +1442,7 @@ export class DuelState {
             case 'down':
                 this._fxApply(side, slot, c, e, vs, 'standing', 'DOWN', (x) => {
                     x.card.downed = true;
+                    x.card.position = 'def';   // a Downed character is in DEF
                     this._emit('downed', { side: x.side, slot: x.slot, card: clone(x.card) });
                     return `${c.name} Downs ${x.card.name}`;
                 }, `${c.name} Downs %s`);
@@ -1644,6 +1689,7 @@ export class DuelState {
                     this._emit('status', { side: x.side, slot: x.slot, kind: 'shock', card: clone(x.card) });
                     if (!x.card.downed && n >= toInt(x.card.defense ?? 0) && !this._staysUp(x.side, x.slot, x.card)) {
                         x.card.downed = true;
+                        x.card.position = 'def';   // a Downed character is in DEF
                         this._emit('downed', { side: x.side, slot: x.slot, card: clone(x.card) });
                         return `${c.name} SHOCKS ${x.card.name}: it goes Down`;
                     }
@@ -1773,8 +1819,9 @@ export class DuelState {
                 entries = this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card }));
                 break;
         }
-        entries = entries.filter(x => pick(x) && x.card.cardType !== 'leader' && !this.inStasis(x.card));
         const what_ = String(e.do ?? '');
+        // (a leader on the field can be affected like any character, but has no hand to go back to)
+        entries = entries.filter(x => pick(x) && !(x.card.cardType === 'leader' && what_ === 'bounce') && !this.inStasis(x.card));
         // immune: to the statuses it lists (none listed: all of them)
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(what_);
         if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
