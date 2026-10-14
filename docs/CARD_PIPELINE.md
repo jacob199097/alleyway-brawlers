@@ -167,6 +167,12 @@ all be called "Kade" (cards are matched by game ID).
 | **Kind** (Hustle, Ambush) | Normal (used once) · **Continuous** (stays face-up in the back row; an Ambush once sprung: its "always" effects reach all your characters or all enemies, its triggers fire, until destroyed) · **Equip** (a Hustle attached to one of your characters, or an enemy: its "while equipped" effects are that character's; it goes to the Gutter when the character leaves). "Destroy back-row cards" removes them |
 | **Targets** | A card effect that picks one character always asks (even from one) and can be skipped; Hustles can't be played, Ambushes sprung or abilities activated when none of their effects would do anything. A Downed character's effects don't work, and Downed characters are in DEF |
 
+**Test this card** (in the Forge, under the effects) plays 200 CPU games with the card as it is in
+the editor, by the game's own rules: how often it is drawn and played, its impact on the win rate,
+how often its effects happen, and any rules errors. The rules come from `engine.js`, published with
+the Forge and built from `shared/` by `node tools/build_engine_bundle.mjs engine.js`: after a rules
+change, rebuild it and publish the Forge again with it.
+
 A card can have several effects. Tick **Write the card's effect text from these effects** and
 the Forge writes the rules text for you, so it always matches what the card does.
 
