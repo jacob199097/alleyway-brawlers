@@ -1,7 +1,7 @@
 // Balance report: plays CPU-vs-CPU games with the real rules (shared/duel) and reports how each card
 // does, so you can spot cards that are too strong, too weak, or hard to play.
 //
-//   node tools/balance.mjs [--clan nebula] [--games 2000] [--level normal] [--seed 1] [--html report.html]
+//   node tools/balance.mjs [--clan nebula | --vs nebula,militia] [--games 2000] [--level normal] [--seed 1] [--html report.html]
 //
 // Every game gives both players a random legal 40-card deck from the clan's cards (up to 3 copies
 // each, plus the promoted forms in the Hideout and a leader), so each card turns up in many decks.
@@ -58,7 +58,16 @@ for (const clan of allClans) {
     if (legal.length * 3 < 40) continue;
     pools[clan] = { legal, leaders: cards.filter(c => c.cardType === 'leader').map(c => c.id) };
 }
-const clans = wantClan ? [wantClan] : Object.keys(pools);
+// --vs nebula,militia: every game is one clan against the other (seats swapped at random)
+const versus = opt('vs', '') ? opt('vs', '').split(',').map(s => s.trim()) : null;
+if (versus) {
+    const missing = versus.filter(c => !pools[c]);
+    if (versus.length !== 2 || missing.length) {
+        console.error(`--vs needs two clans with enough cards for a 40-card deck${missing.length ? ` (not enough: ${missing.join(', ')})` : ''}. Clans: ${Object.keys(pools).join(', ') || '(none)'}`);
+        process.exit(2);
+    }
+}
+const clans = versus || (wantClan ? [wantClan] : Object.keys(pools));
 if (!clans.length || !pools[clans[0]]) {
     console.error('No clan has enough cards for a 40-card deck yet.');
     process.exit(2);
@@ -101,7 +110,10 @@ const totals = { games: 0, firstWins: 0, turns: 0, deckOut: 0, unfinished: 0, re
 const started = Date.now();
 
 for (let g = 0; g < GAMES; g++) {
-    const seats = { player: randomDeck(pick(clans)), opponent: randomDeck(pick(clans)) };
+    const swap = versus && rand() < 0.5;
+    const seats = versus
+        ? { player: randomDeck(versus[swap ? 1 : 0]), opponent: randomDeck(versus[swap ? 0 : 1]) }
+        : { player: randomDeck(pick(clans)), opponent: randomDeck(pick(clans)) };
     const first = rand() < 0.5 ? 'player' : 'opponent';
     const d = new DuelState(
         { player: seats.player.deck, opponent: seats.opponent.deck },
@@ -193,7 +205,10 @@ const lines = [];
 lines.push(`Balance report: ${totals.games} games (${clans.join(', ')}; CPU ${LEVEL}; seed ${opt('seed', 1)}) in ${secs}s`);
 lines.push(`First player wins ${f1(pct(totals.firstWins, finished))}% · average ${f1(totals.turns / Math.max(1, finished))} turns · ` +
     `deck-outs ${f1(pct(totals.deckOut, finished))}% · unfinished ${totals.unfinished}${totals.refused ? ` · CPU moves refused ${totals.refused}` : ''}`);
-if (Object.keys(clanRecord).length > 1) {
+if (versus) {
+    const [a, b] = versus.map(c => clanRecord[c] || { games: 0, wins: 0 });
+    lines.push(`Matchup: ${versus[0]} wins ${f1(pct(a.wins, a.games))}% · ${versus[1]} wins ${f1(pct(b.wins, b.games))}% (50% is even)`);
+} else if (Object.keys(clanRecord).length > 1) {
     lines.push('Clans: ' + Object.entries(clanRecord).map(([k, v]) => `${k} ${f1(pct(v.wins, v.games))}%`).join(' · '));
 }
 lines.push('');
