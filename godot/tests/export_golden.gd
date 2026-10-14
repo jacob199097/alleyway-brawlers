@@ -124,6 +124,21 @@ const FX_CARD_SAMPLES := [
 ]
 
 
+## Continuous / Equip Hustles and Ambushes (merged over the card) for a third of them in odd games.
+const HUSTLE_LASTING := [
+	{"subtype": "continuous", "effects": [{"when": "passive", "do": "buff", "target": "allies", "atk": 200},
+		{"when": "turn_start", "do": "heal", "amount": 200}, {"when": "deploy", "do": "draw", "amount": 1}]},
+	{"subtype": "equip", "effects": [{"when": "passive", "do": "buff", "target": "self", "atk": 500}, {"when": "passive", "do": "pierce"}]},
+	{"subtype": "equip", "equip_to": "enemy", "effects": [{"when": "passive", "do": "buff", "target": "self", "atk": -400}]},
+	{"subtype": "continuous", "effects": [{"when": "ally_deployed", "do": "buff", "target": "allies", "atk": 100, "until": "turn"},
+		{"when": "foe_ko", "do": "draw", "amount": 1}, {"when": "passive", "do": "untargetable"}, {"when": "passive", "do": "cost_down", "amount": 1}]},
+]
+const AMBUSH_LASTING := [
+	{"subtype": "continuous", "effects": [{"when": "defend", "do": "suppress", "target": "attacker", "amount": 300},
+		{"when": "passive", "do": "buff", "target": "enemies", "atk": -200}, {"when": "turn_end", "do": "damage", "amount": 100}]},
+]
+
+
 ## Card Forge leaders for every fourth game (merged over the leader card).
 const LEADER_SAMPLES := [
 	{"effectKey": "", "awakenCondition": {"chars": 3, "influence": 1500, "ready": true}, "effects": [
@@ -161,6 +176,12 @@ func _init() -> void:
 					var kind: String = CardDB.get_card(deck[i]).get("cardType", "")
 					if kind == "gang_member":
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_SAMPLES[rng.randi_range(0, FX_SAMPLES.size() - 1)]}
+					elif kind in ["hustle", "ambush"] and rng.randi_range(0, 2) == 0:
+						var pool: Array = HUSTLE_LASTING if kind == "hustle" else AMBUSH_LASTING
+						var spec: Dictionary = pool[rng.randi_range(0, pool.size() - 1)].duplicate(true)
+						spec.id = deck[i]
+						spec.effectKey = ""
+						deck[i] = spec
 					elif kind in ["hustle", "ambush"]:
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_CARD_SAMPLES[rng.randi_range(0, FX_CARD_SAMPLES.size() - 1)]}
 		var first := "player" if g % 2 == 0 else "opponent"

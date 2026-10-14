@@ -96,6 +96,11 @@ for (const [key, raw] of Object.entries(exported)) {
     if (raw.cardType === 'leader' && raw.awakenCondition) c.awakenCondition = raw.awakenCondition;
     if (raw.cardType === 'leader' && raw.influence != null) c.influence = int(raw.influence);   // Influence while Dormant
     if (raw.cardType === 'ambush' && raw.ambushClan) c.ambushClan = String(raw.ambushClan);   // springs only for this clan
+    // Continuous (stays in the back row) / Equip (a Hustle attached to a character: equip_to ally | enemy)
+    if ((raw.cardType === 'hustle' && ['continuous', 'equip'].includes(raw.subtype)) || (raw.cardType === 'ambush' && raw.subtype === 'continuous')) {
+        c.subtype = raw.subtype;
+        if (raw.subtype === 'equip' && raw.equip_to === 'enemy') c.equip_to = 'enemy';
+    }
     // A token: made only by effects in a duel (never in packs, decks or the Card Library)
     if (raw.cardType === 'gang_member' && raw.token) c.token = true;
     cards[id] = c;

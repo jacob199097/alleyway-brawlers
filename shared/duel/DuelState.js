@@ -219,6 +219,65 @@ export class DuelState {
         return false;
     }
 
+    // ── Continuous / Equip (same as duel_state.gd) ─────────────────────────
+    static isLasting(c) {
+        return !!c && ['hustle', 'ambush'].includes(String(c.cardType ?? '')) && ['continuous', 'equip'].includes(String(c.subtype ?? ''));
+    }
+
+    _lasting(side, sub = '') {
+        const out = [];
+        for (const b of BACK) {
+            const c = this.sides[side].field[b];
+            if (c != null && !c.face_down && DuelState.isLasting(c) && (sub === '' || String(c.subtype) === sub)) out.push({ slot: b, card: c });
+        }
+        return out;
+    }
+
+    _emptyBack(side) {
+        const b = BACK.find(x => this.sides[side].field[x] == null);
+        return b == null ? -1 : b;
+    }
+
+    _runLasting(side, when, def = null, vs = {}) {
+        for (const x of this._lasting(side, 'continuous')) {
+            if (this.winner !== '') return;
+            if (this.sides[side].field[x.slot] === x.card && x.card !== def) this._runFx(side, x.slot, x.card, when, def, vs);
+        }
+    }
+
+    _equipsOn(c) {
+        const out = [];
+        if (!c || c.uid == null) return out;
+        for (const side of Object.keys(this.sides)) {
+            for (const x of this._lasting(side, 'equip')) {
+                if (toInt(x.card.equipped_to ?? -1) === toInt(c.uid)) out.push({ side, slot: x.slot, card: x.card });
+            }
+        }
+        return out;
+    }
+
+    _equipTargets(side, c) {
+        const on = String(c.equip_to ?? 'ally') === 'enemy' ? other(side) : side;
+        return this.characters(on).filter(x => !this.inStasis(x.card) && (on === side || isEmpty(this._passive(on, x.slot, x.card, 'untargetable'))));
+    }
+
+    _sweepEquips() {
+        for (const side of Object.keys(this.sides)) {
+            for (const x of this._lasting(side, 'equip')) {
+                const to = toInt(x.card.equipped_to ?? -1);
+                if (to < 0) continue;
+                let on = false;
+                for (const s2 of Object.keys(this.sides)) for (const y of this.characters(s2)) if (toInt(y.card.uid) === to) on = true;
+                if (!on) {
+                    this.sides[side].field[x.slot] = null;
+                    delete x.card.equipped_to;
+                    this.sides[side].gutter.push(x.card);
+                    this._emit('ko', { side, slot: x.slot, card: clone(x.card) });
+                }
+            }
+        }
+    }
+
     canSet(side, c, slot) {
         if (!this.canDeployNow(side) || c.cardType !== 'ambush') return false;
         if (!BACK.includes(slot) || this.sides[side].field[slot] != null) return false;
@@ -234,8 +293,9 @@ export class DuelState {
     }
 
     canHustle(side, c) {
-        return this.canDeployNow(side) && c.cardType === 'hustle'
-            && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c) && this.cardCan(side, NO_SLOT, c, '*');
+        if (!(this.canDeployNow(side) && c.cardType === 'hustle' && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c))) return false;
+        if (DuelState.isLasting(c)) return this._emptyBack(side) >= 0 && (String(c.subtype) !== 'equip' || this._equipTargets(side, c).length > 0);
+        return this.cardCan(side, NO_SLOT, c, '*');
     }
 
     /** Whether any of card c's effects for a trigger would do something now (same as card_can). */
@@ -289,6 +349,7 @@ export class DuelState {
             }
         };
         for (const x of this.characters(side)) if (!x.card.face_down) add(x.slot, x.card);
+        for (const x of this._lasting(side, 'continuous')) add(x.slot, x.card);
         if (s.leader_state === 'dormant' && s.leader != null) add(-1, s.leader, 'dormant');
         return Math.max(0, toInt(c.authority) - off);
     }
@@ -305,6 +366,20 @@ export class DuelState {
             for (const e of this._fx(s.leader, 'dormant')) {
                 if (String(e.do ?? '') === kind && (ok == null || ok(e)) && (String(e.clan ?? '') === '' || c.clanTag === String(e.clan))
                     && this._fxCond(side, -1, e, null)) return e;
+            }
+        }
+        // Continuous cards give your characters the same gifts; an Equip gives its character any passive
+        if (s && DORMANT_GIFTS.includes(kind)) {
+            for (const x of this._lasting(side, 'continuous')) {
+                for (const e of this._fx(x.card, 'passive')) {
+                    if (String(e.do ?? '') === kind && (ok == null || ok(e)) && (String(e.clan ?? '') === '' || c.clanTag === String(e.clan))
+                        && this._fxCond(side, x.slot, e, null)) return e;
+                }
+            }
+        }
+        for (const q of this._equipsOn(c)) {
+            for (const e of this._fx(q.card, 'passive')) {
+                if (String(e.do ?? '') === kind && (ok == null || ok(e)) && this._fxCond(q.side, q.slot, e, null)) return e;
             }
         }
         return null;
@@ -333,6 +408,7 @@ export class DuelState {
         if (toInt(c.suppress_until ?? 0) >= this.turn) out.push('suppress');
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
+        if (this._equipsOn(c).length) out.push('equipped');
         return out;
     }
 
@@ -559,11 +635,33 @@ export class DuelState {
         const c = s.hand[i];
         this._spend(side, this.costOf(side, c));
         s.hand.splice(i, 1);
-        s.gutter.push(c);
-        this._emit('hustle', { side, card: clone(c) });
-        // A Card Forge Hustle: all of its effects happen when it's played
-        if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
+        if (DuelState.isLasting(c)) {
+            // Continuous / Equip: into the back row, face-up; its "when played" effects happen
+            const b = this._emptyBack(side);
+            c.face_down = false;
+            s.field[b] = c;
+            this._emit('lasting', { side, slot: b, card: clone(c) });
+            if (String(c.subtype) === 'equip') {
+                const on = String(c.equip_to ?? 'ally') === 'enemy' ? other(side) : side;
+                const entries = this._equipTargets(side, c);
+                entries.sort(strongestFirst);
+                this._askTarget(side, 'equip', `${c.name}: choose a character to equip`, c, entries, on, (x) => {
+                    if (s.field[b] !== c) return;
+                    c.equipped_to = x.card.uid;
+                    this._emit('equip', { side, slot: b, target_side: on, target_slot: x.slot, card: clone(c) });
+                    this._effect(side, c, `${c.name} is equipped to ${x.card.name}`, b);
+                    this._recalc();
+                });
+            }
+            this._runFx(side, b, c, 'deploy');
+        } else {
+            s.gutter.push(c);
+            this._emit('hustle', { side, card: clone(c) });
+            // A Card Forge Hustle: all of its effects happen when it's played
+            if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
+        }
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'hustle_played', c);
+        this._runLasting(side, 'hustle_played', c);
         this._leaderFx(side, 'dormant_hustle', c);
         switch (c.effectKey) {
             case 'corner_deal':
@@ -732,7 +830,7 @@ export class DuelState {
             const a = this.cardAt(foe, slot);
             if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
                 && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))
-                && this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att }, ctx.att)) {
+                && (DuelState.isLasting(a) || this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att }, ctx.att))) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
             }
         }
@@ -793,6 +891,7 @@ export class DuelState {
         for (const x of this.characters(foe)) {
             if (x.slot !== target && this.winner === '' && this.cardAt(side, from) === att) this._runFx(foe, x.slot, x.card, 'ally_attacked', att, vs);
         }
+        if (this.cardAt(side, from) === att) this._runLasting(foe, 'ally_attacked', att, vs);
         for (const e of this._fx(def, 'defend')) {
             k += 1;
             if (this.winner !== '' || this.cardAt(foe, target) !== def || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
@@ -912,8 +1011,10 @@ export class DuelState {
         this._runFx(side, slot, c, 'self_ko');
         // "When another of your characters is KO'd"
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'ally_ko', c);
+        this._runLasting(side, 'ally_ko', c);
         // "When an enemy character is KO'd" (by anything)
         for (const x of this.characters(other(side))) this._runFx(other(side), x.slot, x.card, 'foe_ko', c);
+        this._runLasting(other(side), 'foe_ko', c);
     }
 
     _damage(side, amount) {
@@ -1040,9 +1141,13 @@ export class DuelState {
 
     _spring(side, slot) {
         const a = this.cardAt(side, slot);
+        a.face_down = false;
+        if (DuelState.isLasting(a)) {   // a Continuous Ambush stays, face-up
+            this._emit('ambush', { side, slot, card: clone(a), stays: true });
+            return;
+        }
         this.sides[side].field[slot] = null;
         this.sides[side].gutter.push(a);
-        a.face_down = false;
         this._emit('ambush', { side, slot, card: clone(a) });
     }
 
@@ -1056,6 +1161,8 @@ export class DuelState {
         }
         const foe = other(side);
         for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
+        this._runLasting(side, 'ally_deployed', c);
+        this._runLasting(foe, 'foe_deployed', c);
         this._leaderFx(side, 'dormant_ally_deployed', c);
         this._leaderFx(foe, 'dormant_foe_deployed', c);
         switch (c.effectKey || '') {
@@ -1190,6 +1297,7 @@ export class DuelState {
     }
 
     _recalc() {
+        this._sweepEquips();
         const values = {};
         for (const side of Object.keys(this.sides)) {
             const s = this.sides[side];
@@ -1230,6 +1338,15 @@ export class DuelState {
                         df += toInt(a[1].def);
                     }
                 }
+                for (const q of this._equipsOn(c)) {   // an Equip's buffs are its character's
+                    for (const e of this._fx(q.card, 'passive')) {
+                        if (String(e.do ?? '') === 'buff' && this._fxCond(q.side, q.slot, e, null)) {
+                            const se = this._scaled(q.side, q.slot, e);
+                            atk += toInt(se.atk);
+                            df += toInt(se.def);
+                        }
+                    }
+                }
                 for (const adj of [slot - 1, slot + 1]) {
                     if (FRONT.includes(adj) && s.field[adj] != null && s.field[adj].effectKey === 'bulwark') df += 400;
                 }
@@ -1261,7 +1378,7 @@ export class DuelState {
     /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */
     _springFx(ctx, foe, a) {
         const vs = { side: ctx.side, slot: ctx.from, card: ctx.att };
-        for (const e of this._fx(a, '*')) {
+        for (const e of this._fx(a, DuelState.isLasting(a) ? 'defend' : '*')) {   // (a Continuous one's other effects last)
             if (this.winner !== '') return;
             if (!this._fxCond(foe, NO_SLOT, e, ctx.att)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker') {
@@ -1942,6 +2059,11 @@ export class DuelState {
                 if (String(e.do ?? '') === 'buff' && this._fxCond(side, -1, e, null)) out.push([-1, this._scaled(side, -1, e)]);
             }
         }
+        for (const x of this._lasting(side, 'continuous')) {   // (from the back row: they reach every character)
+            for (const e of this._fx(x.card, 'passive')) {
+                if (String(e.do ?? '') === 'buff' && this._fxCond(side, x.slot, e, null)) out.push([x.slot, this._scaled(side, x.slot, e)]);
+            }
+        }
         return out;
     }
 
@@ -1997,6 +2119,7 @@ export class DuelState {
         this._statusTicks(this.active);
         if (this.winner !== '') return;
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
+        this._runLasting(this.active, 'turn_start');
         this._leaderFx(this.active, 'dormant_turn_start');
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {
@@ -2017,7 +2140,9 @@ export class DuelState {
 
     _endTurn() {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_end');
+        this._runLasting(this.active, 'turn_end');
         for (const e of this.characters(other(this.active))) this._runFx(other(this.active), e.slot, e.card, 'foe_turn_end');
+        this._runLasting(other(this.active), 'foe_turn_end');
         this._leaderFx(this.active, 'dormant_turn_end');
         if (this.winner !== '') return;
         const s = this.sides[this.active];

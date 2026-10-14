@@ -15,6 +15,7 @@ const STATUS_STYLE := {
 	"freeze": [Color("a6ecff"), "FRZ", "FROZEN"], "stasis": [Color("9a7bff"), "STS", "STASIS"],
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
+	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
 }
 
 var card: Dictionary = {}

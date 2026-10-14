@@ -490,8 +490,10 @@ func _log_event(ev: Dictionary) -> void:
 				_log("%s deployed %s" % [_who(side), _cname(ev.card)], side)
 		"set":
 			_log("%s set a card face down" % _who(side), side)
-		"hustle":
+		"hustle", "lasting":
 			_log("%s played %s" % [_who(side), _cname(ev.card)], side)
+		"equip":
+			_log("%s equipped %s" % [_who(side), _cname(ev.card)], side)
 		"tribute":
 			_log("%s sacrificed %s for %s" % [_who(side), _cname(ev.card), _cname(ev.get("for"))], side)
 		"attack":
@@ -1010,6 +1012,10 @@ func _play(ev: Dictionary) -> void:
 			await _ev_set(ev)
 		"hustle":
 			await _ev_hustle(ev)
+		"lasting":
+			await _ev_lasting(ev)
+		"equip":
+			await _ev_equip(ev)
 		"attack":
 			await _ev_attack(ev)
 		"flip":
@@ -1262,6 +1268,44 @@ func _ev_hustle(ev: Dictionary) -> void:
 	await _to_gutter(v, side)
 
 
+## A Continuous / Equip Hustle: shown, then it takes its place face-up in the back row.
+func _ev_lasting(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var c: Dictionary = ev.card
+	var v := _take_from_hand(side, c.uid, c)
+	var target := slot_pos(side, ev.slot)
+	field[side][ev.slot] = v
+	v.home = target
+	v.home_scale = 1.0
+	v.home_rot = 0.0
+	v.z_index = 450
+	_show_detail(c)
+	if not v.face_up:
+		v.flip(true)
+	var center := Vector2(1080, DIVIDER_Y)
+	Sfx.play("effect", 0.8)
+	await v.move_to(center, 2.1, 0.0, 0.3, Tween.TRANS_BACK).finished
+	_ring(center, GOLD, 1.5)
+	_float_text(center + Vector2(0, 215), "EQUIP" if str(c.get("subtype", "")) == "equip" else "CONTINUOUS", GOLD, 40)
+	await _wait(0.6)
+	await v.move_to(target, 1.0, 0.0, 0.3).finished
+	_ring(target, GOLD, 0.8)
+	v.z_index = 10
+
+
+## An Equip attaches to a character: a beam from the card to it.
+func _ev_equip(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	var t: CardView = field[str(ev.target_side)].get(int(ev.target_slot))
+	if v == null or t == null:
+		return
+	Sfx.play("promote", 1.2, -6.0)
+	_burst(t.home, GOLD, 28, 300, 0.7, -260.0)
+	_ring(t.home, GOLD, 1.1)
+	_float_text(t.home + Vector2(0, -120 if ev.target_side == "player" else 120), "EQUIPPED", GOLD, 32)
+	await _wait(0.4)
+
+
 func _ev_attack(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var v: CardView = field[side].get(ev.from)
@@ -1308,6 +1352,12 @@ func _ev_ambush(ev: Dictionary) -> void:
 	_post_pulse("aberration", 9.0, 0.35)
 	_float_text(center + Vector2(0, -200), "AMBUSH!", RED, 64)
 	await _wait(0.8)
+	if ev.get("stays", false):   # a Continuous Ambush goes back to its place, face-up
+		field[side][ev.slot] = v
+		v.home = slot_pos(side, ev.slot)
+		await v.move_to(v.home, 1.0, 0.0, 0.3).finished
+		v.z_index = 10
+		return
 	await _to_gutter(v, side)
 
 

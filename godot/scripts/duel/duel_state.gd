@@ -204,6 +204,82 @@ func can_summon_somewhere(side: String, c: Dictionary) -> bool:
 	return false
 
 
+# ── Continuous / Equip (Card Forge subtype of a Hustle or Ambush) ────────────
+# A Continuous card stays face-up in the back row once played (an Ambush once sprung): its
+# "passive" effects keep working (buffs for your characters or the enemy's, PIERCE / immunity /
+# "can't be targeted" for yours, cheaper cards) and its triggered ones fire like a character's.
+# An Equip Hustle goes to the back row attached to a character (equip_to: ally | enemy): its
+# "passive" effects are that character's; it goes to the Gutter when the character leaves.
+
+static func is_lasting(c) -> bool:
+	return c is Dictionary and str(c.get("cardType", "")) in ["hustle", "ambush"] \
+		and str(c.get("subtype", "")) in ["continuous", "equip"]
+
+
+## Face-up Continuous / Equip cards in a side's back row: [{slot, card}] (sub: only that kind).
+func _lasting(side: String, sub := "") -> Array:
+	var out: Array = []
+	for b in BACK:
+		var c = sides[side].field[b]
+		if c != null and not c.get("face_down", false) and is_lasting(c) and (sub == "" or str(c.subtype) == sub):
+			out.append({"slot": b, "card": c})
+	return out
+
+
+func _empty_back(side: String) -> int:
+	for b in BACK:
+		if sides[side].field[b] == null:
+			return b
+	return -1
+
+
+## Continuous cards' triggered effects (turn_start, ally_deployed, ...); `def` itself is skipped.
+func _run_lasting(side: String, when: String, def = null, vs := {}) -> void:
+	for x in _lasting(side, "continuous"):
+		if winner != "":
+			return
+		if sides[side].field[x.slot] == x.card and not is_same(x.card, def):
+			_run_fx(side, x.slot, x.card, when, def, vs)
+
+
+## The Equip cards on character c: [{side (their owner), slot, card}]
+func _equips_on(c) -> Array:
+	var out: Array = []
+	if not c is Dictionary or not c.has("uid"):
+		return out
+	for side in sides:
+		for x in _lasting(side, "equip"):
+			if int(x.card.get("equipped_to", -1)) == int(c.uid):
+				out.append({"side": side, "slot": x.slot, "card": x.card})
+	return out
+
+
+## The characters an Equip Hustle can go on (its owner's, or with equip_to "enemy" the foe's).
+func _equip_targets(side: String, c: Dictionary) -> Array:
+	var on := other(side) if str(c.get("equip_to", "ally")) == "enemy" else side
+	return characters(on).filter(func(x): return not in_stasis(x.card) \
+		and (on == side or _passive(on, x.slot, x.card, "untargetable").is_empty()))
+
+
+## An Equip whose character has left the field goes to the Gutter.
+func _sweep_equips() -> void:
+	for side in sides:
+		for x in _lasting(side, "equip"):
+			var to := int(x.card.get("equipped_to", -1))
+			if to < 0:
+				continue
+			var on := false
+			for s2 in sides:
+				for y in characters(s2):
+					if int(y.card.uid) == to:
+						on = true
+			if not on:
+				sides[side].field[x.slot] = null
+				x.card.erase("equipped_to")
+				sides[side].gutter.append(x.card)
+				_emit("ko", {"side": side, "slot": x.slot, "card": x.card.duplicate(true)})
+
+
 func can_set(side: String, c: Dictionary, slot: int) -> bool:
 	if not can_deploy_now(side) or c.get("cardType") != "ambush":
 		return false
@@ -222,8 +298,11 @@ func hustle_ready(side: String, c: Dictionary) -> bool:
 
 
 func can_hustle(side: String, c: Dictionary) -> bool:
-	return can_deploy_now(side) and c.get("cardType") == "hustle" \
-		and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c) and card_can(side, NO_SLOT, c, "*")
+	if not (can_deploy_now(side) and c.get("cardType") == "hustle" and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)):
+		return false
+	if is_lasting(c):   # a Continuous / Equip card needs room in the back row (an Equip, a character)
+		return _empty_back(side) >= 0 and (str(c.subtype) != "equip" or not _equip_targets(side, c).is_empty())
+	return card_can(side, NO_SLOT, c, "*")
 
 
 ## Whether any of card c's effects for a trigger would do something now (a card with none
@@ -293,6 +372,8 @@ func cost_of(side: String, c: Dictionary) -> int:
 			sources.append([x.slot, x.card])
 	if s.leader_state == "dormant" and s.leader != null:
 		sources.append([-1, s.leader])
+	for x in _lasting(side, "continuous"):
+		sources.append([x.slot, x.card])
 	for src in sources:
 		for e in _fx(src[1], "dormant" if src[0] == -1 else "passive"):
 			if str(e.get("do", "")) != "cost_down" or not _fx_cond(side, src[0], e, null):
@@ -316,6 +397,17 @@ func _passive(side: String, slot: int, c, kind: String, ok := Callable()) -> Dic
 		for e in _fx(s.leader, "dormant"):
 			if str(e.get("do", "")) == kind and (not ok.is_valid() or ok.call(e)) \
 					and (str(e.get("clan", "")) == "" or c.get("clanTag") == str(e.get("clan", ""))) and _fx_cond(side, -1, e, null):
+				return e
+	# Continuous cards give your characters the same gifts; an Equip gives its character any passive
+	if s != null and kind in DORMANT_GIFTS:
+		for x in _lasting(side, "continuous"):
+			for e in _fx(x.card, "passive"):
+				if str(e.get("do", "")) == kind and (not ok.is_valid() or ok.call(e)) \
+						and (str(e.get("clan", "")) == "" or c.get("clanTag") == str(e.get("clan", ""))) and _fx_cond(side, x.slot, e, null):
+					return e
+	for q in _equips_on(c):
+		for e in _fx(q.card, "passive"):
+			if str(e.get("do", "")) == kind and (not ok.is_valid() or ok.call(e)) and _fx_cond(q.side, q.slot, e, null):
 				return e
 	return {}
 
@@ -364,6 +456,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("shield")
 	if int(c.get("silence_until", 0)) >= turn:
 		out.append("silence")
+	if not _equips_on(c).is_empty():
+		out.append("equipped")
 	return out
 
 
@@ -626,13 +720,33 @@ func _hustle(side: String, uid: int) -> bool:
 	var c: Dictionary = s.hand[i]
 	_spend(side, cost_of(side, c))
 	s.hand.remove_at(i)
-	s.gutter.append(c)
-	_emit("hustle", {"side": side, "card": c.duplicate(true)})
-	# A Card Forge Hustle: all of its effects happen when it's played
-	if not c.get("effects", []).is_empty():
-		_run_fx(side, NO_SLOT, c, "*")
+	if is_lasting(c):
+		# Continuous / Equip: into the back row, face-up; its "when played" effects happen
+		var b := _empty_back(side)
+		c.face_down = false
+		s.field[b] = c
+		_emit("lasting", {"side": side, "slot": b, "card": c.duplicate(true)})
+		if str(c.subtype) == "equip":
+			var on := other(side) if str(c.get("equip_to", "ally")) == "enemy" else side
+			var entries := _equip_targets(side, c)
+			entries.sort_custom(_strongest_first)
+			_ask_target(side, "equip", "%s: choose a character to equip" % c.name, c, entries, on, func(x: Dictionary):
+				if s.field[b] != c:
+					return
+				c.equipped_to = x.card.uid
+				_emit("equip", {"side": side, "slot": b, "target_side": on, "target_slot": x.slot, "card": c.duplicate(true)})
+				_effect(side, c, "%s is equipped to %s" % [c.name, x.card.name], b)
+				_recalc())
+		_run_fx(side, b, c, "deploy")
+	else:
+		s.gutter.append(c)
+		_emit("hustle", {"side": side, "card": c.duplicate(true)})
+		# A Card Forge Hustle: all of its effects happen when it's played
+		if not c.get("effects", []).is_empty():
+			_run_fx(side, NO_SLOT, c, "*")
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "hustle_played", c)
+	_run_lasting(side, "hustle_played", c)
 	_leader_fx(side, "dormant_hustle", c)
 	match c.effectKey:
 		"corner_deal":
@@ -784,7 +898,7 @@ func _atk_ambush(ctx: Dictionary) -> void:
 		if a != null and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
 				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
 				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))) \
-				and card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att}, ctx.att):
+				and (is_lasting(a) or card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att}, ctx.att)):
 			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
@@ -820,7 +934,7 @@ func _atk_ambush(ctx: Dictionary) -> void:
 ## (Downed, gone, in Stasis) or the defender is gone.
 func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 	var vs := {"side": ctx.side, "slot": ctx.from, "card": ctx.att}
-	for e in _fx(a, "*"):
+	for e in _fx(a, "defend" if is_lasting(a) else "*"):   # (a Continuous one's other effects last)
 		if winner != "":
 			return
 		if not _fx_cond(foe, NO_SLOT, e, ctx.att):
@@ -868,6 +982,8 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	for x in characters(foe):
 		if x.slot != target and winner == "" and card_at(side, from) == att:
 			_run_fx(foe, x.slot, x.card, "ally_attacked", att, vs)
+	if card_at(side, from) == att:
+		_run_lasting(foe, "ally_attacked", att, vs)
 	var k := 0
 	for e in _fx(def, "defend"):
 		k += 1
@@ -994,9 +1110,11 @@ func _ko(side: String, slot: int) -> void:
 	# "When another of your characters is KO'd"
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "ally_ko", c)
+	_run_lasting(side, "ally_ko", c)
 	# "When an enemy character is KO'd" (by anything)
 	for x in characters(other(side)):
 		_run_fx(other(side), x.slot, x.card, "foe_ko", c)
+	_run_lasting(other(side), "foe_ko", c)
 
 
 func _damage(side: String, amount: int) -> void:
@@ -1105,9 +1223,12 @@ func _spring_kings_test(side: String, slot: int, c: Dictionary) -> bool:
 
 func _spring(side: String, slot: int) -> void:
 	var a: Dictionary = card_at(side, slot)
+	a.face_down = false
+	if is_lasting(a):   # a Continuous Ambush stays, face-up
+		_emit("ambush", {"side": side, "slot": slot, "card": a.duplicate(true), "stays": true})
+		return
 	sides[side].field[slot] = null
 	sides[side].gutter.append(a)
-	a.face_down = false
 	_emit("ambush", {"side": side, "slot": slot, "card": a.duplicate(true)})
 
 
@@ -1122,6 +1243,8 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 	var foe := other(side)
 	for x in characters(foe):
 		_run_fx(foe, x.slot, x.card, "foe_deployed", c)
+	_run_lasting(side, "ally_deployed", c)
+	_run_lasting(foe, "foe_deployed", c)
 	_leader_fx(side, "dormant_ally_deployed", c)
 	_leader_fx(foe, "dormant_foe_deployed", c)
 	match c.get("effectKey", ""):
@@ -1260,6 +1383,7 @@ func _check_awaken(side: String) -> void:
 
 ## Recompute ATK/DEF from base stats, temporary mods and passives, and report them.
 func _recalc() -> void:
+	_sweep_equips()
 	var values := {}
 	for side in sides:
 		var s: Dictionary = sides[side]
@@ -1305,6 +1429,12 @@ func _recalc() -> void:
 				if clan == "" or c.get("clanTag") == clan:
 					atk += int(a[1].get("atk", 0))
 					df += int(a[1].get("def", 0))
+			for q in _equips_on(c):   # an Equip's buffs are its character's
+				for e in _fx(q.card, "passive"):
+					if str(e.get("do", "")) == "buff" and _fx_cond(q.side, q.slot, e, null):
+						var se := _scaled(q.side, q.slot, e)
+						atk += int(se.get("atk", 0))
+						df += int(se.get("def", 0))
 			for adj in [slot - 1, slot + 1]:
 				if adj in FRONT and s.field[adj] != null and s.field[adj].get("effectKey") == "bulwark":
 					df += 400
@@ -2123,6 +2253,10 @@ func _auras(side: String) -> Array:
 		for e in _fx(s.leader, "dormant"):   # (its "passive" effects work once it's on the field)
 			if str(e.get("do", "")) == "buff" and _fx_cond(side, -1, e, null):
 				out.append([-1, _scaled(side, -1, e)])
+	for x in _lasting(side, "continuous"):   # (from the back row: they reach every character)
+		for e in _fx(x.card, "passive"):
+			if str(e.get("do", "")) == "buff" and _fx_cond(side, x.slot, e, null):
+				out.append([x.slot, _scaled(side, x.slot, e)])
 	return out
 
 
@@ -2197,6 +2331,7 @@ func _begin_turn() -> void:
 		return
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_start")
+	_run_lasting(active, "turn_start")
 	_leader_fx(active, "dormant_turn_start")
 	# King's Test survivors may promote at the start of their owner's next turn
 	for e in characters(active):
@@ -2217,8 +2352,10 @@ func _begin_turn() -> void:
 func _end_turn() -> void:
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_end")
+	_run_lasting(active, "turn_end")
 	for e in characters(other(active)):
 		_run_fx(other(active), e.slot, e.card, "foe_turn_end")
+	_run_lasting(other(active), "foe_turn_end")
 	_leader_fx(active, "dormant_turn_end")
 	if winner != "":
 		return
