@@ -52,6 +52,11 @@ async function rejects(promise, pattern) {
     require('child_process').execFileSync(process.execPath, [path.join(__dirname, '../scripts/sync_cards.mjs')], { stdio: 'inherit' });
     const crafting = require('./crafting');
     const achievements = require('./achievements');
+    // A card portrait only Collector unlocks (the free pictures are some of the cards' own art)
+    const { freeAvatars } = await import('../../shared/clans.js');
+    const { CARD_CATALOG } = await import('../../shared/cards.js');
+    const free = freeAvatars();
+    const portrait = 'card:' + Object.values(CARD_CATALOG).find(c => !c.token && !free.includes('card:' + c.id)).id;
 
     const q = (sql, params) => pool.query(sql, params);
     const { rows: [me] } = await q(`INSERT INTO players (username, email, password_hash) VALUES ('tester', 't@x', 'x') RETURNING id`);
@@ -122,7 +127,8 @@ async function rejects(promise, pattern) {
     assert.ok((await achievements.equip(id, { title: 'wins_100' })).error);
     assert.ok((await achievements.equip(id, { back: 'nebula' })).error);
     assert.ok((await achievements.equip(id, { avatar: 'clan:nebula' })).error);
-    assert.ok((await achievements.equip(id, { avatar: 'card:card_nebu_001' })).error, 'portraits come with Collector');
+    assert.deepEqual(await achievements.equip(id, { avatar: free[0] }), { ok: true }, 'everyone has the free pictures');
+    assert.ok((await achievements.equip(id, { avatar: portrait })).error, 'portraits come with Collector');
     for (let i = 0; i < 9; i++) {
         await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'casual', clan: 'nebula', morale: 3000 });
     }
@@ -142,7 +148,7 @@ async function rejects(promise, pattern) {
     await achievements.check(id);
     const coll = (await achievements.overview(id)).achievements.find(a => a.id === 'collect_25');
     assert.equal(coll.unlocked, (await q('SELECT COUNT(*)::int AS n FROM cards')).rows[0].n >= 25);
-    if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: 'card:card_nebu_001' }), { ok: true });
+    if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: portrait }), { ok: true });
 
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);
