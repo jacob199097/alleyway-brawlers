@@ -100,6 +100,11 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "call", "amount": 1, "max_auth": 3}, {"when": "defend", "do": "buff", "target": "self", "def": 100, "per": "hand", "per_max": 5}],
 	[{"when": "turn_start", "do": "token", "token": "card_nebu_036", "amount": 2, "once": true}, {"when": "ally_attacked", "do": "buff", "target": "ally", "def": 300}],
 	[{"when": "ko", "do": "buff", "target": "allies", "atk": 100, "until": "turn", "per": "gutter"}, {"when": "deploy", "do": "down", "target": "enemy", "or": true, "label": "Down an enemy"}, {"when": "deploy", "do": "heal", "amount": 500, "label": "Heal 500"}],
+	# "If you do": only if the effect before did something (after its target is chosen)
+	[{"when": "activate", "cost": "authority", "cost_n": 1, "do": "break_ambush", "amount": 1}, {"when": "activate", "do": "promote", "target": "self", "if_done": true}],
+	[{"when": "deploy", "do": "ko", "target": "enemy"}, {"when": "deploy", "do": "draw", "amount": 1, "if_done": true}, {"when": "deploy", "do": "heal", "amount": 300, "if_done": true}],
+	[{"when": "attack", "do": "down", "target": "enemy"}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "if_done": true}],
+	[{"when": "deploy", "do": "search", "kind": "gang_member", "choose": true}, {"when": "deploy", "do": "suppress", "target": "enemy", "amount": 200, "if_done": true}],
 ]
 
 

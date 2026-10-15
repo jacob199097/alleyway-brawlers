@@ -48,6 +48,7 @@ var _uid := 0
 var _asks: Array = []        # prompts queued behind `pending`
 var _in_answer := false      # prompts raised while answering one go first
 var _new_asks: Array = []
+var _did := 0                # effects that did something (see then in _do_fx)
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 
 
@@ -1478,6 +1479,26 @@ func _recalc() -> void:
 #   times:  ko / down: happens once the card has KO'd / Downed this many characters while on the
 #           field (it then counts again from 0; leaving the field resets the count)
 
+## if_done ("If you do, ..."): an effect that follows on from the one before it becomes that
+## effect's then (see _do_fx), so it happens only if the one before did something.
+static func _fold_if_done(list: Array) -> Array:
+	if not list.any(func(e): return e is Dictionary and e.get("if_done", false)):
+		return list
+	var out: Array = []
+	for e in list:
+		if e is Dictionary and e.get("if_done", false) and not out.is_empty() and out[-1] is Dictionary:
+			var top: Dictionary = out[-1].duplicate()
+			out[-1] = top
+			var p: Dictionary = top
+			while p.get("then") is Dictionary:
+				p.then = p.then.duplicate()
+				p = p.then
+			p.then = e
+		else:
+			out.append(e)
+	return out
+
+
 func _fx(c, when: String) -> Array:
 	var out: Array = []
 	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects
@@ -1487,7 +1508,7 @@ func _fx(c, when: String) -> Array:
 	# A Downed character's effects don't work, except as it goes Down or is KO'd, and an
 	# Activate that stands it back up
 	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
-	for e in c.get("effects", []):
+	for e in _fold_if_done(c.get("effects", [])):
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
 			if downed and not (when == "activate" and str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
 				continue
@@ -1709,7 +1730,41 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 				_do_fx(side, slot, c, opts[0], vs)
 
 
+## then: a follow-up effect that happens only if this one did something ("If you do, ...").
+## Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP.
 func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
+	var then = e.get("then")
+	if not (then is Dictionary):
+		_do_fx_one(side, slot, c, e, vs)
+		return
+	var did := _did
+	var asks: Array = _new_asks if _in_answer else _asks
+	var queued := asks.size()
+	var next := func() -> void:
+		if winner == "":
+			_do_fx(side, _slot_of(side, c, slot), c, then, vs)
+	_do_fx_one(side, slot, c, e, vs)
+	if _did > did:
+		next.call()
+	elif asks.size() > queued:
+		var ask: Dictionary = asks[queued]
+		var cb: Callable = ask.cb
+		if ask.kind == "choose":
+			ask.cb = func(answer) -> void:
+				var before := _did
+				cb.call(answer)
+				if _did > before:
+					next.call()
+		else:
+			ask.cb = func() -> void:
+				var before := _did
+				if cb.is_valid():
+					cb.call()
+				if _did > before:
+					next.call()
+
+
+func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
 	var foe := other(side)
 	var s: Dictionary = sides[side]
 	if str(e.get("per", "")) != "":   # "for each ...": nothing to count, nothing happens
@@ -1822,7 +1877,7 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 				_emit("draw", {"side": side, "card": card.duplicate(true), "opening": false})
 				return true)
 			if not found:
-				_effect(side, c, "%s: nothing to find in the deck" % c.name, slot)
+				_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: nothing to find in the deck" % c.name, "slot": slot})   # (not something done)
 		"revive", "call":
 			# A character from your Gutter (revive) or deck (call) onto the field, in the first
 			# empty lane, in ATK
@@ -2536,6 +2591,7 @@ func _spend(side: String, amount: int) -> void:
 
 
 func _effect(side: String, c: Dictionary, text: String, slot := -1) -> void:
+	_did += 1   # effects that did something (see then in _do_fx)
 	_emit("effect", {"side": side, "card": c.duplicate(true), "text": text, "slot": slot})
 
 

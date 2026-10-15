@@ -287,4 +287,34 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     assert.ok(b.cardAt('opponent', 0).burn, 'but not to BURN');
 }
 
+// "If you do": the effect after happens only if the one before did something; after a choice,
+// only once it is answered, and not on SKIP
+{
+    const thomas = { effects: [{ when: 'activate', cost: 'authority', cost_n: 1, do: 'break_ambush', amount: 1 },
+        { when: 'activate', do: 'draw', amount: 1, if_done: true }] };
+    const ready = (b) => { b.sides.player.authority = 5; for (let i = 0; i < 3; i++) b.sides.player.deck.push(b.makeCard('test_grunt')); return b; };
+    let b = ready(board([thomas], [{}]));
+    assert.deepEqual(b.activations('player', 0), [], 'nothing face-down to destroy: it cannot be used');
+    b.sides.opponent.field[5] = b.makeCard('test_grunt');
+    b.sides.opponent.field[5].face_down = true;
+    assert.deepEqual(b.activations('player', 0), [1], 'the follow-up is part of the one ability');
+    let hand = b.sides.player.hand.length;
+    assert.ok(b.doAction('player', { kind: 'activate', slot: 0, fx: 1 }));
+    assert.equal(b.sides.opponent.field[5], null, 'face-down card destroyed');
+    assert.equal(b.sides.player.hand.length, hand + 1, 'so it draws');
+
+    const ko = { effects: [{ when: 'activate', do: 'ko', target: 'enemy' }, { when: 'activate', do: 'draw', amount: 1, if_done: true }] };
+    b = ready(board([ko], [{}]));
+    hand = b.sides.player.hand.length;
+    assert.ok(b.doAction('player', { kind: 'activate', slot: 0, fx: 1 }));
+    assert.equal(b.sides.player.hand.length, hand, 'waits for the target');
+    assert.ok(b.doAction('player', { kind: 'choose', option: 'skip' }));
+    assert.equal(b.sides.player.hand.length, hand, 'skipped: no draw');
+    b = ready(board([ko], [{}]));
+    assert.ok(b.doAction('player', { kind: 'activate', slot: 0, fx: 1 }));
+    assert.ok(b.doAction('player', { kind: 'choose', option: '0' }));
+    assert.equal(b.cardAt('opponent', 0), null, 'KOed');
+    assert.equal(b.sides.player.hand.length, hand + 1, 'then draws');
+}
+
 console.log('all good');

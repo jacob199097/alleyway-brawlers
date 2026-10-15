@@ -157,6 +157,7 @@ function cleanEffect(e) {
     for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level', 'cost_n', 'per_max']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
     if (e.once) out.once = true;
     if (e.or) out.or = true;   // "choose one": this effect or the next
+    if (e.if_done) out.if_done = true;   // "If you do, ...": only if the effect before did something
     if (e.choose) out.choose = true;   // search / recover / revive: the player picks the card
     for (const k of ['if_clan', 'when_clan']) if (e[k] != null) out[k] = String(e[k]);   // ("" = any clan, so kept)
     if (Array.isArray(e.statuses) && e.statuses.length) out.statuses = e.statuses.map(String);   // immune: only these

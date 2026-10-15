@@ -93,6 +93,23 @@ function ofIfClan(cards, e) {
     return cards.filter(x => clan === '' || x.clanTag === clan);
 }
 
+/** if_done ("If you do, ..."): an effect that follows on from the one before it becomes that
+ *  effect's then (see _doFx), so it happens only if the one before did something. */
+function foldIfDone(list) {
+    if (!list.some(e => e && e.if_done)) return list;
+    const out = [];
+    for (const e of list) {
+        if (e && typeof e === 'object' && e.if_done && out.length && out[out.length - 1] && typeof out[out.length - 1] === 'object') {
+            let p = out[out.length - 1] = { ...out[out.length - 1] };
+            while (p.then) p = p.then = { ...p.then };
+            p.then = e;
+        } else {
+            out.push(e);
+        }
+    }
+    return out;
+}
+
 export class DuelState {
     /**
      * @param {{player: Array, opponent: Array}} decks     card ids or {id, ...server stats}
@@ -110,6 +127,7 @@ export class DuelState {
         this.winner = '';
         this.endReason = ''; // how the game ended: 'morale' or 'deck_out'
         this.pending = {};
+        this._did = 0;
         this.sides = {};
         this._events = [];
         this._uid = 0;
@@ -1371,7 +1389,7 @@ export class DuelState {
         // Activate that stands it back up
         const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
         // "*": all of them (Hustles, Ambushes)
-        return (c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
+        return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
             && !(downed && !(when === 'activate' && String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
     }
 
@@ -1538,7 +1556,22 @@ export class DuelState {
         }
     }
 
+    /** then: a follow-up effect that happens only if this one did something ("If you do, ...").
+     *  Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP. */
     _doFx(side, slot, c, e, vs = {}) {
+        const then = e.then && typeof e.then === 'object' ? e.then : null;
+        if (then == null) { this._doFxOne(side, slot, c, e, vs); return; }
+        const did = this._did, asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
+        const next = () => { if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, then, vs); };
+        this._doFxOne(side, slot, c, e, vs);
+        if (this._did > did) next();
+        else if (asks.length > queued) {
+            const ask = asks[queued], cb = ask.cb;
+            ask.cb = (...answer) => { const before = this._did; if (cb) cb(...answer); if (this._did > before) next(); };
+        }
+    }
+
+    _doFxOne(side, slot, c, e, vs = {}) {
         const foe = other(side);
         const s = this.sides[side];
         if (String(e.per ?? '') !== '') {   // "for each ...": nothing to count, nothing happens
@@ -1654,7 +1687,7 @@ export class DuelState {
                     this._emit('draw', { side, card: clone(card), opening: false });
                     return true;
                 });
-                if (!found) this._effect(side, c, `${c.name}: nothing to find in the deck`, slot);
+                if (!found) this._emit('effect', { side, card: clone(c), text: `${c.name}: nothing to find in the deck`, slot });   // (not something done)
                 break;
             }
             case 'revive':
@@ -2297,6 +2330,7 @@ export class DuelState {
     }
 
     _effect(side, c, text, slot = -1) {
+        this._did += 1;   // effects that did something (see then in _doFx)
         this._emit('effect', { side, card: clone(c), text, slot });
     }
 
