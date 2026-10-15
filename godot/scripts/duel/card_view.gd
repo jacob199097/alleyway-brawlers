@@ -438,8 +438,8 @@ func _make_emitter(kind: String) -> CPUParticles2D:
 	return e
 
 
-## Downed: a bloodied wash, a crack across the card, a pulsing red edge and a DOWNED band that
-## reads level however the card lies.
+## Downed: a bloodied wash, a crack across the card and a pulsing red edge (no label, so the art
+## stays visible).
 func _draw_downed(r: Rect2) -> void:
 	var L := _status_layer
 	var p := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.6)
@@ -450,14 +450,6 @@ func _draw_downed(r: Rect2) -> void:
 	L.draw_polyline(crack, Color(0.04, 0.0, 0.0, 0.85), 7.0, true)
 	L.draw_polyline(crack, Color(1.0, 0.32, 0.26, 0.8), 2.5, true)
 	L.draw_rect(r.grow(-2.0), Color(1.0, 0.22, 0.18, 0.5 + 0.4 * p), false, 4.0)
-	# The band, turned back against the card's own turn so it stays level on screen
-	var sideways := absf(sin(rotation)) > 0.7
-	var w := (SIZE.y if sideways else SIZE.x) * 0.92
-	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
-	L.draw_rect(Rect2(-w / 2, -19, w, 38), Color(0.45, 0.02, 0.04, 0.88))
-	L.draw_rect(Rect2(-w / 2, -19, w, 38), Color(1.0, 0.4, 0.35, 0.9), false, 2.0)
-	L.draw_string(ThemeDB.fallback_font, Vector2(-w / 2, 10), "DOWNED", HORIZONTAL_ALIGNMENT_CENTER, w, 26, Color(1.0, 0.92, 0.9))
-	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_statuses() -> void:
