@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.7.16",
+        "notes": [
+            "Your profile picture on the main menu now sits neatly inside its neon frame.",
+            "Downed characters no longer have a big DOWNED label over their art: the red wash, crack and pulsing edge show it."
+        ]
+    },
+    {
         "version": "0.7.15",
         "notes": [
             "Downed characters now switch to DEF, their effects stop working until they stand up, and they look clearly Downed. You'll see a pop-up when they stand back up.",
