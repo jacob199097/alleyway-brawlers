@@ -49,6 +49,7 @@ var _asks: Array = []        # prompts queued behind `pending`
 var _in_answer := false      # prompts raised while answering one go first
 var _new_asks: Array = []
 var _did := 0                # effects that did something (see then in _do_fx)
+var _attack_ctx := {}        # the attack being resolved
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 
 
@@ -459,6 +460,9 @@ func statuses(c: Dictionary) -> Array:
 		out.append("silence")
 	if not _equips_on(c).is_empty():
 		out.append("equipped")
+	# Just promoted or Awakened: it can't attack this turn
+	if int(c.get("rest_turn", -1)) == turn and c.get("has_attacked", false) and not c.get("downed", false):
+		out.append("resting")
 	return out
 
 
@@ -824,6 +828,7 @@ func _attack(side: String, from: int, target: int) -> bool:
 		att.second_attack = turn
 	_emit("attack", {"side": side, "from": from, "target": target, "card": att.duplicate(true)})
 	var ctx := {"side": side, "foe": other(side), "from": from, "target": target, "att": att, "bonus": 0}
+	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
 	if not _passive(side, from, att, "pierce").is_empty():
 		ctx.pierce = true
 	var def_now = card_at(other(side), target) if target >= 0 else null
@@ -1287,10 +1292,10 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		return
 	s.promoted[slot] = true
 	var preview := CardDB.get_card(to_id)
-	_ask(side, "position", "Promote to %s: choose its position" % preview.get("name", to_id), preview, [
+	var ask := _ask(side, "position", "Promote to %s: choose its position" % preview.get("name", to_id), preview, [
 		{"id": "atk", "label": "ATK POSITION"}, {"id": "def", "label": "DEF POSITION"},
 	], func(pos: String):
-		if card_at(side, slot) != old:
+		if card_at(side, slot) != old or old.get("downed", false) or in_stasis(old):
 			return
 		var promoted = null
 		for i in s.hideout.size():
@@ -1302,8 +1307,11 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		promoted.position = pos
 		promoted.face_down = false
 		promoted.has_attacked = true   # promotion sickness: sits out the rest of the turn
+		promoted.rest_turn = turn   # shown as resting: it can't attack this turn
 		promoted.deployed_turn = turn
 		s.field[slot] = promoted
+		if not _attack_ctx.is_empty() and is_same(_attack_ctx.att, old):   # promoted mid-attack: the attack goes on
+			_attack_ctx.att = promoted
 		old.mods = []
 		old.downed = false
 		_clear_status(old)
@@ -1319,6 +1327,8 @@ func _promote(side: String, slot: int, reason: String) -> void:
 					_draw(side)
 					_draw(side)
 					break)
+	# Downed, KO'd or in STASIS before the player answers (an Ambush mid-attack): it doesn't promote
+	ask.still = func() -> bool: return card_at(side, slot) == old and not old.get("downed", false) and not in_stasis(old)
 
 
 ## King Roan awakens at the start of your turn once you control 4+ LIONS characters or have
@@ -1373,6 +1383,8 @@ func _check_awaken(side: String) -> void:
 		s.leader_state = "awake"
 		king.position = "atk"
 		king.has_attacked = not bool(cond.get("ready", false))   # ready: it may attack the turn it Awakens
+		if not bool(cond.get("ready", false)):
+			king.rest_turn = turn
 		king.deployed_turn = turn
 		s.field[slot] = king
 		_emit("awaken", {"side": side, "slot": slot, "card": king.duplicate(true)})
@@ -2435,13 +2447,14 @@ func _set_phase(p: String) -> void:
 
 # ── Prompts ──────────────────────────────────────────────────────────────────
 
-func _ask(side: String, key: String, prompt: String, card: Dictionary, options: Array, cb: Callable) -> void:
+func _ask(side: String, key: String, prompt: String, card: Dictionary, options: Array, cb: Callable) -> Dictionary:
 	var ask := {"kind": "choose", "side": side, "key": key, "prompt": prompt, "options": options,
 		"card": card.duplicate(true), "cb": cb}
 	if _in_answer:
 		_new_asks.append(ask)
 	else:
 		_asks.append(ask)
+	return ask
 
 
 ## Pick one character from `entries` ([{slot, card}], best first). One option resolves at once.
@@ -2548,6 +2561,8 @@ func _run_answer(cb: Callable) -> void:
 func _flush_asks() -> void:
 	while pending.is_empty() and not _asks.is_empty() and winner == "":
 		var ask: Dictionary = _asks.pop_front()
+		if ask.has("still") and not ask.still.call():   # no longer applies (e.g. a promotion whose card went Down)
+			continue
 		if ask.kind == "discard" and sides[ask.side].hand.is_empty():
 			if ask.cb.is_valid():
 				_run_answer(ask.cb)
@@ -2559,6 +2574,7 @@ func _flush_asks() -> void:
 static func _prompt_event(ask: Dictionary) -> Dictionary:
 	var ev := ask.duplicate()
 	ev.erase("cb")
+	ev.erase("still")
 	return ev
 
 

@@ -65,10 +65,16 @@ func _run() -> void:
 				duel_screen._act("player", {"kind": "discard", "uid": v.uid})
 			else:
 				_check(duel_screen._mode == "choose", "effect prompt shown")
-				var btn := _first_enabled_button(duel_screen._menu)
-				_check(btn != null, "prompt has buttons")
 				prompts[d.pending.key] = prompts.get(d.pending.key, 0) + 1
-				btn.pressed.emit()
+				if not duel_screen._valid.is_empty():
+					# A target on the field: click the first glowing card, as a player would
+					var key: String = duel_screen._valid.keys()[0]
+					var parts := key.split(":")
+					_check(duel_screen._choose_at(duel_screen.slot_pos(parts[0], int(parts[1]))), "clicking a glowing card answers the prompt")
+				else:
+					var btn := _first_enabled_button(duel_screen._menu)
+					_check(btn != null, "prompt has buttons")
+					btn.pressed.emit()
 			continue
 		if d.active != "player":
 			continue

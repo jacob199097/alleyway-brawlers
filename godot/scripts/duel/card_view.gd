@@ -16,6 +16,7 @@ const STATUS_STYLE := {
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
+	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 }
 
 var card: Dictionary = {}
@@ -502,6 +503,11 @@ func _draw_statuses() -> void:
 			L.draw_line(Vector2(tx - 26.0, ty), Vector2(tx, ty), Color(0.71, 0.9, 0.33, 0.85 * (1.0 - ph)), 2.0, true)
 	if statuses.has("stasis"):
 		_draw_time_bubble(L, r, t)
+	if statuses.has("resting"):
+		for i in 3:   # "z"s drifting up off its top corner: it can't attack this turn
+			var ph := fmod(t * 0.45 + i / 3.0, 1.0)
+			var at := Vector2(r.end.x - 26.0 + ph * 18.0 + sin(t * 2.0 + i) * 3.0, r.position.y + 6.0 - ph * 46.0)
+			L.draw_string(ThemeDB.fallback_font, at, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 + ph * 10), Color(0.85, 0.85, 1.0, 0.9 * (1.0 - ph)))
 	var font := ThemeDB.fallback_font
 	var x := r.position.x + 4.0
 	var y := r.position.y + 4.0

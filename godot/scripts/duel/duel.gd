@@ -829,7 +829,13 @@ func pile_pos(side: String, pile: String) -> Vector2:
 func _target_pos(side: String, slot: int) -> Vector2:
 	if slot == DuelState.LEADER:
 		return pile_pos(side, "leader")
-	return slot_pos(side, slot) if slot >= 0 else Vector2(1080, ROWS[side][0])
+	if slot >= 0:
+		return slot_pos(side, slot)
+	# A direct attack hits the player: their Morale panel (not a card that happens to be in the middle lane)
+	if _panels.has(side):
+		var root: Control = _panels[side].root
+		return get_viewport().get_canvas_transform().affine_inverse() * root.get_global_rect().get_center()
+	return Vector2(1080, ROWS[side][0])
 
 
 func _slot_at(side: String, p: Vector2) -> int:
@@ -3016,8 +3022,13 @@ func _show_keyword_tip(p: Control, tip: PanelContainer, tip_text: RichTextLabel,
 	tip.position = Vector2(clampf(m.x - tip.size.x / 2.0, 4.0, p.size.x - tip.size.x - 4.0), maxf(4.0, m.y - tip.size.y - 14.0))
 
 
+## A card's statuses for the hover panel: DOWNED first when it is Downed.
+func _live_statuses(v: CardView) -> Array:
+	return (["downed"] if v.downed else []) + v.statuses
+
 const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS"}
+	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
+	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)"}
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
@@ -3381,6 +3392,12 @@ func _player_ready() -> void:
 ## A prompt from a card effect: buttons for each option, and the cards it refers to light up
 ## (click one of those to choose it too).
 func _show_choice(p: Dictionary) -> void:
+	# Choosing a card on the field (an effect's target): click it there, no list over the board
+	var on_field: Array = p.options.filter(func(o): return o.has("slot"))
+	var rest: Array = p.options.filter(func(o): return not o.has("slot"))
+	if not on_field.is_empty() and str(p.get("key", "")) != "ambush" and rest.all(func(o): return str(o.id) == "skip"):
+		_show_target_choice(p)
+		return
 	_cancel_interaction()
 	_mode = "choose"
 	var box := PanelContainer.new()
@@ -3420,6 +3437,51 @@ func _show_choice(p: Dictionary) -> void:
 	_menu = box
 	Sfx.play("effect", 1.3, -6.0)
 	queue_redraw()
+
+
+## A slim bar in the gap between the rows: what to choose (and SKIP); the targets glow on the field.
+func _show_target_choice(p: Dictionary) -> void:
+	_cancel_interaction()
+	_mode = "choose"
+	for o in p.options:
+		if o.has("slot"):
+			_valid["%s:%d" % [o.side, o.slot]] = GOLD
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.94), GOLD, 2, 8))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	box.add_child(row)
+	var title := _label(18, Color.WHITE, true)
+	title.text = "%s  ·  click a glowing card" % p.prompt
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(title)
+	for o in p.options:
+		if not o.has("slot"):
+			var b := Button.new()
+			b.text = o.label
+			b.custom_minimum_size = Vector2(110, 30)
+			b.pressed.connect(_pick.bind(str(o.id)))
+			row.add_child(b)
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, DIVIDER_Y - sz.y / 2)
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	_menu = box
+	Sfx.play("effect", 1.3, -6.0)
+	queue_redraw()
+
+
+## A prompt that picks a card on the field: the glowing card at p (if any) is the answer.
+func _choose_at(p: Vector2) -> bool:
+	for side in ["player", "opponent"]:
+		var slot := _slot_at(side, p)
+		if slot >= 0 and _valid.has("%s:%d" % [side, slot]):
+			for o in duel.pending.get("options", []):
+				if o.get("side") == side and o.get("slot") == slot:
+					_pick(str(o.id))
+					return true
+	return false
 
 
 func _pick(option: String) -> void:
@@ -3531,11 +3593,11 @@ func _update_hover() -> void:
 			Sfx.play("click", 1.4, -12.0)
 	if v:
 		if not v.face_up and v.side == "player" and not v.card.is_empty():
-			_show_detail(v.card, v.stats(), v.statuses)   # your own face-down card: you know what it is
+			_show_detail(v.card, v.stats(), _live_statuses(v))   # your own face-down card: you know what it is
 		elif not v.face_up:
 			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid, "back_side": v.side})
 		else:
-			_show_detail(v.card, v.stats(), v.statuses)
+			_show_detail(v.card, v.stats(), _live_statuses(v))
 		return
 	for side in ["player", "opponent"]:
 		if Rect2(pile_pos(side, "gutter") - CARD / 2, CARD).has_point(m):
@@ -3563,13 +3625,7 @@ func _on_press() -> void:
 		return
 	match _mode:
 		"choose":
-			for side in ["player", "opponent"]:
-				var slot := _slot_at(side, m)
-				if slot >= 0 and _valid.has("%s:%d" % [side, slot]):
-					for o in duel.pending.get("options", []):
-						if o.get("side") == side and o.get("slot") == slot:
-							_pick(str(o.id))
-							return
+			_choose_at(m)
 			return
 		"discard":
 			var hv := _hand_view_at(m)

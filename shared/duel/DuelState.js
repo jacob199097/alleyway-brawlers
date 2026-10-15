@@ -128,6 +128,7 @@ export class DuelState {
         this.endReason = ''; // how the game ended: 'morale' or 'deck_out'
         this.pending = {};
         this._did = 0;
+        this._attackCtx = null;
         this.sides = {};
         this._events = [];
         this._uid = 0;
@@ -427,6 +428,8 @@ export class DuelState {
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
         if (this._equipsOn(c).length) out.push('equipped');
+        // Just promoted or Awakened: it can't attack this turn
+        if (toInt(c.rest_turn ?? -1) === this.turn && c.has_attacked && !c.downed) out.push('resting');
         return out;
     }
 
@@ -765,6 +768,7 @@ export class DuelState {
         }
         this._emit('attack', { side, from, target, card: clone(att) });
         const ctx = { side, foe: other(side), from, target, att, bonus: 0 };
+        this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
         if (this._passive(side, from, att, 'pierce')) ctx.pierce = true;
         const defNow = target >= 0 ? this.cardAt(other(side), target) : null;
         let k = 0;
@@ -1228,10 +1232,10 @@ export class DuelState {
         if (toId === '') return;
         s.promoted[slot] = true;
         const preview = getCard(toId);
-        this._ask(side, 'position', `Promote to ${preview.name ?? toId}: choose its position`, preview, [
+        const ask = this._ask(side, 'position', `Promote to ${preview.name ?? toId}: choose its position`, preview, [
             { id: 'atk', label: 'ATK POSITION' }, { id: 'def', label: 'DEF POSITION' },
         ], (pos) => {
-            if (this.cardAt(side, slot) !== old) return;
+            if (this.cardAt(side, slot) !== old || old.downed || this.inStasis(old)) return;
             let promoted = null;
             const i = s.hideout.findIndex(h => h.id === toId);
             if (i >= 0) promoted = s.hideout.splice(i, 1)[0];
@@ -1239,8 +1243,10 @@ export class DuelState {
             promoted.position = pos;
             promoted.face_down = false;
             promoted.has_attacked = true;
+            promoted.rest_turn = this.turn;   // shown as resting: it can't attack this turn
             promoted.deployed_turn = this.turn;
             s.field[slot] = promoted;
+            if (this._attackCtx && this._attackCtx.att === old) this._attackCtx.att = promoted;   // promoted mid-attack: the attack goes on
             old.mods = [];
             old.downed = false;
             this._clearStatus(old);
@@ -1259,6 +1265,8 @@ export class DuelState {
                 }
             }
         });
+        // Downed, KO'd or in STASIS before the player answers (an Ambush mid-attack): it doesn't promote
+        ask.still = () => this.cardAt(side, slot) === old && !old.downed && !this.inStasis(old);
     }
 
     _checkAwaken(side) {
@@ -1304,6 +1312,7 @@ export class DuelState {
             s.leader_state = 'awake';
             king.position = 'atk';
             king.has_attacked = !cond.ready;   // ready: it may attack the turn it Awakens
+            if (!cond.ready) king.rest_turn = this.turn;
             king.deployed_turn = this.turn;
             s.field[slot] = king;
             this._emit('awaken', { side, slot, card: clone(king) });
@@ -2202,6 +2211,7 @@ export class DuelState {
         const ask = { kind: 'choose', side, key, prompt, options, card: clone(card), cb };
         if (this._inAnswer) this._newAsks.push(ask);
         else this._asks.push(ask);
+        return ask;
     }
 
     /** optional: the player always chooses (even from one) and may skip it (a card effect's target). */
@@ -2293,6 +2303,7 @@ export class DuelState {
     _flushAsks() {
         while (isEmpty(this.pending) && this._asks.length && this.winner === '') {
             const ask = this._asks.shift();
+            if (ask.still && !ask.still()) continue;   // no longer applies (e.g. a promotion whose card went Down)
             if (ask.kind === 'discard' && !this.sides[ask.side].hand.length) {
                 if (ask.cb) this._runAnswer(ask.cb);
                 continue;
@@ -2398,6 +2409,7 @@ function enforcerWorthIt(att, target, be) {
 function promptEvent(ask) {
     const ev = { ...ask };
     delete ev.cb;
+    delete ev.still;
     return ev;
 }
 

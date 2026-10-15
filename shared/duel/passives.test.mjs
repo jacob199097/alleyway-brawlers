@@ -317,4 +317,39 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     assert.equal(b.sides.player.hand.length, hand + 1, 'then draws');
 }
 
+// An attacker that promotes as it attacks (Lyra Quell) carries on as its new form: an Ambush that
+// Downs the attacker (Tripwire) Downs the promoted card, and the attack isn't called off
+{
+    CARD_CATALOG.test_striver2 = { ...CARD_CATALOG.test_grunt, id: 'test_striver2', name: 'Test Striver 2', subtype: 'striver', level: 2, attack: 1500 };
+    CARD_CATALOG.test_striver = { ...CARD_CATALOG.test_grunt, id: 'test_striver', name: 'Test Striver', subtype: 'striver', promotesTo: 'test_striver2',
+        effects: [{ when: 'attack', do: 'promote', if: 'vs_def' }] };
+    const striver = { id: 'test_striver', subtype: 'striver', effects: CARD_CATALOG.test_striver.effects };
+    const setup = () => {
+        const b = board([striver], [{ position: 'def' }]);
+        const trap = b.makeCard({ id: 'test_grunt', name: 'Test Tripwire', cardType: 'ambush', effectKey: '', effects: [{ when: 'defend', do: 'down', target: 'attacker' }] });
+        trap.face_down = true;
+        b.sides.opponent.field[5] = trap;
+        assert.ok(b.doAction('player', { kind: 'attack', from: 0, target: 0 }));
+        return b;
+    };
+    // Promotion first (the usual order): the attack carries on as the promoted card, and the Ambush Downs it
+    let b = setup();
+    assert.equal(b.pending.key, 'position', 'promote first');
+    assert.ok(b.doAction('player', { kind: 'choose', option: 'atk' }));
+    assert.equal(b.cardAt('player', 0).id, 'test_striver2', 'promoted');
+    assert.equal(b.pending.key, 'ambush', 'then the opponent may spring');
+    assert.ok(b.doAction('opponent', { kind: 'choose', option: '5' }));
+    assert.ok(b.cardAt('player', 0).downed, 'the promoted attacker is Downed');
+    // The Ambush first: the attacker goes Down, so it doesn't promote (and isn't asked)
+    b = setup();
+    b._asks.unshift(b.pending); b.pending = {};
+    b._asks.unshift(b._asks.splice(b._asks.findIndex(x => x.key === 'ambush'), 1)[0]);
+    b._flushAsks();
+    assert.equal(b.pending.key, 'ambush');
+    assert.ok(b.doAction('opponent', { kind: 'choose', option: '5' }));
+    assert.ok(b.cardAt('player', 0).downed, 'the attacker is Downed');
+    assert.ok(b.pending.key !== 'position', 'no promotion to answer');
+    assert.equal(b.cardAt('player', 0).id, 'test_striver', 'it stays as it was');
+}
+
 console.log('all good');
