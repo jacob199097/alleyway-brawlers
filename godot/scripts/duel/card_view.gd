@@ -438,18 +438,20 @@ func _make_emitter(kind: String) -> CPUParticles2D:
 	return e
 
 
-## Downed: a bloodied wash, a crack across the card and a pulsing red edge (no label, so the art
-## stays visible).
+## Downed: a bloodied wash, a pulsing red edge and a small DOWNED tag that reads level however the
+## card lies.
 func _draw_downed(r: Rect2) -> void:
 	var L := _status_layer
 	var p := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.6)
 	L.draw_rect(r, Color(0.3, 0.0, 0.02, 0.3))
-	var crack := PackedVector2Array([r.position + Vector2(r.size.x * 0.12, 0), r.position + Vector2(r.size.x * 0.34, r.size.y * 0.22),
-		r.position + Vector2(r.size.x * 0.22, r.size.y * 0.41), r.position + Vector2(r.size.x * 0.58, r.size.y * 0.63),
-		r.position + Vector2(r.size.x * 0.47, r.size.y * 0.8), r.position + Vector2(r.size.x * 0.82, r.size.y)])
-	L.draw_polyline(crack, Color(0.04, 0.0, 0.0, 0.85), 7.0, true)
-	L.draw_polyline(crack, Color(1.0, 0.32, 0.26, 0.8), 2.5, true)
 	L.draw_rect(r.grow(-2.0), Color(1.0, 0.22, 0.18, 0.5 + 0.4 * p), false, 4.0)
+	# The tag, turned back against the card's own turn so it stays level on screen
+	var tag := Rect2(-34, -10, 68, 20)
+	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+	L.draw_rect(tag, Color(0.12, 0.01, 0.02, 0.8))
+	L.draw_rect(tag, Color(1.0, 0.35, 0.3, 0.7), false, 1.5)
+	L.draw_string(ThemeDB.fallback_font, Vector2(tag.position.x, 5), "DOWNED", HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color(1.0, 0.85, 0.82))
+	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_statuses() -> void:
