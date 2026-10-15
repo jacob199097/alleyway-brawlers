@@ -1,5 +1,18 @@
 [
     {
+        "version": "0.7.18",
+        "notes": [
+            "A full front row no longer locks your hand: drop a character on one of your own (orange lanes) to replace it. The old one goes to the Gutter.",
+            "Some Heavies now need 2 or 3 sacrifices: click each character to give up.",
+            "Click your Hideout, your Gutter or your opponent's Gutter to look through every card in it.",
+            "Choosing a target for an effect: click a glowing card on the field (no more list), or SKIP.",
+            "Militia characters arrive by airdrop. Characters summoned in DEF land sideways straight away.",
+            "Just promoted or Awakened? A ZZZ tag shows they can't attack this turn. Downed cards show DOWNED when you hover them.",
+            "Fixed: a character that promoted as it attacked (like Lyra Quell) dodged Ambushes such as Tripwire, or promoted after being Downed.",
+            "Direct attacks now hit the opponent's Morale, not a card in the middle lane."
+        ]
+    },
+    {
         "version": "0.7.17",
         "notes": [
             "The Militia clan has arrived: 33 new cards led by General Graves, with its own starter deck and booster pack. Choose it as your clan or open its packs in the shop.",

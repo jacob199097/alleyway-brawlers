@@ -89,18 +89,17 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or c.base_attack > heavy.base_attack):
 				heavy = c
 		if heavy != null:
-			var fodder = null
-			var fodder_value := 0
-			for e in d.characters(side):
-				if e.card.get("cardType") == "leader" or d.in_stasis(e.card):
-					continue
-				var v := _keep_value(e.card)
-				if fodder == null or v < fodder_value:
-					fodder = e
-					fodder_value = v
+			# Its sacrifices: the characters least worth keeping (ties: the leftmost lane)
+			var n := DuelState.tributes_for(heavy)
+			var fodder: Array = d.characters(side).filter(func(e): return d.can_sacrifice(side, e.slot)) 				.map(func(e): return {"slot": e.slot, "v": _keep_value(e.card)})
+			fodder.sort_custom(func(x, y): return x.v < y.v or (x.v == y.v and x.slot < y.slot))
+			fodder = fodder.slice(0, n)
+			var given := 0
+			for f in fodder:
+				given += int(f.v)
 			var margin := 400 if level == "hard" else 800
-			if fodder != null and heavy.base_attack >= fodder_value + margin:
-				return {"kind": "summon", "uid": heavy.uid, "slot": fodder.slot, "tribute": fodder.slot,
+			if fodder.size() == n and heavy.base_attack >= given + margin:
+				return {"kind": "summon", "uid": heavy.uid, "slot": fodder[0].slot, "tributes": fodder.map(func(f): return f.slot),
 					"position": "atk" if heavy.base_attack >= threat else "def"}
 
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
@@ -116,6 +115,21 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 		if best != null:
 			var pos := "atk" if best.base_attack >= threat else "def"
 			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": pos}
+	elif level != "easy":
+		# Front row full: deploy over the character least worth keeping, for a clearly stronger one
+		# (a Downed one counts half: it stands back up, if it isn't finished off first)
+		var worth := func(c: Dictionary) -> int: return int(c.attack) / 2 if c.downed else _keep_value(c)
+		var mine: Array = d.characters(side).filter(func(e): return d.can_sacrifice(side, e.slot)) 			.map(func(e): return {"slot": e.slot, "v": worth.call(e.card)})
+		mine.sort_custom(func(x, y): return x.v < y.v or (x.v == y.v and x.slot < y.slot))
+		if not mine.is_empty():
+			var weakest: Dictionary = mine[0]
+			var best = null
+			for c in s.hand:
+				if d.can_summon(side, c, weakest.slot, weakest.slot) and (best == null or c.base_attack > best.base_attack):
+					best = c
+			if best != null and best.base_attack >= int(weakest.v) + (400 if level == "hard" else 800):
+				return {"kind": "summon", "uid": best.uid, "slot": weakest.slot, "tributes": [weakest.slot],
+					"position": "atk" if best.base_attack >= threat else "def"}
 
 	for slot in DuelState.BACK:
 		if s.field[slot] == null:

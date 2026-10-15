@@ -185,23 +185,56 @@ static func needs_tribute(c) -> bool:
 	return c != null and c.get("subtype") == "heavy"
 
 
-## Summon `c` into `slot`. A Heavy names the character it sacrifices (`tribute`), and takes
-## that lane; anything else needs an empty lane and no tribute.
-func can_summon(side: String, c: Dictionary, slot: int, tribute := -1) -> bool:
+## How many characters a Heavy sacrifices (tributeCost, 1-3; 0: not a Heavy).
+static func tributes_for(c) -> int:
+	if not needs_tribute(c):
+		return 0
+	var n := int(c.get("tributeCost", 1))
+	return clampi(n if n > 0 else 1, 1, 3)
+
+
+## tribute: a slot (-1 none) or a list of slots.
+static func tribute_list(tribute) -> Array:
+	if tribute is Array:
+		return tribute.map(func(t): return int(t))
+	return [int(tribute)] if int(tribute) >= 0 else []
+
+
+## One of your characters a deploy can send to the Gutter (a Heavy's sacrifice, or one deployed over).
+func can_sacrifice(side: String, slot: int) -> bool:
+	var t = card_at(side, slot) if slot in FRONT else null
+	return t != null and t.get("cardType") != "leader" and not in_stasis(t)
+
+
+## Summon `c` into `slot`. A Heavy names the characters it sacrifices (`tribute`: their slots;
+## it takes one of their lanes). Anything else goes in an empty lane, or over one of your
+## characters (`tribute`: that slot), which goes to the Gutter.
+func can_summon(side: String, c: Dictionary, slot: int, tribute = -1) -> bool:
 	if not can_deploy_now(side) or c.get("cardType") != "gang_member":
 		return false
 	if not slot in FRONT or sides[side].authority < cost_of(side, c):
 		return false
+	var list := tribute_list(tribute)
+	var seen := {}
+	for t in list:
+		if seen.has(t) or not can_sacrifice(side, t):
+			return false
+		seen[t] = true
 	if needs_tribute(c):
-		var t = card_at(side, tribute) if tribute in FRONT else null
-		return slot == tribute and t != null and t.get("cardType") != "leader" and not in_stasis(t)
-	return tribute == -1 and sides[side].field[slot] == null
+		return list.size() == tributes_for(c) and slot in list
+	if list.is_empty():
+		return sides[side].field[slot] == null
+	return list.size() == 1 and list[0] == slot
 
 
-## Whether `c` can be summoned anywhere right now (a Heavy needs a character to sacrifice).
+## Whether `c` can be summoned anywhere right now (a Heavy needs characters to sacrifice).
 func can_summon_somewhere(side: String, c: Dictionary) -> bool:
+	var n := tributes_for(c)
+	var fodder := FRONT.filter(func(t): return can_sacrifice(side, t))
+	if n > 0:
+		return fodder.size() >= n and can_summon(side, c, fodder[0], fodder.slice(0, n))
 	for slot in FRONT:
-		if can_summon(side, c, slot, slot if needs_tribute(c) else -1):
+		if can_summon(side, c, slot) or can_summon(side, c, slot, slot):
 			return true
 	return false
 
@@ -638,7 +671,7 @@ func do_action(side: String, a: Dictionary) -> bool:
 	var ok := false
 	match a.get("kind", ""):
 		"summon":
-			ok = _summon(side, int(a.uid), int(a.slot), str(a.get("position", "atk")), int(a.get("tribute", -1)))
+			ok = _summon(side, int(a.uid), int(a.slot), str(a.get("position", "atk")), a.tributes if a.get("tributes") is Array else int(a.get("tribute", -1)))
 		"set":
 			ok = _set_ambush(side, int(a.uid), int(a.slot))
 		"hustle":
@@ -667,22 +700,25 @@ func do_action(side: String, a: Dictionary) -> bool:
 	return ok
 
 
-func _summon(side: String, uid: int, slot: int, position: String, tribute := -1) -> bool:
+func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) -> bool:
 	var i := _hand_index(side, uid)
 	if i < 0 or not can_summon(side, sides[side].hand[i], slot, tribute):
 		return false
 	var c: Dictionary = sides[side].hand[i]
 	_spend(side, cost_of(side, c))
 	sides[side].hand.remove_at(i)
-	if needs_tribute(c):
-		var t: Dictionary = card_at(side, tribute)
-		sides[side].field[tribute] = null
+	for slot_ in tribute_list(tribute):   # sacrificed, or deployed over
+		var t: Dictionary = card_at(side, slot_)
+		sides[side].field[slot_] = null
 		t.downed = false
 		t.mods = []
 		_clear_status(t)
 		if not t.get("token", false):   # (tokens vanish)
 			sides[side].gutter.append(t)
-		_emit("tribute", {"side": side, "slot": tribute, "card": t.duplicate(true), "for": c.duplicate(true)})
+		var ev := {"side": side, "slot": slot_, "card": t.duplicate(true), "for": c.duplicate(true)}
+		if not needs_tribute(c):
+			ev.replace = true
+		_emit("tribute", ev)
 	c.position = "def" if position == "def" else "atk"
 	c.face_down = false   # characters are always face-up, in ATK or DEF (only Ambushes are set face-down)
 	c.has_attacked = false

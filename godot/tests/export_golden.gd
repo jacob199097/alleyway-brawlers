@@ -180,7 +180,10 @@ func _init() -> void:
 				for i in deck.size():
 					var kind: String = CardDB.get_card(deck[i]).get("cardType", "")
 					if kind == "gang_member":
+						var heavy: bool = CardDB.get_card(deck[i]).get("subtype", "") == "heavy"
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_SAMPLES[rng.randi_range(0, FX_SAMPLES.size() - 1)]}
+						if heavy:
+							deck[i].tributeCost = 1 + i % 3   # Heavies that sacrifice 1, 2 or 3
 					elif kind in ["hustle", "ambush"] and rng.randi_range(0, 2) == 0:
 						var pool: Array = HUSTLE_LASTING if kind == "hustle" else AMBUSH_LASTING
 						var spec: Dictionary = pool[rng.randi_range(0, pool.size() - 1)].duplicate(true)

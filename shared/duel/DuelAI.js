@@ -113,18 +113,15 @@ function deploy(d, side, level) {
             if (DuelState.needsTribute(c) && d.canSummonSomewhere(side, c) && (heavy == null || c.base_attack > heavy.base_attack)) heavy = c;
         }
         if (heavy != null) {
-            let fodder = null, fodderValue = 0;
-            for (const e of d.characters(side)) {
-                if (e.card.cardType === 'leader' || d.inStasis(e.card)) continue;
-                const v = keepValue(e.card);
-                if (fodder == null || v < fodderValue) {
-                    fodder = e;
-                    fodderValue = v;
-                }
-            }
+            // Its sacrifices: the characters least worth keeping (ties: the leftmost lane)
+            const n = DuelState.tributesFor(heavy);
+            const fodder = d.characters(side).filter(e => d.canSacrifice(side, e.slot))
+                .map(e => ({ slot: e.slot, v: keepValue(e.card) }))
+                .sort((x, y) => x.v - y.v || x.slot - y.slot).slice(0, n);
+            const given = fodder.reduce((sum, f) => sum + f.v, 0);
             const margin = level === 'hard' ? 400 : 800;
-            if (fodder != null && heavy.base_attack >= fodderValue + margin) {
-                return { kind: 'summon', uid: heavy.uid, slot: fodder.slot, tribute: fodder.slot,
+            if (fodder.length === n && heavy.base_attack >= given + margin) {
+                return { kind: 'summon', uid: heavy.uid, slot: fodder[0].slot, tributes: fodder.map(f => f.slot),
                     position: heavy.base_attack >= t ? 'atk' : 'def' };
             }
         }
@@ -142,6 +139,21 @@ function deploy(d, side, level) {
         }
         if (best != null) {
             return { kind: 'summon', uid: best.uid, slot: free[0], position: best.base_attack >= t ? 'atk' : 'def' };
+        }
+    } else if (level !== 'easy') {
+        // Front row full: deploy over the character least worth keeping, for a clearly stronger one
+        // (a Downed one counts half: it stands back up, if it isn't finished off first)
+        const worth = (c) => (c.downed ? Math.trunc(c.attack / 2) : keepValue(c));
+        const weakest = d.characters(side).filter(e => d.canSacrifice(side, e.slot))
+            .map(e => ({ slot: e.slot, v: worth(e.card) })).sort((x, y) => x.v - y.v || x.slot - y.slot)[0];
+        if (weakest != null) {
+            let best = null;
+            for (const c of s.hand) {
+                if (d.canSummon(side, c, weakest.slot, weakest.slot) && (best == null || c.base_attack > best.base_attack)) best = c;
+            }
+            if (best != null && best.base_attack >= weakest.v + (level === 'hard' ? 400 : 800)) {
+                return { kind: 'summon', uid: best.uid, slot: weakest.slot, tributes: [weakest.slot], position: best.base_attack >= t ? 'atk' : 'def' };
+            }
         }
     }
     for (const slot of BACK) {

@@ -91,7 +91,8 @@ for (const [key, raw] of Object.entries(exported)) {
             c.level = 1;
             c.promotesTo = null;
         }
-        c.tributeCost = c.subtype === 'heavy' ? 1 : 0;
+        // A Heavy sacrifices 1-3 of your characters (the Forge's "Sacrifices"; blank: 1)
+        c.tributeCost = c.subtype === 'heavy' ? Math.min(3, Math.max(1, int(raw.tributeCost) || 1)) : 0;
     }
     if (raw.cardType === 'leader' && raw.awakenCondition) c.awakenCondition = raw.awakenCondition;
     if (raw.cardType === 'leader' && raw.influence != null) c.influence = int(raw.influence);   // Influence while Dormant

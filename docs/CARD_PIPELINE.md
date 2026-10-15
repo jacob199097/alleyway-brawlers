@@ -21,8 +21,12 @@ Character roles follow the class rules, and the importer enforces them:
 
 - **Striver**: the only role with levels (Lv.1 to Lv.3). It promotes into the card set in "Promotes to".
 - **Brawler**: standalone, always level 1, never promotes. Usually cheap, low-Authority cards.
-- **Heavy**: standalone, always level 1, high Authority. Playing one sacrifices one of your characters on
-  the field, and the Heavy takes that lane.
+- **Heavy**: standalone, always level 1, high Authority. Playing one sacrifices 1-3 of your characters on
+  the field (the Forge's **Sacrifices**, next to Role; `tributeCost` in the game), and the Heavy takes one
+  of their lanes.
+
+Any other character can be deployed in an empty lane, or over one of your own characters (not a leader
+or one in STASIS): that one goes to the Gutter (not a KO), so a full front row never locks your hand.
 
 Keyword effects are effect blocks in the Forge. Each keyword has its own colour on the card, and in the game
 hovering it shows what it does. The game's copy of the colours and meanings is `godot/scripts/keywords.gd`;

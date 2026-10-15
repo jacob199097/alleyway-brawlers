@@ -352,4 +352,47 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     assert.equal(b.cardAt('player', 0).id, 'test_striver', 'it stays as it was');
 }
 
+// Deploying over one of your own characters: it goes to the Gutter (not a KO), the new one takes the lane
+{
+    const b = board([{}, {}, {}, {}, {}], []);
+    b.phase = 'deployment';
+    b.sides.player.authority = 9;
+    const card = b.makeCard('test_grunt');
+    b.sides.player.hand.push(card);
+    assert.ok(!b.canSummon('player', card, 2), 'the lane is taken');
+    assert.ok(b.canSummon('player', card, 2, 2), 'but it can go over the character there');
+    assert.ok(b.canSummonSomewhere('player', card), 'so a full row still lets it be played');
+    const old = b.cardAt('player', 2);
+    assert.ok(b.doAction('player', { kind: 'summon', uid: card.uid, slot: 2, position: 'atk', tributes: [2] }));
+    assert.equal(b.cardAt('player', 2), card, 'the new one is in the lane');
+    assert.ok(b.sides.player.gutter.includes(old), 'the old one is in the Gutter');
+    const ev = b.takeEvents().find(e => e.type === 'tribute');
+    assert.ok(ev && ev.replace, 'shown as replaced');
+    assert.ok(!b.canSummon('player', card, 1, 3), 'only over the lane it goes in');
+}
+
+// A Heavy that sacrifices 2: both go to the Gutter, it takes the first one's lane, the other lane empties
+{
+    CARD_CATALOG.test_heavy2 = { ...CARD_CATALOG.test_grunt, id: 'test_heavy2', name: 'Test Heavy', subtype: 'heavy', tributeCost: 2, attack: 3000 };
+    const b = board([{}, {}], []);
+    b.phase = 'deployment';
+    b.sides.player.authority = 9;
+    const heavy = b.makeCard('test_heavy2');
+    b.sides.player.hand.push(heavy);
+    assert.equal(DuelState.tributesFor(heavy), 2);
+    assert.ok(!b.canSummon('player', heavy, 0, 0), 'one sacrifice is not enough');
+    assert.ok(!b.canSummon('player', heavy, 0, [0, 0]), 'the same one twice is not two');
+    assert.ok(b.canSummonSomewhere('player', heavy));
+    assert.ok(b.doAction('player', { kind: 'summon', uid: heavy.uid, slot: 1, position: 'atk', tributes: [1, 0] }));
+    assert.equal(b.cardAt('player', 1), heavy);
+    assert.equal(b.cardAt('player', 0), null, 'the other sacrifice leaves its lane empty');
+    assert.equal(b.sides.player.gutter.length, 2);
+    const b2 = board([{}], []);
+    b2.phase = 'deployment';
+    b2.sides.player.authority = 9;
+    const h2 = b2.makeCard('test_heavy2');
+    b2.sides.player.hand.push(h2);
+    assert.ok(!b2.canSummonSomewhere('player', h2), 'with only one character it can\u2019t be played');
+}
+
 console.log('all good');

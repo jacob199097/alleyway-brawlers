@@ -69,7 +69,7 @@ Right-click any card to zoom it.
 | See a card's details | Hover over it |
 | Play a card | Click it in your hand for options, or drag it onto a slot |
 | Attack | In the Brawl phase, click a glowing character, then click a target: an enemy character, or their dormant leader (always allowed) to hit its Influence. When the enemy has no standing characters (none, or only Downed ones), you can also attack directly |
-| Character actions | Click your character to change its position, promote it (Strivers only) or use its ability (Maya Lv.3). A Heavy is played onto one of your characters, which is sacrificed. |
+| Character actions | Click your character to change its position, promote it (Strivers only) or use its ability (Maya Lv.3). A Heavy is played onto one of your characters, which is sacrificed (some Heavies need 2 or 3: click the others after). Any other character can be dropped on one of yours to replace it (orange lanes). Click your Hideout or either Gutter to look through it. |
 | Card prompts | Effects that say "you may" or "choose" open a panel. Click an option, or click a highlighted card |
 | Next phase | **Space** / **Enter**, or the button on the right |
 | Cancel | Right-click |

@@ -215,27 +215,49 @@ export class DuelState {
         return this.canAct(side) && ['deployment', 'regroup'].includes(this.phase);
     }
 
-    // Character classes: only Strivers PROMOTE; Heavies need one of your characters sacrificed
-    // (the Heavy takes its lane). Same rules as duel_state.gd.
+    // Character classes: only Strivers PROMOTE; Heavies need some of your characters sacrificed
+    // (tributeCost of them, 1-3; the Heavy takes one of their lanes). Same rules as duel_state.gd.
     static needsTribute(c) {
         return c != null && c.subtype === 'heavy';
     }
 
+    /** How many characters a Heavy sacrifices (0: not a Heavy). */
+    static tributesFor(c) {
+        if (!DuelState.needsTribute(c)) return 0;
+        return Math.min(3, Math.max(1, toInt(c.tributeCost ?? 1) || 1));
+    }
+
+    /** tribute: a slot (-1 none) or a list of slots. */
+    static tributeList(tribute) {
+        if (Array.isArray(tribute)) return tribute.map(toInt);
+        const t = toInt(tribute ?? -1);
+        return t >= 0 ? [t] : [];
+    }
+
+    /** One of your characters a deploy can send to the Gutter (a Heavy's sacrifice, or one deployed over). */
+    canSacrifice(side, slot) {
+        const t = FRONT.includes(slot) ? this.cardAt(side, slot) : null;
+        return t != null && t.cardType !== 'leader' && !this.inStasis(t);
+    }
+
+    // Summon c into slot. A Heavy names the characters it sacrifices (tribute: their slots; it takes
+    // one of their lanes). Anything else goes in an empty lane, or over one of your characters
+    // (tribute: that slot), which goes to the Gutter.
     canSummon(side, c, slot, tribute = -1) {
         if (!this.canDeployNow(side) || c.cardType !== 'gang_member') return false;
         if (!FRONT.includes(slot) || this.sides[side].authority < this.costOf(side, c)) return false;
-        if (DuelState.needsTribute(c)) {
-            const t = FRONT.includes(tribute) ? this.cardAt(side, tribute) : null;
-            return slot === tribute && t != null && t.cardType !== 'leader' && !this.inStasis(t);
-        }
-        return tribute === -1 && this.sides[side].field[slot] == null;
+        const list = DuelState.tributeList(tribute);
+        if (new Set(list).size !== list.length || !list.every(t => this.canSacrifice(side, t))) return false;
+        if (DuelState.needsTribute(c)) return list.length === DuelState.tributesFor(c) && list.includes(slot);
+        if (!list.length) return this.sides[side].field[slot] == null;
+        return list.length === 1 && list[0] === slot;
     }
 
     canSummonSomewhere(side, c) {
-        for (const slot of FRONT) {
-            if (this.canSummon(side, c, slot, DuelState.needsTribute(c) ? slot : -1)) return true;
-        }
-        return false;
+        const n = DuelState.tributesFor(c);
+        const fodder = FRONT.filter(t => this.canSacrifice(side, t));
+        if (n > 0) return fodder.length >= n && this.canSummon(side, c, fodder[0], fodder.slice(0, n));
+        return FRONT.some(slot => this.canSummon(side, c, slot) || this.canSummon(side, c, slot, slot));
     }
 
     // ── Continuous / Equip (same as duel_state.gd) ─────────────────────────
@@ -578,7 +600,7 @@ export class DuelState {
         if (this.winner !== '' || !a || typeof a !== 'object') return false;
         let ok = false;
         switch (a.kind) {
-            case 'summon': ok = this._summon(side, toInt(a.uid), toInt(a.slot), String(a.position ?? 'atk'), toInt(a.tribute ?? -1)); break;
+            case 'summon': ok = this._summon(side, toInt(a.uid), toInt(a.slot), String(a.position ?? 'atk'), Array.isArray(a.tributes) ? a.tributes : toInt(a.tribute ?? -1)); break;
             case 'set': ok = this._setAmbush(side, toInt(a.uid), toInt(a.slot)); break;
             case 'hustle': ok = this._hustle(side, toInt(a.uid)); break;
             case 'attack': ok = this._attack(side, toInt(a.from), toInt(a.target)); break;
@@ -608,14 +630,16 @@ export class DuelState {
         const c = this.sides[side].hand[i];
         this._spend(side, this.costOf(side, c));
         this.sides[side].hand.splice(i, 1);
-        if (DuelState.needsTribute(c)) {
-            const t = this.cardAt(side, tribute);
-            this.sides[side].field[tribute] = null;
+        for (const slot_ of DuelState.tributeList(tribute)) {   // sacrificed, or deployed over
+            const t = this.cardAt(side, slot_);
+            this.sides[side].field[slot_] = null;
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
             if (!t.token) this.sides[side].gutter.push(t);   // (tokens vanish)
-            this._emit('tribute', { side, slot: tribute, card: clone(t), for: clone(c) });
+            const ev = { side, slot: slot_, card: clone(t), for: clone(c) };
+            if (!DuelState.needsTribute(c)) ev.replace = true;
+            this._emit('tribute', ev);
         }
         c.position = position === 'def' ? 'def' : 'atk';
         c.face_down = false;   // characters are always face-up, in ATK or DEF (only Ambushes are set face-down)

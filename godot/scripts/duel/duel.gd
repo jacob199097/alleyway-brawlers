@@ -31,6 +31,8 @@ const RED := Color("e63946")
 const GOLD := Color("f4d35e")
 const GREEN := Color("3ddc84")
 const TEAL := Color("3ee6d0")   # a character with an Activate ability ready
+const SWAP := Color("ff9f43")   # one of your characters a card can be deployed over
+const PICKED := Color("b388ff")   # a character already chosen as a Heavy's sacrifice
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
@@ -44,7 +46,7 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
 ## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
 ## attack "guns": rapid gunfire, with muzzle flashes, tracers and bullet hits (Militia).
-const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns"}}
+const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"}}
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
@@ -76,6 +78,7 @@ var _mode := "idle"   # idle | menu | place | target | discard | over
 var _selected: CardView = null
 var _selected_slot := -1
 var _place_kind := ""
+var _tribute_picks: Array = []   # a Heavy's sacrifices chosen so far (the first is its lane)
 var _valid := {}      # "side:slot" -> highlight colour
 var _press: CardView = null
 var _press_pos := Vector2.ZERO
@@ -495,7 +498,7 @@ func _log_event(ev: Dictionary) -> void:
 		"equip":
 			_log("%s equipped %s" % [_who(side), _cname(ev.card)], side)
 		"tribute":
-			_log("%s sacrificed %s for %s" % [_who(side), _cname(ev.card), _cname(ev.get("for"))], side)
+			_log("%s %s %s for %s" % [_who(side), "replaced" if ev.get("replace", false) else "sacrificed", _cname(ev.card), _cname(ev.get("for"))], side)
 		"attack":
 			var target := "directly"
 			if int(ev.target) == DuelState.LEADER:
@@ -1220,13 +1223,15 @@ func _ev_summon(ev: Dictionary) -> void:
 			v.flip(true)
 		if _clan_style(c, "summon") == "warp":
 			await _warp_in(v, target, _clan_color(c), heavy)
+		elif _clan_style(c, "summon") == "airdrop":
+			await _airdrop(v, target, _clan_color(c), heavy)
 		else:
 			var rise := Vector2(0, -70 if side == "player" else 70)
-			await v.move_to(target + rise, 1.75, 0.0, 0.3 if heavy else 0.24).finished
+			await v.move_to(target + rise, 1.75, v.home_rot, 0.3 if heavy else 0.24).finished
 			if heavy:
 				_cam_focus(target, 1.07, 0.3)
 			await _wait(0.16 if heavy else 0.05)
-			await v.move_to(target, 1.0, 0.0, 0.1, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+			await v.move_to(target, 1.0, v.home_rot, 0.1, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 			v.kick(Vector2(0, 1 if side == "player" else -1), 16.0)
 			await _impact(target, heavy)
 			if heavy:
@@ -1544,7 +1549,7 @@ func _warp_in(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	Sfx.play("whoosh", 0.7)
 	_burst(target, col.lightened(0.35), 30, 420, 0.7, 0.0)
 	_ring(target, col.lightened(0.3), 1.5)
-	await v.move_to(target, 1.0, 0.0, 0.34, Tween.TRANS_BACK, Tween.EASE_OUT).finished
+	await v.move_to(target, 1.0, v.home_rot, 0.34, Tween.TRANS_BACK, Tween.EASE_OUT).finished
 	v.kick(Vector2(0, 1), 14.0)
 	shake(14.0 if heavy else 8.0)
 	_shockwave(target, 0.6 if heavy else 0.35)
@@ -1555,6 +1560,68 @@ func _warp_in(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	if heavy:
 		_cam_reset(0.45)
 		_dim(0.0, 0.35)
+
+
+## Militia arrival: a targeting reticle locks onto the lane, the card goes up out of sight and is
+## dropped in from above, landing hard in a cloud of dust. Lands in its final position (DEF: sideways).
+func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
+	var reticle := TargetReticle.new()
+	reticle.glow = col
+	reticle.position = target
+	reticle.z_index = 8
+	cards_layer.add_child(reticle)
+	var lock := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	lock.tween_property(reticle, "radius", 66.0, 0.3)
+	lock.tween_property(reticle, "turn", PI / 2, 0.3)
+	lock.tween_property(reticle, "alpha", 0.95, 0.12)
+	Sfx.play("set", 1.7, -8.0)
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	# Up and out of sight...
+	var up := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	up.tween_property(v, "position", v.position + Vector2(0, -260), 0.16)
+	up.tween_property(v, "modulate:a", 0.0, 0.16)
+	await lock.finished
+	Sfx.play("set", 2.1, -6.0)   # locked on
+	if up.is_running():
+		await up.finished
+	# ...and dropped in from above
+	v.position = target + Vector2(0, -420)
+	v.rotation = v.home_rot
+	v.scale = Vector2.ONE * (1.7 if heavy else 1.5)
+	v.modulate.a = 1.0
+	Sfx.play("whoosh", 0.8, -2.0)
+	await v.move_to(target, 1.0, v.home_rot, 0.2 if heavy else 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+	v.kick(Vector2(0, 1), 18.0)
+	_burst(target + Vector2(0, CARD.y / 2 - 10), Color(0.55, 0.5, 0.36), 34 if heavy else 22, 460.0, 0.6, 900.0)   # dust
+	_ring(target, col.lightened(0.25), 1.6 if heavy else 1.2)
+	var gone := create_tween()
+	gone.tween_property(reticle, "alpha", 0.0, 0.25)
+	gone.tween_callback(reticle.queue_free)
+	await _impact(target, heavy)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## The Militia targeting reticle: rings and crosshair ticks, turning as it locks on.
+class TargetReticle extends Node2D:
+	var glow := Color.GREEN
+	var radius := 120.0
+	var turn := 0.0
+	var alpha := 0.0
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := Color(glow.lightened(0.2), alpha)
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, c, 3.0, true)
+		draw_arc(Vector2.ZERO, radius * 0.55, 0.0, TAU, 32, Color(c, alpha * 0.6), 2.0, true)
+		for i in 4:
+			var d := Vector2.from_angle(turn + i * PI / 2)
+			draw_line(d * (radius - 18.0), d * (radius + 16.0), c, 3.0, true)
+		draw_circle(Vector2.ZERO, 4.0, c)
 
 
 ## Nebula KO: the card shatters into stardust that drifts up and away.
@@ -1977,7 +2044,7 @@ func _ev_tribute(ev: Dictionary) -> void:
 	v.z_index = 440
 	_show_detail(ev.get("for", {}))
 	Sfx.play("down", 0.6)
-	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "SACRIFICED", Color("b388ff"), 34)
+	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "REPLACED" if ev.get("replace", false) else "SACRIFICED", Color("b388ff"), 34)
 	_burst(v.position, Color("b388ff"), 36, 420, 0.8, -250.0)
 	_light_column(v.position)
 	v.flash()
@@ -3603,7 +3670,10 @@ func _update_hover() -> void:
 		if Rect2(pile_pos(side, "gutter") - CARD / 2, CARD).has_point(m):
 			var top: String = counts.get(side, {}).get("gutter_top", "")
 			if top != "":
-				_show_detail(CardDB.get_card(top))
+				var shown: Dictionary = CardDB.get_card(top).duplicate()
+				shown.effectText = "[color=#8a8aa0]Top of the Gutter · click to see every card in it[/color]\n\n" + str(shown.get("effectText", ""))
+				shown.uid = "gutter:%s:%s" % [side, top]
+				_show_detail(shown)
 		# The deck and Hideout show that side's card back, with how many cards are in them
 		for pile in ["deck", "hideout"]:
 			if Rect2(pile_pos(side, pile) - CARD / 2, CARD).has_point(m):
@@ -3611,7 +3681,8 @@ func _update_hover() -> void:
 				var whose := "Your" if side == "player" else "Their"
 				_show_detail({"name": "%s %s" % [whose, "Deck" if pile == "deck" else "Hideout"], "cardType": "",
 					"uid": "%s:%s:%d" % [side, pile, n], "back_side": side,
-					"effectText": "%d card%s" % [n, "" if n == 1 else "s"]})
+					"effectText": "%d card%s%s" % [n, "" if n == 1 else "s",
+						"  ·  click to see them" if pile == "hideout" and side == "player" and n > 0 else ""]})
 
 
 func _on_press() -> void:
@@ -3622,6 +3693,10 @@ func _on_press() -> void:
 		_cancel_and_refresh()
 		return
 	if _playing or _awaiting:
+		return
+	if _mode == "idle" and _pile_at(m) != []:
+		var at: Array = _pile_at(m)
+		_show_pile(at[0], at[1])
 		return
 	match _mode:
 		"choose":
@@ -3766,9 +3841,10 @@ func _open_hand_menu(v: CardView) -> void:
 		"gang_member":
 			var ok := _playable(c)
 			var heavy := DuelState.needs_tribute(c)
+			var need := DuelState.tributes_for(c)
 			if ok == false and reason == "":
-				reason = "Needs one of your characters to sacrifice" if heavy else "No free front-row slot"
-			var cost := "  ·  SACRIFICE 1" if heavy else ""
+				reason = ("Needs %d of your characters to sacrifice" % need if need > 1 else "Needs one of your characters to sacrifice") if heavy else "No free front-row slot"
+			var cost := "  ·  SACRIFICE %d" % need if heavy else ""
 			opts.append(["SUMMON  ·  ATK" + cost, ok, func(): _begin_place(v, "summon_atk")])
 			opts.append(["SUMMON  ·  DEF" + cost, ok, func(): _begin_place(v, "summon_def")])
 		"ambush":
@@ -3820,31 +3896,59 @@ func _begin_place(v: CardView, kind: String) -> void:
 	_valid.clear()
 	var c := v.card
 	if kind != "set" and DuelState.needs_tribute(c):
-		# A Heavy takes the lane of the character it sacrifices
-		for slot in DuelState.FRONT:
-			if duel.can_summon("player", c, slot, slot):
-				_valid["player:%d" % slot] = RED
-		_show_prompt("Choose a character to sacrifice: %s takes its lane  ·  right-click to cancel" % c.name)
-		queue_redraw()
+		_tribute_picks = []
+		_show_tribute_pick(c)
 		return
+	var over := false
 	for slot in 10:
-		var ok := duel.can_set("player", c, slot) if kind == "set" else duel.can_summon("player", c, slot)
-		if ok:
+		if kind == "set":
+			if duel.can_set("player", c, slot):
+				_valid["player:%d" % slot] = GREEN
+		elif duel.can_summon("player", c, slot):
 			_valid["player:%d" % slot] = GREEN
-	_show_prompt("Choose a slot  ·  right-click to cancel")
+		elif duel.can_summon("player", c, slot, slot):
+			_valid["player:%d" % slot] = SWAP   # deploy over it: it goes to the Gutter
+			over = true
+	_show_prompt("Choose a slot%s  ·  right-click to cancel" % (", or one of your characters to deploy over (it goes to the Gutter)" if over else ""))
+	queue_redraw()
+
+
+## A Heavy's sacrifices, one click each (click again to take one back); it takes the first one's lane.
+func _show_tribute_pick(c: Dictionary) -> void:
+	_valid.clear()
+	for slot in DuelState.FRONT:
+		if duel.can_sacrifice("player", slot):
+			_valid["player:%d" % slot] = PICKED if slot in _tribute_picks else RED
+	var need := DuelState.tributes_for(c)
+	if need <= 1:
+		_show_prompt("Choose a character to sacrifice: %s takes its lane  ·  right-click to cancel" % c.name)
+	else:
+		_show_prompt("Choose %d characters to sacrifice for %s (%d chosen): it takes the first one's lane  ·  right-click to cancel" % [need, c.name, _tribute_picks.size()])
 	queue_redraw()
 
 
 func _place(slot: int) -> void:
 	var v := _selected
 	var kind := _place_kind
+	var tributes: Array = []
+	if kind != "set" and DuelState.needs_tribute(v.card):
+		if slot in _tribute_picks:
+			_tribute_picks.erase(slot)   # taken back
+		else:
+			_tribute_picks.append(slot)
+		if _tribute_picks.size() < DuelState.tributes_for(v.card):
+			_show_tribute_pick(v.card)
+			return
+		tributes = _tribute_picks.duplicate()
+		slot = tributes[0]
+	elif kind != "set" and duel.sides.player.field[slot] != null:
+		tributes = [slot]   # deployed over one of your characters
 	_cancel_interaction()
-	var tribute := slot if DuelState.needs_tribute(v.card) else -1
 	match kind:
 		"summon_atk":
-			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tribute": tribute})
+			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tributes": tributes})
 		"summon_def":
-			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def", "tribute": tribute})
+			_act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def", "tributes": tributes})
 		"set":
 			_act("player", {"kind": "set", "uid": v.uid, "slot": slot})
 
@@ -3862,13 +3966,21 @@ func _start_drag() -> void:
 	v.z_index = 500
 	create_tween().tween_property(v, "scale", Vector2.ONE * 1.1, 0.1)
 	var c := v.card
+	var over := false
 	for slot in 10:
-		if DuelState.needs_tribute(c) and slot in DuelState.FRONT and duel.can_summon("player", c, slot, slot):
-			_valid["player:%d" % slot] = RED   # drop a Heavy on the character to sacrifice
+		if DuelState.needs_tribute(c):
+			if slot in DuelState.FRONT and duel.can_sacrifice("player", slot):
+				_valid["player:%d" % slot] = RED   # drop a Heavy on a character to sacrifice
 		elif duel.can_summon("player", c, slot) or duel.can_set("player", c, slot):
 			_valid["player:%d" % slot] = GREEN
+		elif duel.can_summon("player", c, slot, slot):
+			_valid["player:%d" % slot] = SWAP   # drop it on one of your characters to deploy over it
+			over = true
 	if DuelState.needs_tribute(c):
-		_show_prompt("Drop %s on one of your characters to sacrifice it" % c.name)
+		var need := DuelState.tributes_for(c)
+		_show_prompt("Drop %s on one of your characters to sacrifice it%s" % [c.name, " (then choose %d more)" % (need - 1) if need > 1 else ""])
+	elif over and not _valid.values().has(GREEN):
+		_show_prompt("Drop %s on one of your characters to deploy over it (it goes to the Gutter)" % c.name)
 	if c.cardType == "hustle":
 		_show_prompt("Release on the board to activate")
 	queue_redraw()
@@ -3884,11 +3996,20 @@ func _end_drag() -> void:
 	var done := false
 	_valid.clear()
 	_hide_prompt()
-	if c.cardType == "gang_member" and DuelState.needs_tribute(c) and duel.can_summon("player", c, slot, slot):
-		# Dropping a Heavy on one of your characters sacrifices it
-		done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tribute": slot})
-	elif c.cardType == "gang_member" and duel.can_summon("player", c, slot):
-		_ask_position(v, slot)   # ATK or DEF?
+	if c.cardType == "gang_member" and DuelState.needs_tribute(c) and duel.can_sacrifice("player", slot) and duel.can_summon_somewhere("player", c):
+		# Dropping a Heavy on one of your characters sacrifices it (and any more it needs: choose them)
+		if DuelState.tributes_for(c) <= 1:
+			done = _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tributes": [slot]})
+		else:
+			_layout_hand("player")
+			_selected = v
+			_place_kind = "summon_atk"
+			_mode = "place"
+			_tribute_picks = [slot]
+			_show_tribute_pick(c)
+			return
+	elif c.cardType == "gang_member" and (duel.can_summon("player", c, slot) or duel.can_summon("player", c, slot, slot)):
+		_ask_position(v, slot)   # ATK or DEF? (and over one of your characters: it goes to the Gutter)
 		return
 	elif c.cardType == "ambush" and duel.can_set("player", c, slot):
 		done = _act("player", {"kind": "set", "uid": v.uid, "slot": slot})
@@ -3908,17 +4029,19 @@ func _ask_position(v: CardView, slot: int) -> void:
 		_cancel_interaction()
 		_layout_hand("player")
 		_player_ready()
+	var over = duel.sides.player.field[slot]   # deployed over: it goes to the Gutter
+	var tributes: Array = [slot] if over != null else []
 	_menu = _make_menu([
 		["SUMMON · ATK", true, func():
 			_cancel_interaction()
-			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk"}):
+			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tributes": tributes}):
 				put_back.call()],
 		["SUMMON · DEF", true, func():
 			_cancel_interaction()
-			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def"}):
+			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def", "tributes": tributes}):
 				put_back.call()],
 		["CANCEL", true, put_back],
-	], "", slot_pos("player", slot) + Vector2(0, -CARD.y / 2 - 12))
+	], "Replaces %s: it goes to the Gutter" % over.name if over != null else "", slot_pos("player", slot) + Vector2(0, -CARD.y / 2 - 12))
 
 
 func _show_direct_button(slot: int) -> void:
@@ -3956,6 +4079,7 @@ func _cancel_interaction() -> void:
 		_direct_btn.queue_free()
 	_direct_btn = null
 	_valid.clear()
+	_tribute_picks = []
 	_hide_prompt()
 	var sel := _selected
 	_selected = null
@@ -3967,6 +4091,73 @@ func _cancel_interaction() -> void:
 	if sel and is_instance_valid(sel) and sel in hand.player:
 		_layout_hand("player")
 	queue_redraw()
+
+
+## The pile under p that can be looked through: [side, "gutter" | "hideout"] (your own Hideout only), or [].
+func _pile_at(p: Vector2) -> Array:
+	for side in ["player", "opponent"]:
+		for pile in ["gutter", "hideout"]:
+			if pile == "hideout" and side != "player":
+				continue   # the opponent's Hideout stays secret
+			if Rect2(pile_pos(side, pile) - CARD / 2, CARD).has_point(p):
+				return [side, pile]
+	return []
+
+
+## Every card in a Gutter (newest first) or your Hideout; hover one to read it, click away to close.
+func _show_pile(side: String, pile: String) -> void:
+	var cards: Array = duel.sides[side].get(pile, []).filter(func(c): return c is Dictionary and c.has("id"))
+	if pile == "gutter":
+		cards.reverse()
+	_cancel_interaction()
+	_mode = "menu"
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.97), GOLD, 2, 12))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	box.add_child(col)
+	var title := _label(26, Color.WHITE, true)
+	title.text = "%s %s  ·  %d card%s" % ["YOUR" if side == "player" else "THEIR", pile.to_upper(), cards.size(), "" if cards.size() == 1 else "s"]
+	col.add_child(title)
+	if cards.is_empty():
+		var none := _label(18, Color("8a8aa0"))
+		none.text = "Nothing here yet."
+		col.add_child(none)
+	else:
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(6 * 132, minf(2.0, ceilf(cards.size() / 6.0)) * 183)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		col.add_child(scroll)
+		var grid := GridContainer.new()
+		grid.columns = 6
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		scroll.add_child(grid)
+		for c in cards:
+			var t := TextureRect.new()
+			t.texture = CardDB.art(str(c.get("art_url", c.get("id", ""))))
+			t.custom_minimum_size = CARD
+			t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			t.mouse_filter = Control.MOUSE_FILTER_PASS
+			t.tooltip_text = str(c.get("name", ""))
+			var card: Dictionary = c
+			t.mouse_entered.connect(func(): _show_detail(card))
+			grid.add_child(t)
+	var close := Button.new()
+	close.text = "CLOSE"
+	close.custom_minimum_size = Vector2(200, 40)
+	close.pressed.connect(func():
+		Sfx.play("click")
+		_cancel_and_refresh())
+	col.add_child(close)
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	_menu = box
+	Sfx.play("draw", 1.2, -6.0)
 
 
 func _cancel_and_refresh() -> void:
