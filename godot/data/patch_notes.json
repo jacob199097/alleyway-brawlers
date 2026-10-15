@@ -1,5 +1,18 @@
 [
     {
+        "version": "0.7.15",
+        "notes": [
+            "Downed characters now switch to DEF, their effects stop working until they stand up, and they look clearly Downed. You'll see a pop-up when they stand back up.",
+            "Card effects that make you choose now always let you pick the target, even when there's only one, or skip it. Cards that would do nothing (like Orbital Strike while you control characters) can't be played.",
+            "Effects can now hit leaders that have taken the field (Hull Breach's STASIS, Gravity Well and more).",
+            "When you drag a character onto the board you choose ATK or DEF, and characters in DEF lie sideways.",
+            "New card kinds: Continuous Hustles and Ambushes stay on the field and keep working, and Equip cards attach to a character. New abilities too: tokens, calling characters from your deck, 'for each' bonuses, choose-one effects and reacting when an ally is attacked.",
+            "View your friends' profiles from the friends list.",
+            "Profile pictures are now card art. Characters with an ability ready to Activate glow teal.",
+            "Updates no longer break the menus: when a new version is out the game asks you to restart into it."
+        ]
+    },
+    {
         "version": "0.7.14",
         "notes": [
             "Characters in DEF now stay face-up: their 'When deployed' effects and abilities like Guard work straight away, even when you play them defensively. Ambushes are still set face-down.",
