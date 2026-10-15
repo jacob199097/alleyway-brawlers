@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.7.17",
+        "notes": [
+            "The Militia clan has arrived: 33 new cards led by General Graves, with its own starter deck and booster pack. Choose it as your clan or open its packs in the shop.",
+            "Three new Nebula cards, and updates to some existing ones.",
+            "New card ability: 'If you do'. An effect can follow on from the one before it and only happens if that one worked (e.g. Thomas promotes only when he destroys a face-down card).",
+            "Downed characters now show a small DOWNED tag instead of a crack across the art."
+        ]
+    },
+    {
         "version": "0.7.16",
         "notes": [
             "Your profile picture on the main menu now sits neatly inside its neon frame.",

@@ -21,7 +21,7 @@
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
-  "attack": 700,
+  "attack": 800,
   "defense": 500,
   "level": 1,
   "subtype": "striver",
@@ -95,7 +95,7 @@
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
-  "attack": 2800,
+  "attack": 2900,
   "defense": 1000,
   "level": 3,
   "subtype": "striver",
@@ -268,7 +268,7 @@
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
-  "attack": 1200,
+  "attack": 1100,
   "defense": 800,
   "level": 1,
   "subtype": "striver",
@@ -304,7 +304,7 @@
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
-  "attack": 1800,
+  "attack": 1700,
   "defense": 1500,
   "level": 2,
   "subtype": "striver",
@@ -353,26 +353,25 @@
   "cardType": "gang_member",
   "authority": 1,
   "tributeCost": 0,
-  "rarity": 1,
+  "rarity": 2,
   "clanTag": "nebula",
   "effectKey": "",
   "art_url": "card_nebu_018",
   "code": "NEBU-018",
   "flavourText": "I see everything coming. Usually before you do.",
-  "effectText": "Once per turn, when your opponent deploys a character: If this card is next to another NEBULA character, DOWN one enemy character.",
+  "effectText": "ACTIVATE (once per turn): If this card is next to another NEBULA character, DOWN one enemy character.",
   "effects": [
    {
-    "when": "foe_deployed",
+    "when": "activate",
     "do": "down",
     "target": "enemy",
     "if": "adjacent",
-    "once": true,
     "if_clan": "nebula"
    }
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff",
-  "attack": 400,
+  "attack": 100,
   "defense": 100,
   "level": 1,
   "subtype": "brawler",
@@ -480,7 +479,7 @@
   "art_url": "card_nebu_025",
   "code": "NEBU-025",
   "flavourText": "What's the password?",
-  "effectText": "Once per turn, when this card is attacked: Put the attacker in STASIS.\nThis card is immune to SHOCK, FREEZE and STUN.",
+  "effectText": "Once per turn, when this card is attacked: Put the attacker in STASIS.\nThis card is immune to SHOCK, FREEZE and STUN.\nThis card can't be Downed as long as you control another character.",
   "effects": [
    {
     "when": "defend",
@@ -496,6 +495,10 @@
      "freeze",
      "stun"
     ]
+   },
+   {
+    "when": "passive",
+    "do": "no_down"
    }
   ],
   "clanName": "Nebula",
@@ -536,7 +539,7 @@
   "name": "Orbital Strike",
   "clan": "nebula",
   "cardType": "hustle",
-  "authority": 4,
+  "authority": 3,
   "tributeCost": 0,
   "rarity": 4,
   "clanTag": "nebula",
@@ -935,18 +938,19 @@
   "art_url": "card_nebu_036",
   "code": "NEBU-036",
   "flavourText": "The galaxy’s a big place. Shame you won’t be seeing much more of it.",
-  "effectText": "Once per turn, when this card KOs a character: Your opponent discards 1 card.\nWhen this card attacks: It gains +300 ATK for this Brawl.",
+  "effectText": "When this card attacks: It gains +300 ATK for this Brawl.\nWhen this card KOs a character: This card gains +300 ATK permanently.",
   "effects": [
-   {
-    "when": "ko",
-    "do": "discard",
-    "amount": 1,
-    "once": true
-   },
    {
     "when": "attack",
     "do": "buff",
     "target": "self",
+    "atk": 300
+   },
+   {
+    "when": "ko",
+    "do": "buff",
+    "target": "self",
+    "until": "forever",
     "atk": 300
    }
   ],
@@ -1011,5 +1015,1233 @@
   ],
   "clanName": "Nebula",
   "clanColor": "#9b7bff"
+ },
+ "card_mili_001": {
+  "id": "card_mili_001",
+  "name": "Sarge",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 1,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_001",
+  "code": "MILI-001",
+  "flavourText": "Fall in line, or I'll put you in one.",
+  "effectText": "When this card KOs a character: One of your other MILITIA characters gains +500 ATK permanently.\nWhen you deploy another MILITIA character: Gain 2 Authority this turn.",
+  "effects": [
+   {
+    "when": "ko",
+    "do": "buff",
+    "target": "ally",
+    "until": "forever",
+    "clan": "militia",
+    "atk": 500
+   },
+   {
+    "when": "ally_deployed",
+    "do": "authority",
+    "amount": 2,
+    "when_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2800,
+  "defense": 2000,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_mili_002": {
+  "id": "card_mili_002",
+  "name": "Static",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_002",
+  "code": "MILI-002",
+  "flavourText": "“I've got eyes on everything. Including your mistakes.",
+  "effectText": "ACTIVATE (once per turn): Search your deck for a MILITIA character with 4 or less Authority and add it to your hand.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "search",
+    "clan": "militia",
+    "kind": "gang_member",
+    "amount": 1,
+    "max_auth": 4,
+    "choose": true
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 500,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_003": {
+  "id": "card_mili_003",
+  "name": "Briar",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_003",
+  "code": "MILI-003",
+  "flavourText": "You won't hear the shot. You won't see the flash. You'll just stop breathing.",
+  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SUPPRESS one enemy character for 300.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "suppress",
+    "target": "enemy",
+    "cost": "exhaust",
+    "amount": 300
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1300,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_004": {
+  "id": "card_mili_004",
+  "name": "Sergeant Ironwall",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_004",
+  "code": "MILI-004",
+  "flavourText": "They can take the street. They can take the block. But they’ll have to go through me to take this position.",
+  "effectText": "Your opponent must attack this card first if it is standing.\nAt the end of your turn: If this card is next to another character, SUPPRESS one enemy character for 200.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   },
+   {
+    "when": "turn_end",
+    "do": "suppress",
+    "target": "enemy",
+    "if": "adjacent",
+    "amount": 200,
+    "if_clan": ""
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 500,
+  "defense": 2000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_005": {
+  "id": "card_mili_005",
+  "name": "Tripwire",
+  "clan": "militia",
+  "cardType": "ambush",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_005",
+  "code": "MILI-005",
+  "flavourText": "I Forgot that we put that there",
+  "effectText": "When an enemy attacks one of your characters: DOWN the attacker.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "down",
+    "target": "attacker"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635"
+ },
+ "card_mili_006": {
+  "id": "card_mili_006",
+  "name": "Rook",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_006",
+  "code": "MILI-006",
+  "flavourText": "You don’t have to be fearless. Just don’t run.",
+  "effectText": "When you deploy another MILITIA character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "promote",
+    "when_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1000,
+  "defense": 400,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_007"
+ },
+ "card_mili_007": {
+  "id": "card_mili_007",
+  "name": "Rook",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_007",
+  "code": "MILI-007",
+  "flavourText": "You don’t have to be fearless. Just don’t run.",
+  "effectText": "After this card KOs 2 characters: PROMOTE this card.\nWhile this card is next to another MILITIA character, it gains +200 ATK.",
+  "effects": [
+   {
+    "when": "ko",
+    "do": "promote",
+    "times": 2
+   },
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "if": "adjacent",
+    "atk": 200,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1700,
+  "defense": 1100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_008"
+ },
+ "card_mili_008": {
+  "id": "card_mili_008",
+  "name": "Rook",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_008",
+  "code": "MILI-008",
+  "flavourText": "You don’t have to be fearless. Just don’t run.",
+  "effectText": "While this card is next to another MILITIA character, it gains +500 ATK and +500 DEF.\nWhen this card KOs a character: SUPPRESS one enemy character for 500.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "if": "adjacent",
+    "atk": 500,
+    "def": 500,
+    "if_clan": "militia"
+   },
+   {
+    "when": "ko",
+    "do": "suppress",
+    "target": "enemy",
+    "amount": 500
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2800,
+  "defense": 2000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_009": {
+  "id": "card_mili_009",
+  "name": "Smoke Runner",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_009",
+  "code": "MILI-009",
+  "flavourText": "By the time they see the smoke, we're already behind them.",
+  "effectText": "This card can't be targeted by your opponent's effects.\nACTIVATE (once per turn): One of your other characters that already attacked this turn may attack again.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "untargetable",
+    "clan": "militia"
+   },
+   {
+    "when": "activate",
+    "do": "ready",
+    "target": "ally"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1200,
+  "defense": 500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_010": {
+  "id": "card_mili_010",
+  "name": "Supply Drop",
+  "clan": "militia",
+  "cardType": "hustle",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_010",
+  "code": "MILI-010",
+  "flavourText": "Fresh intel. Fresh ammo. Fresh opportunities.",
+  "effectText": "Add the first 2 cards from your deck to your hand.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "search",
+    "amount": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635"
+ },
+ "card_mili_011": {
+  "id": "card_mili_011",
+  "name": "General Graves",
+  "clan": "militia",
+  "cardType": "leader",
+  "authority": 10,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_011",
+  "code": "MILI-011",
+  "flavourText": "This city has chewed up better men than you. But while my flag still flies, this ground belongs to the Militia.",
+  "effectText": "While this leader is Dormant and you control 2 or more MILITIA characters: Your MILITIA characters gain +200 ATK.\nAWAKEN: When your Morale is 2000 or less, this leader may take the field.",
+  "effects": [
+   {
+    "when": "dormant",
+    "do": "buff",
+    "target": "allies",
+    "clan": "militia",
+    "if": "allies",
+    "atk": 200,
+    "n": 2,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2800,
+  "defense": 2500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "awakenCondition": {
+   "morale": 2000
+  },
+  "influence": 5000
+ },
+ "card_mili_012": {
+  "id": "card_mili_012",
+  "name": "Mule",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_012",
+  "code": "MILI-012",
+  "flavourText": "You want it? I’ve got it.",
+  "effectText": "At the start of your turn: One of your other MILITIA characters gains +200 ATK and +200 DEF permanently.\nOnce per turn, when you play a Hustle: If this card is next to another MILITIA character, draw 2 cards.",
+  "effects": [
+   {
+    "when": "turn_start",
+    "do": "buff",
+    "target": "ally",
+    "until": "forever",
+    "clan": "militia",
+    "atk": 200,
+    "def": 200
+   },
+   {
+    "when": "hustle_played",
+    "do": "draw",
+    "if": "adjacent",
+    "amount": 2,
+    "once": true,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 500,
+  "defense": 1200,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_013": {
+  "id": "card_mili_013",
+  "name": "Improvised Armor ",
+  "clan": "militia",
+  "cardType": "hustle",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_013",
+  "code": "MILI-013",
+  "flavourText": "This'll do for now",
+  "effectText": "EQUIP: Attach this to one of your characters.\nWhen played: One of your MILITIA characters gains +700 DEF permanently.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "buff",
+    "target": "ally",
+    "until": "forever",
+    "clan": "militia",
+    "def": 700
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "subtype": "equip"
+ },
+ "card_mili_014": {
+  "id": "card_mili_014",
+  "name": "The Colonel",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 1,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_014",
+  "code": "MILI-014",
+  "flavourText": "Discipline kept us alive when everything else failed.",
+  "effectText": "Your MILITIA cards cost 1 less Authority.\nACTIVATE (once per turn, this card can't attack this turn): Destroy one of your opponent's face-down cards.\nThis card can't be targeted by your opponent's effects.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "cost_down",
+    "clan": "militia",
+    "amount": 1
+   },
+   {
+    "when": "activate",
+    "do": "break_ambush",
+    "cost": "exhaust",
+    "amount": 1
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 3200,
+  "defense": 2000,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_mili_015": {
+  "id": "card_mili_015",
+  "name": "Thomas",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_015",
+  "code": "MILI-015",
+  "flavourText": "They call it junk. I call it next month's ammunition",
+  "effectText": "ACTIVATE (once per turn, pay 1 Authority): Destroy one of your opponent's face-down cards. If you do, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "break_ambush",
+    "cost": "authority",
+    "amount": 1,
+    "cost_n": 1
+   },
+   {
+    "when": "activate",
+    "do": "promote",
+    "if_done": true
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 600,
+  "defense": 400,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_016"
+ },
+ "card_mili_016": {
+  "id": "card_mili_016",
+  "name": "Thomas",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_016",
+  "code": "MILI-016",
+  "flavourText": "They call it junk. I call it next month's ammunition",
+  "effectText": "ACTIVATE (once per turn): Search your deck for an Ambush and add it to your hand.\nWhen an enemy character is KO'd: If your Gutter has 4 or more cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "search",
+    "kind": "ambush",
+    "amount": 1,
+    "choose": true
+   },
+   {
+    "when": "foe_ko",
+    "do": "promote",
+    "if": "gutter_ge",
+    "n": 4
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1800,
+  "defense": 1500,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_017"
+ },
+ "card_mili_017": {
+  "id": "card_mili_017",
+  "name": "Thomas",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_017",
+  "code": "MILI-017",
+  "flavourText": "They call it junk. I call it next month's ammunition",
+  "effectText": "ACTIVATE (once per turn): Search your deck for a Hustle and add it to your hand.\nThis card has PIERCE.\nAt the end of your turn: If this card is next to another MILITIA character, destroy one of your opponent's face-down cards.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "search",
+    "kind": "hustle",
+    "amount": 1,
+    "choose": true
+   },
+   {
+    "when": "passive",
+    "do": "pierce"
+   },
+   {
+    "when": "turn_end",
+    "do": "break_ambush",
+    "if": "adjacent",
+    "amount": 1,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 3300,
+  "defense": 2800,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_018": {
+  "id": "card_mili_018",
+  "name": "Mary",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_018",
+  "code": "MILI-018",
+  "flavourText": "You better like what I'm cooking",
+  "effectText": "When another of your characters is KO'd: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 400,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_019"
+ },
+ "card_mili_019": {
+  "id": "card_mili_019",
+  "name": "Mary",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_019",
+  "code": "MILI-019",
+  "flavourText": "You better like what I'm cooking",
+  "effectText": "ACTIVATE (once per turn): One of your other Downed MILITIA characters stands back up.\nWhen an enemy character is KO'd: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "stand",
+    "target": "ally",
+    "clan": "militia"
+   },
+   {
+    "when": "foe_ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1000,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_020"
+ },
+ "card_mili_020": {
+  "id": "card_mili_020",
+  "name": "Mary",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_020",
+  "code": "MILI-020",
+  "flavourText": "You better like what I'm cooking",
+  "effectText": "ACTIVATE (once per turn): One of your other Downed MILITIA characters stands back up.\nAt the start of your turn: HEAL 1000.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "stand",
+    "target": "ally",
+    "clan": "militia"
+   },
+   {
+    "when": "turn_start",
+    "do": "heal",
+    "amount": 1000
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1500,
+  "defense": 2900,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_021": {
+  "id": "card_mili_021",
+  "name": "Lance",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_021",
+  "code": "MILI-021",
+  "flavourText": "One fighter is a survivor. A hundred fighters are a militia.",
+  "effectText": "When an enemy character is KO'd: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "foe_ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 400,
+  "defense": 100,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_022"
+ },
+ "card_mili_022": {
+  "id": "card_mili_022",
+  "name": "Lance",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_022",
+  "code": "MILI-022",
+  "flavourText": "One fighter is a survivor. A hundred fighters are a militia.",
+  "effectText": "Once per turn, when you deploy another character: If this card is next to another MILITIA character, HEAL 500.\nWhen another of your characters is attacked: If you control 2 or more other MILITIA characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "heal",
+    "if": "adjacent",
+    "amount": 500,
+    "once": true,
+    "if_clan": "militia",
+    "when_clan": ""
+   },
+   {
+    "when": "ally_attacked",
+    "do": "promote",
+    "if": "allies",
+    "n": 2,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1800,
+  "defense": 1100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_023"
+ },
+ "card_mili_023": {
+  "id": "card_mili_023",
+  "name": "Lance",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_023",
+  "code": "MILI-023",
+  "flavourText": "One fighter is a survivor. A hundred fighters are a militia.",
+  "effectText": "This card can't be Downed as long as you control another character.\nOnce per turn, when you deploy another MILITIA character: HEAL 400 for each other MILITIA character you control.\nOnce per turn, when another of your characters is attacked: SUPPRESS the attacker for 500.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "no_down"
+   },
+   {
+    "when": "ally_deployed",
+    "do": "heal",
+    "per": "allies",
+    "per_clan": "militia",
+    "amount": 400,
+    "once": true,
+    "when_clan": "militia"
+   },
+   {
+    "when": "ally_attacked",
+    "do": "suppress",
+    "target": "attacker",
+    "amount": 500,
+    "once": true
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2700,
+  "defense": 2500,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_024": {
+  "id": "card_mili_024",
+  "name": "Deadwood",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_024",
+  "code": "MILI-024",
+  "flavourText": "Out here, patience is the sharpest weapon.",
+  "effectText": "When this card KOs a character: If your opponent controls 2 or fewer characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ko",
+    "do": "promote",
+    "if": "enemies_le",
+    "n": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1200,
+  "defense": 400,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_025"
+ },
+ "card_mili_025": {
+  "id": "card_mili_025",
+  "name": "Deadwood",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_025",
+  "code": "MILI-025",
+  "flavourText": "Out here, patience is the sharpest weapon.",
+  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SUPPRESS one enemy character for 500.\nAfter this card Downs 2 characters: If your opponent controls 3 or fewer characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "suppress",
+    "target": "enemy",
+    "cost": "exhaust",
+    "amount": 500
+   },
+   {
+    "when": "down",
+    "do": "promote",
+    "if": "enemies_le",
+    "n": 3,
+    "times": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2100,
+  "defense": 900,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_026"
+ },
+ "card_mili_026": {
+  "id": "card_mili_026",
+  "name": "Deadwood ",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_026",
+  "code": "MILI-026",
+  "flavourText": "Out here, patience is the sharpest weapon.",
+  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SUPPRESS one enemy character for 900.\nThis card can't be targeted by your opponent's effects.\nWhen this card KOs a character: Destroy one of your opponent's face-down cards.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "suppress",
+    "target": "enemy",
+    "cost": "exhaust",
+    "amount": 900
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   },
+   {
+    "when": "ko",
+    "do": "break_ambush",
+    "amount": 1
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 3300,
+  "defense": 1400,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_027": {
+  "id": "card_mili_027",
+  "name": "Bastion",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_027",
+  "code": "MILI-027",
+  "flavourText": "I used to run from the fighting. Now the fighting runs into them.",
+  "effectText": "When you deploy another MILITIA character: If this card is next to another MILITIA character, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "promote",
+    "if": "adjacent",
+    "if_clan": "militia",
+    "when_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 700,
+  "defense": 200,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_028"
+ },
+ "card_mili_028": {
+  "id": "card_mili_028",
+  "name": "Bastion",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_028",
+  "code": "MILI-028",
+  "flavourText": "I used to run from the fighting. Now the fighting runs into them.",
+  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhen your opponent deploys a character: If your opponent controls 2 or more characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "force_atk",
+    "target": "enemy"
+   },
+   {
+    "when": "foe_deployed",
+    "do": "promote",
+    "if": "enemies_ge",
+    "n": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1200,
+  "defense": 2100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_029"
+ },
+ "card_mili_029": {
+  "id": "card_mili_029",
+  "name": "Bastion",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_029",
+  "code": "MILI-029",
+  "flavourText": "I used to run from the fighting. Now the fighting runs into them.",
+  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhile this card is next to another MILITIA character, your opponent must attack this card first if it is standing.\nOnce per turn, when this card is attacked: It gains SHIELD.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "force_atk",
+    "target": "enemy"
+   },
+   {
+    "when": "passive",
+    "do": "guard",
+    "if": "adjacent",
+    "if_clan": "militia"
+   },
+   {
+    "when": "defend",
+    "do": "shield",
+    "target": "self",
+    "once": true
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1900,
+  "defense": 3400,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_030": {
+  "id": "card_mili_030",
+  "name": "Tactical Sweep",
+  "clan": "militia",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_030",
+  "code": "MILI-030",
+  "flavourText": "Every room is a battlefield if you know how to enter it.",
+  "effectText": "Destroy up to 2 of your opponent's face-down cards.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "break_ambush",
+    "amount": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635"
+ },
+ "card_mili_031": {
+  "id": "card_mili_031",
+  "name": "False Retreat",
+  "clan": "militia",
+  "cardType": "ambush",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_031",
+  "code": "MILI-031",
+  "flavourText": "The trick isn’t escaping. It’s choosing where they catch you.",
+  "effectText": "When an enemy attacks one of your MILITIA characters: Put a MILITIA Brawler with 4 or less Authority of your choice from your deck onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "call",
+    "clan": "militia",
+    "role": "brawler",
+    "amount": 1,
+    "max_auth": 4,
+    "choose": true
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "ambushClan": "militia"
+ },
+ "card_mili_032": {
+  "id": "card_mili_032",
+  "name": "Checkpoint Zero",
+  "clan": "militia",
+  "cardType": "ambush",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_032",
+  "code": "MILI-032",
+  "flavourText": "The barricade isn't much. The people behind it are.",
+  "effectText": "CONTINUOUS\nAt the end of your opponent's turn: If you control 2 or more MILITIA characters, DOWN one enemy character.",
+  "effects": [
+   {
+    "when": "foe_turn_end",
+    "do": "down",
+    "target": "enemy",
+    "if": "allies",
+    "n": 2,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "ambushClan": "militia",
+  "subtype": "continuous"
+ },
+ "card_mili_033": {
+  "id": "card_mili_033",
+  "name": "Johnson",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_033",
+  "code": "MILI-033",
+  "flavourText": "Patch the holes. Load the rifle. Keep moving.",
+  "effectText": "When this card Downs a character: Put the first MILITIA Brawler from your deck onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "down",
+    "do": "call",
+    "clan": "militia",
+    "role": "brawler",
+    "amount": 1
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1500,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_015": {
+  "id": "card_nebu_015",
+  "name": "Rouke",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_015",
+  "code": "NEBU-015",
+  "flavourText": "Built for speed. Wired for chaos.",
+  "effectText": "When you deploy another NEBULA character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "promote",
+    "when_clan": "nebula"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 800,
+  "defense": 700,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_016"
+ },
+ "card_nebu_016": {
+  "id": "card_nebu_016",
+  "name": "Rouke",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_016",
+  "code": "NEBU-016",
+  "flavourText": "Built for speed. Wired for chaos.",
+  "effectText": "When you deploy another NEBULA character: This card gains +500 ATK until the end of your turn.\nAfter this card attacks 2 times: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "buff",
+    "target": "self",
+    "until": "turn",
+    "atk": 500,
+    "when_clan": "nebula"
+   },
+   {
+    "when": "attack",
+    "do": "promote",
+    "times": 2
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1600,
+  "defense": 1400,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_017"
+ },
+ "card_nebu_017": {
+  "id": "card_nebu_017",
+  "name": "Rouke",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_017",
+  "code": "NEBU-017",
+  "flavourText": "Built for speed. Wired for chaos.",
+  "effectText": "When you deploy another character: This card gains +1000 ATK until the end of your turn.\nWhen this card attacks: One of your other NEBULA characters that already attacked this turn may attack again.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "buff",
+    "target": "self",
+    "until": "turn",
+    "atk": 1000,
+    "when_clan": ""
+   },
+   {
+    "when": "attack",
+    "do": "ready",
+    "target": "ally",
+    "clan": "nebula"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 2200,
+  "defense": 2000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
  }
 }

@@ -112,6 +112,10 @@ func _try_attack() -> bool:
 			continue
 		var targets: Array = duel_screen.duel.attack_targets("player")
 		duel_screen._on_field_click(slot)
+		if duel_screen._mode == "menu":   # a card with an Activate ability asks: ATTACK or the ability
+			var atk := _button_named(duel_screen._menu, "ATTACK")
+			_check(atk != null, "ATTACK in the card's menu")
+			atk.pressed.emit()
 		_check(duel_screen._mode == "target", "targeting mode")
 		var acted := true
 		var picked := -99
@@ -132,6 +136,16 @@ func _try_attack() -> bool:
 		attacks += 1
 		return true
 	return false
+
+
+func _button_named(n: Node, text: String) -> Button:
+	if n is Button and not n.disabled and n.text.strip_edges().begins_with(text):
+		return n
+	for c in n.get_children():
+		var b := _button_named(c, text)
+		if b:
+			return b
+	return null
 
 
 func _first_enabled_button(n: Node) -> Button:
