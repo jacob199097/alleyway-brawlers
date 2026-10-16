@@ -39,6 +39,27 @@ const CURATED = {
             ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_021', 3], ['card_nebu_022', 3],
         ],
     },
+    // Every Militia base card: 31 characters, 9 Hustles/Ambushes. Even with the Nebula starter
+    // (node tools/balance.mjs --vs nebula,militia --starters); the built one only had cheap commons.
+    militia: {
+        leader: 'card_mili_011',   // General Graves
+        deck: [
+            // Strivers: Thomas, Mary, Rook, Bastion, Lance, Deadwood
+            ['card_mili_015', 3], ['card_mili_018', 3], ['card_mili_006', 3], ['card_mili_027', 3],
+            ['card_mili_021', 2], ['card_mili_024', 2],
+            // Characters: Static, Johnson, Briar, Smoke Runner, Mule, Sergeant Ironwall; Heavies Sarge, The Colonel
+            ['card_mili_002', 2], ['card_mili_033', 3], ['card_mili_003', 2], ['card_mili_009', 2],
+            ['card_mili_012', 2], ['card_mili_004', 2], ['card_mili_001', 1], ['card_mili_014', 1],
+            // Ambushes: Tripwire, Checkpoint Zero, False Retreat; Hustles: Supply Drop, Tactical Sweep, Improvised Armor
+            ['card_mili_005', 3], ['card_mili_032', 1], ['card_mili_031', 1],
+            ['card_mili_010', 2], ['card_mili_030', 1], ['card_mili_013', 1],
+        ],
+        hideout: [
+            ['card_mili_016', 3], ['card_mili_017', 3], ['card_mili_019', 3], ['card_mili_020', 3],
+            ['card_mili_007', 3], ['card_mili_008', 3], ['card_mili_028', 3], ['card_mili_029', 3],
+            ['card_mili_022', 3], ['card_mili_023', 3], ['card_mili_025', 3], ['card_mili_026', 3],
+        ],
+    },
 };
 
 const level = (c) => Math.trunc(Number(c.level) || 1);

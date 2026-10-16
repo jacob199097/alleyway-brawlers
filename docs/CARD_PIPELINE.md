@@ -136,6 +136,11 @@ deck): how much drawing it helps. It flags STRONG (+8 or more), WEAK (-5 or less
 sortable page to share. 5000 games take about ten seconds. The numbers describe the cards as the CPU
 plays them, so treat them as a pointer to cards worth a look, not a verdict.
 
+`--vs nebula,militia` plays one clan against the other and prints the matchup. Add `--starters` to give
+both players their clan's starter deck (`shared/clans.js`, what new players get): check it after
+changing a clan's cards or its starter, and keep the starters near 50% against each other. Random
+decks can hide a weak starter (Militia's built starter lost ~70% until it was hand-picked).
+
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
 `shared/duel/DuelState.js`; the golden test checks they match).

@@ -1,11 +1,13 @@
 // Balance report: plays CPU-vs-CPU games with the real rules (shared/duel) and reports how each card
 // does, so you can spot cards that are too strong, too weak, or hard to play.
 //
-//   node tools/balance.mjs [--clan nebula | --vs nebula,militia] [--games 2000] [--level normal] [--seed 1] [--html report.html]
+//   node tools/balance.mjs [--clan nebula | --vs nebula,militia] [--starters] [--games 2000] [--level normal] [--seed 1] [--html report.html]
 //
 // Every game gives both players a random legal 40-card deck from the clan's cards (up to 3 copies
 // each, plus the promoted forms in the Hideout and a leader), so each card turns up in many decks.
 // With several clans and no --clan, decks come from random clans and you also get clan win rates.
+// --starters: both players use their clan's starter deck instead (what new players start with), so
+// the clan win rates say how fair the starters are against each other.
 //
 // Per card:
 //   in deck    games it was in a deck
@@ -19,7 +21,7 @@ import { writeFileSync } from 'node:fs';
 import { DuelState } from '../shared/duel/DuelState.js';
 import { choose } from '../shared/duel/DuelAI.js';
 import { CARD_CATALOG } from '../shared/cards.js';
-import { clanList } from '../shared/clans.js';
+import { clanList, starterRecipe } from '../shared/clans.js';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -60,6 +62,7 @@ for (const clan of allClans) {
 }
 // --vs nebula,militia: every game is one clan against the other (seats swapped at random)
 const versus = opt('vs', '') ? opt('vs', '').split(',').map(s => s.trim()) : null;
+const STARTERS = args.includes('--starters');
 if (versus) {
     const missing = versus.filter(c => !pools[c]);
     if (versus.length !== 2 || missing.length) {
@@ -99,6 +102,19 @@ function randomDeck(clan) {
     return { clan, deck, hideout, leader: leaders.length ? pick(leaders) : '', unique: new Set(copies.keys()) };
 }
 
+/** The clan's starter deck (shared/clans.js starterRecipe), as a seat. */
+function starterDeck(clan) {
+    const r = starterRecipe(clan);
+    if (!r) {
+        console.error(`${clan} has no starter deck yet.`);
+        process.exit(2);
+    }
+    const expand = (list) => list.flatMap(([id, n]) => Array(n).fill(id));
+    const deck = expand(r.deck);
+    return { clan, deck, hideout: expand(r.hideout), leader: r.leader, unique: new Set(deck) };
+}
+const seatDeck = (clan) => (STARTERS ? starterDeck(clan) : randomDeck(clan));
+
 // ── Play ─────────────────────────────────────────────────────────────────────
 const stats = new Map();   // card id → counters
 const stat = (id) => {
@@ -112,8 +128,8 @@ const started = Date.now();
 for (let g = 0; g < GAMES; g++) {
     const swap = versus && rand() < 0.5;
     const seats = versus
-        ? { player: randomDeck(versus[swap ? 1 : 0]), opponent: randomDeck(versus[swap ? 0 : 1]) }
-        : { player: randomDeck(pick(clans)), opponent: randomDeck(pick(clans)) };
+        ? { player: seatDeck(versus[swap ? 1 : 0]), opponent: seatDeck(versus[swap ? 0 : 1]) }
+        : { player: seatDeck(pick(clans)), opponent: seatDeck(pick(clans)) };
     const first = rand() < 0.5 ? 'player' : 'opponent';
     const d = new DuelState(
         { player: seats.player.deck, opponent: seats.opponent.deck },
@@ -202,7 +218,7 @@ const sgn = (v) => (Number.isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(1) : '�
 const secs = ((Date.now() - started) / 1000).toFixed(0);
 const finished = totals.games - totals.unfinished;
 const lines = [];
-lines.push(`Balance report: ${totals.games} games (${clans.join(', ')}; CPU ${LEVEL}; seed ${opt('seed', 1)}) in ${secs}s`);
+lines.push(`Balance report: ${totals.games} games (${clans.join(', ')}${STARTERS ? ', starter decks' : ''}; CPU ${LEVEL}; seed ${opt('seed', 1)}) in ${secs}s`);
 lines.push(`First player wins ${f1(pct(totals.firstWins, finished))}% · average ${f1(totals.turns / Math.max(1, finished))} turns · ` +
     `deck-outs ${f1(pct(totals.deckOut, finished))}% · unfinished ${totals.unfinished}${totals.refused ? ` · CPU moves refused ${totals.refused}` : ''}`);
 if (versus) {
