@@ -20,14 +20,16 @@ const CHARACTER_TARGET = 28;   // a built starter fills up to this many characte
 // Hand-picked starters. Used while every card in the recipe exists; otherwise the clan gets a
 // starter built from its cards.
 const CURATED = {
-    // Every Nebula base card: 30 characters, 10 Hustles/Ambushes
+    // Every Nebula base card: 30 characters, 10 Hustles/Ambushes. Rouke is strong, so he's in once,
+    // for a Kade and a Lyra Quell, with a third Sprintz: still even with the Militia starter.
     nebula: {
         leader: 'card_nebu_009',   // Archon of Nebula
         deck: [
-            // Strivers: Kade, Lyra Quell, Marty, Skully
-            ['card_nebu_001', 3], ['card_nebu_012', 3], ['card_nebu_030', 3], ['card_nebu_020', 2],
+            // Strivers: Kade, Lyra Quell, Marty, Skully, Rouke
+            ['card_nebu_001', 2], ['card_nebu_012', 2], ['card_nebu_030', 3], ['card_nebu_020', 2],
+            ['card_nebu_015', 1],
             // Characters
-            ['card_nebu_011', 2], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
+            ['card_nebu_011', 3], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
             ['card_nebu_028', 2], ['card_nebu_034', 2], ['card_nebu_036', 2], ['card_nebu_037', 1],
             ['card_nebu_033', 1], ['card_nebu_025', 1], ['card_nebu_035', 1], ['card_nebu_024', 1],
             // Hustles and Ambushes
@@ -37,6 +39,7 @@ const CURATED = {
         hideout: [
             ['card_nebu_002', 3], ['card_nebu_003', 3], ['card_nebu_013', 3], ['card_nebu_014', 3],
             ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_021', 3], ['card_nebu_022', 3],
+            ['card_nebu_016', 3], ['card_nebu_017', 3],
         ],
     },
     // Every Militia base card: 31 characters, 9 Hustles/Ambushes. Even with the Nebula starter

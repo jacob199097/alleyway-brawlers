@@ -151,6 +151,10 @@ private claude.ai page: ask Claude to refresh it).
 both players their clan's starter deck (`shared/clans.js`, what new players get): check it after
 changing a clan's cards or its starter, and keep the starters near 50% against each other. Random
 decks can hide a weak starter (Militia's built starter lost ~70% until it was hand-picked).
+Players who already have an account get a new or changed starter with
+`node backend/scripts/give_starter.js nebula militia --add` on the server: a dry run listing what each
+player gets; `--apply` does it (cards topped up, a `<Clan> Starter` deck added, a mail). Their own
+`<Clan> Starter` decks stay as they are unless `--refresh` (the dry run shows if they were changed).
 
 ## Effects
 Each effect is one building block. Both rules engines run them the same way (`duel_state.gd` and
@@ -176,8 +180,9 @@ the field: "This card", Pierce, PROMOTE, Attack again, once per turn.)
 **Clans** need no code: every card carries its clan's name and colour from the Forge, and any clan with
 enough cards for a 40-card deck (`shared/clans.js`) can be picked by new players, gets a starter deck
 built from its cards, is played by the CPU, and shows in the shop, Deck Builder and Card Library. Art
-for the clan screen and shop: `assets/<clan>_deck.png` and `assets/<clan>_booster.png` (until then the
-clan's leader, or its card back, stands in). A clan's card back is `assets/card_back_<clan tag>.png`; to make it move, add the clan to
+for the clan screen, Deck Builder and shop: `assets/<clan>_deck.png`, `assets/<clan>_deckbox.png`
+(512×512) and `assets/<clan>_booster.png` (600×800); until then the clan's leader, or its card back,
+stands in. They ship with the game, so new art goes out in a patch. A clan's card back is `assets/card_back_<clan tag>.png`; to make it move, add the clan to
 `BACK_STYLES` in `godot/scripts/card_db.gd` ("galaxy": Nebula's turning swirl, "radar": Militia's sweep), and give its
 characters their own attack, summon or KO animation in `CLAN_STYLE` in `godot/scripts/duel/duel.gd`. Card names don't have to be unique: a Striver's levels can
 all be called "Kade" (cards are matched by game ID).
