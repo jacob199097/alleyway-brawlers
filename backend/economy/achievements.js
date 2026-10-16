@@ -16,6 +16,7 @@
  */
 
 const { pool } = require('../db/pool');
+const mastery = require('./mastery');
 const { bump, best, counters } = require('./counters');
 
 const START_MORALE = 6000;
@@ -151,7 +152,7 @@ async function recordMatch(m) {
         await bump(pool, id, 'promotes', m.promotes || 0);
         await bump(pool, id, 'awakens', m.awakens || 0);
         if (win) {
-            const cpu = m.mode === 'cpu' || m.mode === 'cpu_ranked';
+            const cpu = String(m.mode || '').startsWith('cpu');   // (cpu, cpu_ranked, cpu_challenge)
             if (!cpu) await bump(pool, id, 'wins_online');
             if (m.mode === 'ranked' || m.mode === 'cpu_ranked') await bump(pool, id, 'wins_ranked');
             if (m.mode === 'cpu_ranked' || (m.mode === 'cpu' && m.difficulty === 'hard')) await bump(pool, id, 'wins_hard_cpu');
@@ -159,7 +160,12 @@ async function recordMatch(m) {
             if (m.morale > 0 && m.morale <= CLUTCH_MORALE) await bump(pool, id, 'clutch');
             if (m.clan && /^[a-z0-9_]+$/.test(m.clan)) await bump(pool, id, `wins_clan_${m.clan}`);
         }
-        return await check(id);
+        const unlocked = await check(id);
+        // Clan mastery levels reached this match (economy/mastery.js) show as banners too
+        return [...unlocked, ...await mastery.record(id, m.clan, m.outcome).catch((err) => {
+            console.error('[Mastery] record failed:', err.message);
+            return [];
+        })];
     } catch (err) {
         console.error('[Achievements] recordMatch failed:', err.message);
         return [];
@@ -182,6 +188,7 @@ async function overview(playerId) {
             unlocked: at.has(a.id), unlockedAt: at.get(a.id) || null,
         })),
         cosmetics: await cosmetics(playerId, defs, new Set(at.keys())),
+        mastery: await mastery.overview(playerId),
         equipped: { avatar: p?.avatar_url || '', title: p?.title || null, back: p?.card_back || null },
     };
 }
@@ -199,10 +206,11 @@ async function cosmetics(playerId, defs, unlocked) {
     const levelAvatars = [];
     for (let n = 5; n <= (lv?.level || 1); n += 5) levelAvatars.push(`level:${n}`);
     const { freeAvatars } = await import('../../shared/clans.js');
+    const ms = await mastery.cosmetics(playerId);   // clan mastery pictures and titles
     return {
-        avatars: [...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
+        avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits'), ...ms.avatars])],
         portraits: got.some(a => a.reward.avatar === 'portraits'),
-        titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
+        titles: [...got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })), ...ms.titles],
         backs: got.map(a => a.reward.back).filter(Boolean),
     };
 }
@@ -210,6 +218,7 @@ async function cosmetics(playerId, defs, unlocked) {
 /** The title text for a player's chosen title (players.title holds the achievement id). */
 async function titleText(achievementId) {
     if (!achievementId) return null;
+    if (String(achievementId).startsWith('mastery:')) return mastery.titleText(achievementId);
     const a = (await definitions()).find(d => d.id === achievementId);
     return a?.reward.title || null;
 }

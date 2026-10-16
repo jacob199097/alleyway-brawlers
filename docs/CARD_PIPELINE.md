@@ -136,6 +136,17 @@ deck): how much drawing it helps. It flags STRONG (+8 or more), WEAK (-5 or less
 sortable page to share. 5000 games take about ten seconds. The numbers describe the cards as the CPU
 plays them, so treat them as a pointer to cards worth a look, not a verdict.
 
+**From real matches.** Every finished match (online and CPU) is stored in `match_stats`: each side's
+clan, leader, deck, the cards drawn and played, and who won. `node tools/live_balance.mjs <dir>` runs
+`backend/scripts/balance_dashboard.js` on the server and writes the numbers (clan win rates against
+players and the CPU, leaders, each card's impact) as JSON files for the live balance dashboard (a
+private claude.ai page: ask Claude to refresh it).
+
+**Weekly challenge and clan mastery.** The challenge's rules twists are in `shared/challenges.js`
+(both rules engines apply them); a new one each Monday, the first win of the week pays once
+(`backend/economy/challenge.js`). Clan mastery levels, XP and rewards are in
+`backend/economy/mastery.js`.
+
 `--vs nebula,militia` plays one clan against the other and prints the matchup. Add `--starters` to give
 both players their clan's starter deck (`shared/clans.js`, what new players get): check it after
 changing a clan's cards or its starter, and keep the starters near 50% against each other. Random

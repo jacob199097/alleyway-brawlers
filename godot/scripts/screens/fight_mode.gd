@@ -32,6 +32,37 @@ func _ready() -> void:
 	var tut := UI.button("HOW TO PLAY  ·  TUTORIAL", Game.start_tutorial, Vector2(440, 60), UI.GREEN)
 	tut.position = Vector2(960 - 220, 958)
 	add_child(tut)
+	if not Game.offline:
+		_weekly()
+
+
+## This week's challenge (GET /api/challenge): its twist, its reward, and PLAY (or WON).
+func _weekly() -> void:
+	var r := await Api.request("GET", "/api/challenge")
+	if not r.ok or not (r.data is Dictionary) or not is_inside_tree():
+		return
+	var c: Dictionary = r.data
+	var p := UI.panel(UI.RED, Color(0.08, 0.03, 0.05, 0.94))
+	p.position = Vector2(1210, 940)
+	p.custom_minimum_size = Vector2(680, 110)
+	add_child(p)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	p.add_child(row)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(v)
+	v.add_child(UI.label("WEEKLY CHALLENGE  ·  %s" % str(c.get("name", "")).to_upper(), 22, UI.RED, true))
+	var t := UI.label(str(c.get("text", "")), 17, Color.WHITE)
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(440, 0)
+	v.add_child(t)
+	var reward := UI.reward_text(c.get("reward", {}) if c.get("reward") is Dictionary else {})
+	v.add_child(UI.label(("Won this week  ·  a new one each Monday") if c.get("won", false) else "Beat the Hard CPU: " + reward, 16, UI.MUTED))
+	var b := UI.button("PLAY AGAIN" if c.get("won", false) else "PLAY", _start.bind("challenge"), Vector2(170, 64), UI.RED)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(b)
 
 
 func _card(m: Dictionary, at: Vector2) -> void:
@@ -109,7 +140,7 @@ func _rank_art(parent: Control) -> void:
 func _start(mode: String) -> void:
 	if _starting:
 		return
-	var difficulty := "hard" if mode == "ranked" else "normal"
+	var difficulty := "hard" if mode in ["ranked", "challenge"] else "normal"
 	if mode == "cpu":
 		difficulty = await _pick_difficulty()
 		if difficulty == "":
@@ -135,7 +166,7 @@ func _start(mode: String) -> void:
 	# The server runs the match (and decides who goes first)
 	_starting = true
 	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
-	var why := await Game.request_cpu_match(mode == "ranked", difficulty)
+	var why := await Game.request_cpu_match(mode == "ranked", difficulty, mode == "challenge")
 	if why != "":
 		on_online_error(why)
 		return

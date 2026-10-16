@@ -1,7 +1,12 @@
 [
     {
-        "version": "0.7.19",
+        "version": "0.8.0",
         "notes": [
+            "Weekly Challenge (Fight screen): a new rules twist every Monday against the Hard CPU. Your first win each week pays 300 Karat and a free pack.",
+            "Clan Mastery: every match levels up the clan you play, with Karat, profile pictures of its rarest characters and the titles Veteran, Elite and Legend. See it on your profile.",
+            "Deck records: each deck's games and win rate, in the deck builder and on your profile.",
+            "The Hard CPU plays smarter: it shields weak characters in DEF, saves its Ambushes for real threats and pays sacrifice costs.",
+            "The game's version is shown in the corner of the main menu.",
             "The Militia starter deck now has every Militia card, including The Colonel, Sergeant Ironwall and Checkpoint Zero. It's an even match for the Nebula starter.",
             "Duel tips: the first time something new comes up (a full front row, Heavies, Activate abilities, Ambushes, Downed, piles) a short tip explains it. Turn them off in Settings.",
             "The CPU's Militia decks are stronger too.",

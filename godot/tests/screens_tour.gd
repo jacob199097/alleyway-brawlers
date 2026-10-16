@@ -48,6 +48,15 @@ func _run() -> void:
 	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "contraband", "profile", "social", "mailbox", "clan_select", "achievements"]:
 		Game.go(s)
 		await _shot("02_" + s, 2.2)
+	# The profile's clan mastery and deck records
+	Game.go("profile")
+	await get_tree().create_timer(2.0).timeout
+	_screen()._tab("mastery")
+	await _shot("02_profile_mastery", 1.2)
+	_screen()._tab("decks")
+	await _shot("02_profile_decks", 1.0)
+	Net.show_achievements([{"heading": "WEEKLY CHALLENGE", "name": "War Chest", "reward": {"karat": 300, "free_packs": 1}}])
+	await _shot("02_challenge_banner", 1.0)
 	# A friend's profile (from the friends list)
 	Game.view_player_id = "00000000-0000-0000-0000-000000000001"
 	Game.go("profile")

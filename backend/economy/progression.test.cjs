@@ -150,6 +150,30 @@ async function rejects(promise, pattern) {
     assert.equal(coll.unlocked, (await q('SELECT COUNT(*)::int AS n FROM cards')).rows[0].n >= 25);
     if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: portrait }), { ok: true });
 
+    // Clan mastery: the 10 Nebula wins above are 1000 XP, level 3 (Karat at 2, a picture at 3)
+    const mastery = require('./mastery');
+    const { rows: [ms] } = await q(`SELECT xp, wins, games FROM clan_mastery WHERE player_id = $1 AND clan = 'nebula'`, [id]);
+    assert.equal(ms.xp, 1000);
+    assert.equal(ms.wins, 10);
+    const nebula = (await mastery.overview(id)).find(m => m.clan === 'nebula');
+    assert.equal(nebula.level, 3);
+    const pic = nebula.rewards.find(r => r.level === 3).reward.avatar;
+    assert.ok(pic && (await achievements.cosmetics(id)).avatars.includes(pic), 'the level 3 picture can be worn');
+    assert.deepEqual(await achievements.equip(id, { avatar: pic }), { ok: true });
+
+    // The weekly challenge pays once a week
+    const challenge = require('./challenge');
+    const purse = async () => (await q('SELECT karat, free_packs FROM players WHERE id = $1', [id])).rows[0];
+    const before = await purse();
+    const week = await challenge.status(id);
+    assert.equal(week.won, false);
+    assert.ok(await challenge.claim(id, week.week), 'the first win pays');
+    assert.equal(await challenge.claim(id, week.week), null, 'only once a week');
+    const after = await purse();
+    assert.equal(after.karat - before.karat, week.reward.karat);
+    assert.equal(after.free_packs - before.free_packs, week.reward.free_packs);
+    assert.equal((await challenge.status(id)).won, true);
+
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);
 

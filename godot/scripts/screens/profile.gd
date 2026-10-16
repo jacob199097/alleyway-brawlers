@@ -5,6 +5,8 @@ extends Screen
 ## the same stats, without currencies, the look button or replays.
 
 var _friend := false
+var _views := {}       # tab -> its Control (built when first opened)
+var _tabs := {}
 
 
 func _ready() -> void:
@@ -87,12 +89,27 @@ func _render(p: Dictionary) -> void:
 			["ACHIEVEMENTS", str(int(p.get("achievements", 0)))], ["CLAN", str(clan.get("name", "—")).to_upper()],
 			["MATCHES", str(wins + losses + int(p.get("draws", 0)))],
 			["PLAYING SINCE", str(p.get("created_at", "")).left(10)]]
+	var stats_view := Control.new()
+	stats_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stats_view)
+	_views["stats"] = stats_view
+	if not Game.offline and not _friend:
+		var bar := HBoxContainer.new()
+		bar.position = Vector2(900, 170)
+		bar.add_theme_constant_override("separation", 12)
+		add_child(bar)
+		for t in [["stats", "STATS"], ["mastery", "CLAN MASTERY"], ["decks", "DECKS"]]:
+			var b := UI.button(t[1], _tab.bind(t[0]), Vector2(280, 54), UI.BLUE)
+			b.toggle_mode = true
+			b.set_pressed_no_signal(t[0] == "stats")
+			bar.add_child(b)
+			_tabs[t[0]] = b
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.position = Vector2(900, 250)
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 24)
-	add_child(grid)
+	stats_view.add_child(grid)
 	for s in stats:
 		var cell := UI.panel(UI.BLUE)
 		cell.custom_minimum_size = Vector2(280, 130)
@@ -107,19 +124,128 @@ func _render(p: Dictionary) -> void:
 		v.add_child(val)
 		grid.add_child(cell)
 	if not Game.offline and not _friend:
-		_recent_matches()
+		_recent_matches(stats_view)
+
+
+func _tab(which: String) -> void:
+	Sfx.play("click")
+	for k in _tabs:
+		_tabs[k].set_pressed_no_signal(k == which)
+	for k in _views:
+		_views[k].visible = k == which
+	if _views.has(which):
+		return
+	var view := Control.new()
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(view)
+	_views[which] = view
+	if which == "mastery":
+		_mastery(view)
+	else:
+		_decks(view)
+
+
+## Clan mastery (economy/mastery.js): each clan's level, progress and what the next levels pay.
+func _mastery(view: Control) -> void:
+	var col := VBoxContainer.new()
+	col.position = Vector2(900, 250)
+	col.custom_minimum_size = Vector2(888, 0)
+	col.add_theme_constant_override("separation", 18)
+	view.add_child(col)
+	var wait := UI.label("Loading…", 22, UI.MUTED)
+	col.add_child(wait)
+	var r := await Api.request("GET", "/api/achievements")
+	if not is_instance_valid(col):
+		return
+	wait.queue_free()
+	var list: Array = r.data.get("mastery", []) if r.ok and r.data is Dictionary else []
+	if list.is_empty():
+		col.add_child(UI.label("Clan mastery isn't available right now.", 22, UI.MUTED))
+		return
+	col.add_child(UI.label("Every match levels up the clan your deck is built from: a win 100 XP, anything else 40.", 20, UI.MUTED))
+	for m in list:
+		var p := UI.panel(Color(str(m.get("color", "#b388ff"))), Color(0.05, 0.05, 0.12, 0.92))
+		p.custom_minimum_size = Vector2(888, 0)
+		col.add_child(p)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 8)
+		p.add_child(v)
+		var top := HBoxContainer.new()
+		v.add_child(top)
+		var name := UI.label("%s  ·  LEVEL %d / %d" % [str(m.name).to_upper(), int(m.level), int(m.max)], 30, Color(str(m.get("color", "#b388ff"))), true)
+		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(name)
+		top.add_child(UI.label("%d wins · %d games" % [int(m.wins), int(m.games)], 20, UI.MUTED))
+		var next = m.get("next")
+		var track := ColorRect.new()
+		track.color = Color("1a1a3a")
+		track.custom_minimum_size = Vector2(860, 14)
+		v.add_child(track)
+		var fill := ColorRect.new()
+		fill.color = Color(str(m.get("color", "#b388ff")))
+		var pct := 1.0 if next == null else clampf(float(int(m.xp) - int(m.floor)) / maxf(1.0, float(int(next) - int(m.floor))), 0.0, 1.0)
+		fill.size = Vector2(860 * pct, 14)
+		track.add_child(fill)
+		var coming := ""
+		for rw in m.get("rewards", []):
+			if int(rw.level) > int(m.level):
+				coming = "Level %d: %s" % [int(rw.level), _mastery_reward(rw.reward)]
+				break
+		v.add_child(UI.label(("%d / %d XP  ·  Next  %s" % [int(m.xp), int(next), coming]) if next != null else "Mastered: every reward unlocked", 20, Color.WHITE))
+
+
+static func _mastery_reward(r: Dictionary) -> String:
+	if r.get("title") is String:
+		return "the title \"%s\"" % r.title
+	if r.get("avatar") is String:
+		var c := CardDB.get_card(str(r.avatar).substr(5))
+		return "%s's profile picture" % str(c.get("name", "a card"))
+	return UI.reward_text(r)
+
+
+## Each deck's record (games and wins since this was added).
+func _decks(view: Control) -> void:
+	var col := VBoxContainer.new()
+	col.position = Vector2(900, 250)
+	col.custom_minimum_size = Vector2(888, 0)
+	col.add_theme_constant_override("separation", 10)
+	view.add_child(col)
+	var wait := UI.label("Loading…", 22, UI.MUTED)
+	col.add_child(wait)
+	var r := await Api.request("GET", "/api/deck")
+	if not is_instance_valid(col):
+		return
+	wait.queue_free()
+	if not r.ok or not (r.data is Array) or r.data.is_empty():
+		col.add_child(UI.label("No decks yet: build one in the Deck Builder.", 22, UI.MUTED))
+		return
+	for d in r.data:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		col.add_child(row)
+		var n := UI.label(str(d.get("name", "Deck")) + ("  ★" if d.get("is_active", false) else ""), 24, UI.GOLD if d.get("is_active", false) else Color.WHITE, true)
+		n.custom_minimum_size = Vector2(420, 0)
+		row.add_child(n)
+		row.add_child(UI.label(_record(d), 22, Color(0.85, 0.85, 0.95)))
+
+
+## "12 games · 7 wins · 58%" (or "No games yet").
+static func _record(d: Dictionary) -> String:
+	var g := int(d.get("games", 0))
+	var w := int(d.get("wins", 0))
+	return "No games yet" if g == 0 else "%d game%s · %d win%s · %d%%" % [g, "" if g == 1 else "s", w, "" if w == 1 else "s", roundi(100.0 * w / g)]
 
 
 ## Your last matches, each with a replay (routes/replays.js on the server).
-func _recent_matches() -> void:
+func _recent_matches(parent: Control) -> void:
 	var head := UI.label("RECENT MATCHES", 26, UI.GOLD, true)
 	head.position = Vector2(900, 700)
-	add_child(head)
+	parent.add_child(head)
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(900, 744)
 	scroll.size = Vector2(888, 300)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
+	parent.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.custom_minimum_size = Vector2(870, 0)
 	list.add_theme_constant_override("separation", 8)
@@ -143,7 +269,7 @@ func _recent_matches() -> void:
 		var res := UI.label({"win": "WIN", "loss": "LOSS"}.get(m.get("result"), "DRAW"), 22, UI.GREEN if won else UI.RED, true)
 		res.custom_minimum_size = Vector2(80, 0)
 		row.add_child(res)
-		var mode: String = {"casual": "Casual", "friendly": "Friendly", "cpu": "VS CPU", "cpu_ranked": "Ranked"}.get(m.get("mode"), "Match")
+		var mode: String = {"casual": "Casual", "friendly": "Friendly", "cpu": "VS CPU", "cpu_ranked": "Ranked", "cpu_challenge": "Weekly Challenge"}.get(m.get("mode"), "Match")
 		var opp: Dictionary = m.get("opponent", {}) if m.get("opponent") is Dictionary else {}
 		var info := UI.label("vs %s  ·  %s  ·  %d turns  ·  %s" % [opp.get("username", "?"), mode, int(m.get("turns", 0)),
 			str(m.get("created_at", "")).left(10)], 20, Color(0.85, 0.85, 0.95))

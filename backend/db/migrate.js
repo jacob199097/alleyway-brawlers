@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILES = ['migrate_progression.sql', 'migrate_retire_classic_back.sql', 'migrate_level_rewards.sql', 'migrate_card_avatars.sql'];
+const FILES = ['migrate_progression.sql', 'migrate_retire_classic_back.sql', 'migrate_level_rewards.sql', 'migrate_card_avatars.sql', 'migrate_mastery_challenge.sql'];
 
 async function migrate(pool) {
     for (const f of FILES) {

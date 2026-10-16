@@ -80,6 +80,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/mail',    mailRoutes);
 app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);
+app.use('/api/challenge', require('./routes/challenge'));   // this week's challenge (economy/challenge.js)
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
@@ -112,6 +113,12 @@ const online = createOnlineService(io, {
     recordDailyWin,
     saveReplay,
     recordMatch: achievements.recordMatch,
+    recordDeck: (deckId, outcome) => pool.query(
+        'UPDATE decks SET games = games + 1, wins = wins + $2 WHERE id = $1', [deckId, outcome === 'win' ? 1 : 0]),
+    recordStats: (row) => pool.query(
+        'INSERT INTO match_stats (id, mode, version, data) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING',
+        [row.id, row.mode, row.version, JSON.stringify(row.data)]),
+    claimChallenge: (playerId, week) => require('./economy/challenge').claim(playerId, week),
     areFriends: async (a, b) => (await pool.query(
         `SELECT 1 FROM friendships WHERE status = 'accepted'
          AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0,

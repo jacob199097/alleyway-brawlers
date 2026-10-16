@@ -215,7 +215,7 @@ func _next_banner() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	row.add_child(col)
-	col.add_child(UI.label("ACHIEVEMENT UNLOCKED", 16, UI.MUTED, true))
+	col.add_child(UI.label(str(a.get("heading", "ACHIEVEMENT UNLOCKED")), 16, UI.MUTED, true))
 	col.add_child(UI.label(str(a.get("name", "")).to_upper(), 30, UI.GOLD, true))
 	var gift := UI.reward_text(a.get("reward", {}) if a.get("reward") is Dictionary else {})
 	if gift != "":

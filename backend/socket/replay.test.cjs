@@ -22,12 +22,16 @@ function dpath(a,b,p=""){if(JSON.stringify(a)===JSON.stringify(b))return null;if
         loadProfile: async (id) => ({ username: id, level: 1, avatar_url: 'profile_001' }),
         resolveMatch: async () => ({}), resolveCpuMatch: async () => ({}),
         saveReplay: async (rec) => { records.push(JSON.parse(JSON.stringify(rec))); },
+        recordStats: async (row) => { stats.push(row); },
+        claimChallenge: async (playerId, week) => { claims.push([playerId, week]); return { heading: 'WEEKLY CHALLENGE', name: 'test' }; },
     });
+    const stats = [], claims = [];
     let bad = 0;
-    for (const difficulty of ['easy', 'normal', 'hard']) {
+    // (challenge: this week's challenge, its rules twist against a Hard CPU)
+    for (const difficulty of ['easy', 'normal', 'hard', 'challenge']) {
         const sock = fakeSocket();
         svc.register(sock, { playerId: 'human-' + difficulty });
-        await sock.handlers['mp:cpu']({ ranked: false, difficulty });
+        await sock.handlers['mp:cpu'](difficulty === 'challenge' ? { challenge: true } : { ranked: false, difficulty });
         for (let i = 0; i < 2000 && !sock.got.some(([e]) => e === 'mp:over'); i++) await new Promise(r => setImmediate(r));
         const live = sock.got.filter(([e]) => e === 'mp:start' || e === 'mp:update').map(([, d]) => d);
         const over = sock.got.find(([e]) => e === 'mp:over');
@@ -47,6 +51,13 @@ function dpath(a,b,p=""){if(JSON.stringify(a)===JSON.stringify(b))return null;if
         console.log(`${difficulty}: ${rec.actions.length} actions, ${liveUpdates.length} updates, result ${over[1].result}, ` +
             `replay ${ok ? 'MATCHES' : `DIFFERS (start ${startOk}, first diff ${firstDiff}, complete ${r.complete})`}`);
     }
+    // Every match is recorded for the balance dashboard; a won challenge is claimed
+    const challengeRec = records.find(r => r.mode === 'cpu_challenge');
+    if (stats.length < 4 || !challengeRec || !Object.keys(challengeRec.rules || {}).length) { console.log('stats/challenge: missing', stats.length, challengeRec && challengeRec.rules); bad++; }
+    const challengeStats = stats.find(r => r.mode === 'cpu_challenge');
+    const humanWon = challengeStats && challengeStats.data.player.won;
+    if (humanWon !== (claims.length === 1)) { console.log('challenge claim mismatch', humanWon, claims); bad++; }
+    console.log(`stats: ${stats.length} matches recorded, challenge rules ${JSON.stringify(challengeRec && challengeRec.rules)}, claims ${claims.length}`);
     // Emotes between two players
     const a = fakeSocket(), b = fakeSocket();
     svc.register(a, { playerId: 'alice' });

@@ -8,7 +8,7 @@ const { pool }        = require('../db/pool');
 router.get('/', requireAuth, async (req, res) => {
     try {
         const { rows } = await pool.query(
-            `SELECT d.id, d.name, d.is_active, d.updated_at,
+            `SELECT d.id, d.name, d.is_active, d.updated_at, d.games, d.wins,
                     COALESCE(SUM(dc.copies), 0)::int AS card_count
              FROM   decks d
              LEFT JOIN deck_cards dc ON dc.deck_id = d.id

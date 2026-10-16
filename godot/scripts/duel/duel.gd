@@ -278,6 +278,8 @@ func _setup_online(start: Dictionary) -> void:
 	_clock_left = float(start.get("clock", ONLINE_TURN_SECS))
 	if not start.get("resync", false) and not _spectating:
 		Game.alert()
+	if start.get("challenge") is Dictionary and not start.get("resync", false):   # this week's twist
+		_tip_panel("WEEKLY CHALLENGE  ·  %s" % str(start.challenge.get("name", "")).to_upper(), str(start.challenge.get("text", "")), RED)
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	_after_events()
@@ -3531,16 +3533,22 @@ func _show_tip(key: String) -> void:
 	var seen: Array = Game.settings.get("seen_tips", []).duplicate()
 	seen.append(key)
 	Game.set_setting("seen_tips", seen)   # shown once
+	_tip_panel("TIP  ·  %s" % TIPS[key][0], TIPS[key][1], TEAL)
+
+
+## A note over the bottom of the card panel (a tip, this week's challenge): GOT IT or 30 seconds.
+func _tip_panel(heading: String, text: String, accent: Color) -> void:
+	_close_tip()
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), TEAL, 2, 10))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), accent, 2, 10))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	box.add_child(col)
-	var head := _label(20, TEAL, true)
-	head.text = "TIP  ·  %s" % TIPS[key][0]
+	var head := _label(20, accent, true)
+	head.text = heading
 	col.add_child(head)
 	var body := _label(16, Color.WHITE)
-	body.text = TIPS[key][1]
+	body.text = text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(340, 0)
 	col.add_child(body)

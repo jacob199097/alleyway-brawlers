@@ -414,6 +414,8 @@ static func reward_text(r: Dictionary) -> String:
 		parts.append("%d Karat" % int(r.karat))
 	if int(r.get("dust", 0)) > 0:
 		parts.append("%d Dust" % int(r.dust))
+	if int(r.get("free_packs", 0)) > 0:
+		parts.append("%d free pack%s" % [int(r.free_packs), "" if int(r.free_packs) == 1 else "s"])
 	if r.get("title") is String:
 		parts.append("Title: %s" % r.title)
 	var av = r.get("avatar")

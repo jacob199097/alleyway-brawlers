@@ -151,6 +151,9 @@ function forSeat(v, seat) {
  * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
  * @param {(m) => Promise<Array>} [deps.recordMatch]  a player's match for achievements → what it unlocked
  *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
+ * @param {(deckId, outcome) => Promise} [deps.recordDeck]  a deck's games and wins
+ * @param {(row) => Promise} [deps.recordStats]  a finished match for the balance dashboard (match_stats)
+ * @param {(playerId, week) => Promise<object|null>} [deps.claimChallenge]  a won weekly challenge → its banner (first win only)
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -254,24 +257,25 @@ function createOnlineService(io, deps) {
         }
     }
 
-    async function startMatch(a, b, mode, firstSeat = null) {
+    async function startMatch(a, b, mode, firstSeat = null, challenge = null) {
         const { DuelState } = await engine;
+        const rules = challenge ? challenge.rules : {};
         const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const decks = { player: a.setup.deck, opponent: b.setup.deck };
         const hideouts = { player: a.setup.hideout, opponent: b.setup.hideout };
         const leaders = { player: a.setup.leader, opponent: b.setup.leader };
-        const state = new DuelState(decks, hideouts, leaders, first, seed);
+        const state = new DuelState(decks, hideouts, leaders, first, seed, rules);
         const match = {
-            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null,
+            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge,
             seats: {
-                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0 },
-                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0 },
+                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
+                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
             },
         };
         // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
         match.record = {
-            id: match.id, version: GAME_VERSION, mode, seed, first,
+            id: match.id, version: GAME_VERSION, mode, seed, first, rules,
             decks: structuredClone(decks), hideouts: structuredClone(hideouts), leaders: structuredClone(leaders),
             playerIds: { player: a.playerId, opponent: b.playerId },
             profiles: { player: profileOf(match.seats.player), opponent: profileOf(match.seats.opponent) },
@@ -312,12 +316,18 @@ function createOnlineService(io, deps) {
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
+            challenge: match.challenge ? { name: match.challenge.name, text: match.challenge.text } : null,
         });
     }
 
     function broadcast(match, events) {
         for (const ev of events) {
             if (['summon', 'set', 'hustle'].includes(ev.type)) match.seats[ev.side].cardsPlayed += 1;
+            // For the balance dashboard: which cards each side drew and played
+            if (ev.card && match.seats[ev.side]) {
+                if (ev.type === 'draw') match.seats[ev.side].drawn.add(ev.card.id);
+                else if (['summon', 'set', 'hustle', 'lasting', 'promote', 'awaken'].includes(ev.type)) match.seats[ev.side].played.add(ev.card.id);
+            }
             // For achievements: a KO counts for the other side; promotions and awakenings for their own
             if (ev.type === 'ko' && match.seats[other(ev.side)]) match.seats[other(ev.side)].kos += 1;
             if (ev.type === 'promote' && match.seats[ev.side]) match.seats[ev.side].promotes += 1;
@@ -454,6 +464,24 @@ function createOnlineService(io, deps) {
         } catch (err) {
             console.error('[Online] Rewards failed:', err.message);
         }
+        // Each deck's record, and the match for the balance dashboard
+        for (const seat of ['player', 'opponent']) {
+            const s = match.seats[seat];
+            if (!s.bot && s.setup?.deckId) deps.recordDeck?.(s.setup.deckId, !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss')?.catch?.(() => {});
+        }
+        try {
+            const side = async (seat) => {
+                const s = match.seats[seat];
+                return { bot: !!s.bot, level: s.level || null, clan: await deckClan(s.setup), leader: s.setup?.leader || '',
+                    deck: [...new Set((s.setup?.deck || []).map(x => x.id))], drawn: [...s.drawn], played: [...s.played],
+                    won: winnerSeat === seat };
+            };
+            await deps.recordStats?.({ id: match.id, mode: match.mode, version: GAME_VERSION,
+                data: { turns: match.state.turn, reason, winner: winnerSeat || null, first: match.record.first,
+                    challenge: match.challenge?.id || null, player: await side('player'), opponent: await side('opponent') } });
+        } catch (err) {
+            console.error('[Online] Match stats failed:', err.message);
+        }
         // Achievements: what each player did this match
         const unlocked = {};
         for (const seat of ['player', 'opponent']) {
@@ -464,6 +492,11 @@ function createOnlineService(io, deps) {
                 mode: match.mode, difficulty: bot?.level || null, clan: await deckClan(s.setup),
                 kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: match.state.sides[seat].morale,
             }).catch(() => []);
+            // The weekly challenge: the first win of the week pays (economy/challenge.js)
+            if (match.challenge && winnerSeat === seat) {
+                const won = await deps.claimChallenge?.(s.playerId, match.challenge.week)?.catch?.(() => null);
+                if (won) unlocked[s.playerId].push(won);
+            }
         }
         for (const seat of ['player', 'opponent']) {
             const s = match.seats[seat];
@@ -566,11 +599,17 @@ function createOnlineService(io, deps) {
         });
 
         // A match against the server CPU (VS CPU, or Ranked when ranked is true)
-        socket.on('mp:cpu', async ({ ranked, difficulty } = {}) => {
+        // challenge: this week's challenge (shared/challenges.js): its rules twist, against a Hard CPU
+        socket.on('mp:cpu', async ({ ranked, difficulty, challenge } = {}) => {
             if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             leaveQueue(me);
             try {
                 const entry = await prepare(me);
+                if (challenge === true) {
+                    const { weeklyChallenge } = await import('../../shared/challenges.js');
+                    await startMatch(entry, await cpuSeat(false, 'hard'), 'cpu_challenge', null, weeklyChallenge());
+                    return;
+                }
                 const level = ranked === true ? 'hard' : ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
                 await startMatch(entry, await cpuSeat(ranked === true, level), ranked === true ? 'cpu_ranked' : 'cpu');
             } catch (err) {
@@ -803,7 +842,7 @@ async function loadSetupFromDb(pool, playerId) {
         const { rows: lr } = await pool.query('SELECT art_url FROM cards WHERE id = $1', [decks[0].leader_card_id]);
         if (lr.length && Object.keys(getCard(lr[0].art_url)).length) leader = lr[0].art_url;
     }
-    return { deck, hideout, leader };
+    return { deck, hideout, leader, deckId: decks[0].id };
 }
 
 async function loadProfileFromDb(pool, playerId) {
@@ -820,7 +859,7 @@ async function loadProfileFromDb(pool, playerId) {
  */
 async function replaySteps(rec, seat) {
     const { DuelState } = await engine;
-    const st = new DuelState(rec.decks, rec.hideouts, rec.leaders, rec.first, rec.seed);
+    const st = new DuelState(rec.decks, rec.hideouts, rec.leaders, rec.first, rec.seed, rec.rules || {});
     st.start();
     // Snapshots (structuredClone): the view shares objects with the live state, which later moves change
     const view = () => structuredClone(forSeat(viewFor(st, seat), seat));

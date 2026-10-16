@@ -30,6 +30,7 @@ var _grid: GridContainer
 var _list: VBoxContainer
 var _count: Label
 var _deck_name: Label
+var _record: Label      # the deck's games and wins
 var _leader_box: HBoxContainer
 var _stats: VBoxContainer       # the Authority curve, the deck's make-up and anything worth fixing
 var _chips := {}
@@ -122,6 +123,11 @@ func _build_header() -> void:
 	sel.add_child(UI.button("▶", _cycle.bind(1), Vector2(56, 52)))
 	sel.add_child(UI.button("★ ACTIVE", _set_active, Vector2(150, 52), UI.GOLD))
 	sel.add_child(UI.button("+ NEW", _new_deck, Vector2(120, 52), UI.GREEN))
+	_record = UI.label("", 18, UI.MUTED)
+	_record.size = Vector2(250, 24)
+	_record.position = Vector2(1274, 150)
+	_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_record)
 
 
 func _chip(group: String, value: String, text: String) -> Button:
@@ -233,6 +239,8 @@ func _load_deck() -> void:
 	var d: Dictionary = _decks[_deck_idx]
 	_deck_id = d.id
 	_deck_name.text = str(d.get("name", "Deck")).left(18) + ("  ★" if d.get("is_active", false) else "")
+	var g := int(d.get("games", 0))
+	_record.text = "No games yet" if g == 0 else "%d games · %d%% won" % [g, roundi(100.0 * int(d.get("wins", 0)) / g)]
 	var r := await Api.request("GET", "/api/deck/%s" % d.id)
 	if not r.ok:
 		UI.toast(self, r.error, UI.RED)

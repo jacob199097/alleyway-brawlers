@@ -18,6 +18,7 @@ func _ready() -> void:
 		Game.go("login")
 		return
 	_build_bar(Game.player)
+	_version_label()
 	_build_center()
 	_build_right()
 	_build_quests()
@@ -115,6 +116,16 @@ func _unhandled_input(e: InputEvent) -> void:
 ## Position on the bar artwork (in its 2400-wide pixels) → screen.
 static func _bar(x: float, y: float) -> Vector2:
 	return Vector2(x, y) * BAR_SCALE
+
+
+## The game's version, small in the bottom-right corner (what to quote when something goes wrong).
+func _version_label() -> void:
+	var v := UI.label("v" + str(ProjectSettings.get_setting("application/config/version", "")), 18, Color(1, 1, 1, 0.45))
+	v.size = Vector2(300, 24)
+	v.position = Vector2(1600, 1048)
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(v)
 
 
 func _build_bar(p: Dictionary) -> void:

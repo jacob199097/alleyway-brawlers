@@ -99,7 +99,7 @@ const quests = {
 const matches = new Map();
 
 function deckSummary(d) {
-    return { id: d.id, name: d.name, is_active: d.is_active, updated_at: d.updated_at,
+    return { id: d.id, name: d.name, is_active: d.is_active, updated_at: d.updated_at, games: d.games ?? 12, wins: d.wins ?? 7,
         card_count: [...d.cards.values()].reduce((s, n) => s + n, 0) };
 }
 
@@ -144,7 +144,17 @@ const routes = {
             unlocked: unlocked.has(a.id), unlockedAt: unlocked.get(a.id) || null })),
         cosmetics: looks(),
         equipped: { avatar: player.avatar_url, title: player.title_id, back: player.card_back },
+        // Clan mastery (backend/economy/mastery.js shape)
+        mastery: [
+            { clan: 'militia', name: 'Militia', color: '#9be655', level: 2, max: 10, xp: 420, floor: 300, next: 700, games: 6, wins: 3,
+                rewards: [{ level: 3, reward: { avatar: 'card:card_mili_014' } }, { level: 4, reward: { title: 'Militia Veteran' } }] },
+            { clan: 'nebula', name: 'Nebula', color: '#9b7bff', level: 5, max: 10, xp: 1950, floor: 1800, next: 2500, games: 25, wins: 15,
+                rewards: [{ level: 6, reward: { avatar: 'card:card_nebu_035' } }] },
+        ],
     }],
+    // The weekly challenge (backend/routes/challenge.js shape)
+    'GET /api/challenge': () => [200, { week: 2905, id: 'war_chest', name: 'War Chest', text: 'Both players start with 3 Authority.',
+        ends_at: '2026-10-19T00:00:00.000Z', reward: { karat: 300, free_packs: 1 }, won: false }],
     'POST /api/achievements/equip': (b) => {
         if (b.avatar !== undefined) player.avatar_url = b.avatar;
         if (b.title !== undefined) { player.title_id = b.title; player.title = looks().titles.find(t => t.id === b.title)?.text ?? null; }
