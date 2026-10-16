@@ -210,14 +210,22 @@ func _build_center() -> void:
 	var deck := UI.image_button("deck_editor.png", Vector2(560, 306), func(): Game.go("deck_builder"), "DECK EDITOR")
 	deck.position = Vector2(760, 560)
 	add_child(deck)
-	var ach := UI.button("ACHIEVEMENTS", func(): Game.go("achievements"), Vector2(272, 68), UI.GOLD)
-	ach.position = Vector2(904, 895)
-	ach.disabled = Game.offline
-	add_child(ach)
+	# A wide neon sign under DECK EDITOR once assets/achievements_menu.png exists, a button until then
+	var go_ach := func(): Game.go("achievements")
+	if UI.tex("achievements_menu.png"):
+		var sign := UI.image_button("achievements_menu.png", Vector2(560, 170), go_ach, "ACHIEVEMENTS")
+		sign.position = Vector2(760, 878)
+		sign.disabled = Game.offline
+		add_child(sign)
+	else:
+		var ach := UI.button("ACHIEVEMENTS", go_ach, Vector2(272, 68), UI.GOLD)
+		ach.position = Vector2(904, 895)
+		ach.disabled = Game.offline
+		add_child(ach)
 
 
 func _build_right() -> void:
-	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["card_library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar
+	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar (library_menu: patches skip names starting with c)
 	for i in items.size():
 		var it: Array = items[i]
 		var b := UI.image_button(it[0], Vector2(420, 229), func(): Game.go(it[2]), it[1])

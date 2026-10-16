@@ -2,7 +2,7 @@
 
 // Achievements and the cosmetics they unlock (economy/achievements.js).
 //   GET  /api/achievements        → { achievements: [{id, name, desc, reward, clan, target, progress, unlocked, unlockedAt}],
-//                                      cosmetics: {avatars, portraits, titles: [{id, text}], backs}, equipped: {avatar, title, back} }
+//                                      cosmetics: {avatars, titles: [{id, text}], backs}, equipped: {avatar, title, back} }
 //   POST /api/achievements/equip  { avatar?, title?, back? }   null title/back = back to the default
 
 const router = require('express').Router();

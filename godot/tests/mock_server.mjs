@@ -19,6 +19,9 @@ const cards = Object.values(CARD_CATALOG).map(c => ({
 }));
 const byId = new Map(cards.map(c => [c.id, c]));
 const inventory = new Map(cards.map(c => [c.id, 3]));
+// For packs: the cards this player had before (every fifth one is missing, so packs can show NEW)
+const collected = new Set(cards.filter((c, i) => i % 5 !== 0).map(c => c.id));
+let packsOpened = 0;
 cards.filter(c => c.rarity <= 2).slice(0, 4).forEach(c => inventory.set(c.id, 5));   // a few extras to scrap
 
 // Crafting and achievements use the real definitions (backend/economy/*.js; nothing there connects to a database)
@@ -36,8 +39,7 @@ const craftSummary = (p) => {
 };
 const looks = () => {
     const got = achievementDefs.filter(a => unlocked.has(a.id));
-    return { avatars: [...freeAvatars(), ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits')],
-        portraits: got.some(a => a.reward.avatar === 'portraits'),
+    return { avatars: [...freeAvatars(), ...got.map(a => a.reward.avatar).filter(Boolean)],
         titles: got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })),
         backs: got.map(a => a.reward.back).filter(Boolean) };
 };
@@ -194,12 +196,19 @@ const routes = {
         const field = b.currency === 'contraband' ? 'contraband' : b.currency === 'free' ? 'free_packs' : 'karat';
         if (player[field] < cost) return [400, { error: `Not enough .` }];
         player[field] -= cost;
-        const pool = cards.filter(c => c.card_type !== 'leader');
-        const got = [0, 1, 2].map(() => pool[Math.floor(Math.random() * pool.length)]);
-        got[2] = pool.filter(c => c.rarity >= 3)[Math.floor(Math.random() * 5)] || got[2];
-        got.forEach(c => inventory.set(c.id, inventory.get(c.id) + 1));
+        // The pack's clan only, like the real one; the first pack has an Epic (the screen tour shows its reveal)
+        const pool = cards.filter(c => c.card_type !== 'leader' && (!b.packType || c.clan === b.packType));
+        const pick = (list) => list[Math.floor(Math.random() * list.length)];
+        const got = [pick(pool.filter(c => c.rarity <= 2)), pick(pool.filter(c => c.rarity === 3)),
+            pick(pool.filter(c => c.rarity >= (packsOpened === 0 ? 4 : 1)))].map((c, i) => c || pool[i]);
+        packsOpened += 1;
+        const fresh = got.map(c => !collected.has(c.id));
+        got.forEach(c => { inventory.set(c.id, (inventory.get(c.id) || 0) + 1); collected.add(c.id); });
         quests.daily[3].progress = 1;
-        return [200, { cardsReceived: got.map(c => ({ ...c, cardId: c.art_url, cardType: c.card_type, clanTag: c.clan_tag })),
+        const clanCards = cards.filter(c => c.clan === got[0].clan);
+        return [200, { cardsReceived: got.map((c, i) => ({ ...c, cardId: c.art_url, cardType: c.card_type, clanTag: c.clan_tag,
+                isNew: fresh[i], owned: fresh[i] ? 1 : inventory.get(c.id) })),
+            collection: { owned: clanCards.filter(c => collected.has(c.id)).length, total: clanCards.length },
             newKarat: player.karat, newContraband: player.contraband, freePacks: player.free_packs }];
     },
     'POST /api/shop/contraband/purchase': (b) => {

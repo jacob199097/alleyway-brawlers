@@ -52,7 +52,8 @@ async function rejects(promise, pattern) {
     require('child_process').execFileSync(process.execPath, [path.join(__dirname, '../scripts/sync_cards.mjs')], { stdio: 'inherit' });
     const crafting = require('./crafting');
     const achievements = require('./achievements');
-    // A card portrait only Collector unlocks (the free pictures are some of the cards' own art)
+    // A card that isn't a free picture (the free pictures are some of the cards' own art): owning it
+    // never makes it a picture
     const { freeAvatars } = await import('../../shared/clans.js');
     const { CARD_CATALOG } = await import('../../shared/cards.js');
     const free = freeAvatars();
@@ -128,7 +129,7 @@ async function rejects(promise, pattern) {
     assert.ok((await achievements.equip(id, { back: 'nebula' })).error);
     assert.ok((await achievements.equip(id, { avatar: 'clan:nebula' })).error);
     assert.deepEqual(await achievements.equip(id, { avatar: free[0] }), { ok: true }, 'everyone has the free pictures');
-    assert.ok((await achievements.equip(id, { avatar: portrait })).error, 'portraits come with Collector');
+    assert.ok((await achievements.equip(id, { avatar: portrait })).error, 'only unlocked pictures');
     for (let i = 0; i < 9; i++) {
         await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'casual', clan: 'nebula', morale: 3000 });
     }
@@ -142,13 +143,13 @@ async function rejects(promise, pattern) {
     assert.equal(ov.equipped.title, 'flawless');
     assert.equal(await achievements.titleText('flawless'), 'Untouchable');
 
-    // Collector unlocks portraits of owned cards
+    // Collector: a title and Dust, but owning a card still doesn't make it a picture
     await q(`INSERT INTO player_inventory (player_id, card_id, quantity)
              SELECT $1, id, 1 FROM cards ON CONFLICT DO NOTHING`, [id]);
     await achievements.check(id);
     const coll = (await achievements.overview(id)).achievements.find(a => a.id === 'collect_25');
     assert.equal(coll.unlocked, (await q('SELECT COUNT(*)::int AS n FROM cards')).rows[0].n >= 25);
-    if (coll.unlocked) assert.deepEqual(await achievements.equip(id, { avatar: portrait }), { ok: true });
+    assert.ok((await achievements.equip(id, { avatar: portrait })).error, 'owned cards are not pictures');
 
     // Clan mastery: the 10 Nebula wins above are 1000 XP, level 3 (Karat at 2, a picture at 3)
     const mastery = require('./mastery');
@@ -173,6 +174,17 @@ async function rejects(promise, pattern) {
     assert.equal(after.karat - before.karat, week.reward.karat);
     assert.equal(after.free_packs - before.free_packs, week.reward.free_packs);
     assert.equal((await challenge.status(id)).won, true);
+
+    // Packs: only the pack's clan, NEW for cards the player didn't have, and the clan's collection
+    const { openPack } = require('./packOpener');
+    const { rows: [opener] } = await q(`INSERT INTO players (username, email, password_hash, karat) VALUES ('opener', 'o@x', 'x', 400) RETURNING id`);
+    const pack = await openPack(opener.id, 'militia');
+    assert.equal(pack.cardsReceived.length, 3);
+    assert.ok(pack.cardsReceived.every(c => c.clan === 'militia'), 'a Militia pack has only Militia cards');
+    assert.ok(pack.cardsReceived.every(c => c.isNew && c.owned === 1), 'all new to a new player');
+    assert.equal(pack.collection.owned, 3);
+    assert.equal(pack.collection.total, Object.values(CARD_CATALOG).filter(c => c.clan === 'militia' && !c.token).length);
+    assert.equal(pack.newKarat, 200);
 
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);

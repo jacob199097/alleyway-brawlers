@@ -1,6 +1,6 @@
 extends Screen
-## Card packs: buy with Karat or Contraband (the server rolls the cards), then a pack-opening
-## reveal where higher rarities get more suspense.
+## Card packs: buy with Karat, Contraband or a free pack (the server rolls the cards), then the
+## pack opening (scripts/ui/pack_opening.gd), where the player can open another without leaving it.
 
 ## Known packs and their art. The server's list decides what's on sale: a new Card Forge clan
 ## shows up with its name, and art from assets/<id>_booster.png once that file exists.
@@ -10,7 +10,10 @@ var _balance: Label
 var _free := 0                   # free packs from levelling up (any pack, the player's choice)
 var _free_buttons: Array[Button] = []
 var _busy := false
-var _reveal: Control
+var _opening = null              # the pack opening (ui/pack_opening.gd), while it's up
+var _art_rects := {}             # pack id -> where its art sits on the shelf (the opening starts there)
+## The pack opening's synthesised sounds (sfx.gd), made ready while the shop is open
+const PACK_SOUNDS := ["tear", "charge", "burst", "shimmer", "reveal_rare", "reveal_epic", "new_card"]
 
 
 func _ready() -> void:
@@ -49,6 +52,7 @@ func _ready() -> void:
 	var step: float = minf(480.0, 1700.0 / maxi(1, packs.size()))
 	for i in packs.size():
 		_pack(packs[i], Vector2(760.0 - (packs.size() - 1) * step / 2.0 + i * step, 170))
+	Sfx.warm(PACK_SOUNDS)
 
 
 func _refresh_balance() -> void:
@@ -64,6 +68,7 @@ func _pack(p: Dictionary, at: Vector2) -> void:
 	var art := UI.texture_rect(UI.tex(p.image) if UI.tex(p.image) else CardDB.back(), Vector2(400, 543))
 	art.position = at
 	art.pivot_offset = art.size / 2
+	_art_rects[p.id] = Rect2(at + Vector2(0, 5), Vector2(400, 533))
 	art.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(art)
 	art.mouse_entered.connect(func(): create_tween().tween_property(art, "scale", Vector2.ONE * 1.04, 0.12))
@@ -93,306 +98,35 @@ func _pack(p: Dictionary, at: Vector2) -> void:
 
 
 func _buy(p: Dictionary, currency: String) -> void:
-	if _busy:
+	if _busy or _opening:
 		return
+	var data := await _purchase(p, currency, self)
+	if data.is_empty() or not is_inside_tree():
+		return
+	_opening = load("res://scripts/ui/pack_opening.gd").open(self, p, data, currency, _art_rects.get(p.id, Rect2()))
+	_opening.another.connect(func(cur: String):
+		var next := await _purchase(p, cur, _opening)
+		if _opening:
+			if next.is_empty():
+				_opening.buy_failed()
+			else:
+				_opening.next_pack(next))
+	_opening.tree_exited.connect(func(): _opening = null)
+
+
+## Buys a pack on the server, which opens it. Returns the reply (the cards, new balances), or {}
+## after telling the player why not.
+func _purchase(p: Dictionary, currency: String, toast_on: Control) -> Dictionary:
 	_busy = true
 	var r := await Api.request("POST", "/api/shop/open", {"packType": p.id, "currency": currency})
 	_busy = false
 	if not r.ok:
-		UI.toast(self, r.error, UI.RED)
-		return
+		UI.toast(toast_on, r.error, UI.RED)
+		return {}
 	Game.player.karat = r.data.get("newKarat", Game.player.get("karat", 0))
 	Game.player.contraband = r.data.get("newContraband", Game.player.get("contraband", 0))
 	if r.data.get("freePacks") != null:
 		_free = int(r.data.freePacks)
 		Game.player.free_packs = _free
 	_refresh_balance()
-	_open_pack(p, r.data.get("cardsReceived", []))
-
-
-# ── Pack opening ─────────────────────────────────────────────────────────────
-
-func _open_pack(p: Dictionary, cards: Array) -> void:
-	_reveal = Control.new()
-	_reveal.size = size
-	add_child(_reveal)
-	var veil := ColorRect.new()
-	veil.color = Color(0, 0, 0, 0)
-	veil.size = size
-	_reveal.add_child(veil)
-	create_tween().tween_property(veil, "color:a", 0.85, 0.25)
-	var title := UI.label("OPENING — %s" % str(p.label).to_upper(), 44, UI.GOLD, true)
-	title.size = Vector2(1920, 60)
-	title.position = Vector2(0, 40)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_reveal.add_child(title)
-
-	# Pack slides up, shakes, and tears open
-	var pack := UI.texture_rect(UI.tex(p.image), Vector2(340, 462))
-	pack.position = Vector2(790, 1200)
-	pack.pivot_offset = pack.size / 2
-	_reveal.add_child(pack)
-	Sfx.play("whoosh", 0.8)
-	var t := create_tween()
-	t.tween_property(pack, "position:y", 300.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	for i in 6:
-		t.tween_property(pack, "rotation", 0.06 * (1 if i % 2 == 0 else -1), 0.05)
-	t.tween_property(pack, "rotation", 0.0, 0.05)
-	await t.finished
-	Sfx.play("pack_open")
-	_flash(Color.WHITE, 0.7)
-	_rays(Vector2(960, 530))
-	var tear := create_tween().set_parallel()
-	tear.tween_property(pack, "position:y", 120.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tear.tween_property(pack, "modulate:a", 0.0, 0.34)
-	await get_tree().create_timer(0.36).timeout
-
-	# Cards flip one by one, commons first, the best last
-	var sorted := cards.duplicate()
-	sorted.sort_custom(func(a, b): return int(a.get("rarity", 1)) < int(b.get("rarity", 1)))
-	var gap := minf(400.0, 1700.0 / maxf(1, sorted.size()))
-	var start_x := 960.0 - (sorted.size() - 1) * gap / 2.0
-	for i in sorted.size():
-		await _flip_card(sorted[i], Vector2(start_x + i * gap, 520))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 30)
-	row.position = Vector2(580, 960)
-	row.add_child(UI.button("CONTINUE", func(): _reveal.queue_free(), Vector2(360, 66)))
-	row.add_child(UI.button("GO TO DECK EDITOR", func(): Game.go("deck_builder"), Vector2(360, 66), UI.PURPLE))
-	_reveal.add_child(row)
-
-
-func _flip_card(c: Dictionary, center: Vector2) -> void:
-	var rarity := int(c.get("rarity", 1))
-	var col := UI.rarity_color(rarity)
-	var size_ := Vector2(300, 424)
-	var glow := ColorRect.new()
-	glow.color = Color(col, 0.0)
-	glow.size = size_ + Vector2(24, 24)
-	glow.position = center - glow.size / 2
-	_reveal.add_child(glow)
-	var holder := Control.new()
-	holder.size = size_
-	holder.position = center - size_ / 2 + Vector2(0, -260)
-	holder.pivot_offset = size_ / 2
-	holder.modulate.a = 0.0
-	_reveal.add_child(holder)
-	var back := UI.texture_rect(CardDB.back(), size_)
-	var mat := UI.card_material(size_)
-	back.material = mat
-	holder.add_child(back)
-	var turn := func(deg: float): mat.set_shader_parameter("y_rot", deg)
-	Sfx.play("draw")
-	var t := create_tween().set_parallel()
-	t.tween_property(holder, "position:y", center.y - size_.y / 2, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.tween_property(holder, "modulate:a", 1.0, 0.2)
-	t.tween_property(glow, "color:a", 0.6 if rarity >= 5 else 0.4 if rarity >= 4 else 0.25, 0.3)
-	await t.finished
-	# Suspense: a light beam behind the card, longer and brighter for rarer cards
-	var beam := ColorRect.new()
-	beam.color = Color(col, 0.0)
-	beam.size = Vector2(60 if rarity >= 5 else 36 if rarity >= 4 else 16, 1080)
-	beam.position = Vector2(center.x - beam.size.x / 2, 0)
-	_reveal.add_child(beam)
-	_reveal.move_child(beam, glow.get_index())
-	var hold := 0.9 if rarity >= 5 else 0.45 if rarity >= 4 else 0.1
-	var bt := create_tween()
-	bt.tween_property(beam, "color:a", 0.85 if rarity >= 5 else 0.55 if rarity >= 4 else 0.3, 0.2)
-	bt.tween_interval(hold)
-	bt.tween_property(beam, "color:a", 0.0, 0.25)
-	bt.tween_callback(beam.queue_free)
-	if rarity >= 4:
-		Sfx.play("ambush" if rarity >= 5 else "effect", 1.0)
-	await get_tree().create_timer(hold).timeout
-	if rarity >= 5:
-		# Fake-out: almost flips, snaps back, then commits
-		var f := create_tween()
-		f.tween_method(turn, 0.0, 55.0, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		f.tween_method(turn, 55.0, -10.0, 0.16).set_trans(Tween.TRANS_BACK)
-		f.tween_method(turn, -10.0, 0.0, 0.1)
-		await f.finished
-		await get_tree().create_timer(0.18).timeout
-	var flip := create_tween()
-	flip.tween_method(turn, 0.0, 90.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	flip.tween_callback(func():
-		back.texture = UI.card_art(c) if UI.card_art(c) else CardDB.back()
-		mat.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0))
-	flip.tween_method(turn, -90.0, 0.0, 0.22 if rarity >= 4 else 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await flip.finished
-	Sfx.play("promote" if rarity >= 3 else "flip", 1.0 + 0.1 * rarity)
-	if rarity >= 3:
-		_flash(col, 0.25 + 0.05 * rarity)
-	var tile := CardTile.make(c, size_)
-	tile.position = holder.position
-	tile.pivot_offset = size_ / 2
-	_reveal.add_child(tile)
-	holder.queue_free()
-	if rarity >= 5:
-		await _legendary_moment(tile, c, center)
-	elif rarity >= 4:
-		_epic_pop(center, _clan_color(c, col))
-	tile.pressed.connect(func(tl): UI.card_zoom(self, tl.card))
-	tile.zoomed.connect(func(tl): UI.card_zoom(self, tl.card))
-	var name := UI.label(str(c.get("name", "?")), 24, col, true)
-	name.size = Vector2(360, 30)
-	name.position = Vector2(center.x - 180, center.y + size_.y / 2 + 10)
-	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_reveal.add_child(name)
-	var rl := UI.label(str(UI.RARITY_LABEL.get(rarity, "Common")).to_upper(), 18, col)
-	rl.size = Vector2(360, 24)
-	rl.position = name.position + Vector2(0, 34)
-	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_reveal.add_child(rl)
-	await get_tree().create_timer(0.25).timeout
-
-
-## The card's clan colour (from the Card Forge), or `fallback`.
-func _clan_color(c: Dictionary, fallback: Color) -> Color:
-	var info := CardDB.get_card(str(c.get("art_url", c.get("cardId", ""))))
-	var hex := str(info.get("clanColor", c.get("clanColor", "")))
-	return Color(hex) if hex.begins_with("#") else fallback
-
-
-## An Epic: a ring and a spray of sparks in its clan's colour.
-func _epic_pop(center: Vector2, col: Color) -> void:
-	var ring := Control.new()
-	ring.position = center
-	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ring.draw.connect(func(): ring.draw_arc(Vector2.ZERO, 160.0, 0.0, TAU, 64, Color(col.lightened(0.3), 0.9), 6.0, true))
-	_reveal.add_child(ring)
-	var t := create_tween().set_parallel()
-	t.tween_property(ring, "scale", Vector2.ONE * 1.8, 0.45).from(Vector2.ONE * 0.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	t.tween_property(ring, "modulate:a", 0.0, 0.45)
-	t.chain().tween_callback(ring.queue_free)
-	_spray(center, col, 40)
-
-
-## A Legendary: everything else dims, the card rises to centre stage with turning rays in gold and
-## its clan's colour, "LEGENDARY" slams in with the clan's name, the screen shakes, and it settles back.
-func _legendary_moment(tile: Control, c: Dictionary, center: Vector2) -> void:
-	var col := _clan_color(c, UI.GOLD)
-	var stage := Vector2(960, 470)
-	var home := tile.position
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0)
-	dim.size = size
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_reveal.add_child(dim)
-	var rays := Control.new()
-	rays.position = stage
-	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rays.draw.connect(func():
-		for i in 20:
-			var a := i * TAU / 20.0
-			var w := 0.06 if i % 2 == 0 else 0.035
-			var tint: Color = UI.GOLD if i % 2 == 0 else col
-			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 1200.0, Vector2.from_angle(a + w) * 1200.0]),
-				PackedColorArray([Color(tint.lightened(0.3), 0.55), Color(tint, 0.0), Color(tint, 0.0)])))
-	rays.modulate.a = 0.0
-	_reveal.add_child(rays)
-	_reveal.move_child(tile, -1)
-	Sfx.play("riser", 0.7)
-	var up := create_tween().set_parallel()
-	up.tween_property(dim, "color:a", 0.7, 0.3)
-	up.tween_property(rays, "modulate:a", 1.0, 0.35)
-	up.tween_property(tile, "position", stage - tile.size / 2, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	up.tween_property(tile, "scale", Vector2.ONE * 1.45, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	var spin := create_tween().set_loops()
-	spin.tween_property(rays, "rotation", TAU, 24.0).from(0.0)
-	await up.finished
-	# Slam
-	Sfx.play("ambush", 1.0)
-	Sfx.play("ko", 0.8)
-	_flash(Color.WHITE, 0.6)
-	_spray(stage, UI.GOLD, 70)
-	_spray(stage, col, 50)
-	var word := UI.label("LEGENDARY", 120, UI.GOLD, true)
-	word.size = Vector2(1920, 140)
-	word.position = Vector2(0, stage.y + 300)
-	word.pivot_offset = word.size / 2
-	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	word.scale = Vector2.ONE * 2.4
-	_reveal.add_child(word)
-	var clan_name := str(CardDB.get_card(str(c.get("art_url", ""))).get("clanName", ""))
-	var sub := UI.label(("%s  ·  %s" % [clan_name.to_upper(), str(c.get("name", "")).to_upper()]) if clan_name != "" else str(c.get("name", "")).to_upper(), 34, col.lightened(0.3), true)
-	sub.size = Vector2(1920, 44)
-	sub.position = Vector2(0, stage.y + 425)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.modulate.a = 0.0
-	_reveal.add_child(sub)
-	var slam := create_tween().set_parallel()
-	slam.tween_property(word, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	slam.tween_property(sub, "modulate:a", 1.0, 0.3).set_delay(0.15)
-	_shake_reveal(18.0)
-	await get_tree().create_timer(1.5).timeout
-	# Back into the row
-	var back := create_tween().set_parallel()
-	back.tween_property(tile, "position", home, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	back.tween_property(tile, "scale", Vector2.ONE, 0.35)
-	back.tween_property(dim, "color:a", 0.0, 0.35)
-	back.tween_property(rays, "modulate:a", 0.0, 0.35)
-	back.tween_property(word, "modulate:a", 0.0, 0.3)
-	back.tween_property(sub, "modulate:a", 0.0, 0.3)
-	await back.finished
-	spin.kill()
-	for n in [dim, rays, word, sub]:
-		n.queue_free()
-
-
-## Sparks flying out from a point.
-func _spray(at: Vector2, col: Color, amount: int) -> void:
-	var p := CPUParticles2D.new()
-	p.position = at
-	p.one_shot = true
-	p.explosiveness = 0.9
-	p.amount = amount
-	p.lifetime = 1.1
-	p.spread = 180.0
-	p.initial_velocity_min = 260.0
-	p.initial_velocity_max = 620.0
-	p.gravity = Vector2(0, 500)
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 6.0
-	var g := Gradient.new()
-	g.set_color(0, col.lightened(0.4))
-	g.set_color(1, Color(col, 0.0))
-	p.color_ramp = g
-	p.emitting = true
-	_reveal.add_child(p)
-	get_tree().create_timer(1.6).timeout.connect(p.queue_free)
-
-
-func _shake_reveal(amount: float) -> void:
-	var t := create_tween()
-	for i in 8:
-		var k := amount * (1.0 - i / 8.0)
-		t.tween_property(_reveal, "position", Vector2(randf_range(-k, k), randf_range(-k, k)), 0.04)
-	t.tween_property(_reveal, "position", Vector2.ZERO, 0.05)
-
-
-func _flash(color: Color, alpha: float) -> void:
-	var r := ColorRect.new()
-	r.color = Color(color, alpha)
-	r.size = size
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_reveal.add_child(r)
-	var t := create_tween()
-	t.tween_property(r, "color:a", 0.0, 0.35)
-	t.tween_callback(r.queue_free)
-
-
-func _rays(center: Vector2) -> void:
-	var colors := [UI.GOLD, Color("ff9800"), Color.WHITE]
-	for i in 14:
-		var ray := ColorRect.new()
-		ray.color = colors[i % colors.size()]
-		ray.size = Vector2(randf_range(160, 260), randf_range(6, 12))
-		ray.pivot_offset = Vector2(0, ray.size.y / 2)
-		ray.position = center - Vector2(0, ray.size.y / 2)
-		ray.rotation = TAU * i / 14.0
-		ray.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_reveal.add_child(ray)
-		var t := create_tween().set_parallel()
-		t.tween_property(ray, "scale:x", 2.2, 0.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-		t.tween_property(ray, "modulate:a", 0.0, 0.4)
-		t.chain().tween_callback(ray.queue_free)
+	return r.data

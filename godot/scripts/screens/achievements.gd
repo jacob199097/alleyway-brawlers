@@ -165,13 +165,12 @@ func _render_look() -> void:
 	var current := str(eq.get("avatar", ""))
 	for key in cos.get("avatars", []):
 		avs.add_child(_pick(UI.avatar(key), Vector2(84, 84), str(key) == current, func(): _equip({"avatar": key})))
-	if current.begins_with("card:"):
+	if current.begins_with("card:") and not current in cos.get("avatars", []):   # (one worn from before)
 		avs.add_child(_pick(UI.avatar(current), Vector2(84, 84), true, func(): pass))
-	if cos.get("portraits", false):
-		var b := UI.button("A CARD YOU OWN…", _pick_portrait, Vector2(240, 50), UI.BLUE)
-		_look.add_child(b)
-	else:
-		_look.add_child(UI.label("More pictures: every 5 levels, each clan's Loyalist achievement, and any card you own (Collector).", 16, UI.MUTED))
+	var more := UI.label("More pictures: every 5 levels, each clan's Loyalist achievement and Clan Mastery (on your profile).", 16, UI.MUTED)
+	more.autowrap_mode = TextServer.AUTOWRAP_WORD
+	more.custom_minimum_size = Vector2(560, 0)
+	_look.add_child(more)
 
 	_look.add_child(UI.label("TITLE", 18, UI.MUTED, true))
 	var titles := OptionButton.new()
@@ -257,40 +256,3 @@ func _equip(change: Dictionary) -> void:
 	_render_look()
 	UI.toast(self, "Saved", UI.GREEN)
 
-
-## Card portrait avatars: choose any card you own.
-func _pick_portrait() -> void:
-	var r := await Api.request("GET", "/api/profile/inventory")
-	if not r.ok or not (r.data is Array):
-		UI.toast(self, r.error, UI.RED)
-		return
-	var veil := ColorRect.new()
-	veil.color = Color(0, 0, 0, 0.8)
-	veil.size = Vector2(1920, 1080)
-	veil.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(veil)
-	var head := UI.label("PICK A CARD FOR YOUR AVATAR", 34, UI.GOLD, true)
-	head.size = Vector2(1920, 50)
-	head.position = Vector2(0, 60)
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	veil.add_child(head)
-	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(160, 140)
-	scroll.size = Vector2(1600, 800)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	veil.add_child(scroll)
-	var grid := GridContainer.new()
-	grid.columns = 12
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(grid)
-	for row in r.data:
-		var id := str(row.get("art_url", ""))
-		if CardDB.art(id) == null:
-			continue
-		grid.add_child(_pick(UI.avatar("card:" + id), Vector2(112, 112), false, func():
-			veil.queue_free()
-			_equip({"avatar": "card:" + id})))
-	var close := UI.button("CANCEL", func(): veil.queue_free(), Vector2(240, 56), UI.RED)
-	close.position = Vector2(840, 980)
-	veil.add_child(close)

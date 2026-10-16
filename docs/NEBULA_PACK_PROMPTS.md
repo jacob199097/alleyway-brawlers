@@ -28,9 +28,22 @@ Using the attached card as the character reference, create product art of a trad
 ## Main menu: Card Library sign
 
 The main menu's right column (Shop, Profile, Card Library) uses neon signs. Until
-`assets/card_library_menu.png` exists the menu shows the words in gold. Attach `assets/social_menu.png`
-so it matches, and save the result as `card_library_menu.png` (wide, about 2400×1309, transparent).
+`assets/library_menu.png` exists the menu shows the words in gold. Attach `assets/shop_menu.png`
+so it matches, and save the result as `library_menu.png` (wide, about 2400×1309, transparent; on black is
+fine, the background can be cut out). Not `card_library_menu.png`: patches skip `assets/` names starting with c.
 
 ```
 Using the attached neon sign as the exact style reference, create a matching sign: a rusty iron grille frame with neon tubes, power box, cables and plug, decorative neon corner flourishes, photographed front-on. On the left, a neon icon of a fanned hand of three trading cards, the front card showing a simple star, in glowing blue and violet tubes. On the right, the words "CARD LIBRARY" in warm yellow neon tube lettering on two lines ("CARD" above "LIBRARY"), the same tube lettering style as the reference. Same proportions as the reference, wide landscape. Transparent background. No other text.
+```
+
+---
+
+## Main menu: Achievements sign
+
+Under DECK EDITOR the menu has a gold ACHIEVEMENTS button until `assets/achievements_menu.png` exists; then it
+shows that sign, drawn in a wide, short slot (560×170). Attach `assets/shop_menu.png` so it matches, and save
+the result as `achievements_menu.png` (about 2400×730, transparent or on black).
+
+```
+Using the attached neon sign as the exact style reference, create a matching sign in a wide, short banner shape (about 3.3 times as wide as it is tall): the same rusty iron grille frame with neon tubes, a power cable and plug hanging from one corner, photographed front-on. On the left, a neon icon of a trophy cup with a star above it, in glowing magenta and violet tubes. To its right, the word "ACHIEVEMENTS" on one line in warm amber-orange neon tube lettering, the same tube lettering style as the reference. Plain black background. No other text.
 ```

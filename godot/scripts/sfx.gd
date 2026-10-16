@@ -17,6 +17,7 @@ var volume_db := -3.0
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
+var _to_warm: Array = []
 
 
 func _ready() -> void:
@@ -25,6 +26,23 @@ func _ready() -> void:
 		p.bus = "SFX"
 		add_child(p)
 		_players.append(p)
+	set_process(false)
+
+
+## Gets sounds ready ahead of time, one per frame (synthesising one takes a moment), so the first
+## play of each is on time. The shop warms the pack-opening sounds.
+func warm(sounds: Array) -> void:
+	for s in sounds:
+		if not _streams.has(s) and not s in _to_warm:
+			_to_warm.append(s)
+	set_process(not _to_warm.is_empty())
+
+
+func _process(_delta: float) -> void:
+	if _to_warm.is_empty():
+		set_process(false)
+		return
+	_stream(str(_to_warm.pop_front()))
 
 
 func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
@@ -255,6 +273,107 @@ func _r_riser() -> AudioStream:
 	return _render(0.32, func(t, st):
 		var k: float = t / 0.32
 		return _noise(st, lerpf(0.03, 0.6, k)) * k * k * 0.75 + sin(TAU * lerpf(200.0, 520.0, k) * t) * k * 0.08)
+
+
+## A bell: a sine with two quieter inharmonic partials, struck at t0 = 0.
+static func _bell(f: float, t0: float) -> float:
+	if t0 <= 0.0:
+		return 0.0
+	return (sin(TAU * f * t0) + sin(TAU * f * 2.01 * t0) * 0.35 * exp(-t0 * 4.0) \
+		+ sin(TAU * f * 3.98 * t0) * 0.15 * exp(-t0 * 7.0)) * exp(-t0 * 3.2)
+
+
+# ── Pack opening (scripts/ui/pack_opening.gd) ─────────────────────────────────
+
+## Foil ripping: a short crackle, played over and over as the pack tears.
+func _r_tear() -> AudioStream:
+	return _render(0.12, func(t, st):
+		var crackle := (randf() * 2.0 - 1.0) * (1.0 if randf() < lerpf(0.55, 0.15, t / 0.12) else 0.2)
+		return (crackle * 0.5 + _noise(st, 0.3) * 0.35) * exp(-t * 22.0))
+
+
+## The pack bursting open: a blast of air over a falling thump, with glitter ringing out.
+func _r_burst() -> AudioStream:
+	var glints := [2093.0, 2637.0, 3136.0, 4186.0]
+	return _render(1.2, func(t, st):
+		var air := _noise(st, lerpf(0.6, 0.05, minf(t / 0.6, 1.0))) * exp(-t * 4.0) * 0.7
+		var body := _sweep(st, lerpf(120.0, 40.0, minf(t / 0.3, 1.0))) * exp(-t * 6.0) * 0.6
+		var glitter := 0.0
+		for f in glints:
+			glitter += sin(TAU * f * t) * (0.5 + 0.5 * sin(t * (17.0 + f / 300.0)))
+		return tanh((air + body) * 1.2) * 0.8 + glitter * exp(-t * 2.8) * minf(t * 20.0, 1.0) * 0.045)
+
+
+## A build-up before a reveal: a tone and a hiss rising together, wobbling faster as they climb.
+## Play it at a higher pitch for a shorter build-up (1.2 s at pitch 1).
+func _r_charge() -> AudioStream:
+	return _render(1.2, func(t, st):
+		var k: float = t / 1.2
+		var tone := _sweep(st, lerpf(180.0, 980.0, k * k)) * (0.6 + 0.4 * sin(TAU * lerpf(6.0, 26.0, k) * t))
+		st.ph2 += TAU * lerpf(90.0, 490.0, k * k) / RATE
+		var hiss := _noise(st, lerpf(0.05, 0.7, k)) * k * k * 0.5
+		return (tone * 0.22 + sin(st.ph2) * 0.09 + hiss) * minf(k * 4.0, 1.0))
+
+
+## Sparkles: a scatter of high pings.
+func _r_shimmer() -> AudioStream:
+	var pings: Array = []
+	for i in 9:
+		pings.append([randf() * 0.45, randf_range(2200.0, 5200.0)])
+	return _render(0.75, func(t, st):
+		var v := 0.0
+		for p in pings:
+			var t0: float = t - p[0]
+			if t0 > 0.0:
+				v += sin(TAU * p[1] * t0) * exp(-t0 * 14.0)
+		return v * 0.09)
+
+
+## A Rare turns over: a bright rising arpeggio of bells.
+func _r_reveal_rare() -> AudioStream:
+	var notes := [659.25, 830.61, 987.77, 1318.5]
+	return _render(1.2, func(t, st):
+		var v := 0.0
+		for i in notes.size():
+			v += _bell(notes[i], t - i * 0.06)
+		return v * 0.12)
+
+
+## An Epic turns over: a big chord swelling over a deep hit, with bells cascading on top.
+func _r_reveal_epic() -> AudioStream:
+	var chord := [261.63, 329.63, 392.0, 587.33]
+	var bells := [1046.5, 1318.5, 1568.0, 2093.0]
+	return _render(1.8, func(t, st):
+		var pad := 0.0
+		for f in chord:
+			pad += sin(TAU * f * t) + sin(TAU * f * 1.004 * t) * 0.7
+		pad *= minf(t * 30.0, 1.0) * exp(-t * 1.4) * 0.05
+		var b := 0.0
+		for i in bells.size():
+			b += _bell(bells[i], t - 0.05 - i * 0.07)
+		var hit := _sweep(st, lerpf(110.0, 38.0, minf(t / 0.3, 1.0))) * exp(-t * 7.0) * 0.55
+		return tanh(pad + b * 0.07 + hit) * 0.9)
+
+
+## A Legendary turns over: a fanfare climbing over a held chord.
+func _r_reveal_legendary() -> AudioStream:
+	var chord := [196.0, 293.66, 392.0, 493.88]
+	var fanfare := [783.99, 987.77, 1174.66, 1567.98, 1975.53, 2349.32]
+	return _render(2.4, func(t, st):
+		var pad := 0.0
+		for f in chord:
+			pad += sin(TAU * f * t) + sin(TAU * f * 1.005 * t) * 0.7
+		pad *= minf(t * 20.0, 1.0) * exp(-t * 0.9) * 0.05
+		var b := 0.0
+		for i in fanfare.size():
+			b += _bell(fanfare[i], t - 0.04 - i * 0.09)
+		var hit := _sweep(st, lerpf(100.0, 30.0, minf(t / 0.4, 1.0))) * exp(-t * 5.0) * 0.6
+		return tanh(pad + b * 0.08 + hit) * 0.9)
+
+
+## A card you didn't have: two quick sparkly dings.
+func _r_new_card() -> AudioStream:
+	return _render(0.6, func(t, st): return (_bell(1567.98, t) + _bell(2093.0, t - 0.09)) * 0.12)
 
 
 ## Two low thuds (lub-dub) for when the player's Morale is low.

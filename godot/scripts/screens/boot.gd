@@ -3,6 +3,16 @@ extends Screen
 ## (scripts/content_sync.gd), then resumes a saved session or goes to login.
 
 const ContentSync := preload("res://scripts/content_sync.gd")
+## Shown on the download panel while new cards or an update come down, a new one every few seconds.
+const TIPS := [
+	["DOWNED", "A Downed character is knocked into DEF and its effects stop. It stands back up after a full round, unless it's attacked again first: then it's KO'd."],
+	["CAN'T ATTACK YET", "ZZZ: a character that just promoted or Awakened can't attack until your next turn."],
+	["FRONT ROW FULL", "Drag a character from your hand onto one of yours to deploy over it. The one it replaces goes to the Gutter."],
+	["HEAVIES", "A Heavy is played onto your own characters: it sacrifices as many as its card says (SACRIFICE 1-3) and takes one of their lanes."],
+	["ACTIVATE", "A teal glow means a character has an ACTIVATE ability ready. Click it to use it: once per turn, paying any cost shown."],
+	["AMBUSHES", "Set an Ambush face-down in your back row. When an enemy attacks one of your characters, you can spring it."],
+	["GUTTER & HIDEOUT", "In a duel, click your Gutter, your opponent's Gutter or your Hideout to look through every card in it."],
+]
 
 var _status: Label
 var _panel: PanelContainer
@@ -10,6 +20,8 @@ var _bar_fill: ColorRect
 var _bar_label: Label
 var _preview: TextureRect
 var _preview_name: Label
+var _tip: Label
+var _tip_order: Array = []
 
 
 func _ready() -> void:
@@ -195,11 +207,34 @@ func _build_panel(heading: String, text: String, bar_text: String) -> void:
 	track.add_child(_bar_fill)
 	_bar_label = UI.label(bar_text, 22, Color.WHITE, true)
 	col.add_child(_bar_label)
+	_tip = UI.label("", 18, Color("9fe7ff"))
+	_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tip.custom_minimum_size = Vector2(520, 76)
+	col.add_child(_tip)
+	_next_tip()
+	var timer := Timer.new()
+	timer.wait_time = 7.0
+	timer.autostart = true
+	timer.timeout.connect(func():
+		var t := create_tween()
+		t.tween_property(_tip, "modulate:a", 0.0, 0.3)
+		t.tween_callback(_next_tip)
+		t.tween_property(_tip, "modulate:a", 1.0, 0.3))
+	_panel.add_child(timer)
 	add_child(_panel)
 	_panel.reset_size()
 	_panel.position = Vector2(960 - _panel.size.x / 2, 700)
 	_panel.modulate.a = 0.0
 	create_tween().tween_property(_panel, "modulate:a", 1.0, 0.25)
+
+
+## The next tip, in a shuffled order (all of them before any repeats).
+func _next_tip() -> void:
+	if _tip_order.is_empty():
+		_tip_order = range(TIPS.size())
+		_tip_order.shuffle()
+	var tip: Array = TIPS[_tip_order.pop_back()]
+	_tip.text = "TIP  ·  %s\n%s" % [tip[0], tip[1]]
 
 
 func _on_progress(done: int, total: int, id: String, tex: Texture2D) -> void:

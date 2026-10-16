@@ -19,7 +19,6 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_email = args[0] if args.size() > 0 else "bot@example.com"
 	Game.settings.server_url = args[1] if args.size() > 1 and not args[1].begins_with("--") else "http://127.0.0.1:3999"
-	Game.settings.duel_tips = false   # (in memory only)
 	_run()
 
 

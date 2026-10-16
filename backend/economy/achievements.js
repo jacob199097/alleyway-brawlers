@@ -7,7 +7,8 @@
  * Karat and Dust are paid at once, and cosmetics become usable:
  *
  *   title   shown under the player's name instead of their level title
- *   avatar  'clan:<clan>' — the clan's emblem;  'portraits' — any card you own as your avatar
+ *   avatar  'clan:<clan>' — the clan's emblem (other pictures: free ones, levels, clan mastery; a card you
+ *           merely own is not a picture, so the unlocked ones mean something)
  *   back    '<clan>' — that clan's card back on any deck (players.card_back)
  *
  * Clan achievements are made from the card data (shared/clans.js), so a new clan gets its own
@@ -40,7 +41,7 @@ const BASE = [
     { id: 'awaken',       name: 'Awakening',        desc: 'Awaken your leader.',                      stat: 'awakens', target: 1, reward: { karat: 150 } },
     { id: 'packs_10',     name: 'Pack Rat',         desc: 'Open 10 packs.',                           stat: 'packs', target: 10, reward: { dust: 300 } },
     { id: 'packs_50',     name: 'High Roller',      desc: 'Open 50 packs.',                           stat: 'packs', target: 50, reward: { title: 'High Roller', dust: 600 } },
-    { id: 'collect_25',   name: 'Collector',        desc: 'Own 25 different cards.',                  stat: 'collection', target: 25, reward: { avatar: 'portraits', title: 'Collector' } },
+    { id: 'collect_25',   name: 'Collector',        desc: 'Own 25 different cards.',                  stat: 'collection', target: 25, reward: { dust: 300, title: 'Collector' } },
     { id: 'legendary',    name: 'Legend in Hand',   desc: 'Own a Legendary card.',                    stat: 'legendaries', target: 1, reward: { dust: 200 } },
     { id: 'craft_1',      name: 'Craftsman',        desc: 'Craft a card.',                            stat: 'crafted', target: 1, reward: { title: 'Craftsman' } },
     { id: 'scrap_50',     name: 'Recycler',         desc: 'Scrap 50 cards.',                          stat: 'scrapped', target: 50, reward: { karat: 150 } },
@@ -193,7 +194,7 @@ async function overview(playerId) {
     };
 }
 
-/** What the player may wear: { avatars, portraits, titles: [{id, text}], backs } */
+/** What the player may wear: { avatars, titles: [{id, text}], backs } */
 async function cosmetics(playerId, defs, unlocked) {
     defs = defs || await definitions();
     if (!unlocked) {
@@ -208,8 +209,7 @@ async function cosmetics(playerId, defs, unlocked) {
     const { freeAvatars } = await import('../../shared/clans.js');
     const ms = await mastery.cosmetics(playerId);   // clan mastery pictures and titles
     return {
-        avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(v => v && v !== 'portraits'), ...ms.avatars])],
-        portraits: got.some(a => a.reward.avatar === 'portraits'),
+        avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(Boolean), ...ms.avatars])],
         titles: [...got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })), ...ms.titles],
         backs: got.map(a => a.reward.back).filter(Boolean),
     };
@@ -231,13 +231,7 @@ async function equip(playerId, { avatar, title, back } = {}) {
     const mine = await cosmetics(playerId);
     const sets = [], params = [];
     if (avatar !== undefined) {
-        let ok = typeof avatar === 'string' && mine.avatars.includes(avatar);
-        if (!ok && typeof avatar === 'string' && avatar.startsWith('card:') && mine.portraits) {
-            const { rowCount } = await pool.query(
-                `SELECT 1 FROM player_inventory pi JOIN cards c ON c.id = pi.card_id
-                 WHERE pi.player_id = $1 AND c.art_url = $2`, [playerId, avatar.slice(5)]);
-            ok = rowCount > 0;
-        }
+        const ok = typeof avatar === 'string' && mine.avatars.includes(avatar);
         if (!ok) return { error: "You haven't unlocked that avatar." };
         params.push(avatar); sets.push(`avatar_url = $${params.length}`);
     }

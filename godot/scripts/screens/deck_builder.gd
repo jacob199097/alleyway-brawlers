@@ -85,29 +85,40 @@ func _build_header() -> void:
 	add_child(save)
 	if Game.offline:
 		return
+	# The filters fit above the collection (x 24-1190), clear of the deck switcher: the search box
+	# takes what's left. More than three clans: one dropdown instead of a button each.
 	var bar := HBoxContainer.new()
 	bar.position = Vector2(24, 96)
 	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 	var search := LineEdit.new()
 	search.placeholder_text = "Search…"
-	search.custom_minimum_size = Vector2(300, 52)
+	search.custom_minimum_size = Vector2(150, 52)
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.text_changed.connect(func(t):
 		_filter_text = t.strip_edges().to_lower()
 		_render_collection())
 	bar.add_child(search)
-	bar.add_child(_chip("faction", "all", "ALL"))
-	for c in CardDB.clans():
-		bar.add_child(_chip("faction", c.id, str(c.name).to_upper()))
+	var clans := CardDB.clans()
+	if clans.size() <= 3:
+		bar.add_child(_chip("faction", "all", "ALL"))
+		for c in clans:
+			bar.add_child(_chip("faction", c.id, str(c.name).to_upper()))
+	else:
+		var opts := [["all", "ALL CLANS"]]
+		for c in clans:
+			opts.append([c.id, str(c.name).to_upper()])
+		bar.add_child(_dropdown(opts, func(v): _faction = v))
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(8, 0)
+	gap.custom_minimum_size = Vector2(4, 0)
 	bar.add_child(gap)
-	bar.add_child(_dropdown(KINDS, func(v): _kind = v))
+	bar.add_child(_dropdown(KINDS, func(v): _kind = v, 172.0))
 	var kws := [["all", "ANY KEYWORD"]]
 	for k in Keywords.LIST:
 		kws.append([k, k])
-	bar.add_child(_dropdown(kws, func(v): _keyword = v))
-	bar.add_child(_dropdown(COSTS, func(v): _cost = v))
+	bar.add_child(_dropdown(kws, func(v): _keyword = v, 172.0))
+	bar.add_child(_dropdown(COSTS, func(v): _cost = v, 196.0))
+	bar.size = Vector2(1166, 52)
 	_sync_chips()
 
 	var sel := HBoxContainer.new()
@@ -123,10 +134,11 @@ func _build_header() -> void:
 	sel.add_child(UI.button("▶", _cycle.bind(1), Vector2(56, 52)))
 	sel.add_child(UI.button("★ ACTIVE", _set_active, Vector2(150, 52), UI.GOLD))
 	sel.add_child(UI.button("+ NEW", _new_deck, Vector2(120, 52), UI.GREEN))
+	# The deck's record, in the top row left of the card count (clear of the leader panel)
 	_record = UI.label("", 18, UI.MUTED)
-	_record.size = Vector2(250, 24)
-	_record.position = Vector2(1274, 150)
-	_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_record.size = Vector2(310, 24)
+	_record.position = Vector2(1226, 40)
+	_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_record)
 
 
@@ -134,7 +146,7 @@ func _chip(group: String, value: String, text: String) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.toggle_mode = true
-	b.custom_minimum_size = Vector2(110, 52)
+	b.custom_minimum_size = Vector2(96, 52)
 	b.add_theme_font_size_override("font_size", 18)
 	b.pressed.connect(func():
 		Sfx.play("click")
@@ -149,9 +161,9 @@ func _chip(group: String, value: String, text: String) -> Button:
 
 
 ## A filter dropdown: options [[value, label], ...]; assign(value) stores it, then the grid redraws.
-func _dropdown(options: Array, assign: Callable) -> OptionButton:
+func _dropdown(options: Array, assign: Callable, width := 186.0) -> OptionButton:
 	var o := OptionButton.new()
-	o.custom_minimum_size = Vector2(186, 52)
+	o.custom_minimum_size = Vector2(width, 52)
 	o.add_theme_font_size_override("font_size", 17)
 	o.fit_to_longest_item = false
 	for opt in options:
@@ -240,7 +252,7 @@ func _load_deck() -> void:
 	_deck_id = d.id
 	_deck_name.text = str(d.get("name", "Deck")).left(18) + ("  ★" if d.get("is_active", false) else "")
 	var g := int(d.get("games", 0))
-	_record.text = "No games yet" if g == 0 else "%d games · %d%% won" % [g, roundi(100.0 * int(d.get("wins", 0)) / g)]
+	_record.text = "No games yet" if g == 0 else "%d game%s · %d%% won" % [g, "" if g == 1 else "s", roundi(100.0 * int(d.get("wins", 0)) / g)]
 	var r := await Api.request("GET", "/api/deck/%s" % d.id)
 	if not r.ok:
 		UI.toast(self, r.error, UI.RED)

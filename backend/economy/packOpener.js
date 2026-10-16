@@ -187,15 +187,27 @@ async function openPack(playerId, packType, currency = 'karat') {
         const cards = await drawPack(packType, client);
 
         // ── Add cards to player inventory ────────────────────────────────────
+        // (how many they own now: 1 = a card they didn't have, shown as NEW)
+        const owned = [];
         for (const card of cards) {
-            await client.query(
+            const { rows: [inv] } = await client.query(
                 `INSERT INTO player_inventory (player_id, card_id, quantity)
                  VALUES ($1, $2, 1)
                  ON CONFLICT (player_id, card_id)
-                 DO UPDATE SET quantity = player_inventory.quantity + 1`,
+                 DO UPDATE SET quantity = player_inventory.quantity + 1
+                 RETURNING quantity`,
                 [playerId, card.id]
             );
+            owned.push(inv.quantity);
         }
+        // The clan's collection: different cards owned out of all that can drop
+        const { rows: [collection] } = await client.query(
+            `SELECT COUNT(*)::int AS total, COUNT(pi.card_id)::int AS owned
+             FROM cards c
+             LEFT JOIN player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1 AND pi.quantity > 0
+             WHERE c.clan = $2 AND c.art_url = ANY($3)`,
+            [playerId, packType, await gameCardIds()]
+        );
 
         await bump(client, playerId, 'packs', 1);
         await client.query('COMMIT');
@@ -206,7 +218,9 @@ async function openPack(playerId, packType, currency = 'karat') {
         require('./achievements').checkAndAnnounce(playerId);
 
         return {
-            cardsReceived: cards.map(c => ({
+            cardsReceived: cards.map((c, i) => ({
+                isNew:        owned[i] === 1,
+                owned:        owned[i],
                 id:           c.id,
                 cardId:       c.art_url || c.effect_key || c.id,
                 name:         c.name,
@@ -225,6 +239,7 @@ async function openPack(playerId, packType, currency = 'karat') {
                 effectText:   c.effect_text,
                 flavourText:  c.flavour_text,
             })),
+            collection,
             newKarat,
             newContraband,
             freePacks,

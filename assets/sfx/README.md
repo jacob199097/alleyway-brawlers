@@ -26,11 +26,19 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `ambush` | an Ambush springs | recorded (3) |
 | `laser` | Nebula: the quick laser zaps | recorded (5) |
 | `laser_beam` | Nebula: the held laser beam | recorded (5) |
-| `pack_open` | a pack tears open in the Shop | recorded (2) |
+| `pack_open` | Shop: the top of a pack rips off | recorded (2) |
 | `shuffle` | a match starts | recorded |
 | `gunshot` | Militia: each shot | **wanted** (synthesised) |
 | `lockon` | Militia: the airdrop reticle locks onto a lane | **wanted** (synthesised radar beeps) |
 | `airdrop` | Militia: a character is flown in and dropped (jet pass, then a thud) | **wanted** (synthesised) |
+| `tear` | Shop: the foil crackling as the player swipes across a pack (played over and over) | **wanted** (synthesised) |
+| `charge` | Shop: the build-up before a pack bursts and before a Rare or better turns over (played faster for shorter ones) | **wanted** (synthesised riser) |
+| `burst` | Shop: the open pack bursts and the cards fly out | **wanted** (synthesised) |
+| `shimmer` | Shop: an Uncommon turns over | **wanted** (synthesised sparkle) |
+| `reveal_rare` | Shop: a Rare turns over | **wanted** (synthesised bells) |
+| `reveal_epic` | Shop: an Epic turns over | **wanted** (synthesised chord) |
+| `reveal_legendary` | Shop: a Legendary turns over | **wanted** (synthesised fanfare) |
+| `new_card` | Shop: NEW on a card the player didn't have | **wanted** (synthesised ding) |
 | `effect` | a card effect triggers | **wanted** (synthesised chime) |
 | `promote` | a promotion, level up, achievement | **wanted** (synthesised) |
 | `whoosh` | cards flying, screen changes | **wanted** (synthesised) |

@@ -2,6 +2,10 @@
     {
         "version": "0.8.1",
         "notes": [
+            "All-new pack opening: tear the pack open yourself, watch it glow with the colour of the best card inside, and turn the cards over one by one. Rares burst, Epics take centre stage. NEW cards are marked, your clan collection fills up, and you can open another without leaving.",
+            "Duel tips no longer pop up during matches: they show on the download screen instead.",
+            "Profile pictures come from levels, achievements and Clan Mastery; a card you own is no longer a picture. Collector now pays 300 Dust.",
+            "The Deck Builder's filters no longer run into the deck switcher.",
             "Every player now has both clans' starter decks: find the Militia Starter in the Deck Editor (check your mail).",
             "Rouke joins the Nebula starter deck.",
             "The Militia booster pack and deck box have their own art, with General Graves."

@@ -11,7 +11,6 @@ func _ready() -> void:
 	if args.size() > 0:
 		_out = args[0]
 	Game.settings.server_url = args[1] if args.size() > 1 else "http://127.0.0.1:3999"
-	Game.settings.duel_tips = false   # (in memory only)
 	DirAccess.make_dir_recursive_absolute(_out)
 	_run()
 
@@ -75,7 +74,16 @@ func _run() -> void:
 	await get_tree().create_timer(1.2).timeout
 	var clan: Dictionary = CardDB.clans()[0]   # (the shop lists the server's packs: the first clan's)
 	_screen()._buy({"id": clan.id, "label": clan.name, "image": "%s_booster.png" % clan.id, "color": clan.color}, "karat")
-	await _shot("03_pack_opening", 5.5)
+	await _shot("03_pack_ready", 1.8)
+	var opening = _screen()._opening
+	opening.tear_now()
+	await _shot("03_pack_cards", 3.4)
+	for k in opening._cards:   # the Epic first, at full length
+		if k.rarity >= 4:
+			opening._enqueue(k)
+	await _shot("03_pack_epic", 3.3)
+	opening.reveal_all()
+	await _shot("03_pack_done", 4.5)
 	# Settings and a dialog
 	Game.go("main_menu")
 	await get_tree().create_timer(1.5).timeout
