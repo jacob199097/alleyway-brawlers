@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.8.1",
+        "notes": [
+            "Every player now has both clans' starter decks: find the Militia Starter in the Deck Editor (check your mail).",
+            "Rouke joins the Nebula starter deck.",
+            "The Militia booster pack and deck box have their own art, with General Graves."
+        ]
+    },
+    {
         "version": "0.8.0",
         "notes": [
             "Weekly Challenge (Fight screen): a new rules twist every Monday against the Hard CPU. Your first win each week pays 300 Karat and a free pack.",
