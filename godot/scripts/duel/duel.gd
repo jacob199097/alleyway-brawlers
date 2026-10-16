@@ -87,6 +87,19 @@ var _menu: Control = null
 var _direct_btn: Button = null
 var _arrow: AttackArrow              # the curved targeting arrow
 var _tutorial: Node = null          # the guided first duel (Game.duel_setup.mode == "tutorial")
+var _tip_box: Control = null
+
+## First-time tips: each mechanic explained once, the first time it comes up for you in a match
+## (Settings: Duel Tips). In this order: the first that applies (and hasn't been seen) is shown.
+const TIPS := {
+	"downed": ["DOWNED", "A Downed character is knocked into DEF and its effects stop. It stands back up after a full round, unless it's attacked again first: then it's KO'd."],
+	"resting": ["CAN'T ATTACK YET", "ZZZ: a character that just promoted or Awakened can't attack until your next turn."],
+	"full_row": ["FRONT ROW FULL", "Drag a character from your hand onto one of yours (orange lanes) to deploy over it. The one it replaces goes to the Gutter."],
+	"heavy": ["HEAVIES", "A Heavy is played onto your own characters: it sacrifices as many as its card says (SACRIFICE 1-3) and takes one of their lanes."],
+	"activate": ["ACTIVATE", "A teal glow means a character has an ACTIVATE ability ready. Click it to use it: once per turn, paying any cost shown."],
+	"ambush": ["AMBUSHES", "Set an Ambush face-down in your back row. When an enemy attacks one of your characters, you can spring it."],
+	"piles": ["GUTTER & HIDEOUT", "Click your Gutter, your opponent's Gutter or your Hideout to look through every card in it."],
+}
 var _dim_rect: ColorRect = null
 var _match_id := ""
 var _cards_played := 0
@@ -3454,6 +3467,79 @@ func _player_ready() -> void:
 			field.player[slot].glow = 0.9
 			if can_activate:
 				field.player[slot].pulse_color = TEAL
+	_maybe_tip()
+
+
+## Shows the first tip that applies now and hasn't been seen (once each; not in the tutorial).
+func _maybe_tip() -> void:
+	if _tutorial or _watching() or "player" in ai_sides or not bool(Game.settings.get("duel_tips", true)):
+		return
+	if _tip_box and is_instance_valid(_tip_box):
+		return
+	var seen: Array = Game.settings.get("seen_tips", [])
+	var s: Dictionary = duel.sides.player
+	var front: Array = DuelState.FRONT.map(func(i): return s.field[i])
+	var applies := {
+		"downed": front.any(func(c): return c != null and c.get("downed", false)),
+		"resting": front.any(func(c): return c != null and "resting" in duel.statuses(c)),
+		"full_row": duel.phase == "deployment" and front.all(func(c): return c != null) \
+			and s.hand.any(func(c): return c.get("cardType") == "gang_member" and not DuelState.needs_tribute(c) and duel.can_summon_somewhere("player", c)),
+		"heavy": s.hand.any(func(c): return DuelState.needs_tribute(c)),
+		"activate": DuelState.FRONT.any(func(i): return not duel.activations("player", i).is_empty()),
+		"ambush": s.hand.any(func(c): return c.get("cardType") == "ambush"),
+		"piles": not s.gutter.is_empty() or not duel.sides.opponent.gutter.is_empty(),
+	}
+	for key in TIPS:
+		if applies[key] and not key in seen:
+			_show_tip(key)
+			return
+
+
+func _show_tip(key: String) -> void:
+	var seen: Array = Game.settings.get("seen_tips", []).duplicate()
+	seen.append(key)
+	Game.set_setting("seen_tips", seen)   # shown once
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), TEAL, 2, 10))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	box.add_child(col)
+	var head := _label(20, TEAL, true)
+	head.text = "TIP  ·  %s" % TIPS[key][0]
+	col.add_child(head)
+	var body := _label(16, Color.WHITE)
+	body.text = TIPS[key][1]
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(340, 0)
+	col.add_child(body)
+	var ok := Button.new()
+	ok.text = "GOT IT"
+	ok.custom_minimum_size = Vector2(120, 34)
+	ok.size_flags_horizontal = Control.SIZE_SHRINK_END
+	ok.pressed.connect(func():
+		Sfx.play("click")
+		_close_tip())
+	col.add_child(ok)
+	overlay.add_child(box)
+	# Over the bottom of the card panel on the left, out of the way of the board
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(34, 790 - sz.y)
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.25)
+	_tip_box = box
+	Sfx.play("effect", 1.5, -10.0)
+	get_tree().create_timer(30.0).timeout.connect(func():
+		if _tip_box == box:
+			_close_tip())
+
+
+func _close_tip() -> void:
+	var box := _tip_box
+	_tip_box = null
+	if box and is_instance_valid(box):
+		var t := create_tween()
+		t.tween_property(box, "modulate:a", 0.0, 0.2)
+		t.tween_callback(box.queue_free)
 
 
 ## A prompt from a card effect: buttons for each option, and the cards it refers to light up

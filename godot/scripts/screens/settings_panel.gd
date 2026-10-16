@@ -97,7 +97,8 @@ func _show(tab: String) -> void:
 			_cycle("Animation Speed", ANIM_SPEEDS, ["NORMAL", "FAST (1.5×)", "FASTER (2×)"], "anim_speed")
 			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
-			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front.", 20, UI.MUTED)
+			_cycle("Duel Tips", [true, false], ["SHOW", "HIDE"], "duel_tips")
+			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Duel tips explain each mechanic once, the first time it comes up.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)
 			_body.add_child(note)

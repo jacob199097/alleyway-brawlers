@@ -37,6 +37,8 @@ const DEFAULT_SETTINGS := {
 	"anim_speed": 1.0,              # duel animation speed (1, 1.5 or 2)
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
+	"duel_tips": true,              # explain a mechanic the first time it comes up in a match
+	"seen_tips": [],                # the tips already shown (screens: duel.gd TIPS)
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 }
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"

@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.7.19",
+        "notes": [
+            "The Militia starter deck now has every Militia card, including The Colonel, Sergeant Ironwall and Checkpoint Zero. It's an even match for the Nebula starter.",
+            "Duel tips: the first time something new comes up (a full front row, Heavies, Activate abilities, Ambushes, Downed, piles) a short tip explains it. Turn them off in Settings.",
+            "The CPU's Militia decks are stronger too."
+        ]
+    },
+    {
         "version": "0.7.18",
         "notes": [
             "A full front row no longer locks your hand: drop a character on one of your own (orange lanes) to replace it. The old one goes to the Gutter.",

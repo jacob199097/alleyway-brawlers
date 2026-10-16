@@ -10,6 +10,7 @@ var prompts := {}
 
 
 func _ready() -> void:
+	Game.settings.duel_tips = false   # (in memory only: tests never change the player's tips)
 	duel_screen = load("res://scenes/duel.tscn").instantiate()
 	add_child(duel_screen)
 	_run()

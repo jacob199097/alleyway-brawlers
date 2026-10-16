@@ -11,6 +11,7 @@ func _ready() -> void:
 	if args.size() > 0:
 		_out = args[0]
 	Game.settings.server_url = args[1] if args.size() > 1 else "http://127.0.0.1:3999"
+	Game.settings.duel_tips = false   # (in memory only)
 	DirAccess.make_dir_recursive_absolute(_out)
 	_run()
 
