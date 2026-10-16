@@ -132,6 +132,23 @@ func _r_heavy() -> AudioStream:
 			+ _noise(st, 0.12) * exp(-t * 6.0) * 0.6)
 
 
+## Militia airdrop: two quick radar beeps as the reticle locks on.
+func _r_lockon() -> AudioStream:
+	return _render(0.24, func(t, st):
+		var on := 1.0 if t < 0.07 or (t > 0.13 and t < 0.2) else 0.0
+		return _sweep(st, 1760.0 if t < 0.1 else 2350.0) * on * 0.35)
+
+
+## Militia airdrop: a jet roaring past overhead (rumbling noise that swells and fades, with a
+## falling engine whine: the Doppler drop). The landing is the usual slam.
+func _r_airdrop() -> AudioStream:
+	return _render(0.55, func(t, st):
+		var pass_ := exp(-pow((t - 0.22) / 0.14, 2.0))
+		var jet := _noise(st, lerpf(0.08, 0.3, pass_)) * pass_ * 0.75
+		st.ph2 += TAU * lerpf(900.0, 380.0, clampf(t / 0.4, 0.0, 1.0)) / RATE
+		return jet + sin(st.ph2) * pass_ * 0.12)
+
+
 func _r_whoosh() -> AudioStream:
 	return _render(0.26, func(t, st): return _noise(st, lerpf(0.02, 0.45, t / 0.26)) * sin(PI * t / 0.26) * 0.8)
 

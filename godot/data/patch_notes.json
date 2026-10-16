@@ -4,7 +4,12 @@
         "notes": [
             "The Militia starter deck now has every Militia card, including The Colonel, Sergeant Ironwall and Checkpoint Zero. It's an even match for the Nebula starter.",
             "Duel tips: the first time something new comes up (a full front row, Heavies, Activate abilities, Ambushes, Downed, piles) a short tip explains it. Turn them off in Settings.",
-            "The CPU's Militia decks are stronger too."
+            "The CPU's Militia decks are stronger too.",
+            "How to Play: the rules in short sections, from the duel menu or Settings > Gameplay.",
+            "Deck builder: an Authority curve, what your deck is made of, and warnings (no leader, too few characters, Heavies with too little to sacrifice, Strivers that can't promote).",
+            "Card Library: a new filter for Strivers, Brawlers, Heavies by how many they sacrifice, Continuous and Equip cards, and tokens.",
+            "Colour-blind symbols (Settings > Gameplay): every glow in a duel also shows a shape.",
+            "Militia airdrops now have their own sound: a radar lock-on and a jet pass."
         ]
     },
     {

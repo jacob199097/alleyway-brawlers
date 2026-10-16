@@ -244,11 +244,13 @@ func set_glow(v: float) -> void:
 	glow = v
 	pulse_color = Color(0, 0, 0, 0)
 	queue_redraw()
+	_status_layer.queue_redraw()
 
 
 func set_pulse_color(c: Color) -> void:
 	pulse_color = c
 	queue_redraw()
+	_status_layer.queue_redraw()   # (its colour-blind symbol)
 
 
 func hit(p_global: Vector2) -> bool:
@@ -439,6 +441,30 @@ func _make_emitter(kind: String) -> CPUParticles2D:
 	return e
 
 
+## Colour-blind help (Settings): the glow's meaning as a shape on the card's top edge. Teal pulse:
+## a bolt (an Activate ability); green: + (can be played); red: a crosshair; anything else
+## (gold): ! (can act).
+func _draw_glow_symbol(r: Rect2) -> void:
+	var L := _status_layer
+	var at := Vector2(0, r.position.y - 2.0)
+	var col := pulse_color if pulse_color.a > 0.0 else glow_color
+	L.draw_circle(at, 15.0, Color(0.03, 0.03, 0.08, 0.95))
+	L.draw_arc(at, 15.0, 0.0, TAU, 24, col, 2.5, true)
+	var ink := Color.WHITE
+	if pulse_color.a > 0.0:
+		L.draw_polyline(PackedVector2Array([at + Vector2(3, -9), at + Vector2(-4, 1), at + Vector2(2, 1), at + Vector2(-3, 9)]), ink, 3.0, true)
+	elif glow_color.g > glow_color.r + 0.2:   # green
+		L.draw_line(at + Vector2(-7, 0), at + Vector2(7, 0), ink, 3.0)
+		L.draw_line(at + Vector2(0, -7), at + Vector2(0, 7), ink, 3.0)
+	elif glow_color.r > glow_color.g + 0.4:   # red
+		L.draw_arc(at, 7.0, 0.0, TAU, 16, ink, 2.0, true)
+		L.draw_line(at + Vector2(-10, 0), at + Vector2(10, 0), ink, 2.0)
+		L.draw_line(at + Vector2(0, -10), at + Vector2(0, 10), ink, 2.0)
+	else:
+		L.draw_line(at + Vector2(0, -8), at + Vector2(0, 3), ink, 3.0)
+		L.draw_circle(at + Vector2(0, 8), 2.0, ink)
+
+
 ## Downed: a bloodied wash, a pulsing red edge and a small DOWNED tag that reads level however the
 ## card lies.
 func _draw_downed(r: Rect2) -> void:
@@ -467,6 +493,8 @@ func _draw_statuses() -> void:
 		_status_layer.draw_string(ThemeDB.fallback_font, at + Vector2(-13, 6), str(cost_now), HORIZONTAL_ALIGNMENT_CENTER, 26, 17, Color.WHITE)
 	if downed and face_up:
 		_draw_downed(r)
+	if glow > 0.01 and bool(Game.settings.get("glow_symbols", false)):
+		_draw_glow_symbol(r)
 	if statuses.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0

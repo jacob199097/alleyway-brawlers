@@ -31,6 +31,7 @@ var _list: VBoxContainer
 var _count: Label
 var _deck_name: Label
 var _leader_box: HBoxContainer
+var _stats: VBoxContainer       # the Authority curve, the deck's make-up and anything worth fixing
 var _chips := {}
 
 
@@ -194,6 +195,9 @@ func _build_deck_panel() -> void:
 	_leader_box = HBoxContainer.new()
 	_leader_box.add_theme_constant_override("separation", 16)
 	lp.add_child(_leader_box)
+	_stats = VBoxContainer.new()
+	_stats.add_theme_constant_override("separation", 4)
+	col.add_child(_stats)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -573,6 +577,81 @@ func _render_deck() -> void:
 		_list.add_child(_deck_row(grouped[id]))
 	_count.text = "%d/40" % _deck.size()
 	_count.label_settings.font_color = UI.BLUE if _deck.size() == 40 else UI.RED
+	_render_stats()
+
+
+## How many cards cost 1, 2, ... 7+ Authority (bars), what kinds they are, and warnings: no leader,
+## too few characters, Heavies with too little to sacrifice, Strivers that can't promote (their
+## next level isn't owned, so it's not in the Hideout), a top-heavy deck.
+func _render_stats() -> void:
+	if _stats == null:
+		return
+	for c in _stats.get_children():
+		c.queue_free()
+	if _deck.is_empty():
+		return
+	var curve := [0, 0, 0, 0, 0, 0, 0]
+	var kinds := {"gang_member": 0, "hustle": 0, "ambush": 0}
+	var cheap := 0          # characters a Heavy could sacrifice without much loss
+	var most_tributes := 0
+	var stuck := {}         # Strivers whose next level isn't owned
+	var owned := {}
+	for i in _inventory:
+		owned[str(i.get("art_url", ""))] = true
+	for e in _deck:
+		var c := CardDB.get_card(str(e.get("art_url", "")))
+		curve[clampi(int(c.get("authority", 1)), 1, 7) - 1] += 1
+		var kind := str(c.get("cardType", ""))
+		kinds[kind] = int(kinds.get(kind, 0)) + 1
+		if kind == "gang_member" and not DuelState.needs_tribute(c) and int(c.get("authority", 0)) <= 3:
+			cheap += 1
+		most_tributes = maxi(most_tributes, DuelState.tributes_for(c))
+		var next := CardDB.next_form(str(e.get("art_url", "")))
+		if c.get("subtype") == "striver" and next != "" and not owned.has(next):
+			stuck[str(c.get("name", ""))] = str(CardDB.get_card(next).get("name", next))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_stats.add_child(row)
+	var top: int = curve.max()
+	for i in curve.size():
+		var b := VBoxContainer.new()
+		b.add_theme_constant_override("separation", 0)
+		b.alignment = BoxContainer.ALIGNMENT_END
+		b.custom_minimum_size = Vector2(34, 74)
+		var n := UI.label(str(curve[i]) if curve[i] > 0 else "", 14, Color.WHITE)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.add_child(n)
+		var bar := ColorRect.new()
+		bar.color = UI.GOLD if i < 6 else UI.RED
+		bar.custom_minimum_size = Vector2(26, 2.0 + 40.0 * curve[i] / maxf(1.0, top))
+		bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.add_child(bar)
+		var a := UI.label(str(i + 1) if i < 6 else "7+", 14, UI.MUTED)
+		a.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.add_child(a)
+		row.add_child(b)
+	var make := UI.label("AUTHORITY\n%d characters · %d Hustles · %d Ambushes" % [kinds.gang_member, kinds.hustle, kinds.ambush], 15, UI.MUTED)
+	make.custom_minimum_size = Vector2(360, 0)
+	make.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(make)
+	var warn: Array = []
+	if _leader == null:
+		warn.append("No leader chosen.")
+	if kinds.gang_member < 20:
+		warn.append("Only %d characters: most decks want 25 or more." % kinds.gang_member)
+	if most_tributes > 0 and cheap < 4 + 2 * most_tributes:
+		warn.append("Heavies need characters to sacrifice: only %d characters cost 3 Authority or less." % cheap)
+	for name in stuck:
+		warn.append("%s can't promote: you don't own %s." % [name, stuck[name]])
+	if curve[6] > 6:
+		warn.append("%d cards cost 7+ Authority: you may draw them long before you can play them." % curve[6])
+	for w in warn.slice(0, 4):
+		var l := UI.label("⚠ " + w, 15, Color("ffb35c"))
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(640, 0)
+		_stats.add_child(l)
+	if warn.size() > 4:
+		_stats.add_child(UI.label("  …and %d more" % (warn.size() - 4), 14, UI.MUTED))
 
 
 func _deck_row(c: Dictionary) -> Control:
@@ -628,6 +707,7 @@ func _render_leader() -> void:
 	var box := UI.tex("%s_deckbox.png" % clan) if clan != "" else null
 	_leader_box.add_child(UI.texture_rect(box, Vector2(136, 136)))
 	_leader_box.add_child(UI.button("CHANGE" if _leader is Dictionary else "CHOOSE", _pick_leader, Vector2(150, 56), UI.GOLD))
+	_render_stats()   # (the "no leader" warning)
 
 
 func _pick_leader() -> void:

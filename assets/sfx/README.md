@@ -29,6 +29,8 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `pack_open` | a pack tears open in the Shop | recorded (2) |
 | `shuffle` | a match starts | recorded |
 | `gunshot` | Militia: each shot | **wanted** (synthesised) |
+| `lockon` | Militia: the airdrop reticle locks onto a lane | **wanted** (synthesised radar beeps) |
+| `airdrop` | Militia: a character is flown in and dropped (jet pass, then a thud) | **wanted** (synthesised) |
 | `effect` | a card effect triggers | **wanted** (synthesised chime) |
 | `promote` | a promotion, level up, achievement | **wanted** (synthesised) |
 | `whoosh` | cards flying, screen changes | **wanted** (synthesised) |

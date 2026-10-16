@@ -873,9 +873,41 @@ func _draw() -> void:
 				var c: Color = _valid[key]
 				draw_rect(r, Color(c, 0.2 * pulse))
 				draw_rect(r.grow(4), Color(c, 0.95 * pulse), false, 4.0)
+				if bool(Game.settings.get("glow_symbols", false)):
+					_draw_slot_symbol(r.get_center(), c, side)
 		for pile in ["deck", "gutter", "hideout"]:
 			_draw_pile(side, pile)
 		_draw_zone_label(pile_pos(side, "leader"), "LEADER")
+
+
+## Colour-blind help (Settings): what a highlighted lane is for, as a shape. Green +: put a card
+## here; orange arrows: deploy over this one; red X: sacrifice it (yours) or a crosshair: attack
+## it (theirs); purple tick: chosen; gold ring: choose it.
+func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
+	draw_circle(at, 24.0, Color(0.03, 0.03, 0.08, 0.85))
+	draw_arc(at, 24.0, 0.0, TAU, 32, c, 3.0, true)
+	var ink := Color.WHITE
+	if c == GREEN:
+		draw_line(at + Vector2(-11, 0), at + Vector2(11, 0), ink, 4.0)
+		draw_line(at + Vector2(0, -11), at + Vector2(0, 11), ink, 4.0)
+	elif c == SWAP:
+		for d: float in [-1.0, 1.0]:   # two arrows passing each other
+			var y := d * 6.0
+			draw_line(at + Vector2(-11 * d, y), at + Vector2(11 * d, y), ink, 3.0)
+			draw_line(at + Vector2(11 * d, y), at + Vector2(5 * d, y - 5), ink, 3.0)
+			draw_line(at + Vector2(11 * d, y), at + Vector2(5 * d, y + 5), ink, 3.0)
+	elif c == RED and side == "player":
+		draw_line(at + Vector2(-9, -9), at + Vector2(9, 9), ink, 4.0)
+		draw_line(at + Vector2(-9, 9), at + Vector2(9, -9), ink, 4.0)
+	elif c == RED:
+		draw_arc(at, 11.0, 0.0, TAU, 24, ink, 2.5, true)
+		draw_line(at + Vector2(-16, 0), at + Vector2(16, 0), ink, 2.5)
+		draw_line(at + Vector2(0, -16), at + Vector2(0, 16), ink, 2.5)
+	elif c == PICKED:
+		draw_polyline(PackedVector2Array([at + Vector2(-10, 1), at + Vector2(-3, 8), at + Vector2(11, -8)]), ink, 4.0, true)
+	else:
+		draw_arc(at, 10.0, 0.0, TAU, 24, ink, 3.0, true)
+		draw_circle(at, 3.5, ink)
 
 
 func _draw_pile(side: String, pile: String) -> void:
@@ -1587,7 +1619,7 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	lock.tween_property(reticle, "radius", 66.0, 0.3)
 	lock.tween_property(reticle, "turn", PI / 2, 0.3)
 	lock.tween_property(reticle, "alpha", 0.95, 0.12)
-	Sfx.play("set", 1.7, -8.0)
+	Sfx.play("lockon", 1.0, -4.0)
 	if heavy:
 		_cam_focus(target, 1.07, 0.3)
 	# Up and out of sight...
@@ -1595,7 +1627,8 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	up.tween_property(v, "position", v.position + Vector2(0, -260), 0.16)
 	up.tween_property(v, "modulate:a", 0.0, 0.16)
 	await lock.finished
-	Sfx.play("set", 2.1, -6.0)   # locked on
+	Sfx.play("airdrop", 0.9 if heavy else 1.0, -2.0)   # the jet passes over; the drop follows it in
+	await _wait(0.18)
 	if up.is_running():
 		await up.finished
 	# ...and dropped in from above
@@ -1603,7 +1636,6 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	v.rotation = v.home_rot
 	v.scale = Vector2.ONE * (1.7 if heavy else 1.5)
 	v.modulate.a = 1.0
-	Sfx.play("whoosh", 0.8, -2.0)
 	await v.move_to(target, 1.0, v.home_rot, 0.2 if heavy else 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 	v.kick(Vector2(0, 1), 18.0)
 	_burst(target + Vector2(0, CARD.y / 2 - 10), Color(0.55, 0.5, 0.36), 34 if heavy else 22, 460.0, 0.6, 900.0)   # dust
@@ -4282,7 +4314,7 @@ func _toggle_menu() -> void:
 	title.text = "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for label in ["RESUME", "SETTINGS", "STOP WATCHING" if _spectating else "CONCEDE" if _online else "LEAVE DUEL"]:
+	for label in ["RESUME", "HOW TO PLAY", "SETTINGS", "STOP WATCHING" if _spectating else "CONCEDE" if _online else "LEAVE DUEL"]:
 		var b := Button.new()
 		b.text = label
 		b.custom_minimum_size = Vector2(320, 60)
@@ -4298,6 +4330,9 @@ func _on_menu_choice(choice: String) -> void:
 	match choice:
 		"RESUME":
 			_toggle_menu()
+		"HOW TO PLAY":
+			_toggle_menu()
+			load("res://scripts/ui/how_to_play.gd").open(overlay)
 		"SETTINGS":
 			_toggle_menu()
 			SettingsPanel.open(overlay, false)

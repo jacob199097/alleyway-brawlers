@@ -12,6 +12,11 @@ var _owned: Dictionary = {}     # art_url -> inventory row
 var _show_all := false
 var _faction := "all"
 var _kind := "all"
+var _sub := "any"               # the finer filter (dropdown): a role, a Heavy's sacrifices, Continuous / Equip, tokens
+## The dropdown's choices: [key, label]
+const SUBS := [["any", "ANY KIND"], ["striver", "STRIVERS"], ["brawler", "BRAWLERS"], ["heavy", "HEAVIES"],
+	["heavy1", "HEAVIES · SACRIFICE 1"], ["heavy2", "HEAVIES · SACRIFICE 2"], ["heavy3", "HEAVIES · SACRIFICE 3"],
+	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"]]
 var _rarities := {}
 var _grid: GridContainer
 var _total: Label
@@ -84,6 +89,17 @@ func _build_filters() -> void:
 	bar.add_child(_spacer())
 	for k in [["all", "ANY TYPE"], ["gang_member", "UNITS"], ["hustle", "HUSTLE"], ["ambush", "AMBUSH"], ["leader", "LEADER"]]:
 		bar.add_child(_chip("kind", k[0], k[1]))
+	var sub := OptionButton.new()
+	for i in SUBS.size():
+		sub.add_item(SUBS[i][1], i)
+	sub.custom_minimum_size = Vector2(300, 50)
+	sub.position = Vector2(1180, 36)
+	sub.add_theme_font_size_override("font_size", 17)
+	sub.item_selected.connect(func(i):
+		Sfx.play("click")
+		_sub = SUBS[i][0]
+		_render())
+	add_child(sub)
 	bar.add_child(_spacer())
 	for r in range(1, 6):
 		var b := _chip("rarity", str(r), str(UI.RARITY_LABEL[r]).to_upper())
@@ -144,7 +160,7 @@ func _entries() -> Array:
 	var out: Array = []
 	var seen := {}
 	for id in CardDB.all():
-		if CardDB.get_card(id).get("token", false):   # tokens are made only by effects: not collectable
+		if CardDB.get_card(id).get("token", false) != (_sub == "token"):   # tokens (made only by effects): only under TOKENS
 			continue
 		var c: Dictionary = CardDB.get_card(id).duplicate()
 		var row = _owned.get(id)
@@ -154,7 +170,7 @@ func _entries() -> Array:
 					c[key] = row[key]
 			c.quantity = int(row.get("quantity", 0))
 		seen[id] = true
-		if _show_all or row != null:
+		if _show_all or row != null or _sub == "token":
 			out.append(c)
 	for id in _owned:   # owned cards the rules data doesn't know yet
 		if not seen.has(id):
@@ -162,6 +178,18 @@ func _entries() -> Array:
 			out.append({"id": id, "art_url": id, "name": row.name, "rarity": row.rarity, "cardType": row.card_type,
 				"clanTag": row.get("clan_tag", ""), "effectText": row.get("effect_text", ""), "quantity": row.quantity})
 	return out
+
+
+func _sub_matches(c: Dictionary) -> bool:
+	var sub := str(c.get("subtype", ""))
+	match _sub:
+		"striver", "brawler", "heavy":
+			return c.get("cardType") == "gang_member" and (sub if sub != "" else "brawler") == _sub
+		"heavy1", "heavy2", "heavy3":
+			return DuelState.needs_tribute(c) and DuelState.tributes_for(c) == int(_sub.substr(5))
+		"continuous", "equip":
+			return str(c.get("cardType", "")) in ["hustle", "ambush"] and sub == _sub
+	return true
 
 
 func _render() -> void:
@@ -177,6 +205,8 @@ func _render() -> void:
 		if _kind != "all" and str(c.get("cardType", "")) != _kind:
 			continue
 		if not _rarities.is_empty() and not _rarities.has(int(c.get("rarity", 1))):
+			continue
+		if not _sub_matches(c):
 			continue
 		var tile := CardTile.make(c, TILE)
 		var qty := int(c.get("quantity", 0))

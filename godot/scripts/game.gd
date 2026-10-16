@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS := {
 	"rival_emotes": true,           # show the opponent's emotes
 	"duel_tips": true,              # explain a mechanic the first time it comes up in a match
 	"seen_tips": [],                # the tips already shown (screens: duel.gd TIPS)
+	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 }
 const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"

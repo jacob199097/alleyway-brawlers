@@ -98,10 +98,12 @@ func _show(tab: String) -> void:
 			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
 			_cycle("Duel Tips", [true, false], ["SHOW", "HIDE"], "duel_tips")
-			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Duel tips explain each mechanic once, the first time it comes up.", 20, UI.MUTED)
+			_cycle("Colour-Blind Symbols", [false, true], ["OFF", "ON"], "glow_symbols")
+			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Duel tips explain each mechanic once, the first time it comes up. Colour-blind symbols add a shape to every glow in a duel: + can be played, ! can act, a bolt for an Activate ability, arrows to deploy over, X to sacrifice, a crosshair to attack.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)
 			_body.add_child(note)
+			_body.add_child(UI.button("HOW TO PLAY", func(): load("res://scripts/ui/how_to_play.gd").open(self), Vector2(320, 52), UI.GOLD))
 			var keys := GridContainer.new()
 			keys.columns = 2
 			keys.add_theme_constant_override("h_separation", 30)
