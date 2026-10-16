@@ -167,7 +167,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_009",
         "code": "NEBU-009",
         "flavourText": "Strike me, and time itself will answer.",
-        "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When you control 4 or more characters or your Authority reaches 8, this leader may take the field.",
+        "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When your Authority reaches 8, this leader may take the field.",
         "effects": [
             {
                 "when": "dormant_hit",
@@ -189,7 +189,6 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "awakenCondition": {
-            "chars": 4,
             "authority": 8
         },
         "influence": 3000
