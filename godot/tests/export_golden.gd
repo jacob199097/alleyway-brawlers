@@ -6,6 +6,9 @@ extends SceneTree
 const MAX_ACTIONS := 1500
 # Odd-numbered games give every character one of these data effects (Card Forge building
 # blocks) instead of its hand-written one, so both engines are checked on every block.
+## The weekly challenges' rules (shared/challenges.js TWISTS)
+const TWIST_RULES := [{"start_authority": 3}, {"start_morale": 3000}, {"opening_hand": 7}, {"pierce": true}]
+
 const FX_SAMPLES := [
 	[{"when": "deploy", "do": "buff", "target": "ally", "atk": 500}],
 	[{"when": "deploy", "do": "down", "target": "enemy"}],
@@ -194,7 +197,9 @@ func _init() -> void:
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_CARD_SAMPLES[rng.randi_range(0, FX_CARD_SAMPLES.size() - 1)]}
 		var first := "player" if g % 2 == 0 else "opponent"
 		var levels := {"player": DuelAI.LEVELS[g % 3], "opponent": DuelAI.LEVELS[(g + 1) % 3]}
-		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1)
+		# Every fifth game is played with a weekly-challenge twist (shared/challenges.js)
+		var rules: Dictionary = TWIST_RULES[(g / 5) % TWIST_RULES.size()] if g % 5 == 2 else {}
+		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1, rules)
 		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
 		var leader_fx := {}
 		if g % 4 == 3:
@@ -213,7 +218,7 @@ func _init() -> void:
 				break
 			steps.append({"action": a, "side": side, "events": d.take_events()})
 			n += 1
-		records.append({"decks": setup.decks, "hideouts": setup.hideouts, "leaders": setup.leaders, "leader_fx": leader_fx,
+		records.append({"decks": setup.decks, "hideouts": setup.hideouts, "leaders": setup.leaders, "leader_fx": leader_fx, "rules": rules,
 			"first": first, "levels": levels, "steps": steps, "winner": d.winner})
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(records))

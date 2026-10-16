@@ -119,7 +119,10 @@ export class DuelState {
      * @param {number} seed    -1 keeps the given deck order (tests); otherwise decks are shuffled,
      *                         repeatably when seed > 0 (the server records it for replays)
      */
-    constructor(decks, hideouts = {}, leaders = {}, first = 'player', seed = 0) {
+    // rules: a challenge's twist (shared/challenges.js): start_authority, start_morale,
+    // opening_hand, pierce (every attack pierces). Same as duel_state.gd.
+    constructor(decks, hideouts = {}, leaders = {}, first = 'player', seed = 0, rules = {}) {
+        this.rules = { ...(rules || {}) };
         this._rand = seed > 0 ? seededRandom(seed) : Math.random;
         this.turn = 1;
         this.active = first;
@@ -146,7 +149,8 @@ export class DuelState {
             if (leader) leader.influence = leader.influence != null ? toInt(leader.influence) : leader.base_defense;   // (Forge leaders set it; else DEF)
             if (leader) leader.influence_max = leader.influence;
             this.sides[side] = {
-                morale: START_MORALE, authority: 1, authority_max: 1,
+                morale: toInt(this.rules.start_morale) || START_MORALE,
+                authority: toInt(this.rules.start_authority) || 1, authority_max: toInt(this.rules.start_authority) || 1,
                 deck, hand: [], field, gutter: [], hideout,
                 leader, leader_state: leader ? 'dormant' : 'none',
                 brutus_bonus: 0, promoted: {}, mentor_used: false,
@@ -586,7 +590,7 @@ export class DuelState {
     // ── Actions ────────────────────────────────────────────────────────────
 
     start() {
-        for (let i = 0; i < OPENING_HAND; i++) {
+        for (let i = 0; i < (toInt(this.rules.opening_hand) || OPENING_HAND); i++) {
             this._draw(this.active, true);
             this._draw(other(this.active), true);
         }
@@ -793,7 +797,7 @@ export class DuelState {
         this._emit('attack', { side, from, target, card: clone(att) });
         const ctx = { side, foe: other(side), from, target, att, bonus: 0 };
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
-        if (this._passive(side, from, att, 'pierce')) ctx.pierce = true;
+        if (this._passive(side, from, att, 'pierce') || this.rules.pierce) ctx.pierce = true;
         const defNow = target >= 0 ? this.cardAt(other(side), target) : null;
         let k = 0;
         for (const e of this._fx(att, 'attack')) {

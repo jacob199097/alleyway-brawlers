@@ -32,7 +32,7 @@ let failed = 0;
 let aiMoves = 0, aiMismatch = 0;   // the server's CPU (DuelAI.js) must pick the Godot CPU's moves
 let totalEvents = 0;
 games.forEach((g, gi) => {
-    const d = new DuelState(g.decks, g.hideouts, g.leaders, g.first, -1);
+    const d = new DuelState(g.decks, g.hideouts, g.leaders, g.first, -1, g.rules || {});
     for (const [side, fx] of Object.entries(g.leader_fx || {})) Object.assign(d.sides[side].leader, structuredClone(fx));   // Card Forge leaders
     d.start();
     for (const [si, step] of g.steps.entries()) {

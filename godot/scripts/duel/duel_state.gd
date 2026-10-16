@@ -50,11 +50,15 @@ var _in_answer := false      # prompts raised while answering one go first
 var _new_asks: Array = []
 var _did := 0                # effects that did something (see then in _do_fx)
 var _attack_ctx := {}        # the attack being resolved
+var rules := {}              # a challenge's twist (see _init)
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 
 
 ## decks/hideouts: {"player": [card ids], "opponent": [...]}; leaders: {"player": id, ...}
-func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first := "player", seed_value := 0) -> void:
+## rules: a challenge's twist (shared/challenges.js): start_authority, start_morale, opening_hand,
+## pierce (every attack pierces). Same as DuelState.js.
+func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first := "player", seed_value := 0, rules_ := {}) -> void:
+	rules = rules_.duplicate()
 	if seed_value > 0:
 		rng.seed = seed_value
 	else:
@@ -78,7 +82,8 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 			leader.influence = int(leader.influence) if leader.get("influence") != null else leader.base_defense   # (Forge leaders set it; else DEF)
 			leader.influence_max = leader.influence
 		sides[side] = {
-			"morale": START_MORALE, "authority": 1, "authority_max": 1,
+			"morale": int(rules.get("start_morale", 0)) if int(rules.get("start_morale", 0)) > 0 else START_MORALE,
+			"authority": maxi(1, int(rules.get("start_authority", 1))), "authority_max": maxi(1, int(rules.get("start_authority", 1))),
 			"deck": deck, "hand": [], "field": field, "gutter": [], "hideout": hideout,
 			"leader": leader, "leader_state": "dormant" if leader != null else "none",
 			"brutus_bonus": 0, "promoted": {}, "mentor_used": false,
@@ -656,7 +661,7 @@ func fx_has_targets(side: String, slot: int, e: Dictionary) -> bool:
 # ── Actions ──────────────────────────────────────────────────────────────────
 
 func start() -> void:
-	for i in OPENING_HAND:
+	for i in (int(rules.get("opening_hand", 0)) if int(rules.get("opening_hand", 0)) > 0 else OPENING_HAND):
 		_draw(active, true)
 		_draw(other(active), true)
 	# Each player may redraw their opening hand once, first player first; then turn 1 begins
@@ -865,7 +870,7 @@ func _attack(side: String, from: int, target: int) -> bool:
 	_emit("attack", {"side": side, "from": from, "target": target, "card": att.duplicate(true)})
 	var ctx := {"side": side, "foe": other(side), "from": from, "target": target, "att": att, "bonus": 0}
 	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
-	if not _passive(side, from, att, "pierce").is_empty():
+	if not _passive(side, from, att, "pierce").is_empty() or rules.get("pierce", false):
 		ctx.pierce = true
 	var def_now = card_at(other(side), target) if target >= 0 else null
 	var k := 0

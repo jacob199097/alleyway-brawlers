@@ -51,6 +51,9 @@ static func choose(d: DuelState, side: String, level := "normal") -> Dictionary:
 			return {}
 		if d.pending.kind == "discard":
 			return {"kind": "discard", "uid": _weakest(d.sides[side].hand).uid}
+		if level == "hard" and d.pending.get("key") == "ambush" and d.pending.options.any(func(o): return o.id == "no") \
+				and not _attack_hurts(d, side):
+			return {"kind": "choose", "option": "no"}   # this attack fails anyway: keep the Ambush
 		# Prompts list their options best-first for the deciding side
 		return {"kind": "choose", "option": d.pending.options[0].id}
 	if d.active != side:
@@ -61,7 +64,24 @@ static func choose(d: DuelState, side: String, level := "normal") -> Dictionary:
 			a = _deploy(d, side, level)
 		"brawl":
 			a = _brawl(d, side, level)
+		"regroup":
+			if level == "hard":
+				a = _brace(d, side)
 	return a if not a.is_empty() else {"kind": "next"}
+
+
+## Hard, before ending its turn: characters in ATK that would lose to an enemy that can attack
+## next turn switch to DEF, so a lost brawl costs no Morale. Same as brace in DuelAI.js.
+static func _brace(d: DuelState, side: String) -> Dictionary:
+	var danger := 0
+	for e in d.characters(DuelState.other(side)):
+		if not e.card.downed and not e.card.get("face_down", false):
+			danger = maxi(danger, int(e.card.attack))
+	for slot in DuelState.FRONT:
+		var c = d.card_at(side, slot)
+		if c != null and c.position == "atk" and c.get("cardType") != "leader" and danger > int(c.attack) and d.can_change_position(side, slot):
+			return {"kind": "position", "slot": slot}
+	return {}
 
 
 static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
@@ -69,7 +89,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	for slot in DuelState.FRONT:
 		if d.can_promote(side, slot):
 			return {"kind": "promote", "slot": slot}
-	var act := _activation(d, side)
+	var act := _activation(d, side, level)
 	if not act.is_empty():
 		return act
 	for c in s.hand:
@@ -143,15 +163,36 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 ## Activated abilities (Card Forge "Activate"): use one when it has something to work on and its
 ## cost is cheap enough. The CPU never sacrifices its own characters, and only gives up an attack
 ## ("exhaust") with a character that can't attack anyway.
-static func _activation(d: DuelState, side: String) -> Dictionary:
+## Whether the attack on one of side's characters (an Ambush may answer it) would beat it.
+static func _attack_hurts(d: DuelState, side: String) -> bool:
+	var ctx: Dictionary = d._attack_ctx
+	if ctx.is_empty() or ctx.foe != side:
+		return true
+	var df = d.card_at(side, int(ctx.target))
+	if df == null:
+		return true
+	var guard: int = df.defense if df.downed or df.position == "def" else df.attack
+	return int(ctx.att.attack) + int(ctx.bonus) >= guard
+
+
+static func _activation(d: DuelState, side: String, level := "normal") -> Dictionary:
 	var s: Dictionary = d.sides[side]
 	for slot in DuelState.FRONT:
 		for k in d.activations(side, slot):
 			var e: Dictionary = d._fx(d.card_at(side, slot), "activate")[k - 1]
 			var n: int = maxi(1, int(e.get("cost_n", 1)))
 			var cost := str(e.get("cost", ""))
-			if not d.fx_has_targets(side, slot, e) or cost == "sacrifice":
+			if not d.fx_has_targets(side, slot, e):
 				continue
+			if cost == "sacrifice":
+				# Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
+				if level != "hard":
+					continue
+				var mine: Array = d.characters(side).filter(func(x): return x.slot != slot)
+				mine.sort_custom(func(a, b): return DuelState._attack_value(a.card) < DuelState._attack_value(b.card) \
+					or (DuelState._attack_value(a.card) == DuelState._attack_value(b.card) and a.slot < b.slot))
+				if mine.is_empty() or _keep_value(mine[0].card) > 600:
+					continue
 			if cost == "morale" and s.morale <= n * 3:
 				continue
 			if cost == "discard" and s.hand.size() < n + 2:
@@ -168,7 +209,7 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 	for slot in DuelState.FRONT:
 		if d.can_use_ability(side, slot):
 			return {"kind": "ability", "slot": slot}
-	var act := _activation(d, side)
+	var act := _activation(d, side, level)
 	if not act.is_empty():
 		return act
 	# Easy and Normal take the first attacker's best hit; Hard picks the best hit of all

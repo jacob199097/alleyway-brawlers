@@ -49,7 +49,8 @@ function everyCardSetup() {
 
 // Difficulty: "easy" misses attacks, picks the first target that works and never sacrifices for
 // a Heavy; "normal" is the standard CPU; "hard" sacrifices more readily (preferring Downed or
-// weakened characters) and takes even trades that cost it the weaker card.
+// weakened characters), takes even trades that cost it the weaker card, keeps its Ambushes for
+// attacks that would hurt, and pays an Activate ability's sacrifice with a Downed or weak character.
 export const LEVELS = ['easy', 'normal', 'hard'];
 
 export function choose(d, side, level = 'normal') {
@@ -58,6 +59,9 @@ export function choose(d, side, level = 'normal') {
     if (p && Object.keys(p).length) {
         if (p.side !== side) return {};
         if (p.kind === 'discard') return { kind: 'discard', uid: weakest(d.sides[side].hand).uid };
+        if (level === 'hard' && p.key === 'ambush' && p.options.some(o => o.id === 'no') && !attackHurts(d, side)) {
+            return { kind: 'choose', option: 'no' };   // this attack fails anyway: keep the Ambush
+        }
         // Prompts list their options best-first for the deciding side
         return { kind: 'choose', option: p.options[0].id };
     }
@@ -65,6 +69,7 @@ export function choose(d, side, level = 'normal') {
     let a = {};
     if (d.phase === 'deployment') a = deploy(d, side, level);
     else if (d.phase === 'brawl') a = brawl(d, side, level);
+    else if (d.phase === 'regroup' && level === 'hard') a = brace(d, side);
     return Object.keys(a).length ? a : { kind: 'next' };
 }
 
@@ -96,7 +101,7 @@ function hustleUseful(d, side, c) {
 function deploy(d, side, level) {
     const s = d.sides[side];
     for (const slot of FRONT) if (d.canPromote(side, slot)) return { kind: 'promote', slot };
-    const act = activation(d, side);
+    const act = activation(d, side, level);
     if (act) return act;
     for (const c of s.hand) if (d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
     const t = threat(d, side);
@@ -165,15 +170,32 @@ function deploy(d, side, level) {
     return {};
 }
 
+/** Whether the attack on one of side's characters (an Ambush may answer it) would beat it. */
+function attackHurts(d, side) {
+    const ctx = d._attackCtx;
+    if (!ctx || ctx.foe !== side) return true;
+    const df = d.cardAt(side, ctx.target);
+    if (!df) return true;
+    const guard = df.downed || df.position === 'def' ? df.defense : df.attack;
+    return ctx.att.attack + ctx.bonus >= guard;
+}
+
 // Activated abilities: same rules as _activation in duel_ai.gd
-function activation(d, side) {
+function activation(d, side, level = 'normal') {
     const s = d.sides[side];
     for (const slot of FRONT) {
         for (const k of d.activations(side, slot)) {
             const e = d._fx(d.cardAt(side, slot), 'activate')[k - 1];
             const n = Math.max(1, Math.trunc(Number(e.cost_n ?? 1)) || 1);
             const cost = String(e.cost ?? '');
-            if (!d.fxHasTargets(side, slot, e) || cost === 'sacrifice') continue;
+            if (!d.fxHasTargets(side, slot, e)) continue;
+            if (cost === 'sacrifice') {
+                // Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
+                if (level !== 'hard') continue;
+                const fodder = d.characters(side).filter(x => x.slot !== slot)
+                    .sort((a, b) => (toAttackValue(a.card) - toAttackValue(b.card)) || a.slot - b.slot)[0];
+                if (!fodder || keepValue(fodder.card) > 600) continue;
+            }
             if (cost === 'morale' && s.morale <= n * 3) continue;
             if (cost === 'discard' && s.hand.length < n + 2) continue;
             if (cost === 'exhaust' && (d.phase !== 'brawl' || d.canAttackWith(side, slot))) continue;
@@ -187,7 +209,7 @@ function brawl(d, side, level) {
     const foe = other(side);
     // Maya Lv.3 buffs an ally before the punches start
     for (const slot of FRONT) if (d.canUseAbility(side, slot)) return { kind: 'ability', slot };
-    const act = activation(d, side);
+    const act = activation(d, side, level);
     if (act) return act;
     // Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
     let plan = {}, planScore = 0;
@@ -223,6 +245,18 @@ function brawl(d, side, level) {
     return plan;
 }
 
+/** Hard, before ending its turn: characters in ATK that would lose to an enemy that can attack
+ *  next turn switch to DEF, so a lost brawl costs no Morale. Same as _brace in duel_ai.gd. */
+function brace(d, side) {
+    let danger = 0;
+    for (const e of d.characters(other(side))) if (!e.card.downed && !e.card.face_down) danger = Math.max(danger, e.card.attack);
+    for (const slot of FRONT) {
+        const c = d.cardAt(side, slot);
+        if (c && c.position === 'atk' && c.cardType !== 'leader' && danger > c.attack && d.canChangePosition(side, slot)) return { kind: 'position', slot };
+    }
+    return {};
+}
+
 /** How much the CPU wants to attack this enemy character (0 = not worth it). */
 function targetScore(att, df, level) {
     let score = 0;
@@ -233,6 +267,11 @@ function targetScore(att, df, level) {
     else if (level === 'hard' && att.attack === df.attack && att.base_attack < df.base_attack) score = 1.5;   // even trade, our weaker card
     if (df.shield) score *= 0.5;   // the hit only pops the shield
     return score;
+}
+
+/** The order an Activate's sacrifice prompt offers allies in (DuelState attackValue). */
+function toAttackValue(c) {
+    return Math.trunc(Number(c.attack) || 0) + (c.downed ? 0 : 1);
 }
 
 /** How much a character is worth keeping (lowest = the first to sacrifice for a Heavy). */
