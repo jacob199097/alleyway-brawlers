@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.8.3",
+        "notes": [
+            "The Card Library sign is the same size as the others, and the Achievements sign no longer has a black box behind it."
+        ]
+    },
+    {
         "version": "0.8.2",
         "notes": [
             "Card Library and Achievements have their own neon signs on the main menu."
