@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.5",
+        "notes": [
+            "A fresh full version of the game: from now on updates download in seconds instead of a long wait at start-up."
+        ]
+    },
+    {
         "version": "0.9.4",
         "notes": [
             "Drag a Hustle onto the board and you choose: ACTIVATE it now, or SET it face-down to use later (or cancel)."
