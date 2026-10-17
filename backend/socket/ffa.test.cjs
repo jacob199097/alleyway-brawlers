@@ -77,8 +77,9 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     const places = [a, b, c].map(s => last(s, 'ffa:over').place).sort();
     check(new Set(places).size === 3 && places.every(p => p >= 1 && p <= 4), `three different places of 4 (got ${places})`);
     const out = [a, b, c].filter(s => last(s, 'ffa:out'));
-    // (the last one out goes out on the final blow: they hear the result with everyone else)
-    check([a, b, c].every(s => (last(s, 'ffa:over').place >= 3) === !!last(s, 'ffa:out')), 'those out in 3rd and 4th heard it straight away (ffa:out)');
+    // Whoever goes out before the end hears it straight away (ffa:out); the 2nd goes out on the final
+    // blow and hears the result with everyone (so may a 3rd, when one blow puts out two at once)
+    check([a, b, c].every(s => !last(s, 'ffa:out') || last(s, 'ffa:over').place >= 3), "only those out before the end (3rd, 4th) heard ffa:out");
     check(out.every(s => last(s, 'ffa:out').place === last(s, 'ffa:over').place), "and their place didn't change");
     check(results.length === 3 && results.every(r => r.humans === 3), 'everyone is rewarded once, as a 3-person game');
     const win = [a, b, c].find(s => last(s, 'ffa:over').place === 1);
