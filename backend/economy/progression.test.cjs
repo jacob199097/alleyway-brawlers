@@ -188,7 +188,7 @@ async function rejects(promise, pattern) {
 
     // Free-for-all places: 1st a win, 2nd between a win and a loss, the rest a loss
     const { resolveFfaMatch } = require('./postMatch');
-    const { rows: [ffaP] } = await q();
+    const { rows: [ffaP] } = await q(`INSERT INTO players (username, email, password_hash) VALUES ('ffa', 'f@x', 'x') RETURNING id`);
     const second = await resolveFfaMatch({ playerId: ffaP.id, place: 2, humans: 3 });
     assert.equal(second.xpEarned, 100);
     assert.equal(second.karatEarned, 25);
