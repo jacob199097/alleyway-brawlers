@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.8.2",
+        "notes": [
+            "Card Library and Achievements have their own neon signs on the main menu."
+        ]
+    },
+    {
         "version": "0.8.1",
         "notes": [
             "All-new pack opening: tear the pack open yourself, watch it glow with the colour of the best card inside, and turn the cards over one by one. Rares burst, Epics take centre stage. NEW cards are marked, your clan collection fills up, and you can open another without leaving.",
