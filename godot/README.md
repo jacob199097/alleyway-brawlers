@@ -27,7 +27,7 @@ download screen) and checks its version (see `docs/CARD_PIPELINE.md`).
 | Login | Log in, register or reset your password. **Play Offline** gives CPU duels with the starter deck; nothing is saved. |
 | Clan select | Choose your starting clan on first login. The server seeds your starter inventory and deck. |
 | Main menu | The player bar shows your level, XP, currencies and unread mail. It also has quests (with Claim buttons), Fight, Deck Editor, Card Library, Shop, Profile and Social. **Esc** opens Settings. |
-| Fight mode | Casual, Ranked (from level 5) or VS CPU. Every mode uses your saved active deck, which must have 40 cards. **How to Play** starts the tutorial. |
+| Fight mode | Casual, Ranked (from level 5), VS CPU or Free-for-all. Every mode uses your saved active deck, which must have 40 cards. **How to Play** starts the tutorial. |
 | Tutorial | A guided first duel (`scripts/duel/tutorial.gd`): a coach panel teaches Authority, summoning, attacking, Downed and K.O., DEF cards, leaders and Direct Attacks, then you finish the match. It picks cheap cards from the current card data and switches their effects off. The main menu offers it once to new players. |
 | Rock-paper-scissors | Decides who goes first. The winner picks. |
 | Duel | Uses your deck, leader and promoted forms, and opens a server match session. |
@@ -44,6 +44,9 @@ Right-click any card to zoom it.
 - **Casual Brawl** puts you in the online queue against another player. It uses your active
   deck and doesn't change Rank Points. You can also **Challenge** an online friend from Social.
   Live chat is there too.
+- **Free-for-all** (`backend/socket/ffaMatch.js`): a lobby of up to 4 who ready up; the match starts
+  when 4 are ready, or after 60 seconds with CPUs filling the seats up to 3. Every board is on screen
+  in a 2x2 grid; placement pays (1st a win, 2nd half way, the rest a loss).
 - **VS CPU and Ranked run on the server too**, against a server-side CPU (`shared/duel/DuelAI.js`,
   a copy of `scripts/duel/duel_ai.gd`). The server sees the result, so it pays the rewards
   (up to 25 rewarded CPU matches a day). Only Ranked moves Rank Points. Offline play and the

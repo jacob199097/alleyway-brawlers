@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.0",
+        "notes": [
+            "New mode: FREE-FOR-ALL (Fight screen). 3 or 4 players, every board on screen at once, last one standing wins. Ready up in the lobby: the match starts when 4 are ready, or after 60 seconds with CPUs filling the empty seats. 1st place counts as a win, 2nd pays half way.",
+            "Hustles can now be set face-down in your back row for free (SET FACE DOWN, or drop one on an empty back-row slot). From your next turn, click it to activate it in any phase, paying its Authority then.",
+            "Fixed: cards that search your deck (Supernova Run, Static, Supply Drop, Thomas...) could not be played in online and CPU matches."
+        ]
+    },
+    {
         "version": "0.8.3",
         "notes": [
             "The Card Library sign is the same size as the others, and the Achievements sign no longer has a black box behind it."
