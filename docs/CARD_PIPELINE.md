@@ -91,8 +91,9 @@ A patch can't change project settings (`project.godot`), the autoload list, add 
 `assets/nebula_deckbox.png`) ship in patches. Other new art needs a full build.
 
 **Full build.** Raise the version in both files and set `minimum` and `patchBase` to it. Export the
-"Windows Desktop" preset, zip `builds/windows` as `builds/AlleywayBrawlers-<version>-windows.zip` and
-copy it into `downloads/` on the server. `https://<server>/download` serves the newest zip, and the
+"Windows Desktop" preset to `builds/windows_<version>/AlleywayBrawlers.exe` (keep it: `make_patch`
+builds later patches as just the changes against it), zip that exe as
+`builds/AlleywayBrawlers-<version>-windows.zip` and copy it into `downloads/` on the server. `https://<server>/download` serves the newest zip, and the
 game links there when it can't patch itself (set `CLIENT_DOWNLOAD_URL` in `backend/.env` to link
 somewhere else).
 

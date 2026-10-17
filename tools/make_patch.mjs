@@ -4,7 +4,10 @@
 //
 // 1. Raise config/version in godot/project.godot and "latest" in shared/game_version.json
 //    (same number; leave "minimum" and "patchBase" alone).
-// 2. Run this: it writes builds/AlleywayBrawlers-<version>-patch.pck (a few hundred KB).
+// 2. Run this: it writes builds/AlleywayBrawlers-<version>-patch.pck. With the patchBase build at
+//    builds/windows_<patchBase>/AlleywayBrawlers.exe (where a full build is exported), the patch holds
+//    only what changed since that build (a few hundred KB); without it, everything the Patch preset
+//    allows (much bigger).
 // 3. Copy that file into downloads/ on the server. Players on patchBase or newer get it at
 //    start-up and the game restarts into it (godot/scripts/patcher.gd).
 //
@@ -34,7 +37,14 @@ if (!v.patchBase) {
     process.exit(1);
 }
 const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-patch.pck`);
-execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', 'Patch', out], { stdio: 'inherit' });
+const base = join(ROOT, 'builds', `windows_${v.patchBase}`, 'AlleywayBrawlers.exe');
+if (existsSync(base)) {
+    // Only the files that differ from the full build players have (Godot compares against its pack)
+    execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-patch', 'Patch', out, '--patches', base], { stdio: 'inherit' });
+} else {
+    console.warn(`No ${base}: the patch carries everything the Patch preset allows, not just the changes.`);
+    execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', 'Patch', out], { stdio: 'inherit' });
+}
 if (!existsSync(out)) throw new Error('Godot did not write the patch.');
 console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for builds ${v.patchBase} and newer.`);
 console.log(`Next: push, then  node tools/deploy.mjs --patch  (or by hand):\n` +
