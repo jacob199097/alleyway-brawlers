@@ -549,8 +549,14 @@ export class DuelState {
         return out;
     }
 
+    /** No attacks yet: until everyone has had a turn (turn 1; a free-for-all's whole first round).
+     *  Same as no_attacks_yet in duel_state.gd. */
+    noAttacksYet() {
+        return this.turn <= (this.ffa ? this.seats.length : 1);
+    }
+
     canAttackWith(side, slot) {
-        if (!this.canAct(side) || this.phase !== 'brawl' || this.turn === 1 || !FRONT.includes(slot)) return false;
+        if (!this.canAct(side) || this.phase !== 'brawl' || this.noAttacksYet() || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
         return c != null && c.position === 'atk' && !c.downed && !c.has_attacked && !c.face_down
             && toInt(c.stun_until ?? 0) < this.turn && toInt(c.suppress_until ?? 0) < this.turn && !this.frozen(c) && !this.inStasis(c);
@@ -873,8 +879,8 @@ export class DuelState {
         if (!this.canAct(side)) return false;
         switch (this.phase) {
             case 'deployment':
-                if (this.turn === 1) {
-                    this._emit('notice', { text: 'NO ATTACKS ON TURN 1' });
+                if (this.noAttacksYet()) {
+                    this._emit('notice', { text: this.ffa ? 'NO ATTACKS UNTIL EVERYONE HAS HAD A TURN' : 'NO ATTACKS ON TURN 1' });
                     this._setPhase('regroup');
                 } else {
                     this._setPhase('brawl');

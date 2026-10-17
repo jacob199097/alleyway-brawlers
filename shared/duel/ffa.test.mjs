@@ -39,6 +39,18 @@ assert.equal(st._nextSeat('p4'), 'p1', 'turn order wraps round');
 // (seat order comes from the names, not the order the decks are given in)
 assert.deepEqual(new DuelState({ p3: [], p1: [], p2: [] }, {}, {}, 'p1', -1).seats, ['p1', 'p2', 'p3']);
 
+// ── No attacks until everyone has had a turn (the whole first round) ──
+st = board({ p4: [{}], p1: [{}] });
+st.active = 'p4';
+st.turn = 4;   // the last player's first turn
+assert.ok(st.noAttacksYet() && !st.canAttackWith('p4', 0), "the fourth player's first turn: no attacks yet");
+st.turn = 5;   // round two
+st.active = 'p1';
+assert.ok(!st.noAttacksYet() && st.canAttackWith('p1', 0), 'from round two, attacks');
+st = board({}, ['p1', 'p2', 'p3']);
+st.turn = 3;
+assert.ok(st.noAttacksYet(), 'three players: their first three turns');
+
 // ── Attacks go at a chosen opponent ──
 st = board({ p1: [{ attack: 2000 }], p3: [{ attack: 500 }] });
 assert.deepEqual(st.attackTargets('p1', 'p2'), [DIRECT], 'p2 has nobody standing: a direct attack');

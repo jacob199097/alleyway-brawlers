@@ -41,6 +41,7 @@ const FFA_LOTS := {
 	"br": [Vector2(943.5, 925.8), Vector2(83.75, 144.5)],
 }
 const FFA_CARD_K := 0.54   # a card's size on a bay
+const FFA_MANHOLE := Vector2(630, 610)   # the steaming manhole in the middle of the crossroads (image pixels)
 const PLATE_H := 90.0
 const PAINT_K := 0.65      # the painted slot outline (arena_paint.png) against a full-size slot
 const FOE_COLORS := [Color("e63946"), Color("ff9f43"), Color("b388ff")]
@@ -176,6 +177,7 @@ func _ready() -> void:
 		$BackLayer/Background.texture = load(bg)
 		if not _paint.is_empty():
 			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
+			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
@@ -190,7 +192,9 @@ func _ready() -> void:
 			mat.size = MAT_FFA.size
 			mat.modulate = Color(0.9, 0.9, 0.95)
 			mat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			mat.material = _alive(mat.texture.get_size())
 			$BackLayer.add_child(mat)
+			$BackLayer.add_child(_steam(MAT_FFA.position + FFA_MANHOLE * MAT_FFA.size.x / MAT_FFA_PX))
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
 	if _ffa:
@@ -1010,6 +1014,55 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 	else:
 		draw_arc(at, 10.0, 0.0, TAU, 24, ink, 3.0, true)
 		draw_circle(at, 3.5, ink)
+
+
+## A mat's living layer (shaders/mat_alive.gdshader): its neon pulses and flickers, a wet sheen
+## drifts, rain rings spread and a haze rolls across.
+func _alive(tex_size: Vector2) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/mat_alive.gdshader")
+	m.set_shader_parameter("tex_size", tex_size)
+	return m
+
+
+## Steam rising from a manhole (soft puffs that grow, drift and fade).
+func _steam(at: Vector2) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.amount = 26
+	p.lifetime = 4.0
+	p.preprocess = 4.0   # (already steaming when the duel opens)
+	var dot := GradientTexture2D.new()
+	dot.width = 64
+	dot.height = 64
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(1.0, 0.5)
+	var soft := Gradient.new()
+	soft.set_color(0, Color(1, 1, 1, 1))
+	soft.set_color(1, Color(1, 1, 1, 0))
+	dot.gradient = soft
+	p.texture = dot
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 16.0
+	p.direction = Vector2(0.15, -1.0)
+	p.spread = 22.0
+	p.gravity = Vector2(6, -10)
+	p.initial_velocity_min = 12.0
+	p.initial_velocity_max = 28.0
+	p.angular_velocity_min = -20.0
+	p.angular_velocity_max = 20.0
+	var grow := Curve.new()
+	grow.max_value = 2.5
+	grow.add_point(Vector2(0.0, 0.5))
+	grow.add_point(Vector2(1.0, 2.2))
+	p.scale_amount_curve = grow
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.8, 0.76, 0.95, 0.0))
+	fade.set_color(1, Color(0.8, 0.76, 0.95, 0.0))
+	fade.add_point(0.25, Color(0.8, 0.76, 0.95, 0.2))
+	p.color_ramp = fade
+	return p
 
 
 ## A slot painted on the mat: the paint (arena_paint.png) nine-sliced at its own scale.
@@ -3523,7 +3576,7 @@ func _update_next_btn() -> void:
 	else:
 		match duel.phase:
 			"deployment":
-				b.text = "TO REGROUP  ▶" if duel.turn == 1 else "TO BRAWL  ▶"
+				b.text = "TO REGROUP  ▶" if duel.no_attacks_yet() else "TO BRAWL  ▶"
 			"brawl":
 				b.text = "TO REGROUP  ▶"
 			_:

@@ -625,8 +625,13 @@ func statuses(c: Dictionary) -> Array:
 	return out
 
 
+## No attacks yet: until everyone has had a turn (turn 1; a free-for-all's whole first round).
+func no_attacks_yet() -> bool:
+	return turn <= (seats.size() if ffa else 1)
+
+
 func can_attack_with(side: String, slot: int) -> bool:
-	if not can_act(side) or phase != "brawl" or turn == 1 or not slot in FRONT:
+	if not can_act(side) or phase != "brawl" or no_attacks_yet() or not slot in FRONT:
 		return false
 	var c = card_at(side, slot)
 	return c != null and c.position == "atk" and not c.downed and not c.has_attacked and not c.face_down \
@@ -1003,8 +1008,8 @@ func _next_phase(side: String) -> bool:
 		return false
 	match phase:
 		"deployment":
-			if turn == 1:
-				_emit("notice", {"text": "NO ATTACKS ON TURN 1"})
+			if no_attacks_yet():
+				_emit("notice", {"text": "NO ATTACKS UNTIL EVERYONE HAS HAD A TURN" if ffa else "NO ATTACKS ON TURN 1"})
 				_set_phase("regroup")
 			else:
 				_set_phase("brawl")

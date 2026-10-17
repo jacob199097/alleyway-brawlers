@@ -11,7 +11,7 @@ var _cpu: Button
 
 func _ready() -> void:
 	back_to = ""
-	UI.background(self, "duel_background.png", 0.62)
+	UI.background(self, "arena_lobby.png" if UI.tex("arena_lobby.png") else "duel_background.png", 0.62)   # (the crowd waiting for a fight)
 	UI.title(self, "CASUAL BRAWL")
 	var p := UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.94))
 	p.position = Vector2(560, 300)
