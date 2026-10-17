@@ -1,14 +1,17 @@
 shader_type canvas_item;
 // The duel mats come alive (scripts/duel/duel.gd): the neon in the art pulses, each light on its own
-// rhythm, and now and then one stutters; a wet sheen drifts over the lit ground; rain rings spread
-// on the dark asphalt; a slow haze rolls across. Works on any mat: the neon is found in the image
-// (bright, saturated pixels), nothing is placed by hand.
+// rhythm; a wet sheen drifts over the lit ground; rain rings spread on the dark asphalt; a slow haze
+// rolls across. Works on any mat: the neon is found in the image (bright, saturated pixels), nothing
+// is placed by hand. Now and then duel.gd makes one light stutter (stutter_zone, stutter_k) and plays
+// its buzz from there.
 
 uniform vec2 tex_size = vec2(1536.0, 1024.0);   // the image in pixels (rings and patches keep their size)
 uniform float neon = 0.45;      // how much the neon swells at its brightest
 uniform float sheen = 0.14;
 uniform float rain = 0.2;
 uniform float haze = 0.06;
+uniform vec2 stutter_zone = vec2(-1.0);   // the 160 px patch whose light stutters
+uniform float stutter_k = -1.0;           // how far through the stutter (0..1), -1 for none
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -35,8 +38,12 @@ void fragment() {
 	vec2 zone = floor(px / 160.0);
 	float speed = 0.7 + hash(zone + 7.0) * 1.5;
 	float pulse = 0.5 + 0.5 * sin(TIME * speed + hash(zone) * 6.2832);
-	float stutter = step(0.996, hash(zone + vec2(floor(TIME * 9.0), 0.0)));
-	col *= 1.0 + lit * (neon * pulse - stutter * 0.7);
+	// (the stutter: off, on, off... dying out, as its buzz plays)
+	float stutter = 0.0;
+	if (stutter_k >= 0.0 && distance(zone, stutter_zone) < 0.5) {
+		stutter = step(0.45, fract(stutter_k * 7.0 + 0.3)) * (1.0 - smoothstep(0.75, 1.0, stutter_k));
+	}
+	col *= 1.0 + lit * (neon * pulse - stutter * 0.85);
 
 	// The wet sheen: soft highlights drifting over the ground the light reaches
 	float n = noise(px / 90.0 + vec2(TIME * 0.12, TIME * 0.05)) * noise(px / 37.0 - vec2(TIME * 0.07, 0.0));

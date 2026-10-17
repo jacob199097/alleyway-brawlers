@@ -123,6 +123,10 @@ func _try_activate_set() -> bool:
 
 func _run() -> void:
 	await _prompt_check()
+	# The duel's sound: its music, the street ambience, the stingers and the neon buzz have recordings
+	_check(Game.sound.current() == "duel", "the duel music is on (got %s)" % Game.sound.current())
+	for name in ["music_duel", "music_duel_tense", "amb_city_rain", "phase_brawl", "turn_yours", "neon_buzz", "music_victory"]:
+		_check(not Sfx.streams(name).is_empty(), "a recording of " + name)
 	await _set_hustle()
 	var frames := 0
 	while frames < 60 * 1800 and (summons < 6 or attacks < 6 or not set_activated):

@@ -1,6 +1,7 @@
 extends Node
 ## Game sounds. Each sound is a set of recordings in assets/sfx: <name>_1.ogg, <name>_2.ogg, ...
-## (or just <name>.ogg / .wav), and each play picks one at random so repeats don't sound the same.
+## (or just <name>.ogg / .mp3 / .wav), and each play picks one at random so repeats don't sound the same.
+## Music and ambience are sounds too (music_*, amb_*), played by Game.sound (scripts/audio/soundscape.gd).
 ## The server also hands them out (backend/routes/content.js), so new or changed sounds reach
 ## players without a new build (scripts/content_sync.gd keeps them in user://content/sfx).
 ## A sound with no recording yet is synthesised (the _r_<name> recipes below).
@@ -11,7 +12,9 @@ const RATE := 22050
 const VOICES := 12
 const DOWNLOADED := "user://content/sfx"
 ## New sounds fall back to an older one until they have recordings of their own
-const FALLBACK := {"laser": "whoosh", "laser_beam": "riser", "pack_open": "ko", "shuffle": "draw"}
+const FALLBACK := {"laser": "whoosh", "laser_beam": "riser", "pack_open": "ko", "shuffle": "draw",
+	"phase_deployment": "phase", "phase_brawl": "phase", "phase_regroup": "phase",
+	"turn_yours": "turn", "turn_theirs": "turn", "hover": "click", "error": "click", "karat": "click"}
 
 var volume_db := -3.0
 var _streams := {}
@@ -58,6 +61,30 @@ func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
 	p.play()
 
 
+## A sound from a place on the screen (panned left or right with it), under parent.
+func play_at(sound: String, at: Vector2, parent: Node, gain_db := 0.0, pitch := 1.0) -> void:
+	var options: Array = _stream(sound)
+	if options.is_empty() or not is_instance_valid(parent):
+		return
+	var p := AudioStreamPlayer2D.new()
+	p.bus = "SFX"
+	p.stream = options[randi() % options.size()]
+	p.position = at
+	p.max_distance = 6000.0
+	p.attenuation = 0.0
+	p.panning_strength = 0.8
+	p.pitch_scale = pitch
+	p.volume_db = volume_db + gain_db
+	p.finished.connect(p.queue_free)
+	parent.add_child(p)
+	p.play()
+
+
+## Every recording of a sound (for music and ambience, which play on their own players).
+func streams(sound: String) -> Array:
+	return _stream(sound)
+
+
 ## Forget loaded sounds (after new ones are downloaded).
 func reload() -> void:
 	_streams.clear()
@@ -77,16 +104,24 @@ func _stream(sound: String) -> Array:
 
 
 func _recordings(sound: String) -> Array:
-	var names: Array = ["%s.ogg" % sound, "%s.wav" % sound]
+	var names: Array = ["%s.ogg" % sound, "%s.mp3" % sound, "%s.wav" % sound]
 	for i in range(1, 13):
 		names.append("%s_%d.ogg" % [sound, i])
+		names.append("%s_%d.mp3" % [sound, i])
 		names.append("%s_%d.wav" % [sound, i])
 	var out: Array = []
 	for n in names:
 		var s: AudioStream = null
 		var file := "%s/%s" % [DOWNLOADED, n]
 		if FileAccess.file_exists(file):
-			s = AudioStreamOggVorbis.load_from_file(file) if n.ends_with(".ogg") else AudioStreamWAV.load_from_file(file)
+			if n.ends_with(".ogg"):
+				s = AudioStreamOggVorbis.load_from_file(file)
+			elif n.ends_with(".mp3"):
+				var mp3 := AudioStreamMP3.new()
+				mp3.data = FileAccess.get_file_as_bytes(file)
+				s = mp3
+			else:
+				s = AudioStreamWAV.load_from_file(file)
 		if s == null and ResourceLoader.exists("res://assets/sfx/" + n):
 			s = load("res://assets/sfx/" + n)
 		if s:

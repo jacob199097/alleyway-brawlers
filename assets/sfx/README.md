@@ -1,8 +1,14 @@
 # Game sounds
 
 Each sound is one or more recordings named `<sound>_1.ogg`, `<sound>_2.ogg`, ... (or just
-`<sound>.ogg` / `.wav`). The game picks one at random each time, so repeated sounds vary. A sound
-with no file is synthesised by the game (`godot/scripts/sfx.gd`, the `_r_<sound>` recipes).
+`<sound>.ogg` / `.mp3` / `.wav`). The game picks one at random each time, so repeated sounds vary. A
+sound with no file is synthesised by the game (`godot/scripts/sfx.gd`, the `_r_<sound>` recipes).
+Music (`music_*`) and ambience loops (`amb_*`) live here too and are played by
+`godot/scripts/audio/soundscape.gd` (`Game.sound`).
+
+The `.wav` files are stand-ins made by `node tools/render_audio.mjs`: **docs/AUDIO_PROMPTS.md**
+has the prompts to generate the real ones. Drop a generated file in with the same name, delete the
+stand-in `.wav`, deploy.
 
 **To add or replace a sound:** put the file(s) here, then `node tools/deploy.mjs`. Players download
 new or changed sounds when the game starts (like card art), so no new build is needed. Run
@@ -27,7 +33,19 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `laser` | Nebula: the quick laser zaps | recorded (5) |
 | `laser_beam` | Nebula: the held laser beam | recorded (5) |
 | `pack_open` | Shop: the top of a pack rips off | recorded (2) |
-| `shuffle` | a match starts | recorded |
+| `shuffle` | a deck is shuffled | recorded |
+| `music_menu` | menus (until there is one: `assets/main_menu_theme_loop.mp3`) | **wanted** |
+| `music_duel` | duels | stand-in (.wav) |
+| `music_duel_tense` | duels, once someone is down to a third of their Morale | stand-in (.wav) |
+| `music_victory`, `music_defeat` | the end of a match (a sting; the menu music follows) | stand-in (.wav) |
+| `amb_city_rain` | duels: rain and the city around the mat | stand-in (.wav) |
+| `amb_crowd` | finding a match, the Free-for-all lobby, Rock Paper Scissors | stand-in (.wav) |
+| `amb_rooftop` | Fight Mode | stand-in (.wav) |
+| `neon_buzz` | a neon light on the duel mat stutters (from where it is) | stand-in (.wav, 3) |
+| `phase_deployment`, `phase_brawl`, `phase_regroup` | each phase starts | stand-in (.wav) |
+| `turn_yours`, `turn_theirs` | a turn starts | stand-in (.wav) |
+| `hover`, `click`, `error` | buttons: pointer over, pressed; a move that isn't allowed | stand-in (.wav) |
+| `karat` | Karat earned on the results screen | stand-in (.wav) |
 | `gunshot` | Militia: each shot | **wanted** (synthesised) |
 | `lockon` | Militia: the airdrop reticle locks onto a lane | **wanted** (synthesised radar beeps) |
 | `airdrop` | Militia: a character is flown in and dropped (jet pass, then a thud) | **wanted** (synthesised) |

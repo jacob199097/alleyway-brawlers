@@ -31,7 +31,7 @@ const router = express.Router();
 const ART_DIR      = path.join(__dirname, '../../assets/cards');
 const BACK_DIR     = path.join(__dirname, '../../assets');
 const SFX_DIR      = path.join(__dirname, '../../assets/sfx');
-const SFX_FILE     = /^[a-z0-9_]+\.(ogg|wav)$/;
+const SFX_FILE     = /^[a-z0-9_]+\.(ogg|wav|mp3)$/;   // (music_* and amb_* too: generated tracks are often mp3)
 const VERSION_FILE = path.join(__dirname, '../../shared/game_version.json');
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');

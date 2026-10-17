@@ -12,7 +12,8 @@ var _spin: Label = null
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "arena_rooftop.png" if UI.tex("arena_rooftop.png") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.png") else 0.62)   # (the rooftop over the city)
+	UI.background(self, "arena_rooftop.png" if UI.tex("arena_rooftop.png") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.png") else 0.62)
+	Game.sound.ambience("rooftop")   # (the rooftop over the city)
 	UI.title(self, "SELECT BATTLE MODE")
 	var level := int(Game.player.get("level", 1))
 	var modes := [

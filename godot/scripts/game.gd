@@ -39,9 +39,9 @@ const DEFAULT_SETTINGS := {
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
+	"ambience_volume": 0.8,         # rain, the crowd, the wind (Game.sound)
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 }
-const MENU_MUSIC := "res://assets/main_menu_theme_loop.mp3"
 const ErrorReport := preload("res://scripts/error_report.gd")
 const ERROR_SEND_SECS := 20.0
 const UPDATE_CHECK_SECS := 300.0   # while the game is open: is there a new version?
@@ -58,9 +58,9 @@ var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
 
-var _music: AudioStreamPlayer
+## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
+var sound: Node
 var _errors: ErrorReport   # sends the game's errors to the server (scripts/error_report.gd)
-var _music_path := ""
 var _fade: ColorRect
 var _fps: Label
 var _going := false
@@ -69,13 +69,13 @@ var _update_shown := false   # the update prompt is up (or the player is sent to
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	for bus in ["Music", "SFX"]:
+	for bus in ["Music", "SFX", "Ambience"]:
 		if AudioServer.get_bus_index(bus) == -1:
 			AudioServer.add_bus()
 			AudioServer.set_bus_name(AudioServer.bus_count - 1, bus)
-	_music = AudioStreamPlayer.new()
-	_music.bus = "Music"
-	add_child(_music)
+	sound = load("res://scripts/audio/soundscape.gd").new()
+	sound.name = "Soundscape"
+	add_child(sound)
 
 	var layer := CanvasLayer.new()
 	layer.layer = 100
@@ -310,6 +310,7 @@ func set_setting(key: String, value) -> void:
 func apply_settings() -> void:
 	_set_bus("Music", settings.music_volume)
 	_set_bus("SFX", settings.sfx_volume)
+	_set_bus("Ambience", float(settings.get("ambience_volume", 0.8)))
 	Engine.max_fps = int(settings.fps_cap)
 	if DisplayServer.get_name() == "headless":
 		return
@@ -355,29 +356,14 @@ func _save_settings() -> void:
 
 # ── Music ────────────────────────────────────────────────────────────────────
 
-## Keeps the menu track playing across menu screens (restarting only when it changes).
-func play_music(path: String, volume_db := -8.0) -> void:
-	if path == _music_path and _music.playing:
-		return
-	_music_path = path
-	_music.stop()
-	if not ResourceLoader.exists(path):
-		return
-	var stream: AudioStream = load(path)
-	if stream is AudioStreamMP3:
-		stream.loop = true
-	_music.stream = stream
-	_music.volume_db = volume_db
-	_music.play()
-
-
+## The menu track across menu screens (it keeps playing from screen to screen), no ambience.
 func play_menu_music() -> void:
-	play_music(MENU_MUSIC)
+	sound.music("menu")
+	sound.ambience("")
 
 
 func stop_music() -> void:
-	_music_path = ""
-	_music.stop()
+	sound.music("", 0.6)
 
 
 # ── Duel decks ───────────────────────────────────────────────────────────────

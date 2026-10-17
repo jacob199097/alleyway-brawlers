@@ -159,6 +159,8 @@ var _sides: Array = ["player", "opponent"]   # every side ("player" first)
 var _foes: Array = ["opponent"]              # everyone else (FFA: foe1, foe2, foe3 in turn order)
 var _boards := {}          # FFA: side -> {c: centre, s: card scale, p: spacing scale, rows, plate}
 var _paint := {}           # the slots painted on the mat (front, back, pile), when there's a mat
+var _neon := {}            # the mat whose neon stutters now and then: {mat: ShaderMaterial, zones: [{zone, at}]}
+var _tense := false        # the music has turned tense (someone is close to losing)
 var _out := {}             # FFA: side -> finishing place, once they're out
 var _direct_btns: Array = []
 
@@ -178,6 +180,7 @@ func _ready() -> void:
 		if not _paint.is_empty():
 			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
 			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
+			_neon = {"mat": $BackLayer/Background.material, "zones": _find_neon($BackLayer/Background.texture, _cover_point.bind($BackLayer/Background.texture.get_size()))}
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
@@ -194,6 +197,7 @@ func _ready() -> void:
 			mat.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			mat.material = _alive(mat.texture.get_size())
 			$BackLayer.add_child(mat)
+			_neon = {"mat": mat.material, "zones": _find_neon(mat.texture, func(p: Vector2) -> Vector2: return MAT_FFA.position + p * MAT_FFA.size.x / MAT_FFA_PX)}
 			$BackLayer.add_child(_steam(MAT_FFA.position + FFA_MANHOLE * MAT_FFA.size.x / MAT_FFA_PX))
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
@@ -1025,6 +1029,67 @@ func _alive(tex_size: Vector2) -> ShaderMaterial:
 	return m
 
 
+## Where a point of the full-screen mat image is on the screen (it covers the screen, cropped).
+static func _cover_point(p: Vector2, tex_size: Vector2) -> Vector2:
+	var k := maxf(1920.0 / tex_size.x, 1080.0 / tex_size.y)
+	return p * k - (tex_size * k - Vector2(1920, 1080)) / 2.0
+
+
+## The mat's neon: the 160 px patches of the image with lit tubes in them (bright, saturated
+## pixels), and where each is on the screen; only ones between the side panels.
+func _find_neon(tex: Texture2D, to_screen: Callable) -> Array:
+	var img := tex.get_image() if tex else null
+	if img == null or img.is_empty():
+		return []   # (headless)
+	if img.is_compressed():
+		img.decompress()
+	var out: Array = []
+	var zone := 160
+	for zy in range(0, img.get_height(), zone):
+		for zx in range(0, img.get_width(), zone):
+			var lit := 0
+			var n := 0
+			for y in range(zy, mini(zy + zone, img.get_height()), 8):
+				for x in range(zx, mini(zx + zone, img.get_width()), 8):
+					var c := img.get_pixel(x, y)
+					n += 1
+					if c.v > 0.55 and c.s > 0.45:
+						lit += 1
+			if n == 0 or float(lit) / n < 0.05:
+				continue
+			var at: Vector2 = to_screen.call(Vector2(zx + zone / 2.0, zy + zone / 2.0))
+			if at.x > 420.0 and at.x < 1650.0 and at.y > -40.0 and at.y < 1120.0:
+				out.append({"zone": Vector2(zx / zone, zy / zone), "at": at})
+	return out
+
+
+## Now and then one of the mat's neon lights stutters, buzzing from where it is.
+func _neon_loop() -> void:
+	while is_inside_tree() and not _neon.is_empty() and not (_neon.zones as Array).is_empty():
+		await get_tree().create_timer(randf_range(5.0, 12.0), true, false, true).timeout
+		if not is_inside_tree():
+			return
+		var z: Dictionary = (_neon.zones as Array).pick_random()
+		var m: ShaderMaterial = _neon.mat
+		m.set_shader_parameter("stutter_zone", z.zone)
+		Sfx.play_at("neon_buzz", z.at, self, -8.0, randf_range(0.94, 1.06))
+		var t := create_tween().set_ignore_time_scale(true)
+		t.tween_method(func(k: float): m.set_shader_parameter("stutter_k", k), 0.0, 1.0, 0.7)
+		t.tween_callback(func(): m.set_shader_parameter("stutter_k", -1.0))
+
+
+## The music turns tense once someone still in is down to a third of their Morale.
+func _tension() -> void:
+	if _tense or _mode == "over" or duel == null:
+		return
+	for side in _sides:
+		if not _out.has(side) and duel.sides.has(side) and int(duel.sides[side].get("morale", DuelState.START_MORALE)) <= DuelState.START_MORALE / 3:
+			_tense = true
+			if Game.sound.has_track("duel_tense"):
+				Game.sound.music("duel_tense", 2.5)
+			return
+
+
 ## Steam rising from a manhole (soft puffs that grow, drift and fade).
 func _steam(at: Vector2) -> CPUParticles2D:
 	var p := CPUParticles2D.new()
@@ -1130,6 +1195,8 @@ func _act(side: String, action: Dictionary) -> bool:
 		_update_next_btn()
 		return true
 	if not duel.do_action(side, action):
+		if side == "player":
+			Sfx.play("error", 1.0, -4.0)
 		return false
 	_queue.append_array(duel.take_events())
 	_pump()
@@ -1368,7 +1435,7 @@ func _ev_turn(ev: Dictionary) -> void:
 	_ui.turn_num.text = "TURN %d" % ev.turn
 	_ui.turn_who.text = _turn_text(mine, ev.side)
 	_ui.turn_who.label_settings.font_color = BLUE if mine else _side_color(ev.side)
-	Sfx.play("turn", 1.0 if mine else 0.84)
+	Sfx.play("turn_yours" if mine else "turn_theirs")
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
 	for side in field:
@@ -1386,7 +1453,7 @@ func _ev_phase(ev: Dictionary) -> void:
 	_set_phase_ui(ev.phase)
 	if not PHASE_NAMES.has(ev.phase):
 		return
-	Sfx.play("phase")
+	Sfx.play("phase_" + str(ev.phase), 1.0, -2.0)
 	await _phase_flash("%s PHASE" % PHASE_NAMES[ev.phase], BLUE if ev.side == "player" else RED)
 
 
@@ -2600,10 +2667,12 @@ func _ev_game_over(ev: Dictionary) -> void:
 		shake(14)
 		_post_pulse("aberration", 10.0, 0.4)
 		Sfx.play("boom", 0.8, -4.0)
+		Game.sound.music("", 0.8)
 		await _wait(0.9)
 		_finish_match(won)
 		return
-	Sfx.play("victory" if won else "defeat")
+	Game.sound.music("", 0.6)
+	Game.sound.sting("victory" if won else "defeat")
 	var title := _label(170, GOLD if won else RED, true)
 	title.text = ("VICTORY" if won else "DEFEAT") if not _spectating else "%s WINS" % str(_names.player if won else _names.opponent).to_upper()
 	title.size = Vector2(1920, 220)
@@ -3490,6 +3559,7 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 
 
 func _set_morale(side: String, value: int) -> void:
+	_tension.call_deferred()
 	var p: Dictionary = _panels[side]
 	var from: float = p.shown
 	p.shown = float(value)
@@ -3596,20 +3666,11 @@ func _build_turn_box() -> void:
 	_ui.turn_who = who
 
 
+## The duel's music and the street around it (Game.sound); the neon starts acting up.
 func _play_music() -> void:
-	var path := "res://assets/duel_theme.mp3"
-	if not ResourceLoader.exists(path):
-		return
-	var stream: AudioStream = load(path)
-	if stream is AudioStreamMP3:
-		stream.loop = true
-	Game.stop_music()
-	var music := AudioStreamPlayer.new()
-	music.bus = "Music"
-	music.stream = stream
-	music.volume_db = -14.0
-	add_child(music)
-	music.play()
+	Game.sound.music("duel", 2.0)
+	Game.sound.ambience("city_rain")
+	_neon_loop()
 
 
 func _make_theme() -> Theme:

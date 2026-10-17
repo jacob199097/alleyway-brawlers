@@ -28,6 +28,7 @@ var _showcase: HBoxContainer   # level-up rewards: new emblem, profile picture, 
 func _ready() -> void:
 	var d: Dictionary = Game.match_result
 	_won = d.get("result") == "win"
+	Game.sound.ambience("")
 	_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_dot = _soft_dot()
 	_build_backdrop(d.get("snapshot"))
@@ -94,7 +95,7 @@ func _reveal(art: Control, shine: ShaderMaterial, rays: Node2D, panels: Array[Co
 
 func _impact(art: Control, shine: ShaderMaterial, rays: Node2D) -> void:
 	var at := art.position + art.pivot_offset
-	Sfx.play("victory" if _won else "defeat")
+	Game.sound.sting("victory" if _won else "defeat", "menu")   # (then the menu music comes in)
 	Sfx.play("slam", 0.9 if _won else 0.6)
 	Sfx.play("boom", 1.0 if _won else 0.65, -2.0)
 	_shake = 24.0 if _won else 34.0
@@ -637,7 +638,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	_rewards.visible_ratio = 0.0
 	var reveal := create_tween()
 	reveal.tween_interval(1.0 + INTRO)
-	reveal.tween_callback(func(): Sfx.play("effect", 1.4, -6.0))
+	reveal.tween_callback(func(): Sfx.play("karat", 1.0, -2.0))
 	reveal.tween_property(_rewards, "visible_ratio", 1.0, 0.5)
 	if rw.get("rankChanged", false):
 		_rank_up(str(rw.get("newRank", "")))

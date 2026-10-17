@@ -99,7 +99,7 @@ static func juice(b: BaseButton) -> void:
 		t.tween_property(b, "scale", Vector2.ONE * s, secs).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	b.mouse_entered.connect(func():
 		if not b.disabled:
-			Sfx.play("click", 1.7, -16.0)
+			Sfx.play("hover", randf_range(0.96, 1.04), -6.0)
 			to.call(1.04, 0.12))
 	b.mouse_exited.connect(func(): to.call(1.0, 0.14))
 	b.button_down.connect(func(): to.call(0.95, 0.06))

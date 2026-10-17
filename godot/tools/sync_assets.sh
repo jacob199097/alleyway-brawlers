@@ -14,7 +14,9 @@ if ls "$src/avatars"/*.png >/dev/null 2>&1; then
     cp "$src/avatars"/*.png "$dst/avatars/"
 fi
 mkdir -p "$dst/sfx"
-cp "$src/sfx"/*.ogg "$dst/sfx/"
+for f in "$src/sfx"/*.ogg "$src/sfx"/*.wav "$src/sfx"/*.mp3; do
+    if [ -e "$f" ]; then cp "$f" "$dst/sfx/"; fi
+done
 # Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)
 for f in "$src"/*.png "$src"/*.mp3; do
     [ "$(basename "$f")" = "Cropped_Frame.png" ] || cp "$f" "$dst/"

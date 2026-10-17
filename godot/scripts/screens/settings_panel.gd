@@ -87,6 +87,7 @@ func _show(tab: String) -> void:
 		"audio":
 			_slider("Music Volume", "music_volume")
 			_slider("Sound Effects Volume", "sfx_volume")
+			_slider("Ambience Volume", "ambience_volume")
 		"display":
 			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode")
 			_cycle("Resolution (windowed)", RESOLUTIONS, RESOLUTIONS.map(func(r): return r.replace("x", " × ")), "resolution")

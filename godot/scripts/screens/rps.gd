@@ -22,6 +22,7 @@ var _foe_box: Control
 
 func _ready() -> void:
 	UI.background(self, "arena_lobby.png" if UI.tex("arena_lobby.png") else "duel_background.png", 0.55)   # (the crowd waiting for a fight)
+	Game.sound.ambience("crowd")
 	_layer = Control.new()
 	_layer.size = size
 	add_child(_layer)
