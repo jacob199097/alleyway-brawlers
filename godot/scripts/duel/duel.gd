@@ -25,14 +25,24 @@ const HAND_LIFT_Y := 872.0
 const HAND_CX := 1080.0
 const HAND_SPAN := 900.0
 const OPP_HAND_Y := -22.0
-## Free-for-all: four boards in a 2x2 grid, all the same size. The two on top are the 1v1
-## opponent's layout (centred on OPP_C); yours and the one beside it (below) are your layout
-## (centred on PLAYER_C), facing up. Opponents' plates (name, Morale) sit above their boards.
+## Free-for-all: four boards on the crossroads mat (arena_ffa.png), one on each corner lot's painted
+## bays. The two on top are the 1v1 opponent's layout (centred on OPP_C); yours and the one beside
+## it (below) are your layout (centred on PLAYER_C), facing up. Plates (name, Morale) sit on the side
+## toward the middle of the crossroads.
 const OPP_C := Vector2(1080, 216)
 const PLAYER_C := Vector2(1080, 632)
-const GRID_X := [424.0, 1640.0]   # left of the phase and turn panels
-const GRID_K := 0.56              # each board's size: two side by side
+const MAT_FFA := Rect2(424, -141, 1216, 1216)   # where the crossroads is drawn (left of the phase panel)
+const MAT_FFA_PX := 1254.0                      # its size in the image
+## Each corner lot's 5x2 bays in the image's pixels: their middle, and the step between bays
+const FFA_LOTS := {
+	"tl": [Vector2(313.8, 328.3), Vector2(84.1, 148.5)],
+	"tr": [Vector2(940.4, 327.0), Vector2(84.25, 149.0)],
+	"bl": [Vector2(312.9, 926.3), Vector2(84.0, 145.5)],
+	"br": [Vector2(943.5, 925.8), Vector2(83.75, 144.5)],
+}
+const FFA_CARD_K := 0.54   # a card's size on a bay
 const PLATE_H := 90.0
+const PAINT_K := 0.65      # the painted slot outline (arena_paint.png) against a full-size slot
 const FOE_COLORS := [Color("e63946"), Color("ff9f43"), Color("b388ff")]
 const FOE_HAND := 0.22     # an opponent's hand: a small fan of card backs on their plate
 
@@ -146,7 +156,8 @@ var _panels := {}
 var _ffa := false          # a free-for-all (backend/socket/ffaMatch.js): 3-4 players, every board on screen
 var _sides: Array = ["player", "opponent"]   # every side ("player" first)
 var _foes: Array = ["opponent"]              # everyone else (FFA: foe1, foe2, foe3 in turn order)
-var _boards := {}          # FFA: side -> {c: centre, s: scale} of each opponent's board
+var _boards := {}          # FFA: side -> {c: centre, s: card scale, p: spacing scale, rows, plate}
+var _paint := {}           # the slots painted on the mat (front, back, pile), when there's a mat
 var _out := {}             # FFA: side -> finishing place, once they're out
 var _direct_btns: Array = []
 
@@ -159,13 +170,27 @@ func _ready() -> void:
 	_font.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"])
 	_make_resources()
 	ui.theme = _make_theme()
-	if ResourceLoader.exists("res://assets/duel_background.png"):
-		$BackLayer/Background.texture = load("res://assets/duel_background.png")
+	# The floor: the alley mat (the slots are painted on it in _draw), or the old backdrop
+	var bg := "res://assets/arena_1v1.png" if not _paint.is_empty() else "res://assets/duel_background.png"
+	if ResourceLoader.exists(bg):
+		$BackLayer/Background.texture = load(bg)
+		if not _paint.is_empty():
+			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
 	if str(online_start.get("mode", "")) == "ffa":
 		_setup_ffa_sides(online_start)
+		if ResourceLoader.exists("res://assets/arena_ffa.png"):   # the crossroads, on the alley floor (dimmer)
+			$BackLayer/Background.modulate = Color(0.4, 0.4, 0.46)
+			var mat := TextureRect.new()
+			mat.texture = load("res://assets/arena_ffa.png")
+			mat.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			mat.position = MAT_FFA.position
+			mat.size = MAT_FFA.size
+			mat.modulate = Color(0.9, 0.9, 0.95)
+			mat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			$BackLayer.add_child(mat)
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
 	if _ffa:
@@ -527,6 +552,8 @@ func _log_event(ev: Dictionary) -> void:
 				_log("%s deployed %s" % [_who(side), _cname(ev.card)], side)
 		"set":
 			_log("%s set a card face down" % _who(side), side)
+		"shuffle":
+			_log("%s deck was shuffled" % _whose(side), side)
 		"hustle", "lasting":
 			_log("%s %s %s" % [_who(side), "activated" if ev.get("set", false) else "played", _cname(ev.card)], side)
 		"equip":
@@ -881,7 +908,7 @@ func _xf(side: String, p: Vector2) -> Vector2:
 	var b: Dictionary = _boards.get(side, {})
 	if b.is_empty():
 		return p
-	return b.c + (p - (PLAYER_C if _row_side(side) == "player" else OPP_C)) * float(b.s)
+	return b.c + (p - (PLAYER_C if _row_side(side) == "player" else OPP_C)) * (b.get("p", Vector2.ONE * float(b.s)) as Vector2)
 
 
 ## How big this side's board is drawn (FFA opponents' are smaller).
@@ -922,13 +949,19 @@ func _slot_at(side: String, p: Vector2) -> int:
 
 
 func _draw() -> void:
-	draw_line(Vector2(560, DIVIDER_Y), Vector2(1600, DIVIDER_Y), Color(1, 1, 1, 0.14), 2.0)
+	if not _ffa:
+		draw_line(Vector2(560, DIVIDER_Y), Vector2(1600, DIVIDER_Y), Color(1, 1, 1, 0.14), 2.0)
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
 	for side in _sides:
 		var size := CARD * _sc(side)
+		if not _paint.is_empty():
+			_draw_paint(Rect2(pile_pos(side, "leader") - size / 2, size), "pile", _sc(side))
 		for slot in 10:
 			var r := Rect2(slot_pos(side, slot) - size / 2, size)
-			draw_style_box(_slot_box if slot < 5 else _slot_box_back, r)
+			if _paint.is_empty():
+				draw_style_box(_slot_box if slot < 5 else _slot_box_back, r)
+			elif not _ffa:   # (the crossroads has its bays painted on already)
+				_draw_paint(r, "front" if slot < 5 else "back", _sc(side))
 			var key := "%s:%d" % [side, slot]
 			if _valid.has(key):
 				var c: Color = _valid[key]
@@ -979,11 +1012,22 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 		draw_circle(at, 3.5, ink)
 
 
+## A slot painted on the mat: the paint (arena_paint.png) nine-sliced at its own scale.
+func _draw_paint(r: Rect2, kind: String, k: float) -> void:
+	var f := PAINT_K * k
+	draw_set_transform(r.position, 0.0, Vector2(f, f))
+	draw_style_box(_paint[kind], Rect2(Vector2.ZERO, r.size / f))
+	draw_set_transform(Vector2.ZERO)
+
+
 func _draw_pile(side: String, pile: String) -> void:
 	var p := pile_pos(side, pile)
 	var k := _sc(side)
 	var size := CARD * k
-	draw_style_box(_pile_box, Rect2(p - size / 2, size))
+	if _paint.is_empty():
+		draw_style_box(_pile_box, Rect2(p - size / 2, size))
+	else:
+		_draw_paint(Rect2(p - size / 2, size), "pile", k)
 	var c: Dictionary = counts.get(side, {})
 	var n: int = c.get(pile, 0)
 	if n <= 0:
@@ -1137,6 +1181,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_summon(ev)
 		"set":
 			await _ev_set(ev)
+		"shuffle":
+			await _ev_shuffle(ev)
 		"hustle":
 			await _ev_hustle(ev)
 		"lasting":
@@ -1381,6 +1427,31 @@ func _ev_set(ev: Dictionary) -> void:
 	await v.move_to(target, 1.0, 0.0, 0.3).finished
 	_ring(target, Color(0.75, 0.5, 1.0), 0.6)
 	v.z_index = 10
+
+
+## A searched deck is shuffled: a few backs riffle out of the deck pile and back in.
+func _ev_shuffle(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var at := pile_pos(side, "deck")
+	var k := _sc(side)
+	var backs: Array = []
+	for i in 3:
+		var v := _new_view({}, side, false)
+		v.position = at
+		v.z_index = 40 + i
+		backs.append(v)
+	Sfx.play("shuffle", 1.1, -4.0)
+	for i in backs.size():
+		var v: CardView = backs[i]
+		v.move_to(at + Vector2((i - 1) * 46.0 * k, -14.0 * k), 1.0, (i - 1) * 0.12, 0.12)
+	await _wait(0.16)
+	Sfx.play("shuffle", 1.3, -6.0)
+	for v in backs:
+		v.move_to(at, 1.0, 0.0, 0.14)
+	_float_text(at + Vector2(0, -CARD.y * k * 0.7), "SHUFFLED", BLUE, int(maxf(18.0, 26.0 * k)))
+	await _wait(0.18)
+	for v in backs:
+		v.queue_free()
 
 
 ## A Hustle activated where it was set face-down in the back row: its card, now shown.
@@ -2660,10 +2731,11 @@ func _hit_stop(seconds: float) -> void:
 	Engine.time_scale = _base_speed * _catch_up
 
 
-## Events waiting to be shown: play faster until they're caught up (x2 from 15 waiting, x3.5 from 40).
+## Events waiting to be shown: play a little faster until they're caught up (x1.5 from 40 waiting,
+## x2.5 from 80). The server's CPUs wait for the animations, so this is only for a real backlog.
 func _pace() -> void:
 	var waiting := _queue.size()
-	_catch_up = 1.0 if waiting < 15 else 2.0 if waiting < 40 else 3.5
+	_catch_up = 1.0 if waiting < 40 else 1.5 if waiting < 80 else 2.5
 	if Engine.time_scale >= _base_speed * 0.99:   # (not in the middle of a hit-stop)
 		Engine.time_scale = _base_speed * _catch_up
 
@@ -3566,6 +3638,16 @@ func _make_resources() -> void:
 	_slot_box = _box(Color(0.55, 0.4, 0.85, 0.07), Color(0.72, 0.56, 0.95, 0.4), 2, 8)
 	_slot_box_back = _box(Color(0.4, 0.55, 0.85, 0.06), Color(0.5, 0.66, 0.95, 0.32), 2, 8)
 	_pile_box = _box(Color(0, 0, 0, 0.3), Color(1, 1, 1, 0.16), 2, 8)
+	# On the alley mat the slots are painted lines like its parking bays (one bay's paint, nine-sliced)
+	if ResourceLoader.exists("res://assets/arena_paint.png") and ResourceLoader.exists("res://assets/arena_1v1.png"):
+		var paint: Texture2D = load("res://assets/arena_paint.png")
+		for kind in ["front", "back", "pile"]:
+			var sb := StyleBoxTexture.new()
+			sb.texture = paint
+			sb.set_texture_margin_all(30)
+			sb.draw_center = false
+			sb.modulate_color = {"front": Color(1, 1, 1, 0.8), "back": Color(0.72, 0.82, 1.0, 0.55), "pile": Color(1, 1, 1, 0.38)}[kind]
+			_paint[kind] = sb
 
 
 # ── Player input ─────────────────────────────────────────────────────────────
@@ -3666,6 +3748,10 @@ func _show_choice(p: Dictionary) -> void:
 	if not on_field.is_empty() and str(p.get("key", "")) != "ambush" and rest.all(func(o): return str(o.id) == "skip"):
 		_show_target_choice(p)
 		return
+	# Choosing a card from a pile (a deck search, the Gutter): the cards themselves, to click
+	if p.options.any(func(o): return o.get("card") is Dictionary):
+		_show_card_choice(p)
+		return
 	_cancel_interaction()
 	_mode = "choose"
 	var box := PanelContainer.new()
@@ -3707,6 +3793,70 @@ func _show_choice(p: Dictionary) -> void:
 	_menu = box
 	Sfx.play("effect", 1.3, -6.0)
 	queue_redraw()
+
+
+## A search (or Gutter) pick: the cards laid out to choose from, like a pile's view. Hovering one
+## shows it in the card panel; click to take it, or SKIP.
+func _show_card_choice(p: Dictionary) -> void:
+	_cancel_interaction()
+	_mode = "choose"
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.97), GOLD, 3, 12))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	box.add_child(col)
+	var title := _label(24, Color.WHITE, true)
+	title.text = str(p.get("prompt", "Choose a card"))
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD
+	title.custom_minimum_size = Vector2(560, 0)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var cards: Array = p.options.filter(func(o): return o.get("card") is Dictionary)
+	var grid := GridContainer.new()
+	grid.columns = mini(cards.size(), 4)
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	var center := CenterContainer.new()
+	center.add_child(grid)
+	col.add_child(center)
+	var size := CARD * 1.25
+	for o in cards:
+		var c: Dictionary = o.card
+		var b := TextureButton.new()
+		b.texture_normal = CardDB.art(str(c.get("art_url", c.get("id", ""))))
+		b.ignore_texture_size = true
+		b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		b.custom_minimum_size = size
+		b.pivot_offset = size / 2
+		b.tooltip_text = str(o.get("label", ""))
+		b.mouse_entered.connect(func():
+			_show_detail(c)
+			Sfx.play("click", 1.4, -12.0)
+			b.create_tween().tween_property(b, "scale", Vector2.ONE * 1.08, 0.1))
+		b.mouse_exited.connect(func(): b.create_tween().tween_property(b, "scale", Vector2.ONE, 0.1))
+		b.pressed.connect(_pick.bind(str(o.id)))
+		grid.add_child(b)
+	var hint := _label(15, Color(0.7, 0.72, 0.85))
+	hint.text = "Hover a card to read it  ·  click to take it"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(hint)
+	for o in p.options:   # (SKIP, and any option that isn't a card)
+		if o.get("card") is Dictionary:
+			continue
+		var b := Button.new()
+		b.text = str(o.label)
+		b.custom_minimum_size = Vector2(220, 44)
+		b.pressed.connect(_pick.bind(str(o.id)))
+		var row := CenterContainer.new()
+		row.add_child(b)
+		col.add_child(row)
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	_menu = box
+	Sfx.play("draw", 1.2, -6.0)
 
 
 ## A slim bar in the gap between the rows: what to choose (and SKIP); the targets glow on the field.
@@ -3998,13 +4148,11 @@ func _on_field_click(slot: int) -> void:
 	var reason := ""
 	var set_card = duel.card_at("player", slot)
 	if set_card != null and duel.set_hustle_slot("player", set_card) == slot:
-		# A Hustle you set face-down: activate it (from the turn after it was set), paying for it now
+		# A Hustle you set face-down: activate it, paying for it now
 		var cost: int = duel.cost_of("player", set_card)
 		var ok: bool = duel.can_hustle("player", set_card)
 		if not ok:
-			if int(set_card.get("set_turn", -1)) == duel.turn:
-				reason = "Set this turn: activate it from your next turn"
-			elif duel.sides.player.authority < cost:
+			if duel.sides.player.authority < cost:
 				reason = "Needs %d Authority (you have %d)" % [cost, duel.sides.player.authority]
 			else:
 				reason = "Requirements not met"
@@ -4094,7 +4242,7 @@ func _open_hand_menu(v: CardView) -> void:
 			opts.append(["ACTIVATE", ok, func():
 				_cancel_interaction()
 				_act("player", {"kind": "hustle", "uid": v.uid})])
-			# Or face-down in the back row, to activate on a later turn (paid for then)
+			# Or face-down in the back row, to activate when you choose (paid for then)
 			opts.append(["SET FACE DOWN", _settable(c), func(): _begin_place(v, "set")])
 	opts.append(["CANCEL", true, _cancel_and_refresh])
 	_menu = _make_menu(opts, reason, Vector2(v.home.x, HAND_LIFT_Y - CARD.y * HOVER_SCALE / 2 - 12))
@@ -4220,7 +4368,7 @@ func _start_drag() -> void:
 		_show_prompt("Drop %s on one of your characters to deploy over it (it goes to the Gutter)" % c.name)
 	if c.cardType == "hustle":
 		_show_prompt("Release on the board to activate, or on an empty back-row slot to set it face down" if duel.can_hustle("player", c)
-			else "Release on an empty back-row slot to set it face down (activate it on a later turn)")
+			else "Release on an empty back-row slot to set it face down (activate it when you have the Authority)")
 	queue_redraw()
 
 
@@ -4499,34 +4647,39 @@ func _setup_ffa_sides(start: Dictionary) -> void:
 	for side in _sides:
 		hand[side] = []
 		field[side] = {}
-	# Two columns; each row: a plate, then the board under it. Top: the first two opponents (in turn
-	# order, clockwise from you); bottom: you, and the third opponent on your right (with two
-	# opponents you're in the middle)
-	var k := GRID_K
-	var w := (RIGHT_X - LEFT_X + CARD.x) * k
-	var h := (ROWS.player[1] - ROWS.player[0] + CARD.y) * k
-	var cols := [GRID_X[0] + w / 2.0, GRID_X[1] - w / 2.0]
-	var tops := [10.0, 466.0]   # each row's plate; its board starts under it
-	var place := func(side: String, x: float, row: int) -> void:
-		_boards[side] = {"c": Vector2(x, tops[row] + PLATE_H + 6.0 + h / 2.0), "s": k,
-			"rows": "opponent" if row == 0 else "player", "plate": tops[row]}
+	# Each board on a corner lot of the crossroads (its lanes on the painted bays): the first two
+	# opponents (in turn order, clockwise from you) on top, you bottom-left, the third bottom-right.
+	# Lanes are a bay apart, rows a bay row apart; plates sit on the side toward the middle.
+	var px := MAT_FFA.size.x / MAT_FFA_PX
+	var k := FFA_CARD_K
+	var place := func(side: String, lot: String) -> void:
+		var c: Vector2 = MAT_FFA.position + (FFA_LOTS[lot][0] as Vector2) * px
+		var step: Vector2 = (FFA_LOTS[lot][1] as Vector2) * px
+		var top := lot.begins_with("t")
+		var half_h := step.y / 2.0 + CARD.y * k / 2.0
+		_boards[side] = {"c": c, "s": k, "p": Vector2(step.x / 150.0, step.y / 192.0),
+			"rows": "opponent" if top else "player",
+			"plate": c.y + half_h + 8.0 if top else c.y - half_h - 8.0 - PLATE_H}
+	var lots := ["tl", "tr", "br"]
 	for i in _foes.size():
-		if i < 2:
-			place.call(_foes[i], cols[i], 0)
-		else:
-			place.call(_foes[i], cols[1], 1)
-	place.call("player", cols[0] if _foes.size() > 2 else (GRID_X[0] + GRID_X[1]) / 2.0, 1)
+		place.call(_foes[i], lots[mini(i, 2)])
+	place.call("player", "bl")
+
+
+## FFA: a side's plate, as wide as its board (piles and all).
+func _plate_rect(side: String) -> Rect2:
+	var b: Dictionary = _boards[side]
+	var half: float = (RIGHT_X - LEFT_X) / 2.0 * (b.get("p", Vector2.ONE * float(b.s)) as Vector2).x + CARD.x / 2.0 * float(b.s)
+	return Rect2(b.c.x - half, float(b.plate), half * 2.0, PLATE_H)
 
 
 ## Each opponent's plate (on the board, under the cards, so their hand fan shows on it).
 func _build_foe_plates(players: Dictionary) -> void:
 	for i in _foes.size():
 		var side: String = _foes[i]
-		var b: Dictionary = _boards[side]
-		var half: float = (RIGHT_X - LEFT_X + CARD.x) / 2.0 * float(b.s)
 		var p := Panel.new()
-		p.position = Vector2(b.c.x - half, float(b.plate))
-		p.size = Vector2(half * 2.0, PLATE_H)
+		p.position = _plate_rect(side).position
+		p.size = _plate_rect(side).size
 		p.z_index = 2
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards_layer.add_child(p)
@@ -4536,10 +4689,9 @@ func _build_foe_plates(players: Dictionary) -> void:
 	if mine.is_empty():
 		return
 	var prof: Dictionary = players.get("player", {}) if players.get("player") is Dictionary else {}
-	var w: float = (RIGHT_X - LEFT_X + CARD.x) * float(mine.s)
 	var tag := Panel.new()
-	tag.position = Vector2(mine.c.x - w / 2.0, float(mine.plate))
-	tag.size = Vector2(w, PLATE_H)
+	tag.position = _plate_rect("player").position
+	tag.size = _plate_rect("player").size
 	tag.z_index = 2
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_theme_stylebox_override("panel", UI._glow(_box(INK, BLUE, 2, 8), BLUE, 0.6))

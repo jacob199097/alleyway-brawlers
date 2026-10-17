@@ -109,6 +109,9 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "ko", "target": "enemy"}, {"when": "deploy", "do": "draw", "amount": 1, "if_done": true}, {"when": "deploy", "do": "heal", "amount": 300, "if_done": true}],
 	[{"when": "attack", "do": "down", "target": "enemy"}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "if_done": true}],
 	[{"when": "deploy", "do": "search", "kind": "gang_member", "choose": true}, {"when": "deploy", "do": "suppress", "target": "enemy", "amount": 200, "if_done": true}],
+	# Every character on the field, both sides (not this card)
+	[{"when": "deploy", "do": "down", "target": "all"}],
+	[{"when": "activate", "do": "down", "target": "all", "cost": "authority", "cost_n": 1}, {"when": "ko", "do": "buff", "target": "all", "atk": -200, "until": "next_turn"}],
 ]
 
 
@@ -126,6 +129,7 @@ const FX_CARD_SAMPLES := [
 	[{"do": "freeze", "target": "attacker"}, {"do": "shock", "target": "enemy", "amount": 700}],
 	[{"do": "stand", "target": "allies"}, {"do": "shield", "target": "ally"}],
 	[{"do": "revive", "choose": true}],
+	[{"do": "down", "target": "all"}],
 	[{"do": "break_ambush", "amount": 2}],
 	[{"do": "search", "kind": "gang_member", "max_auth": 2, "amount": 2}],
 	[{"do": "draw", "amount": 1, "or": true, "label": "Draw 1"}, {"do": "token", "token": "card_nebu_036", "amount": 1, "label": "A token"}],

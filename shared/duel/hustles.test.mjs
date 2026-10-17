@@ -1,10 +1,11 @@
 // Hustles that search the deck can be played (online too: your view of your own deck has its
-// cards), and Hustles can be set face-down in the back row and activated on a later turn
+// cards), and Hustles can be set face-down in the back row and activated when you choose (paying then)
 // (shared/duel/DuelState.js; duel_state.gd plays the same rules, which the golden test checks).
 //   node shared/duel/hustles.test.mjs
 import assert from 'node:assert';
 import { createRequire } from 'node:module';
 import { DuelState, BACK } from './DuelState.js';
+import { CARD_CATALOG } from '../cards.js';
 import { choose } from './DuelAI.js';
 
 const { viewFor } = createRequire(import.meta.url)('../../backend/socket/onlineMatch.js');
@@ -27,8 +28,12 @@ const inHand = (st, id) => st.sides.player.hand.find(c => c.id === id);
 let st = duel(['card_nebu_011', 'card_nebu_003'], [SUPERNOVA]);
 assert.ok(st.canHustle('player', inHand(st, SUPERNOVA)), 'Supernova Run can be played');
 assert.ok(st.doAction('player', { kind: 'hustle', uid: inHand(st, SUPERNOVA).uid }));
-if (st.pending.key) st.doAction('player', { kind: 'choose', option: st.pending.options[0].id });
+assert.equal(st.pending.key, 'fx_pick');
+assert.equal(st.pending.options[0].card.id, 'card_nebu_011', 'each option carries its card (the game shows them to pick from)');
+st.takeEvents();
+st.doAction('player', { kind: 'choose', option: st.pending.options[0].id });
 assert.ok(inHand(st, 'card_nebu_011'), 'it found Sprintz (Authority 1)');
+assert.ok(st.takeEvents().some(e => e.type === 'shuffle' && e.side === 'player'), 'then the deck is shuffled');
 assert.ok(!inHand(st, 'card_nebu_003'), 'not the Authority 7 Kade');
 st = duel(['card_nebu_003'], [SUPERNOVA]);
 assert.ok(!st.canHustle('player', inHand(st, SUPERNOVA)), 'nothing to find: it can\'t be played');
@@ -51,7 +56,7 @@ st.doAction('player', { kind: 'activate', slot: 2, fx: 1 });
 if (st.pending.key) st.doAction('player', { kind: 'choose', option: st.pending.options[0].id });
 assert.ok(inHand(st, 'card_mili_006'), 'it found Rook (Authority 2)');
 
-// Setting a Hustle: free, face-down in the back row; not activated the turn it's set
+// Setting a Hustle: free, face-down in the back row; activated whenever there's the Authority
 st = duel(['card_nebu_011', 'card_nebu_011'], [SUPERNOVA], 0);
 let card = inHand(st, SUPERNOVA);
 assert.ok(!st.canHustle('player', card), 'no Authority to play it');
@@ -60,13 +65,13 @@ assert.ok(st.doAction('player', { kind: 'set', uid: card.uid, slot: 5 }));
 assert.equal(st.sides.player.field[5], card);
 assert.ok(card.face_down, 'face-down');
 assert.equal(st.sides.player.authority, 0, 'setting it cost nothing');
+assert.ok(!st.canHustle('player', card), 'not without the Authority');
 st.sides.player.authority = 3;
-assert.ok(!st.canHustle('player', card), 'not on the turn it was set');
+assert.ok(st.canHustle('player', card), 'the turn it was set, once there is the Authority');
 st.takeEvents();
-// The next turn: activated from the back row, in any phase you act in, paying its cost then
-st.turn = 5;
+// Activated from the back row, in any phase you act in, paying its cost then
 st.phase = 'brawl';
-assert.ok(st.canHustle('player', card), 'activated on a later turn, even in the brawl');
+assert.ok(st.canHustle('player', card), 'even in the brawl');
 assert.ok(st.doAction('player', { kind: 'hustle', uid: card.uid }));
 if (st.pending.key) st.doAction('player', { kind: 'choose', option: st.pending.options[0].id });
 assert.equal(st.sides.player.field[5], null, 'it left the back row');
@@ -94,12 +99,36 @@ if (st.pending.key) st.doAction('player', { kind: 'choose', option: st.pending.o
 assert.equal(st.sides.player.field[7], card, 'Improvised Armor stays in slot 7');
 assert.ok(!card.face_down && card.equipped_to === st.sides.player.field[1].uid, 'face-up, equipped');
 
-// The CPU sets a Hustle it can't use yet, and activates it on a later turn
+// The CPU sets a Hustle it can't use yet, and activates it once it can
 st = duel(['card_nebu_011', 'card_nebu_011'], [SUPERNOVA], 0);
 assert.deepEqual(choose(st, 'player'), { kind: 'set', uid: inHand(st, SUPERNOVA).uid, slot: BACK[0] });
 st.doAction('player', choose(st, 'player'));
 st.turn = 5;
 st.sides.player.authority = 1;
 assert.deepEqual(choose(st, 'player'), { kind: 'hustle', uid: st.sides.player.field[BACK[0]].uid });
+
+// "All characters" (Card Forge target all): a Hustle Downs every character on both sides; a
+// character's effect hits every other character, not itself
+CARD_CATALOG.test_lockdown = { id: 'test_lockdown', name: 'Lockdown', clan: 'test', cardType: 'hustle', authority: 1,
+    rarity: 1, clanTag: 'test', effectKey: '', effects: [{ do: 'down', target: 'all' }] };
+st = duel(['card_nebu_011'], ['test_lockdown']);
+st.sides.player.field[1] = st.makeCard('card_nebu_011');
+st.sides.opponent.field[2] = st.makeCard('card_nebu_011');
+st.sides.opponent.field[3] = st.makeCard('card_nebu_011');
+assert.ok(st.doAction('player', { kind: 'hustle', uid: inHand(st, 'test_lockdown').uid }));
+assert.ok([st.cardAt('player', 1), st.cardAt('opponent', 2), st.cardAt('opponent', 3)].every(c => c.downed), 'everyone is Downed, yours too');
+st = duel(['card_nebu_011'], []);
+for (const [side, slot] of [['player', 0], ['player', 1], ['opponent', 2]]) st.sides[side].field[slot] = st.makeCard('card_nebu_011');
+const quake = st.sides.player.field[0];
+quake.effects = [{ when: 'deploy', do: 'down', target: 'all' }];
+st._runFx('player', 0, quake, 'deploy');
+assert.ok(!quake.downed && st.cardAt('player', 1).downed && st.cardAt('opponent', 2).downed, 'every other character, not the card itself');
+// The CPU plays it only when it hits more of the opponents' characters than its own
+st = duel(['card_nebu_011'], ['test_lockdown']);
+st.sides.player.field[1] = st.makeCard('card_nebu_011');
+st.sides.opponent.field[2] = st.makeCard('card_nebu_011');
+assert.notEqual(choose(st, 'player').kind, 'hustle', 'one each: not worth it');
+st.sides.opponent.field[3] = st.makeCard('card_nebu_011');
+assert.equal(choose(st, 'player').kind, 'hustle', 'two of theirs, one of ours: worth it');
 
 console.log('hustles: ok');

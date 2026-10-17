@@ -91,6 +91,9 @@ function hustleUseful(d, side, c) {
             case 'enemy': case 'enemies':
                 if (enemies.length) return true;
                 break;
+            case 'all':   // (everyone's characters: worth it when it hits more of theirs than ours)
+                if (enemies.length > allies.length) return true;
+                break;
             default:
                 if (what === 'discard') { if (foes.some(f => d.sides[f].hand.length)) return true; }
                 else return true;
@@ -169,7 +172,7 @@ function deploy(d, side, level) {
     }
     for (const slot of BACK) {
         if (s.field[slot] == null) {
-            // Ambushes first; then a Hustle it couldn't use now, to activate on a later turn
+            // Ambushes first; then a Hustle it couldn't use now, to activate when it would do something
             for (const kind of ['ambush', 'hustle']) {
                 for (const c of s.hand) if (c.cardType === kind && d.canSet(side, c, slot)) return { kind: 'set', uid: c.uid, slot };
             }
@@ -198,6 +201,7 @@ function activation(d, side, level = 'normal') {
             const n = Math.max(1, Math.trunc(Number(e.cost_n ?? 1)) || 1);
             const cost = String(e.cost ?? '');
             if (!d.fxHasTargets(side, slot, e)) continue;
+            if (String(e.target ?? '') === 'all' && !allWorth(d, side, slot)) continue;
             if (cost === 'sacrifice') {
                 // Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
                 if (level !== 'hard') continue;
@@ -212,6 +216,14 @@ function activation(d, side, level = 'normal') {
         }
     }
     return null;
+}
+
+/** An effect on every character (target "all") from the card in slot: worth it when it hits more of
+ *  the opponents' characters than the CPU's own (not counting that card). Same as _all_worth in duel_ai.gd. */
+function allWorth(d, side, slot) {
+    const mine = d.characters(side).filter(x => x.slot !== slot && !d.inStasis(x.card)).length;
+    const theirs = d.foesOf(side).flatMap(f => d.characters(f)).filter(x => !d.inStasis(x.card)).length;
+    return theirs > mine;
 }
 
 function brawl(d, side, level) {

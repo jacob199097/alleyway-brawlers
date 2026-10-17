@@ -427,7 +427,7 @@ func _sweep_equips() -> void:
 
 
 ## Ambushes and Hustles are set face-down in the back row. An Ambush is paid for when it's set;
-## a Hustle when it's activated, from your next turn on (set_hustle_slot, can_hustle).
+## a Hustle when it's activated, any time on your turn (set_hustle_slot, can_hustle).
 func can_set(side: String, c: Dictionary, slot: int) -> bool:
 	if not can_deploy_now(side) or not c.get("cardType") in ["ambush", "hustle"]:
 		return false
@@ -456,9 +456,9 @@ func hustle_ready(side: String, c: Dictionary) -> bool:
 
 
 func can_hustle(side: String, c: Dictionary) -> bool:
-	# One set in the back row: from the turn after it was set, in any phase you act in
+	# One set in the back row: in any phase you act in (the turn it was set too)
 	var set := set_hustle_slot(side, c)
-	var now := can_act(side) and phase in ["deployment", "brawl", "regroup"] and int(c.get("set_turn", -1)) != turn if set >= 0 		else can_deploy_now(side)
+	var now := (can_act(side) and phase in ["deployment", "brawl", "regroup"]) if set >= 0 else can_deploy_now(side)
 	if not (now and c.get("cardType") == "hustle" and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)):
 		return false
 	if is_lasting(c):   # a Continuous / Equip card needs room in the back row (an Equip, a character)
@@ -889,9 +889,7 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 	if i < 0 or not can_set(side, sides[side].hand[i], slot):
 		return false
 	var c: Dictionary = sides[side].hand[i]
-	if c.get("cardType") == "hustle":
-		c.set_turn = turn   # (paid for when it's activated)
-	else:
+	if c.get("cardType") != "hustle":   # (a Hustle is paid for when it's activated)
 		_spend(side, cost_of(side, c))
 	sides[side].hand.remove_at(i)
 	c.face_down = true
@@ -929,7 +927,6 @@ func _hustle(side: String, uid: int) -> bool:
 		s.hand.remove_at(i)
 	else:
 		s.field[set] = null
-		c.erase("set_turn")
 	if is_lasting(c):
 		# Continuous / Equip: into the back row (a set one stays in its slot), face-up; its "when played" effects happen
 		var b := set if set >= 0 else _empty_back(side)
@@ -2173,7 +2170,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				s.hand.append(card)
 				_effect(side, c, "%s: searches the deck for %s" % [c.name, card.name], slot)
 				_emit("draw", {"side": side, "card": card.duplicate(true), "opening": false})
-				return true)
+				return true, _shuffle_deck.bind(side))
 			if not found:
 				_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: nothing to find in the deck" % c.name, "slot": slot})   # (not something done)
 		"revive", "call":
@@ -2205,7 +2202,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("summon", ev)
 				_effect(side, c, ("%s: %s is called in" if from_deck else "%s: %s is back on the street") % [c.name, card.name], slot)
 				_recalc()
-				return true)
+				return true, _shuffle_deck.bind(side) if from_deck else Callable())
 		"token":
 			# Copies of a token card (Card Forge: marked Token, never in packs or decks) in the
 			# first empty lanes, in ATK. They vanish when they leave the field.
@@ -2416,12 +2413,14 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
 		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
 			entries, on, cb, true)
-	elif target == "allies" or target == "enemies":
+	elif target == "allies" or target == "enemies" or target == "all":
 		var count := entries.size()
 		for x in entries:
 			fn.call(x)
 		if count > 0:
-			var who := ("%d of your characters" % count) if target == "allies" else ("%d enem%s" % [count, "y" if count == 1 else "ies"])
+			var who := ("%d of your characters" % count) if target == "allies" \
+				else ("%d character%s" % [count, "" if count == 1 else "s"]) if target == "all" \
+				else ("%d enem%s" % [count, "y" if count == 1 else "ies"])
 			_effect(side, c, all_text % who, slot)
 	else:
 		for x in entries:
@@ -2456,6 +2455,10 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 		"ally", "allies":
 			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 		"enemy", "enemies":
+			for foe in foes_of(side):
+				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
+		"all":   # every character: yours (not this card) and every opponent's
+			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 			for foe in foes_of(side):
 				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
 	var what_ := str(e.get("do", ""))
@@ -2530,15 +2533,23 @@ func _fx_kind_ok(card: Dictionary, e: Dictionary) -> bool:
 ## search / recover / revive: take matching cards from a pile (top first), `amount` times; with
 ## `choose` the player picks each one (options best first, so the CPU takes the best).
 ## Same as _fxTake in shared/duel/DuelState.js.
-func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: String, take: Callable, left := -1) -> bool:
+## after: once it's done (every card taken, or skipped), when it looked through the pile (a deck is
+## shuffled then)
+func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: String, take: Callable, after := Callable(), left := -1) -> bool:
+	var amount := maxi(1, int(e.get("amount", 1)))
 	if left < 0:
-		left = maxi(1, int(e.get("amount", 1)))
+		left = amount
 	var matches: Array = []
 	for i in range(pile.size() - 1, -1, -1):
 		if not is_same(pile[i], c) and _fx_kind_ok(pile[i], e):
 			matches.append(pile[i])
 	if matches.is_empty():
+		if after.is_valid() and left < amount:   # (found some before)
+			after.call()
 		return false
+	var done := func() -> void:
+		if after.is_valid():
+			after.call()
 	var next := func(card: Dictionary) -> void:
 		var at := -1
 		for i in pile.size():
@@ -2546,9 +2557,12 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 				at = i
 				break
 		if at < 0 or not take.call(pile.pop_at(at)):
+			done.call()
 			return
 		if left > 1:
-			_fx_take(side, c, e, pile, prompt, take, left - 1)
+			_fx_take(side, c, e, pile, prompt, take, after, left - 1)
+		else:
+			done.call()
 	if not e.get("choose", false):
 		next.call(matches[0])
 		return true
@@ -2570,14 +2584,24 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 		return a.k < b.k)
 	var shown: Array = opts.slice(0, 8)
 	var options: Array = []
-	for k in shown.size():
-		options.append({"id": str(k), "label": "%s  (%d)" % [str(shown[k].m.name).to_upper(), int(shown[k].m.get("authority", 0))]})
+	for k in shown.size():   # (each option carries its card: the player sees the cards to choose from)
+		options.append({"id": str(k), "label": "%s  (%d)" % [str(shown[k].m.name).to_upper(), int(shown[k].m.get("authority", 0))],
+			"card": shown[k].m.duplicate(true)})
 	options.append({"id": "skip", "label": "SKIP"})
 	_ask(side, "fx_pick", prompt, c, options, func(choice: String):
 		var k := int(choice) if choice != "skip" else -1
 		if k >= 0 and k < shown.size():
-			next.call(shown[k].m))
+			next.call(shown[k].m)
+		else:
+			done.call())
 	return true
+
+
+## A deck that was searched is shuffled (not in the engines' comparison games, which keep a fixed order).
+func _shuffle_deck(side: String) -> void:
+	if not _fixed_order:
+		_shuffle(sides[side].deck)
+	_emit("shuffle", {"side": side})
 
 
 func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:

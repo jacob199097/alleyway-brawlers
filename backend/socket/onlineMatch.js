@@ -45,6 +45,8 @@ const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
 const REMATCH_SECS     = 60;    // after a match against a player, either can offer a rematch this long
 const CHALLENGE_SECS   = 60;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
+const BOT_EVENT_MS     = 140;   // and this much more for each event the last move made (the player's screen animates them)
+const BOT_MAX_MS       = 3000;
 // Emotes: a fixed list (no free text), at most one every EMOTE_GAP_MS and MAX_EMOTES a match
 // Scissors Paper Rock decides who goes first in matches against players
 const RPS_PICK_SECS    = 15;    // a player who doesn't pick in time throws at random
@@ -155,6 +157,7 @@ function forSeat(v, seat) {
  * @param {(playerId) => Promise} [deps.recordDailyWin]
  * @param {(args) => Promise<object>} [deps.resolveCpuMatch]  {playerId, outcome, ranked, turns} → rewards
  * @param {number} [deps.turnSecs] [deps.awaySecs]  shorter move clocks (tests)
+ * @param {number} [deps.botMoveMs] [deps.botEventMs]  the server CPU's pause between moves (tests: none)
  * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
  * @param {(m) => Promise<Array>} [deps.recordMatch]  a player's match for achievements → what it unlocked
  *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
@@ -342,6 +345,7 @@ function createOnlineService(io, deps) {
             if (ev.type === 'promote' && match.seats[ev.side]) match.seats[ev.side].promotes += 1;
             if (ev.type === 'awaken' && match.seats[ev.side]) match.seats[ev.side].awakens += 1;
         }
+        match.lastEvents = events.length;
         const clock = match.state.winner ? 0 : armTimer(match);
         const away = !match.state.winner && match.seats[seatToAct(match.state)].idle > 0;
         for (const seat of ['player', 'opponent']) {
@@ -371,7 +375,9 @@ function createOnlineService(io, deps) {
         clearTimeout(match.timer);
         const s = match.seats[seatToAct(match.state)];
         if (s.bot) {
-            match.timer = setTimeout(() => botMove(match), BOT_MOVE_MS);
+            // (after the last move's animations: a CPU that moves at once plays out on screen at double speed)
+            const wait = Math.min(BOT_MAX_MS, (deps.botMoveMs ?? BOT_MOVE_MS) + (deps.botEventMs ?? BOT_EVENT_MS) * (match.lastEvents || 0));
+            match.timer = setTimeout(() => botMove(match), wait);
             match.clockEnds = null;
             return TURN_SECS;
         }

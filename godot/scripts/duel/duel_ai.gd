@@ -159,7 +159,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 
 	for slot in DuelState.BACK:
 		if s.field[slot] == null:
-			# Ambushes first; then a Hustle it couldn't use now, to activate on a later turn
+			# Ambushes first; then a Hustle it couldn't use now, to activate when it would do something
 			for kind in ["ambush", "hustle"]:
 				for c in s.hand:
 					if c.cardType == kind and d.can_set(side, c, slot):
@@ -183,6 +183,14 @@ static func _attack_hurts(d: DuelState, side: String) -> bool:
 	return int(ctx.att.attack) + int(ctx.bonus) >= guard
 
 
+## An effect on every character (target "all") from the card in slot: worth it when it hits more of
+## the opponents' characters than the CPU's own (not counting that card). Same as allWorth in DuelAI.js.
+static func _all_worth(d: DuelState, side: String, slot: int) -> bool:
+	var mine := d.characters(side).filter(func(x): return x.slot != slot and not d.in_stasis(x.card)).size()
+	var theirs := d._enemy_chars(side).filter(func(x): return not d.in_stasis(x.card)).size()
+	return theirs > mine
+
+
 static func _activation(d: DuelState, side: String, level := "normal") -> Dictionary:
 	var s: Dictionary = d.sides[side]
 	for slot in DuelState.FRONT:
@@ -191,6 +199,8 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 			var n: int = maxi(1, int(e.get("cost_n", 1)))
 			var cost := str(e.get("cost", ""))
 			if not d.fx_has_targets(side, slot, e):
+				continue
+			if str(e.get("target", "")) == "all" and not _all_worth(d, side, slot):
 				continue
 			if cost == "sacrifice":
 				# Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
@@ -329,6 +339,9 @@ static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 					return true
 			"enemy", "enemies":
 				if not enemies.is_empty():
+					return true
+			"all":   # (everyone's characters: worth it when it hits more of theirs than ours)
+				if enemies.size() > allies.size():
 					return true
 			_:
 				if what == "discard":

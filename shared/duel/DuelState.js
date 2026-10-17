@@ -402,7 +402,7 @@ export class DuelState {
     }
 
     // Ambushes and Hustles are set face-down in the back row. An Ambush is paid for when it's set;
-    // a Hustle when it's activated, from your next turn on (setHustleSlot, canHustle).
+    // a Hustle when it's activated, any time on your turn (setHustleSlot, canHustle).
     canSet(side, c, slot) {
         if (!this.canDeployNow(side) || !['ambush', 'hustle'].includes(c.cardType)) return false;
         if (!BACK.includes(slot) || this.sides[side].field[slot] != null) return false;
@@ -425,10 +425,9 @@ export class DuelState {
     }
 
     canHustle(side, c) {
-        // One set in the back row: from the turn after it was set, in any phase you act in
+        // One set in the back row: in any phase you act in (the turn it was set too)
         const set = this.setHustleSlot(side, c);
-        const now = set >= 0 ? this.canAct(side) && ['deployment', 'brawl', 'regroup'].includes(this.phase) && toInt(c.set_turn ?? -1) !== this.turn
-            : this.canDeployNow(side);
+        const now = set >= 0 ? this.canAct(side) && ['deployment', 'brawl', 'regroup'].includes(this.phase) : this.canDeployNow(side);
         if (!(now && c.cardType === 'hustle' && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c))) return false;
         if (DuelState.isLasting(c)) return (set >= 0 || this._emptyBack(side) >= 0) && (String(c.subtype) !== 'equip' || this._equipTargets(side, c).length > 0);
         return this.cardCan(side, NO_SLOT, c, '*');
@@ -767,8 +766,7 @@ export class DuelState {
         const i = this._handIndex(side, uid);
         if (i < 0 || !this.canSet(side, this.sides[side].hand[i], slot)) return false;
         const c = this.sides[side].hand[i];
-        if (c.cardType === 'hustle') c.set_turn = this.turn;   // (paid for when it's activated)
-        else this._spend(side, this.costOf(side, c));
+        if (c.cardType !== 'hustle') this._spend(side, this.costOf(side, c));   // (a Hustle is paid for when it's activated)
         this.sides[side].hand.splice(i, 1);
         c.face_down = true;
         this.sides[side].field[slot] = c;
@@ -794,12 +792,8 @@ export class DuelState {
         const c = i >= 0 ? s.hand[i] : set >= 0 ? s.field[set] : null;
         if (c == null || !this.canHustle(side, c)) return false;
         this._spend(side, this.costOf(side, c));
-        if (i >= 0) {
-            s.hand.splice(i, 1);
-        } else {
-            s.field[set] = null;
-            delete c.set_turn;
-        }
+        if (i >= 0) s.hand.splice(i, 1);
+        else s.field[set] = null;
         if (DuelState.isLasting(c)) {
             // Continuous / Equip: into the back row (a set one stays in its slot), face-up; its "when played" effects happen
             const b = set >= 0 ? set : this._emptyBack(side);
@@ -1910,7 +1904,7 @@ export class DuelState {
                     this._effect(side, c, `${c.name}: searches the deck for ${card.name}`, slot);
                     this._emit('draw', { side, card: clone(card), opening: false });
                     return true;
-                });
+                }, () => this._shuffleDeck(side));
                 if (!found) this._emit('effect', { side, card: clone(c), text: `${c.name}: nothing to find in the deck`, slot });   // (not something done)
                 break;
             }
@@ -1940,7 +1934,7 @@ export class DuelState {
                     this._effect(side, c, fromDeck ? `${c.name}: ${card.name} is called in` : `${c.name}: ${card.name} is back on the street`, slot);
                     this._recalc();
                     return true;
-                });
+                }, fromDeck ? () => this._shuffleDeck(side) : null);
                 break;
             }
             case 'token': {
@@ -2160,11 +2154,12 @@ export class DuelState {
             const on = target === 'ally' ? side : (this.foesOf(side)[0] ?? side);
             this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
                 entries, on, (x) => this._effect(side, c, fn(x), slot), true);
-        } else if (target === 'allies' || target === 'enemies') {
+        } else if (target === 'allies' || target === 'enemies' || target === 'all') {
             const count = entries.length;
             for (const x of entries) fn(x);
             if (count > 0) {
-                const who = target === 'allies' ? `${count} of your characters` : `${count} enem${count === 1 ? 'y' : 'ies'}`;
+                const who = target === 'allies' ? `${count} of your characters`
+                    : target === 'all' ? `${count} character${count === 1 ? '' : 's'}` : `${count} enem${count === 1 ? 'y' : 'ies'}`;
                 this._effect(side, c, allText.replace('%s', who), slot);
             }
         } else {
@@ -2197,6 +2192,10 @@ export class DuelState {
                 entries = this._fxPool(side, e, slot).map(x => ({ side, slot: x.slot, card: x.card }));
                 break;
             case 'enemy': case 'enemies':
+                for (const foe of this.foesOf(side)) entries.push(...this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card })));
+                break;
+            case 'all':   // every character: yours (not this card) and every opponent's
+                entries = this._fxPool(side, e, slot).map(x => ({ side, slot: x.slot, card: x.card }));
                 for (const foe of this.foesOf(side)) entries.push(...this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card })));
                 break;
         }
@@ -2258,14 +2257,21 @@ export class DuelState {
     /** search / recover / revive: take matching cards from a pile (top first), `amount` times;
      *  with `choose` the player picks each one (options best first, so the CPU takes the best).
      *  Same as _fx_take in duel_state.gd. */
-    _fxTake(side, c, e, pile, prompt, take, left = Math.max(1, toInt(e.amount ?? 1))) {
+    // after: once it's done (every card taken, or skipped), when it looked through the pile (a deck is
+    // shuffled then)
+    _fxTake(side, c, e, pile, prompt, take, after = null, left = Math.max(1, toInt(e.amount ?? 1))) {
         const matches = [];
         for (let i = pile.length - 1; i >= 0; i--) if (pile[i] !== c && this._fxKindOk(pile[i], e)) matches.push(pile[i]);
-        if (!matches.length) return false;
+        if (!matches.length) {
+            if (after && left < Math.max(1, toInt(e.amount ?? 1))) after();   // (found some before)
+            return false;
+        }
+        const done = () => { if (after) after(); };
         const next = (card) => {
             const i = pile.findIndex(x => x.uid === card.uid);
-            if (i < 0 || !take(pile.splice(i, 1)[0])) return;
-            if (left > 1) this._fxTake(side, c, e, pile, prompt, take, left - 1);
+            if (i < 0 || !take(pile.splice(i, 1)[0])) return done();
+            if (left > 1) this._fxTake(side, c, e, pile, prompt, take, after, left - 1);
+            else done();
         };
         if (!e.choose) {
             next(matches[0]);
@@ -2275,10 +2281,17 @@ export class DuelState {
         matches.forEach((m, k) => { const key = `${m.id}|${m.name}`; if (!seen.has(key)) { seen.add(key); opts.push({ m, k }); } });
         opts.sort((a, b) => (toInt(b.m.authority) - toInt(a.m.authority)) || (toInt(b.m.base_attack) - toInt(a.m.base_attack)) || (a.k - b.k));
         const shown = opts.slice(0, 8);
-        this._ask(side, 'fx_pick', prompt, c, [...shown.map((o, k) => ({ id: String(k), label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})` })),
+        // (each option carries its card: the player sees the cards to choose from)
+        this._ask(side, 'fx_pick', prompt, c, [...shown.map((o, k) => ({ id: String(k), label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})`, card: clone(o.m) })),
             { id: 'skip', label: 'SKIP' }],
-            (choice) => { const o = choice === 'skip' ? null : shown[toInt(choice)]; if (o) next(o.m); });
+            (choice) => { const o = choice === 'skip' ? null : shown[toInt(choice)]; if (o) next(o.m); else done(); });
         return true;
+    }
+
+    /** A deck that was searched is shuffled (not in the engines' comparison games, which keep a fixed order). */
+    _shuffleDeck(side) {
+        if (!this._fixedOrder) shuffle(this.sides[side].deck, this._rand);
+        this._emit('shuffle', { side });
     }
 
     _heal(side, c, n, slot) {

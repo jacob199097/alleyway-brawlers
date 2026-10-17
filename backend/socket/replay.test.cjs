@@ -24,6 +24,7 @@ function dpath(a,b,p=""){if(JSON.stringify(a)===JSON.stringify(b))return null;if
         saveReplay: async (rec) => { records.push(JSON.parse(JSON.stringify(rec))); },
         recordStats: async (row) => { stats.push(row); },
         claimChallenge: async (playerId, week) => { claims.push([playerId, week]); return { heading: 'WEEKLY CHALLENGE', name: 'test' }; },
+        botMoveMs: 1, botEventMs: 0,
     });
     const stats = [], claims = [];
     let bad = 0;

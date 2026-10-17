@@ -1,6 +1,6 @@
 extends Node
 ## Drives the duel screen like a player would (card menu → summon → slot, attack → target, a Hustle
-## set face-down and activated on a later turn) against the CPU and checks the rules state follows.
+## set face-down and then activated) against the CPU and checks the rules state follows.
 ## Run:  godot --headless --fixed-fps 60 --path godot res://tests/ui_smoke.tscn
 
 var duel_screen: Node
@@ -50,8 +50,8 @@ func _prompt_check() -> void:
 	prompts["test"] = prompts.get("test", 0) + 1
 
 
-## A Hustle (Supernova Run) drawn, then SET FACE DOWN from its menu into a back-row slot; it can't
-## be activated the turn it was set.
+## A Hustle (Supernova Run) drawn, then SET FACE DOWN from its menu into a back-row slot; with the
+## Authority, it can be activated straight away.
 func _set_hustle() -> void:
 	var d: DuelState = duel_screen.duel
 	d.sides.player.deck.append(d.make_card("card_nebu_010"))
@@ -79,11 +79,12 @@ func _set_hustle() -> void:
 	while duel_screen._playing:
 		await get_tree().process_frame
 	duel_screen._on_field_click(set_slot)
-	_check(duel_screen._mode == "menu" and _button_named(duel_screen._menu, "ACTIVATE") == null, "not activated the turn it was set")
+	_check(duel_screen._mode == "menu" and (_button_named(duel_screen._menu, "ACTIVATE") != null) == d.can_hustle("player", c),
+		"ACTIVATE offered whenever it can be activated, the turn it was set too")
 	duel_screen._cancel_and_refresh()
 
 
-## On a later turn: click the set Hustle, ACTIVATE it.
+## Click the set Hustle, ACTIVATE it (once it can be).
 func _try_activate_set() -> bool:
 	if set_activated or set_slot < 0:
 		return false
@@ -214,8 +215,8 @@ func _button_named(n: Node, text: String) -> Button:
 	return null
 
 
-func _first_enabled_button(n: Node) -> Button:
-	if n is Button and not n.disabled:
+func _first_enabled_button(n: Node) -> BaseButton:
+	if n is BaseButton and not n.disabled:   # (a card in a search's card picker too)
 		return n
 	for c in n.get_children():
 		var b := _first_enabled_button(c)
