@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.4",
+        "notes": [
+            "Drag a Hustle onto the board and you choose: ACTIVATE it now, or SET it face-down to use later (or cancel)."
+        ]
+    },
+    {
         "version": "0.9.3",
         "notes": [
             "New backgrounds: Fight Mode looks out over the city from a rooftop, and finding a match (and the Free-for-all lobby) happens in an alley where the crowd waits for the next fight.",
