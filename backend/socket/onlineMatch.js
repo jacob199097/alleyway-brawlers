@@ -116,7 +116,10 @@ function viewFor(state, viewer) {
             brutus_bonus: s.brutus_bonus, promoted: s.promoted, mentor_used: s.mentor_used,
             leader_state: s.leader_state, leader: s.leader ? structuredClone(s.leader) : null,
             hand: own ? structuredClone(s.hand) : s.hand.map(c => ({ uid: c.uid })),
-            deck: s.deck.map(() => ({})),
+            // Your own deck's cards (the client checks a search or call has something to find),
+            // sorted so the draw order stays hidden; theirs is just a count
+            deck: own ? s.deck.map(c => structuredClone(c)).sort((a, b) => String(a.id).localeCompare(String(b.id)) || a.uid - b.uid)
+                : s.deck.map(() => ({})),
             hideout: own ? structuredClone(s.hideout) : s.hideout.map(c => ({ uid: c.uid })),
             gutter: structuredClone(s.gutter),
             field: s.field.map(c => (c == null ? null : (own || !c.face_down) ? structuredClone(c) : redact(c))),

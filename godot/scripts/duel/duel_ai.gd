@@ -96,6 +96,11 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	for c in s.hand:
 		if d.can_hustle(side, c) and _hustle_useful(d, side, c):
 			return {"kind": "hustle", "uid": c.uid}
+	# A Hustle it set on an earlier turn, once it would do something
+	for slot in DuelState.BACK:
+		var c = s.field[slot]
+		if d.set_hustle_slot(side, c) == slot and d.can_hustle(side, c) and _hustle_useful(d, side, c):
+			return {"kind": "hustle", "uid": c.uid}
 	var threat := _threat(d, side)
 	if level != "easy":
 		# Stand up a defender that now out-muscles everything the opponent shows
@@ -154,9 +159,11 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 
 	for slot in DuelState.BACK:
 		if s.field[slot] == null:
-			for c in s.hand:
-				if d.can_set(side, c, slot):
-					return {"kind": "set", "uid": c.uid, "slot": slot}
+			# Ambushes first; then a Hustle it couldn't use now, to activate on a later turn
+			for kind in ["ambush", "hustle"]:
+				for c in s.hand:
+					if c.cardType == kind and d.can_set(side, c, slot):
+						return {"kind": "set", "uid": c.uid, "slot": slot}
 			break
 	return {}
 

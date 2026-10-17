@@ -300,6 +300,7 @@ const server = http.createServer((req, res) => {
 const require = createRequire(import.meta.url);
 const { Server } = require('../../backend/node_modules/socket.io');
 const { createOnlineService } = require('../../backend/socket/onlineMatch.js');
+const { createFfaService } = require('../../backend/socket/ffaMatch.js');
 const { nextForm } = await import('../../shared/duel/DuelState.js');
 
 const io = new Server(server, { cors: { origin: '*' } });
@@ -312,7 +313,9 @@ io.use((socket, next) => {
 });
 
 const spec = (c) => ({ id: c.art_url, name: c.name, authority: c.authority, attack: c.attack ?? 0, defense: c.defense ?? 0, rarity: c.rarity });
-const service = createOnlineService(io, {
+let ffa = null;   // the free-for-all lobby and matches (backend/socket/ffaMatch.js)
+const serviceDeps = {
+    isBusyElsewhere: (id) => !!ffa?.isBusy(id),
     onAction(match, seat, action, ok) {
         const st = match.state;
         console.log(`ACT t${st.turn} ${seat} ${JSON.stringify(action)} ${ok ? 'ok' : 'REFUSED'} morale ${st.sides.player.morale}/${st.sides.opponent.morale}`);
@@ -361,12 +364,33 @@ const service = createOnlineService(io, {
             newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false, newRank: p.rank,
             rankChanged: false, rankPointDelta: ranked ? (win ? 25 : -10) : 0 };
     },
+};
+const service = createOnlineService(io, serviceDeps);
+ffa = createFfaService(io, {
+    loadSetup: serviceDeps.loadSetup,
+    loadProfile: serviceDeps.loadProfile,
+    isBusyElsewhere: (id) => service.isBusyHere(id),
+    leaveOtherQueue: (id) => service.leaveQueue(id),
+    lobbySecs: Number(process.env.FFA_LOBBY_SECS || 20),
+    turnSecs: Number(process.env.FFA_TURN_SECS || 90),   // (short: the server plays for an idle player)
+    awaySecs: Number(process.env.FFA_AWAY_SECS || 15),   // (then after 8 moves played for them, they're out)
+    fillTo: Number(process.env.FFA_FILL || 3),            // (4: a full table of CPUs)
+    async resolveFfa({ playerId, place }) {
+        const p = byPlayerId(playerId);
+        const win = place === 1;
+        const xp = win ? 100 : place === 2 ? 60 : 20, karat = win ? 50 : place === 2 ? 30 : 10;
+        p.xp += xp; p.karat += karat; p[win ? 'wins' : 'losses']++;
+        console.log(`FFA OVER ${p.username} place ${place}`);
+        return { outcome: win ? 'win' : 'loss', place, karatEarned: karat, xpEarned: xp, firstWinBonus: false,
+            newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false, newRank: p.rank, rankChanged: false, rankPointDelta: 0 };
+    },
 });
 io.on('connection', (socket) => {
     const { playerId, username } = socket.playerData;
     online.add(playerId);
     console.log('socket connected', username);
     service.register(socket, socket.playerData);
+    ffa.register(socket, socket.playerData);
     socket.on('chat:message', ({ toPlayerId, body } = {}) => {
         for (const s of io.sockets.sockets.values()) {
             if (s.playerData.playerId === toPlayerId) s.emit('chat:message', { fromPlayerId: playerId, fromUsername: username, body });

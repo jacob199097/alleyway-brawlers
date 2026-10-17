@@ -1,7 +1,7 @@
 extends Node
 ## Visits every menu screen against the mock server (tests/mock_server.mjs) and saves a
 ## screenshot of each. Nothing is written to the player's saved settings or session.
-## Run (windowed):  godot --path godot res://tests/screens_tour.tscn -- <out_dir> [server_url]
+## Run (windowed):  godot --path godot res://tests/screens_tour.tscn -- <out_dir> [server_url] [--ffa-only]
 
 var _out := "user://tour"
 
@@ -10,7 +10,7 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_out = args[0]
-	Game.settings.server_url = args[1] if args.size() > 1 else "http://127.0.0.1:3999"
+	Game.settings.server_url = args[1] if args.size() > 1 and not args[1].begins_with("--") else "http://127.0.0.1:3999"
 	DirAccess.make_dir_recursive_absolute(_out)
 	_run()
 
@@ -44,6 +44,10 @@ func _run() -> void:
 	# only saves when it offers the tutorial or meets a new version, so neither happens
 	Game.settings.tutorial_offered = true
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
+	if "--ffa-only" in OS.get_cmdline_user_args():   # (just the free-for-all screens)
+		await _ffa_shots()
+		get_tree().quit()
+		return
 	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "contraband", "profile", "social", "mailbox", "clan_select", "achievements"]:
 		Game.go(s)
 		await _shot("02_" + s, 2.2)
@@ -141,4 +145,31 @@ func _run() -> void:
 	await get_tree().create_timer(14.0).timeout
 	_screen()._toggle_log()
 	await _shot("07_duel_log", 0.5)
+	await _ffa_shots()
 	get_tree().quit()
+
+
+## Free-for-all: the lobby, ready, then a match against CPUs (start the mock server with
+## FFA_LOBBY_SECS=5 FFA_TURN_SECS=4 FFA_AWAY_SECS=2 FFA_FILL=4: a full table, and this player,
+## who doesn't play, is put out after a while, so the end and the results show too)
+func _ffa_shots() -> void:
+	Engine.time_scale = 1.0
+	Game.go("ffa_lobby")
+	await _shot("08_ffa_lobby", 2.5)
+	_screen()._toggle_ready()
+	await _shot("08_ffa_lobby_ready", 1.0)
+	var waited := 0.0
+	while _screen().name != "Duel" and waited < 60.0:
+		await get_tree().create_timer(0.5).timeout
+		waited += 0.5
+	if _screen().name == "Duel":
+		await _shot("08_ffa_duel", 5.0)
+		await _shot("08_ffa_duel_later", 12.0)
+		await _shot("08_ffa_duel_out", 14.0)
+		waited = 0.0
+		while _screen().name == "Duel" and waited < 240.0:
+			await get_tree().create_timer(1.0).timeout
+			waited += 1.0
+			if int(waited) % 40 == 0:
+				await _shot("08_ffa_duel_%d" % int(waited), 0.0)
+		await _shot("08_ffa_results", 3.0)

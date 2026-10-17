@@ -15,6 +15,7 @@ var is_open := false
 var inbox: Array = []
 var rps_inbox: Array = []   # Scissors Paper Rock messages for screens/rps.gd
 var rematch_inbox: Array = []   # rematch messages for screens/post_match.gd (may arrive before it opens)
+var ffa_inbox: Array = []       # free-for-all lobby messages for screens/ffa_lobby.gd (backend/socket/ffaMatch.js)
 var _rejoin := false        # ask the server for a match still in progress once connected
 var _ws := WebSocketPeer.new()
 var _connecting := false
@@ -60,6 +61,8 @@ func disconnect_from_server() -> void:
 func rejoin() -> void:
 	if not send("mp:resync"):
 		_rejoin = true
+	else:
+		send("ffa:resync")   # (a free-for-all in progress: ffa:start, or ffa:none)
 
 
 func send(name: String, data := {}) -> bool:
@@ -114,6 +117,7 @@ func _handle(msg: String) -> void:
 				if _rejoin:
 					_rejoin = false
 					send("mp:resync")
+					send("ffa:resync")
 			elif kind == "4":
 				push_warning("Realtime login refused: " + msg.substr(2))
 				_want = false
@@ -145,7 +149,7 @@ static func normalize(v):
 
 func _on_global_event(name: String, data) -> void:
 	match name:
-		"mp:update", "mp:over", "mp:opponent", "mp:emote", "mp:spectators":
+		"mp:update", "mp:over", "mp:opponent", "mp:emote", "mp:spectators", "ffa:update", "ffa:over", "ffa:out":
 			inbox.append([name, data])
 			if inbox.size() > 500:
 				inbox.pop_front()
@@ -159,6 +163,22 @@ func _on_global_event(name: String, data) -> void:
 				Game.go("rps")
 		"mp:rematch_offer", "mp:rematch_sent", "mp:rematch_declined":
 			rematch_inbox.append([name, data])
+		"ffa:lobby", "ffa:left":
+			ffa_inbox.append([name, data])
+			var scene := get_tree().current_scene
+			if name == "ffa:lobby" and not (scene and scene.has_method("on_ffa_lobby")):
+				Game.go("ffa_lobby")   # (rejoining a lobby from another screen)
+		"ffa:start":
+			inbox.clear()
+			ffa_inbox.clear()
+			Game.duel_setup = {"online": true, "start": data}
+			Game.alert()
+			if get_tree().current_scene and get_tree().current_scene.has_method("on_online_start"):
+				get_tree().current_scene.on_online_start(data)
+			else:
+				if data is Dictionary and data.get("resync", false):
+					_toast("Rejoining your free-for-all…", UI.GOLD)
+				Game.go("duel")
 		"mp:start":
 			inbox.clear()
 			rps_inbox.clear()
@@ -178,7 +198,7 @@ func _on_global_event(name: String, data) -> void:
 			if data is Dictionary and data.get("unlocked") is Array:
 				show_achievements(data.unlocked)
 				Game.refresh_player()   # their Karat or Dust may have gone up
-		"mp:error":
+		"mp:error", "ffa:error":
 			var scene := get_tree().current_scene
 			if not (scene and scene.has_method("on_online_error")):
 				_toast(str(data.get("message", "Something went wrong.")), UI.RED)

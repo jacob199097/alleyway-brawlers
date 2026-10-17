@@ -35,6 +35,8 @@ jobs:
         run: node shared/duel/passives.test.mjs
       - name: Free-for-all rules (3-4 players)
         run: node shared/duel/ffa.test.mjs
+      - name: Deck searches and set Hustles
+        run: node shared/duel/hustles.test.mjs
 
   database:
     runs-on: ubuntu-latest

@@ -39,6 +39,8 @@ const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;
 const RECONNECT_SECS = 45;
 const BOT_MOVE_MS  = 350;
+const BOT_EVENT_MS = 140;   // and this much more for each event its last move made (the players' screens animate them)
+const BOT_MAX_MS   = 3000;
 const SEATS = ['p1', 'p2', 'p3', 'p4'];
 
 const engine = import('../../shared/duel/DuelState.js');
@@ -97,7 +99,8 @@ function shuffle(a) {
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
  * @param {(playerId) => Promise} [deps.recordDailyWin]
- * @param {number} [deps.lobbySecs] [deps.turnSecs] [deps.awaySecs] [deps.reconnectSecs] [deps.botMoveMs]  (tests)
+ * @param {number} [deps.lobbySecs] [deps.turnSecs] [deps.awaySecs] [deps.reconnectSecs] [deps.botMoveMs] [deps.botEventMs]  (tests)
+ * @param {number} [deps.fillTo]  CPUs fill the seats up to this many players (default 3; tests: 4)
  */
 function createFfaService(io, deps) {
     const sockets = new Map();
@@ -167,7 +170,7 @@ function createFfaService(io, deps) {
         for (const e of entries) inLobby.delete(e.playerId);
         const { cpuSetup, randomCpuClan } = await cpu;
         let n = 0;
-        while (entries.length < MIN_PLAYERS) {
+        while (entries.length < Math.min(MAX_PLAYERS, deps.fillTo ?? MIN_PLAYERS)) {
             n += 1;
             entries.push({ playerId: `cpu:${randomUUID()}`, bot: true, level: 'normal', setup: cpuSetup(randomCpuClan()),
                 profile: { username: `CPU ${n}`, level: 1, avatar_url: 'cpu' } });
@@ -225,6 +228,7 @@ function createFfaService(io, deps) {
 
     function broadcast(match, events) {
         const st = match.state;
+        match.lastEvents = events.length;
         for (const ev of events) {
             const s = match.seats[ev.side];
             if (!s) continue;
@@ -257,7 +261,9 @@ function createFfaService(io, deps) {
         clearTimeout(match.timer);
         const s = match.seats[toAct(match.state)];
         if (s.bot) {
-            match.timer = setTimeout(() => botMove(match), secs('botMoveMs', BOT_MOVE_MS));
+            // CPUs move at the pace the players' screens can show it
+            const wait = Math.min(BOT_MAX_MS, secs('botMoveMs', BOT_MOVE_MS) + secs('botEventMs', BOT_EVENT_MS) * (match.lastEvents || 0));
+            match.timer = setTimeout(() => botMove(match), wait);
             match.clockEnds = null;
             return secs('turnSecs', TURN_SECS);
         }

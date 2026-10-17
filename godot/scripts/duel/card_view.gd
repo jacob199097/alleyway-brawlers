@@ -35,6 +35,8 @@ var pulse_color := Color(0, 0, 0, 0): set = set_pulse_color
 var home := Vector2.ZERO
 var home_rot := 0.0
 var home_scale := 1.0
+## Free-for-all: an opponent's board is drawn smaller; every scale this card is moved to is times this
+var board_scale := 1.0
 var busy := false   # flying / animating: ignore hover and layout
 var hovered := false            # lean toward the mouse
 var rest_tilt := Vector2.ZERO   # resting lean in screen space: (turn, lean back), degrees
@@ -198,7 +200,7 @@ func move_to(pos: Vector2, s: float, rot: float, duration := 0.22,
 	stop_moving()
 	_tw = create_tween().set_parallel().set_trans(trans).set_ease(ease_type)
 	_tw.tween_property(self, "position", pos, duration)
-	_tw.tween_property(self, "scale", Vector2.ONE * s, duration)
+	_tw.tween_property(self, "scale", Vector2.ONE * s * board_scale, duration)
 	_tw.tween_property(self, "rotation", rot, duration)
 	return _tw
 
@@ -328,7 +330,8 @@ func _process(delta: float) -> void:
 	if _badge.visible:
 		var sideways := absf(sin(rotation)) > 0.7
 		var half_h: float = (SIZE.x if sideways else SIZE.y) * scale.y / 2.0
-		_badge.global_position = global_position + Vector2(-_badge.size.x / 2.0, half_h - BADGE_OVERLAP)
+		_badge.scale = Vector2.ONE * board_scale   # (its own top-level node: it doesn't inherit the card's scale)
+		_badge.global_position = global_position + Vector2(-_badge.size.x * board_scale / 2.0, half_h - BADGE_OVERLAP * board_scale)
 		_badge.z_index = z_index + 1
 
 

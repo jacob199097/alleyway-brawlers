@@ -25,6 +25,16 @@ const HAND_LIFT_Y := 872.0
 const HAND_CX := 1080.0
 const HAND_SPAN := 900.0
 const OPP_HAND_Y := -22.0
+## Free-for-all: four boards in a 2x2 grid, all the same size. The two on top are the 1v1
+## opponent's layout (centred on OPP_C); yours and the one beside it (below) are your layout
+## (centred on PLAYER_C), facing up. Opponents' plates (name, Morale) sit above their boards.
+const OPP_C := Vector2(1080, 216)
+const PLAYER_C := Vector2(1080, 632)
+const GRID_X := [424.0, 1640.0]   # left of the phase and turn panels
+const GRID_K := 0.56              # each board's size: two side by side
+const PLATE_H := 90.0
+const FOE_COLORS := [Color("e63946"), Color("ff9f43"), Color("b388ff")]
+const FOE_HAND := 0.22     # an opponent's hand: a small fan of card backs on their plate
 
 const BLUE := Color("4cc9f0")
 const RED := Color("e63946")
@@ -105,6 +115,7 @@ var _emotes_muted := false
 var _awaiting := false    # sent a move, waiting for the server's answer
 var _away_warned := false # told the player a move was played for them (server move clock)
 var _base_speed := 1.0    # Engine.time_scale outside hit-stops: Settings → Animation Speed, or replay speed
+var _catch_up := 1.0      # faster while a backlog of events waits (a free-for-all's CPUs move quickly)
 var _replay_seek := -1    # replay: jump to this update once the current one has finished animating
 var _log_text: RichTextLabel   # the battle log (L)
 var _log_lines := 0
@@ -132,6 +143,12 @@ var _slot_box_back: StyleBoxFlat
 var _pile_box: StyleBoxFlat
 var _ui := {}
 var _panels := {}
+var _ffa := false          # a free-for-all (backend/socket/ffaMatch.js): 3-4 players, every board on screen
+var _sides: Array = ["player", "opponent"]   # every side ("player" first)
+var _foes: Array = ["opponent"]              # everyone else (FFA: foe1, foe2, foe3 in turn order)
+var _boards := {}          # FFA: side -> {c: centre, s: scale} of each opponent's board
+var _out := {}             # FFA: side -> finishing place, once they're out
+var _direct_btns: Array = []
 
 
 func _ready() -> void:
@@ -147,9 +164,15 @@ func _ready() -> void:
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
+	if str(online_start.get("mode", "")) == "ffa":
+		_setup_ffa_sides(online_start)
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
-	if not online_start.is_empty():
+	if _ffa:
+		for side in _foes:
+			var b = online_start.get("players", {}).get(side, {}).get("card_back")
+			_chosen_back[side] = str(b) if b is String else ""
+	elif not online_start.is_empty():
 		for pair in [["player", "you"], ["opponent", "opponent"]]:
 			var prof = online_start.get(pair[1], {})
 			var b = prof.get("card_back") if prof is Dictionary else null
@@ -160,6 +183,9 @@ func _ready() -> void:
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "cpu", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
+	elif _ffa:
+		$HUD/UI/OppPanel.visible = false
+		_build_foe_plates(online_start.get("players", {}))
 	else:
 		if online_start.get("spectate", false):
 			var you: Dictionary = online_start.get("you", {})
@@ -222,7 +248,7 @@ func _ready() -> void:
 
 
 func _make_leader_views() -> void:
-	for side in ["player", "opponent"]:
+	for side in _sides:
 		var l = duel.sides[side].leader
 		if l != null and duel.sides[side].get("leader_state", "dormant") == "dormant":
 			var v := _new_view(l, side, true)
@@ -242,6 +268,9 @@ func _setup_online(start: Dictionary) -> void:
 	Net.rematch_inbox.clear()
 	_spectating = start.get("spectate", false)
 	_names = {"player": str(start.get("you", {}).get("username", "Player")), "opponent": str(start.get("opponent", {}).get("username", "Opponent"))}
+	if _ffa:
+		for side in _foes:
+			_names[side] = str(start.get("players", {}).get(side, {}).get("username", side))
 	ai_sides = []
 	_match_id = str(start.get("matchId", ""))
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
@@ -258,7 +287,7 @@ func _setup_online(start: Dictionary) -> void:
 		return
 	if _spectating:
 		_build_spectate_bar()
-	elif not str(start.get("mode", "")).begins_with("cpu"):
+	elif not str(start.get("mode", "")).begins_with("cpu") and not _ffa:
 		_build_emote_button()
 	_ui.clock = _label(22, GOLD, true)
 	_ui.clock.position = Vector2(150, 96)
@@ -297,8 +326,10 @@ func _watching() -> bool:
 	return _spectating or not _replay.is_empty()
 
 
-## "YOUR TURN", or the player's name for a spectator.
-func _turn_text(mine: bool) -> String:
+## "YOUR TURN", or the player's name for a spectator (FFA: whose turn it is).
+func _turn_text(mine: bool, side := "") -> String:
+	if _ffa and not mine:
+		return "%s'S TURN" % str(_names.get(side if side != "" else duel.active, "THEIR")).to_upper()
 	if _spectating:
 		return "%s'S TURN" % str(_names.player if mine else _names.opponent).to_upper()
 	return "YOUR TURN" if mine else "OPPONENT'S TURN"
@@ -456,7 +487,7 @@ func _toggle_log() -> void:
 func _log(text: String, side: String) -> void:
 	if _log_text == null:
 		return
-	var color := "#8fd3ff" if side == "player" else "#ff8a94" if side == "opponent" else "#f4d35e"
+	var color := "#8fd3ff" if side == "player" else "#ff8a94" if side != "" else "#f4d35e"
 	_log_text.append_text("[color=%s]%s[/color]\n" % [color, text.replace("[", "[lb]")])
 	_log_lines += 1
 	if _log_lines > 400:
@@ -465,13 +496,13 @@ func _log(text: String, side: String) -> void:
 
 
 func _who(side: String) -> String:
-	if _spectating:
+	if _spectating or (_ffa and side != "player"):
 		return str(_names.get(side, side))
 	return "You" if side == "player" else "Opponent"
 
 
 func _whose(side: String) -> String:
-	if _spectating:
+	if _spectating or (_ffa and side != "player"):
 		return "%s's" % _names.get(side, side)
 	return "Your" if side == "player" else "Opponent's"
 
@@ -497,7 +528,7 @@ func _log_event(ev: Dictionary) -> void:
 		"set":
 			_log("%s set a card face down" % _who(side), side)
 		"hustle", "lasting":
-			_log("%s played %s" % [_who(side), _cname(ev.card)], side)
+			_log("%s %s %s" % [_who(side), "activated" if ev.get("set", false) else "played", _cname(ev.card)], side)
 		"equip":
 			_log("%s equipped %s" % [_who(side), _cname(ev.card)], side)
 		"tribute":
@@ -507,7 +538,7 @@ func _log_event(ev: Dictionary) -> void:
 			if int(ev.target) == DuelState.LEADER:
 				target = "the dormant leader"
 			elif int(ev.target) >= 0:
-				var tv: CardView = field[DuelState.other(side)].get(int(ev.target))
+				var tv: CardView = field.get(str(ev.get("foe", DuelState.other(side))), {}).get(int(ev.target))
 				target = _cname(tv.card if tv and tv.face_up else {})
 			_log("%s attacked %s" % [_cname(ev.card), target], side)
 		"clash":
@@ -641,7 +672,7 @@ func _show_emote(side: String, key: String) -> void:
 
 ## Rejoining a match (reconnect or correction): lay the board out straight from the view.
 func _build_from_view() -> void:
-	for side in ["player", "opponent"]:
+	for side in _sides:
 		var s: Dictionary = duel.sides[side]
 		for c in s.hand:
 			var hv := _new_view(c, side, side == "player" and not _spectating)
@@ -649,7 +680,7 @@ func _build_from_view() -> void:
 		_layout_hand(side)
 		for v in hand[side]:
 			v.position = v.home
-			v.scale = Vector2.ONE * v.home_scale
+			v.scale = Vector2.ONE * v.home_scale * v.board_scale
 		for slot in 10:
 			var c = s.field[slot]
 			if c == null:
@@ -680,7 +711,7 @@ func _on_net_event(name: String, data) -> void:
 	if not data is Dictionary or str(data.get("matchId", _match_id)) != _match_id:
 		return
 	match name:
-		"mp:update":
+		"mp:update", "ffa:update":
 			duel.load_view(data.view)
 			_awaiting = false
 			_clock_left = float(data.get("clock", ONLINE_TURN_SECS))
@@ -699,6 +730,11 @@ func _on_net_event(name: String, data) -> void:
 				_sweep_banner(who + why, GOLD if won else RED)
 				await _wait(1.6)
 				_finish_match(won)
+		"ffa:over":
+			_over = data
+		"ffa:out":
+			_over = data
+			_show_out_panel(data)
 		"mp:emote":
 			_show_emote("opponent", str(data.get("key", "")))
 		"mp:spectators":
@@ -743,7 +779,7 @@ func on_online_error(message: String) -> void:
 
 func _on_net_opened() -> void:
 	_hide_net_banner()
-	Net.send("mp:resync")
+	Net.send("ffa:resync" if _ffa else "mp:resync")
 
 
 func _on_net_closed() -> void:
@@ -814,22 +850,53 @@ func _process(delta: float) -> void:
 
 func slot_pos(side: String, slot: int) -> Vector2:
 	var col := slot % 5
-	if side == "opponent":
+	if _row_side(side) != "player":
 		col = 4 - col   # mirrored, like sitting across the table
-	return Vector2(COLS[col], ROWS[side][0 if slot < 5 else 1])
+	return _xf(side, Vector2(COLS[col], ROWS[_row_side(side)][0 if slot < 5 else 1]))
 
 
 func pile_pos(side: String, pile: String) -> Vector2:
-	var near := LEFT_X if side == "player" else RIGHT_X   # leader + hideout
-	var far := RIGHT_X if side == "player" else LEFT_X    # gutter + deck
+	var mine := _row_side(side) == "player"
+	var near := LEFT_X if mine else RIGHT_X   # leader + hideout
+	var far := RIGHT_X if mine else LEFT_X    # gutter + deck
+	var rows: Array = ROWS[_row_side(side)]
 	match pile:
 		"leader":
-			return Vector2(near, ROWS[side][0])
+			return _xf(side, Vector2(near, rows[0]))
 		"hideout":
-			return Vector2(near, ROWS[side][1])
+			return _xf(side, Vector2(near, rows[1]))
 		"gutter":
-			return Vector2(far, ROWS[side][0])
-	return Vector2(far, ROWS[side][1])
+			return _xf(side, Vector2(far, rows[0]))
+	return _xf(side, Vector2(far, rows[1]))
+
+
+## Where a side's rows are laid out: yours, or the opponent's (FFA: the boards on the bottom row
+## are laid out like yours).
+func _row_side(side: String) -> String:
+	return str(_boards.get(side, {}).get("rows", "player" if side == "player" else "opponent"))
+
+
+## FFA: a point on the 1v1 board (yours, or the opponent's) → the same point on this side's board in the grid.
+func _xf(side: String, p: Vector2) -> Vector2:
+	var b: Dictionary = _boards.get(side, {})
+	if b.is_empty():
+		return p
+	return b.c + (p - (PLAYER_C if _row_side(side) == "player" else OPP_C)) * float(b.s)
+
+
+## How big this side's board is drawn (FFA opponents' are smaller).
+func _sc(side: String) -> float:
+	return float(_boards.get(side, {}).get("s", 1.0))
+
+
+## The area a side's board covers (its piles, lanes and leader).
+func _board_rect(side: String) -> Rect2:
+	var rows: Array = ROWS[_row_side(side)]
+	var top := minf(rows[0], rows[1]) - CARD.y / 2
+	var bottom := maxf(rows[0], rows[1]) + CARD.y / 2
+	var a := _xf(side, Vector2(LEFT_X - CARD.x / 2, top))
+	var b := _xf(side, Vector2(RIGHT_X + CARD.x / 2, bottom))
+	return Rect2(a, b - a)
 
 
 func _target_pos(side: String, slot: int) -> Vector2:
@@ -840,13 +907,16 @@ func _target_pos(side: String, slot: int) -> Vector2:
 	# A direct attack hits the player: their Morale panel (not a card that happens to be in the middle lane)
 	if _panels.has(side):
 		var root: Control = _panels[side].root
+		if _ffa and side != "player":
+			return root.position + root.size / 2
 		return get_viewport().get_canvas_transform().affine_inverse() * root.get_global_rect().get_center()
-	return Vector2(1080, ROWS[side][0])
+	return _xf(side, Vector2(1080, ROWS[_row_side(side)][0]))
 
 
 func _slot_at(side: String, p: Vector2) -> int:
+	var size := CARD * _sc(side)
 	for slot in 10:
-		if Rect2(slot_pos(side, slot) - CARD / 2, CARD).grow(10).has_point(p):
+		if Rect2(slot_pos(side, slot) - size / 2, size).grow(10).has_point(p):
 			return slot
 	return -1
 
@@ -854,9 +924,10 @@ func _slot_at(side: String, p: Vector2) -> int:
 func _draw() -> void:
 	draw_line(Vector2(560, DIVIDER_Y), Vector2(1600, DIVIDER_Y), Color(1, 1, 1, 0.14), 2.0)
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
-	for side in ["player", "opponent"]:
+	for side in _sides:
+		var size := CARD * _sc(side)
 		for slot in 10:
-			var r := Rect2(slot_pos(side, slot) - CARD / 2, CARD)
+			var r := Rect2(slot_pos(side, slot) - size / 2, size)
 			draw_style_box(_slot_box if slot < 5 else _slot_box_back, r)
 			var key := "%s:%d" % [side, slot]
 			if _valid.has(key):
@@ -867,7 +938,15 @@ func _draw() -> void:
 					_draw_slot_symbol(r.get_center(), c, side)
 		for pile in ["deck", "gutter", "hideout"]:
 			_draw_pile(side, pile)
-		_draw_zone_label(pile_pos(side, "leader"), "LEADER")
+		_draw_zone_label(pile_pos(side, "leader"), "LEADER", _sc(side))
+		if _out.has(side):   # FFA: out of the game
+			var area := _board_rect(side)
+			draw_rect(area, Color(0.02, 0.02, 0.05, 0.72))
+			var fs := int(64 * _sc(side))
+			var text := "OUT · %s" % _place_text(int(_out[side]))
+			var at := Vector2(area.position.x, area.get_center().y + fs * 0.35)
+			draw_string_outline(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, fs, 10, Color(0, 0, 0, 0.9))
+			draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, fs, RED)
 
 
 ## Colour-blind help (Settings): what a highlighted lane is for, as a shape. Green +: put a card
@@ -902,17 +981,19 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 
 func _draw_pile(side: String, pile: String) -> void:
 	var p := pile_pos(side, pile)
-	draw_style_box(_pile_box, Rect2(p - CARD / 2, CARD))
+	var k := _sc(side)
+	var size := CARD * k
+	draw_style_box(_pile_box, Rect2(p - size / 2, size))
 	var c: Dictionary = counts.get(side, {})
 	var n: int = c.get(pile, 0)
 	if n <= 0:
-		_draw_zone_label(p, pile.to_upper())
+		_draw_zone_label(p, pile.to_upper(), k)
 		return
 	var layers := mini(4, ceili(n / 8.0))
 	var back := _back_for(side)
 	for i in layers:
-		var off := Vector2(-i * 2.0, -i * 3.0)
-		var r := Rect2(p - CARD / 2 + off, CARD)
+		var off := Vector2(-i * 2.0, -i * 3.0) * k
+		var r := Rect2(p - size / 2 + off, size)
 		var tex := back
 		if i == layers - 1 and pile == "gutter":
 			tex = CardDB.art(str(c.get("gutter_top", "")))
@@ -921,18 +1002,19 @@ func _draw_pile(side: String, pile: String) -> void:
 		else:
 			draw_rect(r, Color("1d2140"))
 			draw_rect(r, Color(1, 1, 1, 0.3), false, 2.0)
-	var at := Vector2(p.x - 60, p.y + 16)
-	draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, 46, 10, Color(0, 0, 0, 0.9))
-	draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, 46, RED if pile == "deck" and n <= 5 else Color.WHITE)
-	_draw_zone_label(p, pile.to_upper())
+	var at := Vector2(p.x - 60, p.y + 16 * k)
+	draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), 10, Color(0, 0, 0, 0.9))
+	draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), RED if pile == "deck" and n <= 5 else Color.WHITE)
+	_draw_zone_label(p, pile.to_upper(), k)
 
 
 ## Zone name on a dark strip along the bottom of the zone (stays readable over pile art).
-func _draw_zone_label(p: Vector2, text: String) -> void:
-	var strip := Rect2(p.x - CARD.x / 2, p.y + CARD.y / 2 - 24, CARD.x, 24)
+func _draw_zone_label(p: Vector2, text: String, k := 1.0) -> void:
+	var w := CARD.x * k
+	var strip := Rect2(p.x - w / 2, p.y + CARD.y * k / 2 - 24 * k, w, 24 * k)
 	draw_rect(strip, Color(0, 0, 0, 0.6))
-	draw_string(_font, Vector2(strip.position.x, strip.position.y + 18), text, HORIZONTAL_ALIGNMENT_CENTER,
-		CARD.x, 16, Color(1, 1, 1, 0.7))
+	draw_string(_font, Vector2(strip.position.x, strip.position.y + 18 * k), text, HORIZONTAL_ALIGNMENT_CENTER,
+		w, maxi(8, int(16 * k)), Color(1, 1, 1, 0.7))
 
 
 # ── Event playback ───────────────────────────────────────────────────────────
@@ -944,7 +1026,7 @@ func _act(side: String, action: Dictionary) -> bool:
 		return false
 	if _online:
 		# The server applies the move and sends back what happened (mp:update)
-		if _awaiting or side != "player" or not Net.send("mp:action", {"matchId": _match_id, "action": action}):
+		if _awaiting or side != "player" or not Net.send("ffa:action" if _ffa else "mp:action", {"matchId": _match_id, "action": action}):
 			return false
 		_awaiting = true
 		_clear_highlights()
@@ -964,6 +1046,7 @@ func _pump() -> void:
 	_clear_highlights()
 	while not _queue.is_empty():
 		var ev: Dictionary = _queue.pop_front()
+		_pace()
 		await _play(ev)
 		counts = ev.counts
 		_refresh_hud()
@@ -1021,7 +1104,7 @@ func _start_match_session(ranked: bool) -> void:
 func _track(ev: Dictionary) -> void:
 	match ev.type:
 		"summon", "set", "hustle":
-			if ev.side == "player":
+			if ev.side == "player" and not ev.get("set", false):
 				_cards_played += 1
 		"clash":
 			var v: CardView = field[ev.side].get(ev.from)
@@ -1118,9 +1201,13 @@ func _play(ev: Dictionary) -> void:
 			await _ev_leader_heal(ev)
 		"leader_down":
 			await _ev_leader_down(ev)
+		"eliminated":
+			await _ev_eliminated(ev)
 		"prompt":
-			if ev.side == "opponent" or ev.side in ai_sides:
-				_float_text(Vector2(1080, DIVIDER_Y), "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…", Color(1, 1, 1, 0.8), 30)
+			if ev.side != "player" or ev.side in ai_sides:
+				var who: String = ("%s IS DECIDING…" % str(_names.get(ev.side, "OPPONENT")).to_upper()) if _ffa \
+					else "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…"
+				_float_text(Vector2(1080, DIVIDER_Y), who, Color(1, 1, 1, 0.8), 30)
 				await _wait(0.35)
 
 
@@ -1134,11 +1221,11 @@ func _ev_draw(ev: Dictionary) -> void:
 	_layout_hand(side)
 	Sfx.play("draw", randf_range(0.92, 1.12))
 	var start := v.position
-	var end_scale: float = HAND_SCALE if side == "player" else OPP_HAND_SCALE
+	var end_scale: float = v.home_scale
 	var t := create_tween()
 	t.tween_method(func(k: float):
-		v.position = start.lerp(v.home, k) + Vector2(0, -110.0 * sin(PI * k))
-		v.scale = Vector2.ONE * lerpf(1.0, end_scale, k)
+		v.position = start.lerp(v.home, k) + Vector2(0, -110.0 * sin(PI * k) * v.board_scale)
+		v.scale = Vector2.ONE * lerpf(1.0, end_scale, k) * v.board_scale
 	, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if side == "player" and not _spectating:
 		get_tree().create_timer(0.12).timeout.connect(func():
@@ -1158,7 +1245,7 @@ func _ev_mulligan(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var mine := side == "player"
 	Sfx.play("whoosh", 0.9)
-	_float_text(Vector2(1080, DIVIDER_Y), "NEW HAND" if mine else "OPPONENT REDRAWS", BLUE if mine else RED, 40)
+	_float_text(Vector2(1080, DIVIDER_Y), "NEW HAND" if mine else ("%s REDRAWS" % str(_names.get(side, "OPPONENT")).to_upper() if _ffa else "OPPONENT REDRAWS"), BLUE if mine else RED, 40)
 	var views: Array = hand[side].duplicate()
 	hand[side].clear()
 	for v in views:
@@ -1170,7 +1257,7 @@ func _ev_mulligan(ev: Dictionary) -> void:
 			v.flip(false)
 		var t := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		t.tween_property(v, "position", pile_pos(side, "deck"), 0.3)
-		t.tween_property(v, "scale", Vector2.ONE, 0.3)
+		t.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.3)
 		t.chain().tween_callback(v.queue_free)
 		await _wait(0.05)
 	await _wait(0.35)
@@ -1180,8 +1267,8 @@ func _ev_turn(ev: Dictionary) -> void:
 	var mine: bool = ev.side == "player"
 	_cancel_interaction()
 	_ui.turn_num.text = "TURN %d" % ev.turn
-	_ui.turn_who.text = _turn_text(mine)
-	_ui.turn_who.label_settings.font_color = BLUE if mine else RED
+	_ui.turn_who.text = _turn_text(mine, ev.side)
+	_ui.turn_who.label_settings.font_color = BLUE if mine else _side_color(ev.side)
 	Sfx.play("turn", 1.0 if mine else 0.84)
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
@@ -1193,7 +1280,7 @@ func _ev_turn(ev: Dictionary) -> void:
 				v.downed = false
 	if mine and not _watching():
 		Game.alert(false)
-	await _sweep_banner(_turn_text(mine), BLUE if mine else RED)
+	await _sweep_banner(_turn_text(mine, ev.side), BLUE if mine else _side_color(ev.side))
 
 
 func _ev_phase(ev: Dictionary) -> void:
@@ -1296,10 +1383,22 @@ func _ev_set(ev: Dictionary) -> void:
 	v.z_index = 10
 
 
+## A Hustle activated where it was set face-down in the back row: its card, now shown.
+func _from_set(ev: Dictionary) -> CardView:
+	var side: String = ev.side
+	var v: CardView = field[side].get(int(ev.slot))
+	field[side].erase(int(ev.slot))
+	if v == null:
+		v = _new_view(ev.card, side, false)
+		v.position = slot_pos(side, int(ev.slot))
+	v.set_card(ev.card)
+	return v
+
+
 func _ev_hustle(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var c: Dictionary = ev.card
-	var v := _take_from_hand(side, c.uid, c)
+	var v := _from_set(ev) if ev.get("set", false) else _take_from_hand(side, c.uid, c)
 	v.z_index = 450
 	_show_detail(c)
 	if not v.face_up:
@@ -1318,7 +1417,7 @@ func _ev_hustle(ev: Dictionary) -> void:
 func _ev_lasting(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var c: Dictionary = ev.card
-	var v := _take_from_hand(side, c.uid, c)
+	var v := _from_set(ev) if ev.get("set", false) else _take_from_hand(side, c.uid, c)
 	var target := slot_pos(side, ev.slot)
 	field[side][ev.slot] = v
 	v.home = target
@@ -1357,7 +1456,7 @@ func _ev_attack(ev: Dictionary) -> void:
 	var v: CardView = field[side].get(ev.from)
 	if v == null:
 		return
-	var tpos := _target_pos(DuelState.other(side), ev.target)
+	var tpos := _target_pos(str(ev.get("foe", DuelState.other(side))), ev.target)
 	_arrow.show_attack(v.home, tpos, RED)
 	Sfx.play("whoosh", 0.7)
 	v.z_index = 430
@@ -1409,7 +1508,7 @@ func _ev_ambush(ev: Dictionary) -> void:
 
 func _ev_clash(ev: Dictionary) -> void:
 	var side: String = ev.side
-	var foe := DuelState.other(side)
+	var foe := str(ev.get("foe", DuelState.other(side)))
 	var a: CardView = field[side].get(ev.from)
 	if a == null:
 		_clear_attack_line()
@@ -1425,7 +1524,7 @@ func _ev_clash(ev: Dictionary) -> void:
 	if d:
 		_float_text(d.home, "%s %d" % [ev.vs, ev.def], RED if ev.vs == "ATK" else BLUE, 44)
 	elif direct:
-		_float_text(tpos + Vector2(0, -60 if foe == "opponent" else 60), "DIRECT ATTACK", RED, 44)
+		_float_text(tpos + Vector2(0, -60 if foe != "player" else 60), "DIRECT ATTACK", RED, 44)
 	# A big swing: direct hits, hits on a leader, and attacks that clearly overpower the target
 	var big: bool = direct or ev.target == DuelState.LEADER or int(ev.att) - int(ev.def) >= 800
 	await _wait(0.36)
@@ -1441,14 +1540,14 @@ func _ev_clash(ev: Dictionary) -> void:
 		_cam_focus(a.home.lerp(tpos, 0.5), 1.08 if big else 1.04, 0.32)
 		var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		t.tween_property(a, "position", a.home - dir * 54, 0.24)
-		t.tween_property(a, "scale", Vector2.ONE * 1.32, 0.24)
+		t.tween_property(a, "scale", Vector2.ONE * 1.32 * a.board_scale, 0.24)
 		await t.finished
 		await _wait(0.07)
 		# Strike
 		Sfx.play("whoosh", 1.3)
 		t = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 		t.tween_property(a, "position", a.home.lerp(tpos, 0.8), 0.09)
-		t.tween_property(a, "scale", Vector2.ONE * 1.12, 0.09)
+		t.tween_property(a, "scale", Vector2.ONE * 1.12 * a.board_scale, 0.09)
 		await t.finished
 		# Contact
 		_strike_at = tpos
@@ -1502,7 +1601,7 @@ func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 	_cam_focus(a.home.lerp(tpos, 0.35), 1.05 if big else 1.03, 0.3)
 	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	t.tween_property(a, "position", a.home - dir * 30.0, 0.26)
-	t.tween_property(a, "scale", Vector2.ONE * 1.22, 0.26)
+	t.tween_property(a, "scale", Vector2.ONE * 1.22 * a.board_scale, 0.26)
 	var orb := LaserOrb.new()
 	orb.glow = LASER_GLOW
 	orb.core = LASER_CORE
@@ -1624,7 +1723,7 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	# ...and dropped in from above
 	v.position = target + Vector2(0, -420)
 	v.rotation = v.home_rot
-	v.scale = Vector2.ONE * (1.7 if heavy else 1.5)
+	v.scale = Vector2.ONE * (1.7 if heavy else 1.5) * v.board_scale
 	v.modulate.a = 1.0
 	await v.move_to(target, 1.0, v.home_rot, 0.2 if heavy else 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 	v.kick(Vector2(0, 1), 18.0)
@@ -1795,7 +1894,7 @@ func _gun_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: boo
 	_cam_focus(a.home.lerp(tpos, 0.35), 1.04, 0.25)
 	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	t.tween_property(a, "position", a.home - dir * 18.0, 0.18)
-	t.tween_property(a, "scale", Vector2.ONE * 1.18, 0.18)
+	t.tween_property(a, "scale", Vector2.ONE * 1.18 * a.board_scale, 0.18)
 	await t.finished
 	_clear_attack_line()
 	var shots := 9 if big else 7
@@ -1965,7 +2064,7 @@ func _ev_ko(ev: Dictionary) -> void:
 		_burst(v.position, _clan_color(v.card), 24, 300, 0.6)
 		var t := create_tween().set_parallel()
 		t.tween_property(v, "modulate:a", 0.0, 0.35)
-		t.tween_property(v, "scale", Vector2.ONE * 0.7, 0.35)
+		t.tween_property(v, "scale", Vector2.ONE * 0.7 * v.board_scale, 0.35)
 		await t.finished
 		if v == _hovered:
 			_hovered = null
@@ -1988,7 +2087,7 @@ func _ev_ko(ev: Dictionary) -> void:
 	await _hit_stop(0.07)
 	var t := create_tween().set_parallel()
 	t.tween_property(v, "rotation", v.rotation + randf_range(-0.6, 0.6), 0.16)
-	t.tween_property(v, "scale", Vector2.ONE * 1.12, 0.16)
+	t.tween_property(v, "scale", Vector2.ONE * 1.12 * v.board_scale, 0.16)
 	await t.finished
 	await _to_gutter(v, side)
 
@@ -2010,7 +2109,7 @@ func _ev_damage(ev: Dictionary) -> void:
 		_finisher(_panels[side].root)
 	elif side == "player" and int(ev.morale) <= DuelState.START_MORALE / 4:
 		Sfx.play("heartbeat", 1.0, -2.0)
-	_float_text(root.position + root.size / 2 + Vector2(0, 40 if side == "opponent" else -40),
+	_float_text(root.position + root.size / 2 + Vector2(0, 40 if side != "player" else -40),
 		"-%d" % amount, RED, 72)
 	if side == "player":
 		_screen_flash(RED, 0.22)
@@ -2253,8 +2352,9 @@ func _ev_move(ev: Dictionary) -> void:
 
 
 func _ev_retarget(ev: Dictionary) -> void:
-	_arrow.to = _target_pos(DuelState.other(ev.side), ev.target)
-	var be: CardView = field[DuelState.other(ev.side)].get(ev.target)
+	var foe := str(ev.get("foe", DuelState.other(ev.side)))
+	_arrow.to = _target_pos(foe, ev.target)
+	var be: CardView = field.get(foe, {}).get(ev.target)
 	if be:
 		_ring(be.home, BLUE, 1.4)
 		be.flash()
@@ -2355,7 +2455,7 @@ func _ev_game_over(ev: Dictionary) -> void:
 	_cancel_interaction()
 	var won: bool = ev.winner == "player"
 	_end_reason = str(ev.get("reason", "morale"))
-	if _end_reason == "deck_out":
+	if _end_reason == "deck_out" and not _ffa:
 		var loser := "opponent" if won else "player"
 		_stamp(pile_pos(loser, "deck"), "DECKED OUT", RED)
 		shake(12)
@@ -2417,7 +2517,7 @@ func _finish_match(won: bool) -> void:
 		snap = ImageTexture.create_from_image(get_viewport().get_texture().get_image())
 	Game.match_result = {
 		"result": "win" if won else "loss",
-		"player_morale": duel.sides.player.morale, "opponent_morale": duel.sides.opponent.morale,
+		"player_morale": duel.sides.player.morale, "opponent_morale": duel.sides.get("opponent", {}).get("morale", "—"),
 		"turns": duel.turn, "cards_played": _cards_played, "mvp": mvp,
 		"match_id": _match_id, "snapshot": snap, "tutorial": _tutorial != null, "reason": _end_reason,
 	}
@@ -2443,6 +2543,8 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.achievements = _over.get("achievements", [])
 		if _over.has("result"):
 			Game.match_result.result = _over.result
+		if _ffa:
+			_ffa_result_into(Game.match_result, _over)
 	Game.go("post_match")
 
 
@@ -2451,7 +2553,9 @@ func _finish_match(won: bool) -> void:
 func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
+	v.board_scale = _sc(side)
 	v.setup(c, side, up)
+	v.scale = Vector2.ONE * v.board_scale   # (starts at its board's size: FFA opponents' are smaller)
 	v.set_back(_back_for(side), CardDB.back_style(_back_clan(side)))
 	return v
 
@@ -2492,6 +2596,7 @@ func _take_from_hand(side: String, uid: int, c: Dictionary) -> CardView:
 	v.stop_moving()
 	v.set_card(c)
 	v.glow = 0.0
+	v.board_scale = _sc(side)   # (FFA: your hand is full size, your board smaller)
 	_layout_hand(side)
 	return v
 
@@ -2499,6 +2604,9 @@ func _take_from_hand(side: String, uid: int, c: Dictionary) -> CardView:
 func _layout_hand(side: String) -> void:
 	var views: Array = hand[side]
 	var n := views.size()
+	if _ffa and side != "player":
+		_layout_foe_hand(side, views)
+		return
 	var s: float = HAND_SCALE if side == "player" else OPP_HAND_SCALE
 	var w := CARD.x * s
 	var span := HAND_SPAN if side == "player" else 640.0
@@ -2507,6 +2615,7 @@ func _layout_hand(side: String) -> void:
 		gap = minf(w + (10.0 if side == "player" else 4.0), (span - w) / (n - 1))
 	for i in n:
 		var v: CardView = views[i]
+		v.board_scale = 1.0
 		v.home = Vector2(HAND_CX - (n - 1) * gap / 2.0 + i * gap, HAND_Y if side == "player" else OPP_HAND_Y)
 		v.home_scale = s
 		v.home_rot = 0.0
@@ -2525,7 +2634,7 @@ func _to_gutter(v: CardView, side: String) -> void:
 	v.stop_moving()
 	var t := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	t.tween_property(v, "position", pile_pos(side, "gutter"), 0.32)
-	t.tween_property(v, "scale", Vector2.ONE, 0.32)
+	t.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.32)
 	t.tween_property(v, "rotation", 0.0, 0.32)
 	t.tween_property(v, "modulate:a", 0.0, 0.2).set_delay(0.14)
 	await t.finished
@@ -2548,7 +2657,15 @@ func _wait(seconds: float) -> void:
 func _hit_stop(seconds: float) -> void:
 	Engine.time_scale = 0.08
 	await get_tree().create_timer(seconds, true, false, true).timeout
-	Engine.time_scale = _base_speed
+	Engine.time_scale = _base_speed * _catch_up
+
+
+## Events waiting to be shown: play faster until they're caught up (x2 from 15 waiting, x3.5 from 40).
+func _pace() -> void:
+	var waiting := _queue.size()
+	_catch_up = 1.0 if waiting < 15 else 2.0 if waiting < 40 else 3.5
+	if Engine.time_scale >= _base_speed * 0.99:   # (not in the middle of a hit-stop)
+		Engine.time_scale = _base_speed * _catch_up
 
 
 func _impact(pos: Vector2, heavy: bool) -> void:
@@ -2870,7 +2987,7 @@ func _finisher(panel: Control) -> void:
 	_screen_flash(Color.WHITE, 0.6)
 	Engine.time_scale = 0.3
 	await get_tree().create_timer(0.7, true, false, true).timeout
-	Engine.time_scale = _base_speed
+	Engine.time_scale = _base_speed * _catch_up
 
 
 # ── Text, banners and callouts ───────────────────────────────────────────────
@@ -3327,8 +3444,10 @@ func _update_next_btn() -> void:
 		return
 	var mine := duel.active == "player" and not "player" in ai_sides
 	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
-	if not mine:
-		b.text = "OPPONENT'S TURN"
+	if _out.has("player"):
+		b.text = "YOU'RE OUT · %s" % _place_text(int(_out.player))
+	elif not mine:
+		b.text = ("%s'S TURN" % str(_names.get(duel.active, "THEIR")).to_upper()) if _ffa else "OPPONENT'S TURN"
 	else:
 		match duel.phase:
 			"deployment":
@@ -3482,7 +3601,7 @@ func _player_ready() -> void:
 	for slot in field.player:
 		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
 			or duel.can_use_ability("player", slot)
-		var can_activate := not duel.activations("player", slot).is_empty()
+		var can_activate := not duel.activations("player", slot).is_empty() or _set_ready(slot)
 		if ready or can_activate:
 			# Gold: can act. Teal pulse: an ability can be activated (gold to teal when both)
 			field.player[slot].glow_color = GOLD if ready else TEAL
@@ -3573,6 +3692,8 @@ func _show_choice(p: Dictionary) -> void:
 	for o in p.options:
 		var b := Button.new()
 		b.text = o.label
+		if _ffa and str(p.get("key", "")) == "foe" and o.has("side"):   # "choose an opponent": their name and Morale
+			b.text = "%s  ·  %d MORALE" % [str(_names.get(o.side, o.label)).to_upper(), int(duel.sides.get(o.side, {}).get("morale", 0))]
 		b.custom_minimum_size = Vector2(420, 44)
 		b.pressed.connect(_pick.bind(str(o.id)))
 		col.add_child(b)
@@ -3623,7 +3744,7 @@ func _show_target_choice(p: Dictionary) -> void:
 
 ## A prompt that picks a card on the field: the glowing card at p (if any) is the answer.
 func _choose_at(p: Vector2) -> bool:
-	for side in ["player", "opponent"]:
+	for side in _sides:
 		var slot := _slot_at(side, p)
 		if slot >= 0 and _valid.has("%s:%d" % [side, slot]):
 			for o in duel.pending.get("options", []):
@@ -3639,12 +3760,23 @@ func _pick(option: String) -> void:
 	_act("player", {"kind": "choose", "option": option})
 
 
+## Whether card c from the hand can be set face-down somewhere in the back row (an Ambush, a Hustle).
+func _settable(c: Dictionary) -> bool:
+	return DuelState.BACK.any(func(s): return duel.can_set("player", c, s))
+
+
+## Whether the Hustle set in slot can be activated now.
+func _set_ready(slot: int) -> bool:
+	var c = duel.card_at("player", slot)
+	return c != null and duel.set_hustle_slot("player", c) == slot and duel.can_hustle("player", c)
+
+
 func _playable(c: Dictionary) -> bool:
 	match c.get("cardType", ""):
 		"gang_member":
 			return duel.can_summon_somewhere("player", c)
 		"ambush":
-			return DuelState.BACK.any(func(s): return duel.can_set("player", c, s))
+			return _settable(c)
 		"hustle":
 			return duel.can_hustle("player", c)
 	return false
@@ -3748,8 +3880,8 @@ func _update_hover() -> void:
 		else:
 			_show_detail(v.card, v.stats(), _live_statuses(v))
 		return
-	for side in ["player", "opponent"]:
-		if Rect2(pile_pos(side, "gutter") - CARD / 2, CARD).has_point(m):
+	for side in _sides:
+		if Rect2(pile_pos(side, "gutter") - CARD * _sc(side) / 2, CARD * _sc(side)).has_point(m):
 			var top: String = counts.get(side, {}).get("gutter_top", "")
 			if top != "":
 				var shown: Dictionary = CardDB.get_card(top).duplicate()
@@ -3758,9 +3890,9 @@ func _update_hover() -> void:
 				_show_detail(shown)
 		# The deck and Hideout show that side's card back, with how many cards are in them
 		for pile in ["deck", "hideout"]:
-			if Rect2(pile_pos(side, pile) - CARD / 2, CARD).has_point(m):
+			if Rect2(pile_pos(side, pile) - CARD * _sc(side) / 2, CARD * _sc(side)).has_point(m):
 				var n: int = counts.get(side, {}).get(pile, 0)
-				var whose := "Your" if side == "player" else "Their"
+				var whose := "Your" if side == "player" else ("%s's" % _names.get(side, "Their")) if _ffa else "Their"
 				_show_detail({"name": "%s %s" % [whose, "Deck" if pile == "deck" else "Hideout"], "cardType": "",
 					"uid": "%s:%s:%d" % [side, pile, n], "back_side": side,
 					"effectText": "%d card%s%s" % [n, "" if n == 1 else "s",
@@ -3797,6 +3929,9 @@ func _on_press() -> void:
 				_cancel_and_refresh()
 			return
 		"target":
+			if _ffa:
+				_target_ffa(m)
+				return
 			var slot := _slot_at("opponent", m)
 			var leader: CardView = leaders.get("opponent")
 			if leader and leader.glow > 0.0 and leader.hit(m):
@@ -3860,6 +3995,21 @@ func _on_field_click(slot: int) -> void:
 	var abilities: Array = duel.activations("player", slot)
 	for k in abilities:
 		opts.append([_activate_label(slot, k, abilities.size() > 1), true, _field_action.bind({"kind": "activate", "slot": slot, "fx": k})])
+	var reason := ""
+	var set_card = duel.card_at("player", slot)
+	if set_card != null and duel.set_hustle_slot("player", set_card) == slot:
+		# A Hustle you set face-down: activate it (from the turn after it was set), paying for it now
+		var cost: int = duel.cost_of("player", set_card)
+		var ok: bool = duel.can_hustle("player", set_card)
+		if not ok:
+			if int(set_card.get("set_turn", -1)) == duel.turn:
+				reason = "Set this turn: activate it from your next turn"
+			elif duel.sides.player.authority < cost:
+				reason = "Needs %d Authority (you have %d)" % [cost, duel.sides.player.authority]
+			else:
+				reason = "Requirements not met"
+		opts.append(["ACTIVATE %s%s" % [str(set_card.name).to_upper(), "  (%d AUTHORITY)" % cost if cost > 0 else ""], ok,
+			_field_action.bind({"kind": "hustle", "uid": int(set_card.uid)})])
 	if opts.is_empty():
 		return
 	if opts.size() == 1 and can_attack:
@@ -3870,7 +4020,7 @@ func _on_field_click(slot: int) -> void:
 	v.glow_color = GOLD
 	v.glow = 1.2
 	opts.append(["CANCEL", true, _cancel_and_refresh])
-	_menu = _make_menu(opts, "", v.home + Vector2(0, -CARD.y / 2 - 12))
+	_menu = _make_menu(opts, reason, v.home + Vector2(0, -CARD.y / 2 - 12))
 
 
 func _field_action(action: Dictionary) -> void:
@@ -3885,6 +4035,9 @@ func _begin_target(slot: int) -> void:
 	_selected_slot = slot
 	field.player[slot].glow_color = GOLD
 	field.player[slot].glow = 1.2
+	if _ffa:
+		_begin_target_ffa(slot)
+		return
 	var targets := duel.attack_targets("player")
 	for t in targets:
 		if t >= 0:
@@ -3941,6 +4094,8 @@ func _open_hand_menu(v: CardView) -> void:
 			opts.append(["ACTIVATE", ok, func():
 				_cancel_interaction()
 				_act("player", {"kind": "hustle", "uid": v.uid})])
+			# Or face-down in the back row, to activate on a later turn (paid for then)
+			opts.append(["SET FACE DOWN", _settable(c), func(): _begin_place(v, "set")])
 	opts.append(["CANCEL", true, _cancel_and_refresh])
 	_menu = _make_menu(opts, reason, Vector2(v.home.x, HAND_LIFT_Y - CARD.y * HOVER_SCALE / 2 - 12))
 
@@ -4037,7 +4192,7 @@ func _place(slot: int) -> void:
 
 func _start_drag() -> void:
 	var v := _press
-	if not is_instance_valid(v) or not _playable(v.card):
+	if not is_instance_valid(v) or not (_playable(v.card) or _settable(v.card)):
 		_press = null
 		return
 	_cancel_interaction()
@@ -4064,7 +4219,8 @@ func _start_drag() -> void:
 	elif over and not _valid.values().has(GREEN):
 		_show_prompt("Drop %s on one of your characters to deploy over it (it goes to the Gutter)" % c.name)
 	if c.cardType == "hustle":
-		_show_prompt("Release on the board to activate")
+		_show_prompt("Release on the board to activate, or on an empty back-row slot to set it face down" if duel.can_hustle("player", c)
+			else "Release on an empty back-row slot to set it face down (activate it on a later turn)")
 	queue_redraw()
 
 
@@ -4093,7 +4249,7 @@ func _end_drag() -> void:
 	elif c.cardType == "gang_member" and (duel.can_summon("player", c, slot) or duel.can_summon("player", c, slot, slot)):
 		_ask_position(v, slot)   # ATK or DEF? (and over one of your characters: it goes to the Gutter)
 		return
-	elif c.cardType == "ambush" and duel.can_set("player", c, slot):
+	elif c.cardType in ["ambush", "hustle"] and duel.can_set("player", c, slot):
 		done = _act("player", {"kind": "set", "uid": v.uid, "slot": slot})
 	elif c.cardType == "hustle" and m.y < HAND_Y - 140 and duel.can_hustle("player", c):
 		done = _act("player", {"kind": "hustle", "uid": v.uid})
@@ -4160,6 +4316,10 @@ func _cancel_interaction() -> void:
 	if _direct_btn and is_instance_valid(_direct_btn):
 		_direct_btn.queue_free()
 	_direct_btn = null
+	for b in _direct_btns:
+		if is_instance_valid(b):
+			b.queue_free()
+	_direct_btns.clear()
 	_valid.clear()
 	_tribute_picks = []
 	_hide_prompt()
@@ -4177,11 +4337,11 @@ func _cancel_interaction() -> void:
 
 ## The pile under p that can be looked through: [side, "gutter" | "hideout"] (your own Hideout only), or [].
 func _pile_at(p: Vector2) -> Array:
-	for side in ["player", "opponent"]:
+	for side in _sides:
 		for pile in ["gutter", "hideout"]:
 			if pile == "hideout" and side != "player":
 				continue   # the opponent's Hideout stays secret
-			if Rect2(pile_pos(side, pile) - CARD / 2, CARD).has_point(p):
+			if Rect2(pile_pos(side, pile) - CARD * _sc(side) / 2, CARD * _sc(side)).has_point(p):
 				return [side, pile]
 	return []
 
@@ -4302,6 +4462,10 @@ func _on_menu_choice(choice: String) -> void:
 			SettingsPanel.open(overlay, false)
 		"CONCEDE":
 			_toggle_menu()
+			if _ffa:
+				UI.dialog(overlay, "LEAVE THE FREE-FOR-ALL?", "You're out, in the last place still open, and the others play on.", [
+					["CONCEDE", func(): Net.send("ffa:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
+				return
 			UI.dialog(overlay, "CONCEDE THE MATCH?", "Your opponent wins and the match is recorded as a loss.", [
 				["CONCEDE", func(): Net.send("mp:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
 		"STOP WATCHING":
@@ -4314,3 +4478,297 @@ func _on_menu_choice(choice: String) -> void:
 			get_tree().reload_current_scene()
 		"QUIT":
 			get_tree().quit()
+
+
+# ── Free-for-all (3-4 players) ───────────────────────────────────────────────
+# Every board is on screen: yours as in a duel, each opponent's smaller along the top (their plate
+# above it), in turn order after you (foe1, foe2, foe3). Attacks and card choices can go at any of
+# them; a player who goes out has their board darkened with their place.
+
+## Who's at the table, and where each opponent's board goes.
+func _setup_ffa_sides(start: Dictionary) -> void:
+	_ffa = true
+	var view: Dictionary = start.get("view", {})
+	var seats: Array = view.get("seats", []) if view.get("seats") is Array else []
+	_foes = seats.filter(func(x): return x != "player")
+	_foes.sort()
+	_sides = ["player"]
+	_sides.append_array(_foes)
+	hand = {}
+	field = {}
+	for side in _sides:
+		hand[side] = []
+		field[side] = {}
+	# Two columns; each row: a plate, then the board under it. Top: the first two opponents (in turn
+	# order, clockwise from you); bottom: you, and the third opponent on your right (with two
+	# opponents you're in the middle)
+	var k := GRID_K
+	var w := (RIGHT_X - LEFT_X + CARD.x) * k
+	var h := (ROWS.player[1] - ROWS.player[0] + CARD.y) * k
+	var cols := [GRID_X[0] + w / 2.0, GRID_X[1] - w / 2.0]
+	var tops := [10.0, 466.0]   # each row's plate; its board starts under it
+	var place := func(side: String, x: float, row: int) -> void:
+		_boards[side] = {"c": Vector2(x, tops[row] + PLATE_H + 6.0 + h / 2.0), "s": k,
+			"rows": "opponent" if row == 0 else "player", "plate": tops[row]}
+	for i in _foes.size():
+		if i < 2:
+			place.call(_foes[i], cols[i], 0)
+		else:
+			place.call(_foes[i], cols[1], 1)
+	place.call("player", cols[0] if _foes.size() > 2 else (GRID_X[0] + GRID_X[1]) / 2.0, 1)
+
+
+## Each opponent's plate (on the board, under the cards, so their hand fan shows on it).
+func _build_foe_plates(players: Dictionary) -> void:
+	for i in _foes.size():
+		var side: String = _foes[i]
+		var b: Dictionary = _boards[side]
+		var half: float = (RIGHT_X - LEFT_X + CARD.x) / 2.0 * float(b.s)
+		var p := Panel.new()
+		p.position = Vector2(b.c.x - half, float(b.plate))
+		p.size = Vector2(half * 2.0, PLATE_H)
+		p.z_index = 2
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cards_layer.add_child(p)
+		_build_plate(side, p, players.get(side, {}) if players.get(side) is Dictionary else {}, FOE_COLORS[i % FOE_COLORS.size()])
+	# Yours: a name tag over your board, like theirs (your Morale is on your panel)
+	var mine: Dictionary = _boards.get("player", {})
+	if mine.is_empty():
+		return
+	var prof: Dictionary = players.get("player", {}) if players.get("player") is Dictionary else {}
+	var w: float = (RIGHT_X - LEFT_X + CARD.x) * float(mine.s)
+	var tag := Panel.new()
+	tag.position = Vector2(mine.c.x - w / 2.0, float(mine.plate))
+	tag.size = Vector2(w, PLATE_H)
+	tag.z_index = 2
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_stylebox_override("panel", UI._glow(_box(INK, BLUE, 2, 8), BLUE, 0.6))
+	cards_layer.add_child(tag)
+	var av := TextureRect.new()
+	av.position = Vector2(8, 8)
+	av.size = Vector2(52, 52)
+	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	av.texture = UI.avatar(str(prof.get("avatar_url", "")) if prof.get("avatar_url") else "")
+	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(av)
+	var n := _label(20, Color.WHITE, true)
+	n.text = str(prof.get("username", Game.player.get("username", "YOU"))).to_upper().left(14)
+	n.position = Vector2(68, 4)
+	tag.add_child(n)
+	var sub := _label(12, BLUE)
+	sub.text = "YOU"
+	sub.position = Vector2(68, 30)
+	tag.add_child(sub)
+
+
+## A compact plate: picture, name, Morale (and its bar), Authority, hand and deck.
+func _build_plate(side: String, p: Panel, prof: Dictionary, accent: Color) -> void:
+	p.add_theme_stylebox_override("panel", UI._glow(_box(INK, accent, 2, 8), accent, 0.6))
+	var av := TextureRect.new()
+	av.position = Vector2(8, 8)
+	av.size = Vector2(52, 52)
+	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	av.texture = UI.avatar("cpu" if prof.get("cpu", false) else str(prof.get("avatar_url", "")) if prof.get("avatar_url") else "")
+	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(av)
+	var n := _label(20, Color.WHITE, true)
+	n.text = str(prof.get("username", "PLAYER")).to_upper().left(14)
+	n.position = Vector2(68, 4)
+	p.add_child(n)
+	var sub := _label(12, accent)
+	sub.text = "CPU" if prof.get("cpu", false) else "LV %d" % int(prof.get("level", 1))
+	sub.position = Vector2(68, 30)
+	p.add_child(sub)
+	var morale := _label(30, Color.WHITE, true)
+	morale.text = str(DuelState.START_MORALE)
+	morale.label_settings.outline_color = Color(accent, 0.8)
+	morale.size = Vector2(p.size.x - 16, 36)
+	morale.position = Vector2(8, 2)
+	morale.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	p.add_child(morale)
+	var track := ColorRect.new()
+	track.position = Vector2(68, 50)
+	track.size = Vector2(p.size.x - 76 - 110, 6)
+	track.color = Color(1, 1, 1, 0.08)
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(track)
+	var bar := ColorRect.new()
+	bar.size = track.size
+	bar.color = accent
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.add_child(bar)
+	var auth := _label(13, GOLD, true)
+	auth.position = Vector2(8, 64)
+	auth.pivot_offset = Vector2(0, 8)
+	p.add_child(auth)
+	var piles := _label(12, Color(0.62, 0.66, 0.82))
+	piles.position = Vector2(150, 66)
+	p.add_child(piles)
+	var flash := ColorRect.new()
+	flash.color = Color(1, 0.15, 0.15, 0)
+	flash.size = p.size
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(flash)
+	_panels[side] = {"root": p, "morale": morale, "bar": bar, "auth": auth, "piles": piles,
+		"flash": flash, "shown": float(DuelState.START_MORALE), "base": p.position, "accent": accent}
+
+
+## An opponent's colour (their plate's): red, orange, violet. You: blue.
+func _side_color(side: String) -> Color:
+	if side == "player":
+		return BLUE
+	return _panels.get(side, {}).get("accent", RED) if _ffa else RED
+
+
+## FFA: an opponent's hand is a small fan of card backs on the right of their plate.
+func _layout_foe_hand(side: String, views: Array) -> void:
+	var p: Control = _panels[side].root if _panels.has(side) else null
+	var right: float = p.position.x + p.size.x - 26.0 if p else _board_rect(side).end.x
+	var y: float = p.position.y + 62.0 if p else _board_rect(side).position.y
+	var n := views.size()
+	var gap := minf(11.0, 100.0 / maxf(1.0, n))
+	for i in n:
+		var v: CardView = views[i]
+		v.home = Vector2(right - (n - 1 - i) * gap, y)
+		v.home_scale = FOE_HAND / maxf(0.01, v.board_scale)
+		v.home_rot = 0.0
+		v.z_index = 20 + i
+		if not v.busy:
+			v.go_home(0.22)
+
+
+static func _place_text(place: int) -> String:
+	return {1: "1ST", 2: "2ND", 3: "3RD"}.get(place, "%dTH" % place)
+
+
+## Attack: the targets glow on every opponent's board; DIRECT buttons on the plates of those who
+## have nobody standing; a dormant leader glows too.
+func _begin_target_ffa(slot: int) -> void:
+	var parts := {}
+	for foe in duel.foes_of("player"):
+		var targets: Array = duel.attack_targets("player", foe)
+		for t in targets:
+			if t >= 0:
+				_valid["%s:%d" % [foe, t]] = RED
+				parts["choose a character"] = true
+		if DuelState.LEADER in targets and leaders.has(foe):
+			leaders[foe].glow_color = RED
+			leaders[foe].glow = 1.0
+			parts["hit a dormant leader's Influence"] = true
+		if DuelState.DIRECT in targets and _panels.has(foe):
+			var root: Control = _panels[foe].root
+			var b := Button.new()
+			b.text = "DIRECT ⚔"
+			b.custom_minimum_size = Vector2(150, 40)
+			b.add_theme_font_size_override("font_size", 20)
+			b.add_theme_stylebox_override("normal", _box(Color("4a0d14"), RED, 2, 8))
+			b.position = Vector2(root.position.x + root.size.x / 2 - 75, root.position.y + root.size.y + 2)
+			b.z_index = 60
+			b.pressed.connect(func():
+				_cancel_interaction()
+				_act("player", {"kind": "attack", "from": slot, "target": DuelState.DIRECT, "foe": foe}))
+			cards_layer.add_child(b)
+			_direct_btns.append(b)
+			parts["attack someone directly"] = true
+	var text := ", ".join(parts.keys())
+	_show_prompt(text.left(1).to_upper() + text.substr(1) + "  ·  right-click to cancel")
+	queue_redraw()
+
+
+func _target_ffa(m: Vector2) -> void:
+	var from := _selected_slot
+	for foe in duel.foes_of("player"):
+		var slot := _slot_at(foe, m)
+		var leader: CardView = leaders.get(foe)
+		if leader and leader.glow > 0.0 and leader.hit(m):
+			slot = DuelState.LEADER
+		if _valid.has("%s:%d" % [foe, slot]) or slot == DuelState.LEADER:
+			_cancel_interaction()
+			_act("player", {"kind": "attack", "from": from, "target": slot, "foe": foe})
+			return
+	_cancel_and_refresh()
+
+
+## A player is out (their place): their cards leave and their board goes dark.
+func _ev_eliminated(ev: Dictionary) -> void:
+	var side: String = ev.side
+	_out[side] = int(ev.place)
+	Sfx.play("ko", 0.7)
+	Sfx.play("boom", 0.8, -4.0)
+	shake(16)
+	for slot in field.get(side, {}).keys():
+		var v: CardView = field[side][slot]
+		if is_instance_valid(v):
+			var t := v.create_tween()
+			t.tween_property(v, "modulate:a", 0.0, 0.5)
+			t.tween_callback(v.queue_free)
+	field[side] = {}
+	for v in hand.get(side, []):
+		if is_instance_valid(v):
+			v.queue_free()
+	hand[side] = []
+	if leaders.has(side):
+		leaders[side].queue_free()
+		leaders.erase(side)
+	if _panels.has(side):
+		_panels[side].root.modulate = Color(0.55, 0.55, 0.6, 0.85)
+	var at := _board_rect(side).get_center()
+	_float_text(at, "%s OUT · %s" % ["YOU'RE" if side == "player" else str(_names.get(side, "")).to_upper(), _place_text(int(ev.place))], RED, 48)
+	_log("%s %s out (%s)" % [_who(side), "are" if side == "player" else "is", _place_text(int(ev.place))], side)
+	queue_redraw()
+	_update_next_btn()
+	await _wait(0.9)
+
+
+## You're out (ffa:out): your place and rewards, and keep watching or leave.
+func _show_out_panel(data: Dictionary) -> void:
+	if _ui.has("out_panel") and is_instance_valid(_ui.out_panel):
+		return
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), RED, 3, 12))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	box.add_child(col)
+	var title := _label(48, RED, true)
+	title.text = "YOU FINISHED %s" % _place_text(int(data.get("place", 0)))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var r: Dictionary = data.get("rewards", {}) if data.get("rewards") is Dictionary else {}
+	if not r.is_empty():
+		var gain := _label(22, GOLD, true)
+		gain.text = "+%d XP    ·    +%d KARAT" % [int(r.get("xpEarned", 0)), int(r.get("karatEarned", 0))]
+		gain.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(gain)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	col.add_child(row)
+	row.add_child(UI.button("KEEP WATCHING", func():
+		if is_instance_valid(box):
+			box.queue_free(), Vector2(240, 56)))
+	row.add_child(UI.button("LEAVE", func():
+		Net.send("ffa:quit")
+		Game.match_result = {"result": "loss", "online": true, "mode": "ffa", "turns": duel.turn,
+			"player_morale": 0, "opponent_morale": "—", "cards_played": _cards_played, "mvp": {}, "reason": "morale"}
+		_ffa_result_into(Game.match_result, data)
+		Game.go("post_match"), Vector2(200, 56), RED))
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, DIVIDER_Y - sz.y / 2)
+	_ui.out_panel = box
+
+
+## FFA results for the post-match screen: place, everyone's places and who they were, rewards.
+func _ffa_result_into(r: Dictionary, data: Dictionary) -> void:
+	r.ffa = true
+	r.mode = "ffa"
+	r.place = int(data.get("place", 0))
+	r.places = data.get("places", {})
+	r.players = data.get("players", {})
+	r.result = "win" if r.place == 1 else "loss"
+	if data.get("rewards") is Dictionary:
+		r.rewards = data.rewards
+	if data.get("achievements") is Array:
+		r.achievements = data.achievements

@@ -12,6 +12,7 @@ const SCREENS := {
 	"fight_mode": "res://scenes/fight_mode.tscn",
 	"rps": "res://scenes/rps.tscn",
 	"matchmaking": "res://scenes/matchmaking.tscn",
+	"ffa_lobby": "res://scenes/ffa_lobby.tscn",
 	"duel": "res://scenes/duel.tscn",
 	"post_match": "res://scenes/post_match.tscn",
 	"shop": "res://scenes/shop.tscn",
@@ -45,7 +46,7 @@ const ErrorReport := preload("res://scripts/error_report.gd")
 const ERROR_SEND_SECS := 20.0
 const UPDATE_CHECK_SECS := 300.0   # while the game is open: is there a new version?
 ## Screens where an update prompt would interrupt play (it waits for the next check)
-const BUSY_SCREENS := ["boot", "duel", "matchmaking", "rps", "post_match"]
+const BUSY_SCREENS := ["boot", "duel", "matchmaking", "ffa_lobby", "rps", "post_match"]
 
 var settings := DEFAULT_SETTINGS.duplicate()
 var player := {}            # /api/profile/me

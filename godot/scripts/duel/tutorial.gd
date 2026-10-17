@@ -233,7 +233,7 @@ func _build_steps() -> void:
 		{"type": INFO, "mark": func(): return _view_rect(screen.leaders.get("player")),
 			"text": "Your own [b]Leader[/b] waits here, Dormant, giving its bonus. When its condition is met (it's written on the card), it [b]AWAKENS[/b]: you choose a lane and it joins the fight as a character.\n\nA Dormant leader can be attacked, like you just did to theirs, so keep it in mind."},
 		{"type": INFO, "last": true,
-			"text": "That's the basics! You'll also meet:\n• [b]Ambush[/b] cards: set face-down in your back row, they spring when you're attacked.\n• [b]Hustles[/b]: one-shot effects.\n• Card effects of every kind. Hover any card to read it.\n\nNow finish them off!"},
+			"text": "That's the basics! You'll also meet:\n• [b]Ambush[/b] cards: set face-down in your back row, they spring when you're attacked.\n• [b]Hustles[/b]: one-shot effects (or set them face-down to use on a later turn).\n• Card effects of every kind. Hover any card to read it.\n\nNow finish them off!"},
 	]
 
 

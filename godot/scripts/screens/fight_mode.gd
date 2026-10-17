@@ -25,9 +25,12 @@ func _ready() -> void:
 		{"id": "cpu", "title": "VS CPU", "color": Color("b388ff"),
 			"sub": "Practice against the AI" + ("\nOffline: starter deck, no rewards" if Game.offline else ""),
 			"locked": false},
+		{"id": "ffa", "title": "FREE-FOR-ALL", "color": Color("ff9f43"),
+			"sub": "3–4 players online, every board at once\nLast one standing wins",
+			"locked": Game.offline, "lock_text": "Needs the server"},
 	]
 	for i in modes.size():
-		_card(modes[i], Vector2(270 + i * 470, 170))
+		_card(modes[i], Vector2(90 + i * 440, 170))
 	UI.back_button(self, func(): Game.go("main_menu"))
 	var tut := UI.button("HOW TO PLAY  ·  TUTORIAL", Game.start_tutorial, Vector2(440, 60), UI.GREEN)
 	tut.position = Vector2(960 - 220, 958)
@@ -70,7 +73,7 @@ func _card(m: Dictionary, at: Vector2) -> void:
 	var locked: bool = m.locked
 	var p := UI.panel(Color(col, 0.4 if locked else 0.95), Color(0.05, 0.05, 0.12, 0.92))
 	p.position = at
-	p.custom_minimum_size = Vector2(440, 760)
+	p.custom_minimum_size = Vector2(420, 760)
 	p.modulate = Color(1, 1, 1, 0.55) if locked else Color.WHITE
 	add_child(p)
 	var v := VBoxContainer.new()
@@ -85,16 +88,16 @@ func _card(m: Dictionary, at: Vector2) -> void:
 	v.add_child(t)
 	var s := UI.label(m.sub, 20, UI.MUTED)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	s.custom_minimum_size = Vector2(400, 64)
+	s.custom_minimum_size = Vector2(380, 64)
 	v.add_child(s)
 	var art := Control.new()
-	art.custom_minimum_size = Vector2(400, 400)
+	art.custom_minimum_size = Vector2(380, 400)
 	v.add_child(art)
 	if m.id == "ranked" and not locked:
 		_rank_art(art)
 	else:
-		var icon := UI.label({"casual": "VS", "ranked": "🔒", "cpu": "CPU"}[m.id], 120, col, true)
-		icon.size = Vector2(400, 400)
+		var icon := UI.label({"casual": "VS", "ranked": "🔒", "cpu": "CPU", "ffa": "FFA"}[m.id], 120, col, true)
+		icon.size = Vector2(380, 400)
 		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		art.add_child(icon)
@@ -110,9 +113,9 @@ func _card(m: Dictionary, at: Vector2) -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(l)
 	else:
-		v.add_child(UI.button("SELECT", _start.bind(m.id), Vector2(400, 70), col))
+		v.add_child(UI.button("SELECT", _start.bind(m.id), Vector2(380, 70), col))
 		# The whole tile lifts toward you on hover
-		p.pivot_offset = Vector2(220, 380)
+		p.pivot_offset = Vector2(210, 380)
 		p.mouse_entered.connect(func():
 			p.create_tween().tween_property(p, "scale", Vector2.ONE * 1.03, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
 		p.mouse_exited.connect(func():
@@ -123,15 +126,15 @@ func _card(m: Dictionary, at: Vector2) -> void:
 func _rank_art(parent: Control) -> void:
 	var rank := str(Game.player.get("rank", "rookie"))
 	var img := UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(300, 300))
-	img.position = Vector2(50, 0)
+	img.position = Vector2(40, 0)
 	parent.add_child(img)
 	var name := UI.label(rank.replace("_", " ").to_upper(), 30, RANK_COLORS.get(rank, Color.WHITE), true)
-	name.size = Vector2(400, 40)
+	name.size = Vector2(380, 40)
 	name.position = Vector2(0, 310)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(name)
 	var rp := UI.label("%d RP" % int(Game.player.get("rank_points", 0)), 22, UI.MUTED)
-	rp.size = Vector2(400, 30)
+	rp.size = Vector2(380, 30)
 	rp.position = Vector2(0, 352)
 	rp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(rp)
@@ -162,6 +165,9 @@ func _start(mode: String) -> void:
 		if deck.get("gate", false):
 			buttons.push_front(["DECK EDITOR", func(): Game.go("deck_builder"), UI.BLUE])
 		UI.dialog(self, "CAN'T START DUEL", deck.error, buttons, UI.RED)
+		return
+	if mode == "ffa":   # the lobby (screens/ffa_lobby.gd) joins the queue and starts the match
+		Game.go("ffa_lobby")
 		return
 	# The server runs the match (and decides who goes first)
 	_starting = true

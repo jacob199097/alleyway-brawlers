@@ -49,11 +49,11 @@ func _ready() -> void:
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		art.add_child(l)
 	# The two buttons drawn into the artwork (in its 1536×1024 pixels)
-	_art_button(Rect2(205, 745, 555, 160), "BRAWL AGAIN", func(): Game.go("fight_mode"))
+	_art_button(Rect2(205, 745, 555, 160), "BRAWL AGAIN", func(): Game.go("ffa_lobby" if d.get("ffa", false) else "fight_mode"))
 	_art_button(Rect2(805, 745, 495, 160), "MENU", func(): Game.go("main_menu"))
 	var panels: Array[Control] = [_outcome_panel(d, _won), _mvp_panel(d.get("mvp", {}))]
 	_submit(d)
-	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "":
+	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "" and not d.get("ffa", false):
 		_rematch_box()
 	_build_fx()
 	_reveal(art, shine, rays, panels)
@@ -461,16 +461,25 @@ func _outcome_panel(d: Dictionary, won: bool) -> Control:
 			reason = "Your opponent ran out of cards" if won else "You ran out of cards"
 		"afk":
 			reason = "Your opponent stopped playing" if won else "You were away too long"
+	var ffa: bool = d.get("ffa", false)
+	if ffa:   # a free-for-all: where you finished, and the table in order
+		var players: Dictionary = d.get("players", {}) if d.get("players") is Dictionary else {}
+		reason = "You finished %s of %d" % [_place_text(int(d.get("place", 0))), maxi(players.size(), 3)]
 	var r := UI.label(reason, 26, Color.WHITE, true)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
+	if ffa:
+		v.add_child(_placings(d))
 	var stats := HBoxContainer.new()
 	stats.alignment = BoxContainer.ALIGNMENT_CENTER
 	stats.add_theme_constant_override("separation", 50)
 	v.add_child(stats)
-	for s in [["YOUR MORALE", d.get("player_morale", "—"), UI.BLUE if won else UI.RED],
+	var rows := [["YOUR MORALE", d.get("player_morale", "—"), UI.BLUE if won else UI.RED],
 			["OPP MORALE", d.get("opponent_morale", "—"), UI.RED if won else UI.BLUE],
-			["TURNS", d.get("turns", "—"), Color.WHITE]]:
+			["TURNS", d.get("turns", "—"), Color.WHITE]]
+	if ffa:
+		rows = [["PLACE", _place_text(int(d.get("place", 0))), UI.GOLD if won else UI.RED], ["TURNS", d.get("turns", "—"), Color.WHITE]]
+	for s in rows:
 		var c := VBoxContainer.new()
 		var cap := UI.label(s[0], 16, UI.MUTED)
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -500,6 +509,27 @@ func _outcome_panel(d: Dictionary, won: bool) -> Control:
 	_rewards.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_rewards)
 	return p
+
+
+static func _place_text(place: int) -> String:
+	return {1: "1ST", 2: "2ND", 3: "3RD"}.get(place, "%dTH" % place)
+
+
+## FFA: everyone's place, best first (you in blue).
+func _placings(d: Dictionary) -> Control:
+	var places: Dictionary = d.get("places", {}) if d.get("places") is Dictionary else {}
+	var players: Dictionary = d.get("players", {}) if d.get("players") is Dictionary else {}
+	var order: Array = places.keys()
+	order.sort_custom(func(a, b): return int(places[a]) < int(places[b]))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
+	for side in order:
+		var name := str(players.get(side, {}).get("username", side)) if players.get(side) is Dictionary else str(side)
+		var l := UI.label("%s %s" % [_place_text(int(places[side])), name.to_upper().left(10)], 18,
+			UI.BLUE if side == "player" else UI.GOLD if int(places[side]) == 1 else UI.MUTED, true)
+		row.add_child(l)
+	return row
 
 
 func _mvp_panel(mvp: Dictionary) -> Control:

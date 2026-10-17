@@ -426,12 +426,24 @@ func _sweep_equips() -> void:
 				_emit("ko", {"side": side, "slot": x.slot, "card": x.card.duplicate(true)})
 
 
+## Ambushes and Hustles are set face-down in the back row. An Ambush is paid for when it's set;
+## a Hustle when it's activated, from your next turn on (set_hustle_slot, can_hustle).
 func can_set(side: String, c: Dictionary, slot: int) -> bool:
-	if not can_deploy_now(side) or c.get("cardType") != "ambush":
+	if not can_deploy_now(side) or not c.get("cardType") in ["ambush", "hustle"]:
 		return false
 	if not slot in BACK or sides[side].field[slot] != null:
 		return false
-	return sides[side].authority >= cost_of(side, c)
+	return c.get("cardType") == "hustle" or sides[side].authority >= cost_of(side, c)
+
+
+## The back-row slot of c if it's a Hustle set face-down there (-1: it isn't).
+func set_hustle_slot(side: String, c) -> int:
+	if not c is Dictionary or c.get("cardType") != "hustle" or not c.get("face_down", false):
+		return -1
+	for b in BACK:
+		if is_same(sides[side].field[b], c):
+			return b
+	return -1
 
 
 func hustle_ready(side: String, c: Dictionary) -> bool:
@@ -444,10 +456,13 @@ func hustle_ready(side: String, c: Dictionary) -> bool:
 
 
 func can_hustle(side: String, c: Dictionary) -> bool:
-	if not (can_deploy_now(side) and c.get("cardType") == "hustle" and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)):
+	# One set in the back row: from the turn after it was set, in any phase you act in
+	var set := set_hustle_slot(side, c)
+	var now := can_act(side) and phase in ["deployment", "brawl", "regroup"] and int(c.get("set_turn", -1)) != turn if set >= 0 		else can_deploy_now(side)
+	if not (now and c.get("cardType") == "hustle" and sides[side].authority >= cost_of(side, c) and hustle_ready(side, c)):
 		return false
 	if is_lasting(c):   # a Continuous / Equip card needs room in the back row (an Equip, a character)
-		return _empty_back(side) >= 0 and (str(c.subtype) != "equip" or not _equip_targets(side, c).is_empty())
+		return (set >= 0 or _empty_back(side) >= 0) and (str(c.subtype) != "equip" or not _equip_targets(side, c).is_empty())
 	return card_can(side, NO_SLOT, c, "*")
 
 
@@ -874,7 +889,10 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 	if i < 0 or not can_set(side, sides[side].hand[i], slot):
 		return false
 	var c: Dictionary = sides[side].hand[i]
-	_spend(side, cost_of(side, c))
+	if c.get("cardType") == "hustle":
+		c.set_turn = turn   # (paid for when it's activated)
+	else:
+		_spend(side, cost_of(side, c))
 	sides[side].hand.remove_at(i)
 	c.face_down = true
 	sides[side].field[slot] = c
@@ -893,20 +911,34 @@ func _change_position(side: String, slot: int) -> bool:
 	return true
 
 
+## A Hustle from the hand, or one set face-down in the back row (it's played from there)
 func _hustle(side: String, uid: int) -> bool:
-	var i := _hand_index(side, uid)
-	if i < 0 or not can_hustle(side, sides[side].hand[i]):
-		return false
 	var s: Dictionary = sides[side]
-	var c: Dictionary = s.hand[i]
+	var i := _hand_index(side, uid)
+	var set := -1
+	if i < 0:
+		for b in BACK:
+			if s.field[b] != null and int(s.field[b].uid) == uid and set_hustle_slot(side, s.field[b]) == b:
+				set = b
+				break
+	var c = s.hand[i] if i >= 0 else s.field[set] if set >= 0 else null
+	if c == null or not can_hustle(side, c):
+		return false
 	_spend(side, cost_of(side, c))
-	s.hand.remove_at(i)
+	if i >= 0:
+		s.hand.remove_at(i)
+	else:
+		s.field[set] = null
+		c.erase("set_turn")
 	if is_lasting(c):
-		# Continuous / Equip: into the back row, face-up; its "when played" effects happen
-		var b := _empty_back(side)
+		# Continuous / Equip: into the back row (a set one stays in its slot), face-up; its "when played" effects happen
+		var b := set if set >= 0 else _empty_back(side)
 		c.face_down = false
 		s.field[b] = c
-		_emit("lasting", {"side": side, "slot": b, "card": c.duplicate(true)})
+		var ev := {"side": side, "slot": b, "card": c.duplicate(true)}
+		if set >= 0:
+			ev.set = true
+		_emit("lasting", ev)
 		if str(c.subtype) == "equip":
 			var on := side
 			if str(c.get("equip_to", "ally")) == "enemy":
@@ -922,8 +954,9 @@ func _hustle(side: String, uid: int) -> bool:
 				_recalc())
 		_run_fx(side, b, c, "deploy")
 	else:
+		c.face_down = false
 		s.gutter.append(c)
-		_emit("hustle", {"side": side, "card": c.duplicate(true)})
+		_emit("hustle", {"side": side, "card": c.duplicate(true), "slot": set, "set": true} if set >= 0 else {"side": side, "card": c.duplicate(true)})
 		# A Card Forge Hustle: all of its effects happen when it's played
 		if not c.get("effects", []).is_empty():
 			_run_fx(side, NO_SLOT, c, "*")

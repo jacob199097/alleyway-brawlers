@@ -5,7 +5,8 @@ extends Node
 ##   godot --headless --path godot res://tests/online_bot.tscn -- <email> [server] [--autoplay]
 ## Flags after the email: "--autoplay" (required for the bot to play), "--drop" (disconnects once
 ## mid-match to test reconnecting), "--concede" (concedes after a few turns), "--cpu" (plays the
-## server's CPU instead of queueing; add "--ranked" for a Ranked CPU match).
+## server's CPU instead of queueing; add "--ranked" for a Ranked CPU match), "--ffa" (joins a
+## free-for-all lobby, readies up, and plays its seat).
 
 const TIMEOUT_SECS := 900.0
 
@@ -13,6 +14,7 @@ var _email := ""
 var _elapsed := 0.0
 var _dropped := false
 var _conceded := false
+var _readied := false
 
 
 func _ready() -> void:
@@ -39,6 +41,8 @@ func _run() -> void:
 		var why := await Game.request_cpu_match("--ranked" in args)
 		if why != "":
 			_finish(1, why)
+	elif "--ffa" in args:
+		Game.go("ffa_lobby")
 	else:
 		Game.go("matchmaking")
 
@@ -52,6 +56,10 @@ func _process(delta: float) -> void:
 	if scene == null:
 		return
 	var args := OS.get_cmdline_user_args()
+	if scene.name == "FfaLobby" and not _readied and scene.get("_count") > 0:
+		_readied = true
+		print("[%s] in the lobby: ready" % _email)
+		scene._toggle_ready()
 	if scene.name == "Duel" and scene.get("duel") != null and scene.duel.turn >= 3:
 		if "--drop" in args and not _dropped:
 			_dropped = true
@@ -65,7 +73,8 @@ func _process(delta: float) -> void:
 	if scene.name == "PostMatch":
 		var d: Dictionary = Game.match_result
 		var rw = d.get("rewards")
-		_finish(0, "result %s (%s), turns %s, morale %s vs %s, rewards %s" % [d.get("result"), d.get("reason", ""),
+		_finish(0, "result %s (%s)%s, turns %s, morale %s vs %s, rewards %s" % [d.get("result"), d.get("reason", ""),
+			"  ·  FFA place %s of %s" % [d.get("place"), (d.get("players", {}) as Dictionary).size()] if d.get("ffa", false) else "",
 			d.get("turns"), d.get("player_morale"), d.get("opponent_morale"),
 			"+%s XP +%s Karat" % [rw.xpEarned, rw.karatEarned] if rw is Dictionary else "none"])
 

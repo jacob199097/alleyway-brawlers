@@ -105,6 +105,11 @@ function deploy(d, side, level) {
     const act = activation(d, side, level);
     if (act) return act;
     for (const c of s.hand) if (d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
+    // A Hustle it set on an earlier turn, once it would do something
+    for (const slot of BACK) {
+        const c = s.field[slot];
+        if (d.setHustleSlot(side, c) === slot && d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
+    }
     const t = threat(d, side);
     if (level !== 'easy') {
         // Stand up a defender that now out-muscles everything the opponent shows
@@ -164,7 +169,10 @@ function deploy(d, side, level) {
     }
     for (const slot of BACK) {
         if (s.field[slot] == null) {
-            for (const c of s.hand) if (d.canSet(side, c, slot)) return { kind: 'set', uid: c.uid, slot };
+            // Ambushes first; then a Hustle it couldn't use now, to activate on a later turn
+            for (const kind of ['ambush', 'hustle']) {
+                for (const c of s.hand) if (c.cardType === kind && d.canSet(side, c, slot)) return { kind: 'set', uid: c.uid, slot };
+            }
             break;
         }
     }

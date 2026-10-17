@@ -25,7 +25,7 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
         loadSetup: async () => cpuSetup(),
         loadProfile: async (id) => ({ username: id, level: 1, avatar_url: 'profile_001' }),
         resolveFfa: async (r) => { results.push(r); return { place: r.place, karatEarned: r.place === 1 ? 40 : 10 }; },
-        lobbySecs: 0.6, turnSecs: 5, awaySecs: 1, botMoveMs: 1,
+        lobbySecs: 0.6, turnSecs: 5, awaySecs: 1, botMoveMs: 1, botEventMs: 0,
     });
     let bad = 0;
     const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; };

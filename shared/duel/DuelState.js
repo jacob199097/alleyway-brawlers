@@ -401,10 +401,19 @@ export class DuelState {
         }
     }
 
+    // Ambushes and Hustles are set face-down in the back row. An Ambush is paid for when it's set;
+    // a Hustle when it's activated, from your next turn on (setHustleSlot, canHustle).
     canSet(side, c, slot) {
-        if (!this.canDeployNow(side) || c.cardType !== 'ambush') return false;
+        if (!this.canDeployNow(side) || !['ambush', 'hustle'].includes(c.cardType)) return false;
         if (!BACK.includes(slot) || this.sides[side].field[slot] != null) return false;
-        return this.sides[side].authority >= this.costOf(side, c);
+        return c.cardType === 'hustle' || this.sides[side].authority >= this.costOf(side, c);
+    }
+
+    /** The back-row slot of c if it's a Hustle set face-down there (-1: it isn't). */
+    setHustleSlot(side, c) {
+        if (c == null || c.cardType !== 'hustle' || !c.face_down) return -1;
+        const b = BACK.find(x => this.sides[side].field[x] === c);
+        return b == null ? -1 : b;
     }
 
     hustleReady(side, c) {
@@ -416,8 +425,12 @@ export class DuelState {
     }
 
     canHustle(side, c) {
-        if (!(this.canDeployNow(side) && c.cardType === 'hustle' && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c))) return false;
-        if (DuelState.isLasting(c)) return this._emptyBack(side) >= 0 && (String(c.subtype) !== 'equip' || this._equipTargets(side, c).length > 0);
+        // One set in the back row: from the turn after it was set, in any phase you act in
+        const set = this.setHustleSlot(side, c);
+        const now = set >= 0 ? this.canAct(side) && ['deployment', 'brawl', 'regroup'].includes(this.phase) && toInt(c.set_turn ?? -1) !== this.turn
+            : this.canDeployNow(side);
+        if (!(now && c.cardType === 'hustle' && this.sides[side].authority >= this.costOf(side, c) && this.hustleReady(side, c))) return false;
+        if (DuelState.isLasting(c)) return (set >= 0 || this._emptyBack(side) >= 0) && (String(c.subtype) !== 'equip' || this._equipTargets(side, c).length > 0);
         return this.cardCan(side, NO_SLOT, c, '*');
     }
 
@@ -754,7 +767,8 @@ export class DuelState {
         const i = this._handIndex(side, uid);
         if (i < 0 || !this.canSet(side, this.sides[side].hand[i], slot)) return false;
         const c = this.sides[side].hand[i];
-        this._spend(side, this.costOf(side, c));
+        if (c.cardType === 'hustle') c.set_turn = this.turn;   // (paid for when it's activated)
+        else this._spend(side, this.costOf(side, c));
         this.sides[side].hand.splice(i, 1);
         c.face_down = true;
         this.sides[side].field[slot] = c;
@@ -772,19 +786,28 @@ export class DuelState {
         return true;
     }
 
+    // A Hustle from the hand, or one set face-down in the back row (it's played from there)
     _hustle(side, uid) {
-        const i = this._handIndex(side, uid);
-        if (i < 0 || !this.canHustle(side, this.sides[side].hand[i])) return false;
         const s = this.sides[side];
-        const c = s.hand[i];
+        const i = this._handIndex(side, uid);
+        const set = i >= 0 ? -1 : (BACK.find(b => s.field[b] != null && s.field[b].uid === uid && this.setHustleSlot(side, s.field[b]) === b) ?? -1);
+        const c = i >= 0 ? s.hand[i] : set >= 0 ? s.field[set] : null;
+        if (c == null || !this.canHustle(side, c)) return false;
         this._spend(side, this.costOf(side, c));
-        s.hand.splice(i, 1);
+        if (i >= 0) {
+            s.hand.splice(i, 1);
+        } else {
+            s.field[set] = null;
+            delete c.set_turn;
+        }
         if (DuelState.isLasting(c)) {
-            // Continuous / Equip: into the back row, face-up; its "when played" effects happen
-            const b = this._emptyBack(side);
+            // Continuous / Equip: into the back row (a set one stays in its slot), face-up; its "when played" effects happen
+            const b = set >= 0 ? set : this._emptyBack(side);
             c.face_down = false;
             s.field[b] = c;
-            this._emit('lasting', { side, slot: b, card: clone(c) });
+            const ev = { side, slot: b, card: clone(c) };
+            if (set >= 0) ev.set = true;
+            this._emit('lasting', ev);
             if (String(c.subtype) === 'equip') {
                 const on = String(c.equip_to ?? 'ally') === 'enemy' ? (this.foesOf(side)[0] ?? side) : side;
                 const entries = this._equipTargets(side, c);
@@ -799,8 +822,9 @@ export class DuelState {
             }
             this._runFx(side, b, c, 'deploy');
         } else {
+            c.face_down = false;
             s.gutter.push(c);
-            this._emit('hustle', { side, card: clone(c) });
+            this._emit('hustle', set >= 0 ? { side, card: clone(c), slot: set, set: true } : { side, card: clone(c) });
             // A Card Forge Hustle: all of its effects happen when it's played
             if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
         }
