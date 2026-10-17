@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.7",
+        "notes": [
+            "All-new music: a new main menu theme, new duel music with a harder track for the final stretch, and new victory and defeat themes.",
+            "Real rain, crowd and rooftop wind, buzzing neon, and new sounds for the phases, buttons and Karat."
+        ]
+    },
+    {
         "version": "0.9.6",
         "notes": [
             "Sound overhaul: new duel music that turns tense when someone is close to losing, and a victory or defeat sting at the end.",
