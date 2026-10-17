@@ -768,7 +768,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_031",
         "code": "NEBU-031",
         "flavourText": "The stars don’t make legends. The fight does.",
-        "effectText": "After this card KOs 2 characters: PROMOTE this card.\nOnce per turn, when this card Downs a character: Gain 2 Authority this turn.",
+        "effectText": "After this card KOs 2 characters: PROMOTE this card.\nOnce per turn, when this card Downs a character: Switch one enemy character to ATK position.",
         "effects": [
             {
                 "when": "ko",
@@ -777,8 +777,8 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "down",
-                "do": "authority",
-                "amount": 2,
+                "do": "force_atk",
+                "target": "enemy",
                 "once": true
             }
         ],
@@ -803,12 +803,12 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_032",
         "code": "NEBU-032",
         "flavourText": "The stars don’t make legends. The fight does.",
-        "effectText": "Once per turn, when this card Downs a character: Gain 3 Authority this turn.\nWhen this card attacks: It gains +700 ATK for this Brawl.",
+        "effectText": "Once per turn, when this card Downs a character: Switch one enemy character to ATK position.\nWhen this card attacks: It gains +700 ATK for this Brawl.\nThis card has PIERCE.",
         "effects": [
             {
                 "when": "down",
-                "do": "authority",
-                "amount": 3,
+                "do": "force_atk",
+                "target": "enemy",
                 "once": true
             },
             {
@@ -816,6 +816,10 @@ export const FORGE_CARDS = {
                 "do": "buff",
                 "target": "self",
                 "atk": 700
+            },
+            {
+                "when": "passive",
+                "do": "pierce"
             }
         ],
         "clanName": "Nebula",
@@ -989,7 +993,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
-        "attack": 1100,
+        "attack": 1400,
         "defense": 500,
         "level": 1,
         "subtype": "brawler",
@@ -2223,7 +2227,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_017",
         "code": "NEBU-017",
         "flavourText": "Built for speed. Wired for chaos.",
-        "effectText": "When you deploy another character: This card gains +1000 ATK until the end of your turn.\nWhen this card attacks: One of your other NEBULA characters that already attacked this turn may attack again.",
+        "effectText": "Once per turn, when you deploy another character: This card gains +1000 ATK until the end of your turn.\nWhen this card attacks: One of your other NEBULA characters that already attacked this turn may attack again.",
         "effects": [
             {
                 "when": "ally_deployed",
@@ -2231,6 +2235,7 @@ export const FORGE_CARDS = {
                 "target": "self",
                 "until": "turn",
                 "atk": 1000,
+                "once": true,
                 "when_clan": ""
             },
             {
