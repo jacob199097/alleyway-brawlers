@@ -9,6 +9,7 @@ var attacks := 0
 var prompts := {}
 var set_slot := -1          # where the test's Hustle was set
 var set_activated := false
+var set_broken := 0         # times the CPU destroyed it first (its deck can break face-down cards)
 
 
 func _ready() -> void:
@@ -84,7 +85,14 @@ func _set_hustle() -> void:
 
 ## On a later turn: click the set Hustle, ACTIVATE it.
 func _try_activate_set() -> bool:
-	if set_activated or set_slot < 0 or not duel_screen._set_ready(set_slot):
+	if set_activated or set_slot < 0:
+		return false
+	var c = duel_screen.duel.sides.player.field[set_slot]
+	if c == null or c.get("id") != "card_nebu_010" or not c.get("face_down", false):
+		set_slot = -1   # destroyed: another one is set next
+		set_broken += 1
+		return false
+	if not duel_screen._set_ready(set_slot):
 		return false
 	duel_screen._on_field_click(set_slot)
 	var btn := _button_named(duel_screen._menu, "ACTIVATE")
@@ -131,15 +139,17 @@ func _run() -> void:
 			continue
 		match d.phase:
 			"deployment":
-				if not _try_activate_set() and not _try_summon():
+				if not set_activated and set_slot < 0 and set_broken > 0:
+					await _set_hustle()   # (the last one was destroyed before it could be activated)
+				elif not _try_activate_set() and not _try_summon():
 					duel_screen._on_next()
 			"brawl":
 				if not _try_attack():
 					duel_screen._on_next()
 			_:
 				duel_screen._on_next()
-	print("UI smoke: summons %d, attacks %d, set Hustle activated %s, turn %d, prompts answered %s" % [summons, attacks,
-		set_activated, duel_screen.duel.turn, prompts])
+	print("UI smoke: summons %d, attacks %d, set Hustle activated %s (destroyed first %d times), turn %d, prompts answered %s" % [
+		summons, attacks, set_activated, set_broken, duel_screen.duel.turn, prompts])
 	get_tree().quit(0 if summons >= 1 and set_activated else 1)
 
 
