@@ -14,11 +14,11 @@ env:
 
 jobs:
   server:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
       - name: Online matches and Scissors Paper Rock
@@ -39,7 +39,7 @@ jobs:
         run: node shared/duel/hustles.test.mjs
 
   database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)
     timeout-minutes: 10
     services:
       postgres:
@@ -51,8 +51,8 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
       - name: Install server packages
@@ -66,18 +66,18 @@ jobs:
           DB_PASS: postgres
 
   godot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
       - name: Copy art and audio into the project
         run: sh godot/tools/sync_assets.sh
       - name: Cache Godot
         id: cache-godot
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/godot
           key: godot-${{ env.GODOT_VERSION }}
