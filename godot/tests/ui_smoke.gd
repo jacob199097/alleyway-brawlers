@@ -65,15 +65,32 @@ func _set_hustle() -> void:
 		if x.card.id == "card_nebu_010":
 			v = x
 	_check(v != null, "the Hustle is in the hand")
-	duel_screen._open_hand_menu(v)
-	var set_btn := _button_named(duel_screen._menu, "SET FACE DOWN")
-	_check(set_btn != null, "SET FACE DOWN in a Hustle's menu")
-	set_btn.pressed.emit()
-	_check(duel_screen._mode == "place", "slot choice after SET FACE DOWN")
-	var key: String = duel_screen._valid.keys()[0]
-	set_slot = int(key.split(":")[1])
-	_check(set_slot in DuelState.BACK, "a back-row slot")
-	duel_screen._place(set_slot)
+	if set_broken == 0:
+		# Dragged onto the board: it asks, ACTIVATE or SET FACE DOWN (or CANCEL)
+		duel_screen._press = v
+		duel_screen._dragging = true
+		duel_screen._end_drag()
+		_check(duel_screen._mode == "menu", "dropping a Hustle on the board asks what to do")
+		var drop_set := _button_named(duel_screen._menu, "SET FACE DOWN")
+		_check(drop_set != null and _button_named(duel_screen._menu, "CANCEL") != null, "SET FACE DOWN and CANCEL when it's dropped")
+		drop_set.pressed.emit()
+		set_slot = -1
+		for s in DuelState.BACK:
+			var x = d.sides.player.field[s]
+			if x != null and x.id == "card_nebu_010":
+				set_slot = s
+		_check(set_slot >= 0, "dropped, then set in the back row")
+	else:
+		# (set again from its menu in the hand: SET FACE DOWN, then a slot)
+		duel_screen._open_hand_menu(v)
+		var set_btn := _button_named(duel_screen._menu, "SET FACE DOWN")
+		_check(set_btn != null, "SET FACE DOWN in a Hustle's menu")
+		set_btn.pressed.emit()
+		_check(duel_screen._mode == "place", "slot choice after SET FACE DOWN")
+		var key: String = duel_screen._valid.keys()[0]
+		set_slot = int(key.split(":")[1])
+		_check(set_slot in DuelState.BACK, "a back-row slot")
+		duel_screen._place(set_slot)
 	var c = d.sides.player.field[set_slot]
 	_check(c != null and c.id == "card_nebu_010" and c.face_down, "the Hustle is set face-down")
 	while duel_screen._playing:

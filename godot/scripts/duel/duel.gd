@@ -4420,8 +4420,7 @@ func _start_drag() -> void:
 	elif over and not _valid.values().has(GREEN):
 		_show_prompt("Drop %s on one of your characters to deploy over it (it goes to the Gutter)" % c.name)
 	if c.cardType == "hustle":
-		_show_prompt("Release on the board to activate, or on an empty back-row slot to set it face down" if duel.can_hustle("player", c)
-			else "Release on an empty back-row slot to set it face down (activate it when you have the Authority)")
+		_show_prompt("Release on the board, then activate it or set it face down")
 	queue_redraw()
 
 
@@ -4450,13 +4449,49 @@ func _end_drag() -> void:
 	elif c.cardType == "gang_member" and (duel.can_summon("player", c, slot) or duel.can_summon("player", c, slot, slot)):
 		_ask_position(v, slot)   # ATK or DEF? (and over one of your characters: it goes to the Gutter)
 		return
-	elif c.cardType in ["ambush", "hustle"] and duel.can_set("player", c, slot):
+	elif c.cardType == "ambush" and duel.can_set("player", c, slot):
 		done = _act("player", {"kind": "set", "uid": v.uid, "slot": slot})
-	elif c.cardType == "hustle" and m.y < HAND_Y - 140 and duel.can_hustle("player", c):
-		done = _act("player", {"kind": "hustle", "uid": v.uid})
+	elif c.cardType == "hustle" and m.y < HAND_Y - 140 and (duel.can_hustle("player", c) or _settable(c)):
+		_ask_hustle(v, slot)   # activate it now, or set it face-down?
+		return
 	if not done:
 		_layout_hand("player")
 		_player_ready()
+
+
+## A Hustle dropped on the board: ACTIVATE it now, or SET it face-down to use when you choose (in the
+## back-row slot it was dropped on, else the first free one), or put it back.
+func _ask_hustle(v: CardView, slot: int) -> void:
+	_mode = "menu"
+	_selected = v   # (cancelling puts it back in the hand)
+	var c := v.card
+	var at := get_global_mouse_position()
+	v.move_to(at, 1.0, 0.0, 0.15)
+	var back := slot if slot in DuelState.BACK and duel.can_set("player", c, slot) else -1
+	for s in DuelState.BACK:
+		if back < 0 and duel.can_set("player", c, s):
+			back = s
+	var put_back := func():
+		_cancel_interaction()
+		_layout_hand("player")
+		_player_ready()
+	var can_play: bool = duel.can_hustle("player", c)
+	var cost: int = duel.cost_of("player", c)
+	var reason := ""
+	if not can_play:
+		reason = "Needs %d Authority to activate (you have %d)" % [cost, duel.sides.player.authority] if duel.sides.player.authority < cost \
+			else "Can't be activated right now"
+	_menu = _make_menu([
+		["ACTIVATE%s" % ("  (%d AUTHORITY)" % cost if cost > 0 else ""), can_play, func():
+			_cancel_interaction()
+			if not _act("player", {"kind": "hustle", "uid": v.uid}):
+				put_back.call()],
+		["SET FACE DOWN", back >= 0, func():
+			_cancel_interaction()
+			if not _act("player", {"kind": "set", "uid": v.uid, "slot": back}):
+				put_back.call()],
+		["CANCEL", true, put_back],
+	], reason, at + Vector2(0, -CARD.y / 2 - 12))
 
 
 ## A character dropped on the board: summon it in ATK or DEF (or put it back).
