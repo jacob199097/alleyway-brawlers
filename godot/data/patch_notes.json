@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.3",
+        "notes": [
+            "New backgrounds: Fight Mode looks out over the city from a rooftop, and finding a match (and the Free-for-all lobby) happens in an alley where the crowd waits for the next fight.",
+            "The duel mats come alive: the neon pulses and flickers, the wet street shimmers, rain ripples on the asphalt, haze rolls by and steam rises from the crossroads' manhole.",
+            "Free-for-all: no attacks until everyone has had their first turn."
+        ]
+    },
+    {
         "version": "0.9.2",
         "notes": [
             "New duel mats: duels are played on an alley floor with the slots painted on like parking bays, and Free-for-all on a four-way crossroads with each player on their own corner lot.",
