@@ -1,11 +1,12 @@
 // Renders the game's stand-in sounds, ambience and music into assets/sfx as WAV files: synthesised
 // here (noise, oscillators, filters, reverb), so the game has every sound before real recordings or
 // generated tracks replace them. A file you drop into assets/sfx with the same name (as .ogg, .mp3 or
-// .wav) replaces the stand-in: delete the stand-in .wav, then deploy (players download it).
+// .wav) replaces the stand-in: delete the stand-in .wav, then deploy (players download it). Stand-ins
+// carry a marker (an INFO "ISFT" of render_audio), so a recording is never rendered over.
 //   node tools/render_audio.mjs            every sound
 //   node tools/render_audio.mjs amb_crowd  just these
 // docs/AUDIO_PROMPTS.md has what each one is for, and prompts to generate the real thing.
-import { writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,11 +26,20 @@ function rng(seed) {
     };
 }
 
-/** 16-bit PCM WAV, mono or stereo (channels: arrays of floats in -1..1). */
+const MARK = 'render_audio';
+/** Whether a WAV in assets/sfx is one of ours (a stand-in) rather than a recording. */
+function isStandIn(file) {
+    return readFileSync(file).includes(Buffer.from('ISFT')) && readFileSync(file).includes(Buffer.from(MARK));
+}
+
+/** 16-bit PCM WAV, mono or stereo (channels: arrays of floats in -1..1), marked as a stand-in. */
 function writeWav(name, rate, channels) {
     const n = channels[0].length, ch = channels.length;
-    const buf = Buffer.alloc(44 + n * ch * 2);
-    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * ch * 2, 4); buf.write('WAVE', 8);
+    const info = Buffer.alloc(4 + 8 + 12 + 4);   // LIST INFO with ISFT "render_audio" (+ padding)
+    info.write('INFO', 0); info.write('ISFT', 4); info.writeUInt32LE(13, 8); info.write(MARK, 12);
+    const listSize = info.length;
+    const buf = Buffer.alloc(44 + n * ch * 2 + 8 + listSize);
+    buf.write('RIFF', 0); buf.writeUInt32LE(buf.length - 8, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(ch, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * ch * 2, 28); buf.writeUInt16LE(ch * 2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * ch * 2, 40);
@@ -40,6 +50,7 @@ function writeWav(name, rate, channels) {
             o += 2;
         }
     }
+    buf.write('LIST', o); buf.writeUInt32LE(listSize, o + 4); info.copy(buf, o + 8);
     writeFileSync(join(OUT, name + '.wav'), buf);
     console.log(`${name}.wav  ${(n / rate).toFixed(1)} s, ${ch === 2 ? 'stereo' : 'mono'}, ${(buf.length / 1024).toFixed(0)} KB`);
 }
@@ -361,20 +372,53 @@ function bell(t, f, decay = 2.2) {
     return v * Math.min(1, t * 2000);
 }
 
+/** Levels a one-shot so its loudest 50 ms sits at targetDb (RMS), capping peaks softly at -1 dB. */
+function levelShort(channels, rate, targetDb) {
+    const w = Math.round(rate * 0.05);
+    let best = 1e-9;
+    for (let s = 0; s + w <= channels[0].length; s += Math.round(w / 2)) {
+        let e = 0;
+        for (const c of channels) for (let i = s; i < s + w; i++) e += c[i] * c[i];
+        best = Math.max(best, Math.sqrt(e / (w * channels.length)));
+    }
+    const g = Math.pow(10, targetDb / 20) / best, t = Math.pow(10, -1.5 / 20);
+    for (const c of channels) for (let i = 0; i < c.length; i++) {
+        const x = c[i] * g, a = Math.abs(x);
+        c[i] = a <= t ? x : Math.sign(x) * (t + (1 - t) * Math.tanh((a - t) / (1 - t)));
+    }
+    return channels;
+}
+
 function phaseBrawl() {
-    // Two fight-bell dings over a deep hit and a rush of air: the brawl is on
-    const rate = 44100, dur = 2.2, R = rng(5);
-    const buf = stereo(rate, dur), lp = biquad('lp', rate, 9000), hp = biquad('hp', rate, 300);
-    addEvent(buf, rate, 0, dur, 0, (t) => {
-        const sub = Math.sin(TAU * (48 + 60 * Math.exp(-t * 18)) * t) * Math.exp(-t * 5) * 0.9;
-        const hit = (R() * 2 - 1) * Math.exp(-t * 40) * 0.6;
-        return Math.tanh(sub * 1.8 + hit);
+    // The brawl is on: air rushing in, a heavy hit, the fight bell twice, and the crowd roaring up
+    const rate = 48000, dur = 2.6, R = rng(5), hitAt = 0.16;
+    const buf = stereo(rate, dur);
+    const sweep = biquad('bp', rate, 600, 1.2);
+    addEvent(buf, rate, 0, hitAt, 0, (t) => {   // rush of air into the hit
+        const k = t / hitAt;
+        sweep.set(500 + 3500 * k, 1.2);
+        return sweep.run(R() * 2 - 1) * k * k * 0.9;
     });
-    addEvent(buf, rate, 0.02, 2, -0.15, (t) => bell(t, 1180) * 0.32);
-    addEvent(buf, rate, 0.24, 1.9, 0.15, (t) => bell(t, 1180) * 0.28);
-    addEvent(buf, rate, 0, 0.6, 0, (t) => lp.run(hp.run(R() * 2 - 1)) * Math.min(1, t * 30) * Math.exp(-t * 7) * 0.3);
-    const out = withReverb(buf, rate, 0.35, 0.82, 0.35);
-    writeWav('phase_brawl', rate, normalize(fades(out, rate, 0.002, 0.3), 0.85));
+    const body = biquad('lp', rate, 1800);
+    addEvent(buf, rate, hitAt, 1.6, 0, (t) => {   // the hit: a falling sub, a thump of noise, a crack
+        const sub = Math.sin(TAU * (34 + 70 * Math.exp(-t * 16)) * t) * Math.exp(-t * 3.2);
+        const thump = body.run(R() * 2 - 1) * Math.exp(-t * 22) * 0.9;
+        const crack = (R() * 2 - 1) * Math.exp(-t * 260) * 0.7;
+        return Math.tanh((sub * 1.6 + thump + crack) * 1.3);
+    });
+    addEvent(buf, rate, hitAt + 0.01, 2.3, -0.2, (t) => bell(t, 1174) * 0.34 + bell(t, 1182) * 0.1);
+    addEvent(buf, rate, hitAt + 0.29, 2.1, 0.2, (t) => bell(t, 1174) * 0.3 + bell(t, 1166) * 0.1);
+    for (const side of [-0.7, 0.7]) {   // the crowd roaring up and dying down, wide
+        const lo = biquad('hp', rate, 280), hi = biquad('lp', rate, 2600), f1 = biquad('bp', rate, 700, 1.2), wob = wander(R, rate, 6);
+        addEvent(buf, rate, hitAt, 2.3, side, (t) => {
+            if ((t * rate) % 64 < 1) f1.set(550 + wob() * 600, 1.2);
+            const n = hi.run(lo.run(R() * 2 - 1));
+            const env = Math.min(1, t / 0.35) * Math.exp(-Math.max(0, t - 0.4) * 1.6);
+            return (n * 0.5 + f1.run(n) * 1.4) * env * 0.32;
+        });
+    }
+    const out = withReverb(buf, rate, 0.35, 0.84, 0.35);
+    writeWav('phase_brawl', rate, levelShort(fades(out, rate, 0.002, 0.4), rate, -12));
 }
 
 function phaseDeployment() {
@@ -409,20 +453,32 @@ function phaseRegroup() {
     writeWav('phase_regroup', rate, normalize(fades(out, rate, 0.002, 0.25), 0.6));
 }
 
-function turnSting(name, notes, bright) {
-    // Your turn: a bright rising synth stab with a shimmer. Theirs: darker and falling.
-    const rate = 44100, dur = 1.4, R = rng(13);
-    const buf = stereo(rate, dur);
-    notes.forEach(([f, at], k) => {
-        const o1 = saw(rate), o2 = saw(rate), lp = biquad('lp', rate, bright ? 3500 : 1400, 1.1);
-        addEvent(buf, rate, at, dur - at, k ? 0.25 : -0.25, (t) => {
-            const env = Math.min(1, t * 200) * Math.exp(-t * (bright ? 3.4 : 4.2));
-            return lp.run(o1(f) * 0.6 + o2(f * 2.003) * 0.25 + Math.sin(TAU * f * 0.5 * t) * 0.5) * env * 0.3;
+/** A turn starting. Yours: a quick lift of air into two bright rising stabs (a chord each, a filter
+ *  snapping open), a soft thump under them and a sparkle on top. Theirs: two dark falling stabs, the
+ *  filter closing, a low pulse under them. chords: [[midi notes], at seconds]. */
+function turnSting(name, chords, bright) {
+    const rate = 48000, dur = 1.5, R = rng(bright ? 13 : 14);
+    const buf = stereo(rate, dur), hz = (m) => 440 * Math.pow(2, (m - 69) / 12), lead = 0.07;
+    const air = biquad('bp', rate, 1500, 1.4);
+    addEvent(buf, rate, 0, lead, 0, (t) => { const k = t / lead; air.set(bright ? 1200 + 5000 * k : 3000 - 2000 * k, 1.4); return air.run(R() * 2 - 1) * k * 0.35; });
+    chords.forEach(([notes, at], ci) => {
+        notes.forEach((m, k) => {
+            const o1 = saw(rate), o2 = saw(rate), lp = biquad('lp', rate, 800, 1.6), f = hz(m);
+            addEvent(buf, rate, lead + at, dur - lead - at, (k - (notes.length - 1) / 2) * 0.5, (t) => {
+                if ((t * rate) % 16 < 1) lp.set(bright ? 700 + 5200 * Math.exp(-t * 7) : 2600 * Math.exp(-t * 5) + 300, 1.6);
+                const env = Math.min(1, t * 400) * Math.exp(-t * (ci ? (bright ? 2.6 : 3.2) : 7));
+                return lp.run(o1(f) + o2(f * (bright ? 1.005 : 0.996))) * env * 0.12;
+            });
         });
+        addEvent(buf, rate, lead + at, 0.4, 0, (t) => Math.sin(TAU * (bright ? 70 : 52) * t + 6 * Math.exp(-t * 30)) * Math.exp(-t * 11) * (bright ? 0.35 : 0.5));
     });
-    if (bright) addEvent(buf, rate, 0.14, 0.9, 0, (t) => Math.sin(TAU * 2637 * t) * Math.exp(-t * 6) * 0.05 * (0.6 + 0.4 * Math.sin(TAU * 18 * t)));
+    if (bright) {
+        for (const [f, at, p] of [[2637, 0.19, -0.4], [3136, 0.24, 0.4], [3951, 0.29, 0]]) {
+            addEvent(buf, rate, lead + at, 0.8, p, (t) => Math.sin(TAU * f * t) * Math.exp(-t * 7) * 0.06 * Math.min(1, t * 3000));
+        }
+    }
     const out = withReverb(buf, rate, 0.45, 0.82, 0.4);
-    writeWav(name, rate, normalize(fades(out, rate, 0.002, 0.3), 0.6));
+    writeWav(name, rate, levelShort(fades(out, rate, 0.002, 0.35), rate, -15));
 }
 
 function uiHover() {
@@ -432,21 +488,29 @@ function uiHover() {
 }
 
 function uiClick() {
-    const rate = 44100, n = Math.round(rate * 0.09), out = new Float32Array(n), R = rng(3), bp = biquad('bp', rate, 2600, 2);
-    for (let i = 0; i < n; i++) {
-        const t = i / rate;
-        out[i] = bp.run(R() * 2 - 1) * Math.exp(-t * 300) * 0.8 + Math.sin(TAU * (180 + 400 * Math.exp(-t * 80)) * t) * Math.exp(-t * 45) * 0.5;
-    }
-    writeWav('click', rate, normalize(fades([out], rate, 0.0005, 0.02), 0.55));
+    // A crisp, solid press: a bright tick, a tiny snap of noise and a short low body
+    const rate = 48000, dur = 0.1, R = rng(3), buf = stereo(rate, dur), hp = biquad('hp', rate, 3500), bp = biquad('bp', rate, 1900, 2.5);
+    addEvent(buf, rate, 0, dur, 0, (t) => {
+        const tick = Math.sin(TAU * 4600 * t) * Math.exp(-t * 900) * 0.5;
+        const snap = hp.run(R() * 2 - 1) * Math.exp(-t * 600) * 0.6 + bp.run(R() * 2 - 1) * Math.exp(-t * 250) * 0.5;
+        const thud = Math.sin(TAU * (130 + 260 * Math.exp(-t * 90)) * t) * Math.exp(-t * 55) * 0.7;
+        return tick + snap + thud;
+    });
+    const out = withReverb(buf, rate, 0.08, 0.4, 0.6);
+    writeWav('click', rate, levelShort(fades(out, rate, 0.0003, 0.02), rate, -17));
 }
 
 function uiError() {
-    const rate = 44100, n = Math.round(rate * 0.32), out = new Float32Array(n), o = saw(rate), lp = biquad('lp', rate, 900);
-    for (let i = 0; i < n; i++) {
-        const t = i / rate, on = (t < 0.11 || (t > 0.16 && t < 0.28)) ? 1 : 0;
-        out[i] = lp.run(o(t < 0.13 ? 155 : 130)) * on * 0.5;
+    // Denied: two low, slightly gritty buzzes, the second lower
+    const rate = 48000, dur = 0.34, buf = stereo(rate, dur);
+    for (const [at, f] of [[0, 196], [0.15, 147]]) {
+        const o1 = saw(rate), o2 = saw(rate), lp = biquad('lp', rate, 1300, 0.9);
+        addEvent(buf, rate, at, 0.13, 0, (t) => {
+            const env = Math.min(1, t * 600) * (t < 0.1 ? 1 : Math.exp(-(t - 0.1) * 60));
+            return Math.tanh(lp.run(o1(f) + o2(f * 1.012) + Math.sign(Math.sin(TAU * f * 0.5 * t)) * 0.5) * 1.6) * env * 0.4;
+        });
     }
-    writeWav('error', rate, normalize(fades([out], rate, 0.002, 0.03), 0.4));
+    writeWav('error', rate, levelShort(fades(buf, rate, 0.0005, 0.03), rate, -17));
 }
 
 function karat() {
@@ -565,8 +629,8 @@ const JOBS = {
     phase_deployment: phaseDeployment,
     phase_brawl: phaseBrawl,
     phase_regroup: phaseRegroup,
-    turn_yours: () => turnSting('turn_yours', [[392, 0], [587.33, 0.11]], true),
-    turn_theirs: () => turnSting('turn_theirs', [[311.13, 0], [233.08, 0.13]], false),
+    turn_yours: () => turnSting('turn_yours', [[[67, 71, 74], 0], [[74, 79, 83], 0.12]], true),
+    turn_theirs: () => turnSting('turn_theirs', [[[63, 66, 70], 0], [[58, 61, 65], 0.14]], false),
     hover: uiHover,
     click: uiClick,
     error: uiError,
@@ -580,8 +644,10 @@ const JOBS = {
 const want = process.argv.slice(2);
 for (const [name, job] of Object.entries(JOBS)) {
     if (want.length && !want.includes(name)) continue;
-    // A real recording (ogg/mp3) replaces the stand-in: don't render over the top of it
-    if (['ogg', 'mp3'].some((ext) => existsSync(join(OUT, `${name}.${ext}`)) || existsSync(join(OUT, `${name}_1.${ext}`)))) {
+    // A real recording (ogg/mp3, or a .wav that isn't one of ours) replaces the stand-in: leave it be
+    const recorded = ['ogg', 'mp3'].some((ext) => existsSync(join(OUT, `${name}.${ext}`)) || existsSync(join(OUT, `${name}_1.${ext}`)))
+        || [`${name}.wav`, `${name}_1.wav`].some((f) => existsSync(join(OUT, f)) && !isStandIn(join(OUT, f)));
+    if (recorded) {
         console.log(`${name}: a recording is in place, skipped`);
         continue;
     }

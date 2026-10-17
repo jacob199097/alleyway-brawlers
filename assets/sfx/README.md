@@ -34,18 +34,23 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `laser_beam` | Nebula: the held laser beam | recorded (5) |
 | `pack_open` | Shop: the top of a pack rips off | recorded (2) |
 | `shuffle` | a deck is shuffled | recorded |
-| `music_menu` | menus (until there is one: `assets/main_menu_theme_loop.mp3`) | **wanted** |
-| `music_duel` | duels | stand-in (.wav) |
-| `music_duel_tense` | duels, once someone is down to a third of their Morale | stand-in (.wav) |
-| `music_victory`, `music_defeat` | the end of a match (a sting; the menu music follows) | stand-in (.wav) |
-| `amb_city_rain` | duels: rain and the city around the mat | stand-in (.wav) |
-| `amb_crowd` | finding a match, the Free-for-all lobby, Rock Paper Scissors | stand-in (.wav) |
-| `amb_rooftop` | Fight Mode | stand-in (.wav) |
-| `neon_buzz` | a neon light on the duel mat stutters (from where it is) | stand-in (.wav, 3) |
-| `phase_deployment`, `phase_brawl`, `phase_regroup` | each phase starts | stand-in (.wav) |
+| `music_menu` | menus | generated (Suno) |
+| `music_duel` | duels | generated (Suno) |
+| `music_duel_tense` | duels, once someone is down to a third of their Morale | generated (Suno) |
+| `music_victory`, `music_defeat` | the end of a match (a sting; the menu music follows) | generated (Suno) |
+| `amb_city_rain` | duels: rain and the city around the mat | generated (ElevenLabs) |
+| `amb_crowd` | finding a match, the Free-for-all lobby, Rock Paper Scissors | generated (ElevenLabs) |
+| `amb_rooftop` | Fight Mode | generated (ElevenLabs) |
+| `neon_buzz` | a neon light on the duel mat stutters (from where it is) | generated (ElevenLabs, 3) |
+| `phase_deployment`, `phase_regroup` | those phases start | generated (ElevenLabs) |
+| `phase_brawl` | the Brawl phase starts | stand-in (.wav) |
 | `turn_yours`, `turn_theirs` | a turn starts | stand-in (.wav) |
-| `hover`, `click`, `error` | buttons: pointer over, pressed; a move that isn't allowed | stand-in (.wav) |
-| `karat` | Karat earned on the results screen | stand-in (.wav) |
+| `hover`, `karat` | the pointer over a button; Karat earned on the results screen | generated (ElevenLabs) |
+| `click`, `error` | a button pressed; a move that isn't allowed | stand-in (.wav) |
+
+Generated files were levelled to sit together (music about -18 dB RMS, ambience -23 dB, short sounds
+matched to what they replaced), with silence trimmed off the start; the .m4a music was converted to
+.mp3 (Godot can't play .m4a).
 | `gunshot` | Militia: each shot | **wanted** (synthesised) |
 | `lockon` | Militia: the airdrop reticle locks onto a lane | **wanted** (synthesised radar beeps) |
 | `airdrop` | Militia: a character is flown in and dropped (jet pass, then a thud) | **wanted** (synthesised) |
