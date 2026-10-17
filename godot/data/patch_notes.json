@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.6",
+        "notes": [
+            "Sound overhaul: new duel music that turns tense when someone is close to losing, and a victory or defeat sting at the end.",
+            "The streets sound alive: rain and the city around every duel, the crowd waiting while you find a match, wind on the Fight Mode rooftop, and the neon on the mat buzzes when it flickers.",
+            "Every phase and turn has its own sound, buttons have new clicks, and Karat jingles when you earn it.",
+            "Settings: a separate Ambience volume."
+        ]
+    },
+    {
         "version": "0.9.5",
         "notes": [
             "A fresh full version of the game: from now on updates download in seconds instead of a long wait at start-up."
