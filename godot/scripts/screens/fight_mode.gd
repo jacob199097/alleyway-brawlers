@@ -26,7 +26,7 @@ func _ready() -> void:
 			"sub": "Practice against the AI" + ("\nOffline: starter deck, no rewards" if Game.offline else ""),
 			"locked": false},
 		{"id": "ffa", "title": "FREE-FOR-ALL", "color": Color("ff9f43"),
-			"sub": "3–4 players online, every board at once\nLast one standing wins",
+			"sub": "4 players online: CPUs fill empty seats\nLast one standing wins",
 			"locked": Game.offline, "lock_text": "Needs the server"},
 	]
 	for i in modes.size():

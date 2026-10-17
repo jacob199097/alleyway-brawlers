@@ -1,13 +1,13 @@
 'use strict';
 
 /**
- * FREE-FOR-ALL: 3-4 players, every one for themselves (server-authoritative, like onlineMatch.js).
+ * FREE-FOR-ALL: 4 players, every one for themselves (server-authoritative, like onlineMatch.js).
  * The rules are the shared engine with seats p1..p4 (shared/duel/DuelState.js: every opponent is an
  * enemy, the last one standing wins).
  *
  * Lobby: players who queue (ffa:queue) go into the open lobby (up to 4), whose LOBBY_SECS timer starts
  * when it opens. Each readies up (ffa:ready). With 4 in and all ready it starts at once; otherwise when
- * the timer runs out: players who aren't ready drop out, and CPUs fill empty seats up to 3 players.
+ * the timer runs out: players who aren't ready drop out, and CPUs take the empty seats (always 4 players).
  * A lobby nobody is ready in closes.
  *
  * Match: each player sees it from their own seat: theirs is "player", the others "foe1".."foe3" in
@@ -18,7 +18,7 @@
  *
  *   client → server  ffa:queue, ffa:ready {ready}, ffa:leave (the lobby), ffa:action {matchId, action},
  *                    ffa:concede {matchId}, ffa:quit (stop watching after going out), ffa:resync
- *   server → client  ffa:lobby {lobbyId, secs, players: [{username, level, avatar_url, title, ready, you}], min, max},
+ *   server → client  ffa:lobby {lobbyId, secs, players: [{username, level, avatar_url, title, ready, you}], max},
  *                    ffa:left {reason}, ffa:error {message},
  *                    ffa:start {matchId, resync, players: {player: profile, foe1: ...}, view, clock},
  *                    ffa:update {matchId, events, view, clock, away},
@@ -33,7 +33,7 @@ const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 
 const LOBBY_SECS   = 60;
 const MAX_PLAYERS  = 4;
-const MIN_PLAYERS  = 3;
+const MIN_PLAYERS  = 3;   // (the rules' fewest for a free-for-all: fillTo can't go lower)
 const TURN_SECS    = 90;
 const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;
@@ -100,7 +100,7 @@ function shuffle(a) {
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
  * @param {(playerId) => Promise} [deps.recordDailyWin]
  * @param {number} [deps.lobbySecs] [deps.turnSecs] [deps.awaySecs] [deps.reconnectSecs] [deps.botMoveMs] [deps.botEventMs]  (tests)
- * @param {number} [deps.fillTo]  CPUs fill the seats up to this many players (default 3; tests: 4)
+ * @param {number} [deps.fillTo]  CPUs fill the seats up to this many players (default 4; tests: 3)
  */
 function createFfaService(io, deps) {
     const sockets = new Map();
@@ -129,7 +129,7 @@ function createFfaService(io, deps) {
         const left = Math.max(0, Math.round((l.endsAt - Date.now()) / 1000));
         for (const p of l.players) {
             emitTo(p.entry.playerId, 'ffa:lobby', {
-                lobbyId: l.id, secs: left, min: MIN_PLAYERS, max: MAX_PLAYERS,
+                lobbyId: l.id, secs: left, max: MAX_PLAYERS,
                 players: l.players.map(q => ({ ...profileOf(q.entry), ready: q.ready, you: q === p })),
             });
         }
@@ -170,7 +170,7 @@ function createFfaService(io, deps) {
         for (const e of entries) inLobby.delete(e.playerId);
         const { cpuSetup, randomCpuClan } = await cpu;
         let n = 0;
-        while (entries.length < Math.min(MAX_PLAYERS, deps.fillTo ?? MIN_PLAYERS)) {
+        while (entries.length < Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, deps.fillTo ?? MAX_PLAYERS))) {
             n += 1;
             entries.push({ playerId: `cpu:${randomUUID()}`, bot: true, level: 'normal', setup: cpuSetup(randomCpuClan()),
                 profile: { username: `CPU ${n}`, level: 1, avatar_url: 'cpu' } });

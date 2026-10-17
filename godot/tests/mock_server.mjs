@@ -374,7 +374,7 @@ ffa = createFfaService(io, {
     lobbySecs: Number(process.env.FFA_LOBBY_SECS || 20),
     turnSecs: Number(process.env.FFA_TURN_SECS || 90),   // (short: the server plays for an idle player)
     awaySecs: Number(process.env.FFA_AWAY_SECS || 15),   // (then after 8 moves played for them, they're out)
-    fillTo: Number(process.env.FFA_FILL || 3),            // (4: a full table of CPUs)
+    fillTo: process.env.FFA_FILL ? Number(process.env.FFA_FILL) : undefined,   // (3: a table of 3; default 4)
     async resolveFfa({ playerId, place }) {
         const p = byPlayerId(playerId);
         const win = place === 1;

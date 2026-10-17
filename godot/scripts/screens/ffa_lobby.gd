@@ -1,7 +1,7 @@
 extends Screen
 ## Free-for-all lobby (backend/socket/ffaMatch.js): up to four players, each readies up. It starts
-## as soon as four are ready, or when the timer runs out: anyone not ready drops out and CPUs fill
-## the empty seats up to three players. Net opens the duel when the match starts (ffa:start).
+## as soon as four are ready, or when the timer runs out: anyone not ready drops out and CPUs take
+## the empty seats (always four players). Net opens the duel when the match starts (ffa:start).
 
 const SEAT := Vector2(330, 400)
 const ACCENT := Color("ff9f43")
@@ -23,7 +23,7 @@ func _ready() -> void:
 	back_to = ""
 	UI.background(self, "duel_background.png", 0.62)
 	UI.title(self, "FREE-FOR-ALL", ACCENT)
-	var sub := UI.label("3–4 players · every one for themselves · last one standing wins", 24, UI.MUTED)
+	var sub := UI.label("4 players · every one for themselves · last one standing wins", 24, UI.MUTED)
 	sub.size = Vector2(1920, 32)
 	sub.position = Vector2(0, 96)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -45,7 +45,7 @@ func _ready() -> void:
 	_status.position = Vector2(0, 790)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_status)
-	var rules := UI.label("Starts when all 4 are ready, or when the timer runs out. Anyone not ready drops out; CPUs fill empty seats up to 3 players.", 18, UI.MUTED)
+	var rules := UI.label("Starts when all 4 are ready, or when the timer runs out. Anyone not ready drops out; CPUs take any empty seats.", 18, UI.MUTED)
 	rules.size = Vector2(1920, 26)
 	rules.position = Vector2(0, 830)
 	rules.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -159,7 +159,7 @@ func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
 		seat.avatar.texture = null
 		seat.name.text = "OPEN SEAT"
 		seat.name.label_settings.font_color = Color(1, 1, 1, 0.25)
-		seat.sub.text = "waiting for a player…"
+		seat.sub.text = "a CPU takes it if nobody does"
 		seat.badge.text = ""
 		root.modulate = Color(1, 1, 1, 0.6)
 		seat.filled = false

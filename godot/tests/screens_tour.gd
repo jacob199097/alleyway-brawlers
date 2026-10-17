@@ -150,7 +150,7 @@ func _run() -> void:
 
 
 ## Free-for-all: the lobby, ready, then a match against CPUs (start the mock server with
-## FFA_LOBBY_SECS=5 FFA_TURN_SECS=4 FFA_AWAY_SECS=2 FFA_FILL=4: a full table, and this player,
+## FFA_LOBBY_SECS=5 FFA_TURN_SECS=4 FFA_AWAY_SECS=2 (CPUs fill the table): a full table, and this player,
 ## who doesn't play, is put out after a while, so the end and the results show too)
 func _ffa_shots() -> void:
 	Engine.time_scale = 1.0

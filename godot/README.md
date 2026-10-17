@@ -45,7 +45,7 @@ Right-click any card to zoom it.
   deck and doesn't change Rank Points. You can also **Challenge** an online friend from Social.
   Live chat is there too.
 - **Free-for-all** (`backend/socket/ffaMatch.js`): a lobby of up to 4 who ready up; the match starts
-  when 4 are ready, or after 60 seconds with CPUs filling the seats up to 3. Every board is on screen
+  when 4 are ready, or after 60 seconds with CPUs taking any empty seats (always 4 players). Every board is on screen
   in a 2x2 grid; placement pays (1st a win, 2nd half way, the rest a loss).
 - **VS CPU and Ranked run on the server too**, against a server-side CPU (`shared/duel/DuelAI.js`,
   a copy of `scripts/duel/duel_ai.gd`). The server sees the result, so it pays the rewards
