@@ -713,6 +713,16 @@ export class DuelState {
         return ok;
     }
 
+    /** A player leaves (conceding, away too long, disconnected). FFA: they're out, in the last place
+     *  still open, and the game goes on; two players: the other one wins. Same as concede in duel_state.gd. */
+    concede(side, reason = 'concede') {
+        if (this.winner !== '' || !this.sides[side] || this.sides[side].out) return false;
+        this._lose(side, reason);
+        if (this.ffa) this._sweepOut();
+        this._recalc();
+        return true;
+    }
+
     _summon(side, uid, slot, position, tribute = -1) {
         const i = this._handIndex(side, uid);
         if (i < 0 || !this.canSummon(side, this.sides[side].hand[i], slot, tribute)) return false;

@@ -104,10 +104,11 @@ function statsFilter(ev, viewer) {
     return { ...ev, values };
 }
 
-/** The whole board as `viewer` may see it (server seats; swapped afterwards). */
+/** The whole board as `viewer` may see it (server seats; swapped afterwards). FFA (socket/ffaMatch.js):
+ *  every seat, each one's place once they're out, and the turn order (seats). */
 function viewFor(state, viewer) {
     const sides = {};
-    for (const seat of ['player', 'opponent']) {
+    for (const seat of state.ffa ? state.seats : ['player', 'opponent']) {
         const s = state.sides[seat];
         const own = seat === viewer;
         sides[seat] = {
@@ -120,6 +121,7 @@ function viewFor(state, viewer) {
             gutter: structuredClone(s.gutter),
             field: s.field.map(c => (c == null ? null : (own || !c.face_down) ? structuredClone(c) : redact(c))),
         };
+        if (state.ffa) sides[seat].out = s.out || 0;
     }
     let pending = {};
     if (state.pending && Object.keys(state.pending).length) {
@@ -130,7 +132,9 @@ function viewFor(state, viewer) {
             pending = { kind: state.pending.kind, side: state.pending.side };
         }
     }
-    return { turn: state.turn, active: state.active, phase: state.phase, winner: state.winner, pending, sides };
+    const view = { turn: state.turn, active: state.active, phase: state.phase, winner: state.winner, pending, sides };
+    if (state.ffa) view.seats = [...state.seats];
+    return view;
 }
 
 function forSeat(v, seat) {
@@ -154,6 +158,7 @@ function forSeat(v, seat) {
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]  a deck's games and wins
  * @param {(row) => Promise} [deps.recordStats]  a finished match for the balance dashboard (match_stats)
  * @param {(playerId, week) => Promise<object|null>} [deps.claimChallenge]  a won weekly challenge → its banner (first win only)
+ * @param {(playerId) => boolean} [deps.isBusyElsewhere]  in a free-for-all lobby or match (socket/ffaMatch.js)
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -165,7 +170,8 @@ function createOnlineService(io, deps) {
     const rematchable = new Map();   // playerId → { opp, until } after a match against a player
     const rematchAsks = new Map();   // playerId → the opponent they offered a rematch to
     const watching = new Map();      // spectator playerId → { match, seat } (the seat they watch from)
-    const busy = (id) => byPlayer.has(id) || rpsByPlayer.has(id);
+    const busyHere = (id) => byPlayer.has(id) || rpsByPlayer.has(id);
+    const busy = (id) => busyHere(id) || !!deps.isBusyElsewhere?.(id);
 
     const emitTo = (playerId, event, data) => sockets.get(playerId)?.emit(event, data);
 
@@ -775,7 +781,7 @@ function createOnlineService(io, deps) {
         });
     }
 
-    return { register, isInMatch: (playerId) => busy(playerId), notify: emitTo, _matches: matches };
+    return { register, isInMatch: (playerId) => busy(playerId), isBusyHere: busyHere, leaveQueue, notify: emitTo, _matches: matches };
 }
 
 /** The clan most of a deck's cards belong to (achievements: wins with a clan). */

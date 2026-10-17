@@ -828,6 +828,18 @@ func do_action(side: String, a: Dictionary) -> bool:
 	return ok
 
 
+## A player leaves (conceding, away too long, disconnected). FFA: they're out, in the last place
+## still open, and the game goes on; two players: the other one wins. Same as concede in DuelState.js.
+func concede(side: String, reason := "concede") -> bool:
+	if winner != "" or not sides.has(side) or _is_out(side):
+		return false
+	_lose(side, reason)
+	if ffa:
+		_sweep_out()
+	_recalc()
+	return true
+
+
 func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) -> bool:
 	var i := _hand_index(side, uid)
 	if i < 0 or not can_summon(side, sides[side].hand[i], slot, tribute):

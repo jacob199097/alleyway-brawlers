@@ -220,7 +220,9 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
         const p = rows[0];
 
         const scale    = Number(matchMeta.rewardScale ?? 1);
-        let xpEarned   = Math.round(BASE_XP[outcome] * scale);
+        // FFA 2nd place (resolveFfaMatch): counts as a loss, pays halfway between a loss and a win
+        const second   = matchMeta.second === true;
+        let xpEarned   = Math.round((second ? (BASE_XP.win + BASE_XP.loss) / 2 : BASE_XP[outcome]) * scale);
         let firstWinBonus = false;
         const today    = new Date().toISOString().slice(0, 10);
 
@@ -236,7 +238,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
 
         const newXp       = p.xp + xpEarned;
         const newLevel    = calcLevel(newXp);
-        const karatEarned = Math.round(reward.karat * scale);
+        const karatEarned = Math.round((second ? (REWARDS.win.karat + REWARDS.loss.karat) / 2 : reward.karat) * scale);
         const newKarat    = p.karat + karatEarned;
         const newRankPts  = p.rank_points + rankDelta;
         const { tier: newRank, points: clampedRankPts } = calcRank(newRankPts);
@@ -303,7 +305,7 @@ const DAILY_CPU_REWARD_CAP = 15;
 // Keep every value below 1 so online wins always pay more.
 const CPU_REWARD_SCALE = { easy: 0.4, normal: 0.65, hard: 0.85 };
 
-async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty = 'normal' }) {
+async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty = 'normal', second = false }) {
     const { rows: [{ rewarded_today }] } = await pool.query(
         `SELECT COUNT(*)::int AS rewarded_today FROM solo_matches
          WHERE  player_id = $1 AND rewarded AND completed_at >= date_trunc('day', NOW())`,
@@ -319,7 +321,22 @@ async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty =
         return { outcome, karatEarned: 0, xpEarned: 0, firstWinBonus: false, leveledUp: false,
             rankChanged: false, rankPointDelta: 0, dailyCapReached: true };
     }
-    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, rewardScale: CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
+    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, second, rewardScale: CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
 }
 
-module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY };
+/**
+ * A free-for-all (socket/ffaMatch.js), from the result the server saw: 1st place is a win, 2nd pays
+ * halfway between a win and a loss, the rest a loss. No Rank Points. Played against CPU seats only
+ * (one person) it pays like a normal-CPU match and counts toward the daily CPU cap.
+ */
+async function resolveFfaMatch({ playerId, place, humans }) {
+    const outcome = place === 1 ? 'win' : 'loss';
+    const meta = { second: place === 2, rewardScale: 1 };
+    if (humans < 2) {
+        const r = await resolveCpuMatch({ playerId, outcome, difficulty: 'normal', second: place === 2 });
+        return { ...r, place };
+    }
+    return { ...await resolveSoloMatch({ playerId, outcome, matchMeta: meta }), place };
+}
+
+module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, resolveFfaMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY };

@@ -186,6 +186,21 @@ async function rejects(promise, pattern) {
     assert.equal(pack.collection.total, Object.values(CARD_CATALOG).filter(c => c.clan === 'militia' && !c.token).length);
     assert.equal(pack.newKarat, 200);
 
+    // Free-for-all places: 1st a win, 2nd between a win and a loss, the rest a loss
+    const { resolveFfaMatch } = require('./postMatch');
+    const { rows: [ffaP] } = await q();
+    const second = await resolveFfaMatch({ playerId: ffaP.id, place: 2, humans: 3 });
+    assert.equal(second.xpEarned, 100);
+    assert.equal(second.karatEarned, 25);
+    const third = await resolveFfaMatch({ playerId: ffaP.id, place: 3, humans: 3 });
+    assert.equal(third.karatEarned, 10);
+    const first = await resolveFfaMatch({ playerId: ffaP.id, place: 1, humans: 3 });
+    assert.equal(first.outcome, 'win');
+    const rec = (await q('SELECT wins, losses FROM players WHERE id = $1', [ffaP.id])).rows[0];
+    assert.deepEqual([rec.wins, rec.losses], [1, 2], 'a win and two losses');
+    const vsCpu = await resolveFfaMatch({ playerId: ffaP.id, place: 1, humans: 1 });
+    assert.ok(vsCpu.karatEarned < first.karatEarned, 'against CPUs only it pays like a CPU match');
+
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);
 

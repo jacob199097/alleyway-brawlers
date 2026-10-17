@@ -29,6 +29,8 @@ jobs:
         run: node backend/socket/replay.test.cjs
       - name: Spectators
         run: node backend/socket/spectate.test.cjs
+      - name: Free-for-all lobby and matches
+        run: node backend/socket/ffa.test.cjs
       - name: Card Forge passives do what their text says
         run: node shared/duel/passives.test.mjs
       - name: Free-for-all rules (3-4 players)

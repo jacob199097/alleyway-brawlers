@@ -26,7 +26,8 @@ const jwt          = require('jsonwebtoken');
 
 const { pool }                  = require('./db/pool');
 const { createOnlineService, loadSetupFromDb, loadProfileFromDb, replaySteps } = require('./socket/onlineMatch');
-const { resolveMatch, resolveCpuMatch } = require('./economy/postMatch');
+const { resolveMatch, resolveCpuMatch, resolveFfaMatch } = require('./economy/postMatch');
+const { createFfaService } = require('./socket/ffaMatch');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 const achievements = require('./economy/achievements');
 const { migrate } = require('./db/migrate');
@@ -104,7 +105,9 @@ io.use((socket, next) => {
 });
 
 // ── Online matches (server-authoritative rules, socket/onlineMatch.js) ───────
+let ffa = null;   // free-for-all lobbies and matches (below)
 const online = createOnlineService(io, {
+    isBusyElsewhere: (playerId) => !!ffa?.isBusy(playerId),
     loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     resolveMatch,
@@ -124,6 +127,20 @@ const online = createOnlineService(io, {
          AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0,
 });
 app.locals.online = online;   // routes/social.js: which friends are in a match
+
+// ── Free-for-all: 3-4 players, lobby with ready-up (socket/ffaMatch.js) ──────
+ffa = createFfaService(io, {
+    loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
+    loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
+    isBusyElsewhere: (playerId) => online.isBusyHere(playerId),
+    leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
+    resolveFfa: resolveFfaMatch,
+    recordMatch: achievements.recordMatch,
+    recordDeck: (deckId, outcome) => pool.query(
+        'UPDATE decks SET games = games + 1, wins = wins + $2 WHERE id = $1', [deckId, outcome === 'win' ? 1 : 0]),
+    incrementDailyQuest,
+    recordDailyWin,
+});
 achievements.setNotifier(online.notify);   // unlocks outside matches reach the player's game
 
 // ── Socket connections ────────────────────────────────────────────────────────
@@ -137,8 +154,9 @@ io.on('connection', (socket) => {
         [socket.id, playerData.playerId]
     ).catch(err => console.error('[Socket] Online update failed:', err.message));
 
-    // Matches, the queue and friend challenges (socket/onlineMatch.js)
+    // Matches, the queue and friend challenges (socket/onlineMatch.js); free-for-all (socket/ffaMatch.js)
     online.register(socket, playerData);
+    ffa.register(socket, playerData);
 
     // ── Chat ─────────────────────────────────────────────────────────────────
     socket.on('chat:message', ({ toPlayerId, body } = {}) => {
