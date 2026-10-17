@@ -9,6 +9,14 @@
  *   { kind: 'summon', uid: 12, slot: 2, position: 'atk' }
  * Every change is recorded as an event (takeEvents()). Effects that say "you may"/"choose"
  * pause with `pending`, answered by { kind: 'choose', option } or { kind: 'discard', uid }.
+ *
+ * Free-for-all (FFA): pass 3-4 decks (seats in turn order, e.g. p1..p4) instead of player and
+ * opponent. Every opponent is an enemy: attacks name the opponent they go at ({kind: 'attack', from,
+ * target, foe}), effects on "an enemy" can pick any opponent's card, "enemies" hit them all, and an
+ * effect on "your opponent" (discard, mill, Morale damage, face-down cards) hits the one being fought
+ * (in a brawl) or the one its player chooses. A player at 0 Morale (or decked out) is out (their place
+ * in `places`); their cards leave at the end of the action and the last one standing wins. Durations
+ * that run "through the next turn" last a full round. With two players everything is as before.
  */
 
 import { CARD_CATALOG } from '../cards.js';
@@ -123,6 +131,12 @@ export class DuelState {
     // opening_hand, pierce (every attack pierces). Same as duel_state.gd.
     constructor(decks, hideouts = {}, leaders = {}, first = 'player', seed = 0, rules = {}) {
         this.rules = { ...(rules || {}) };
+        // Turn order: player, opponent; FFA seats by name (p1, p2, ...), whatever order they come in
+        const keys = Object.keys(decks);
+        this.seats = keys.length === 2 && keys.includes('player') ? ['player', 'opponent'] : [...keys].sort();
+        this.ffa = this.seats.length > 2;
+        this.first = first;
+        this.places = {};                  // FFA: side -> finishing place (1 = the winner)
         this._rand = seed > 0 ? seededRandom(seed) : Math.random;
         this.turn = 1;
         this.active = first;
@@ -139,7 +153,7 @@ export class DuelState {
         this._inAnswer = false;
         this._newAsks = [];
         this._fixedOrder = seed === -1; // never shuffle (tests compare engines)
-        for (const side of ['player', 'opponent']) {
+        for (const side of this.seats) {
             const deck = decks[side].map(spec => this.makeCard(spec));
             if (seed !== -1) shuffle(deck, this._rand);
             const hideout = (hideouts[side] || []).map(spec => this.makeCard(spec));
@@ -153,7 +167,7 @@ export class DuelState {
                 authority: toInt(this.rules.start_authority) || 1, authority_max: toInt(this.rules.start_authority) || 1,
                 deck, hand: [], field, gutter: [], hideout,
                 leader, leader_state: leader ? 'dormant' : 'none',
-                brutus_bonus: 0, promoted: {}, mentor_used: false,
+                brutus_bonus: 0, promoted: {}, mentor_used: false, turns: 0,
             };
         }
     }
@@ -212,7 +226,66 @@ export class DuelState {
     }
 
     canAct(side) {
-        return this.winner === '' && isEmpty(this.pending) && side === this.active;
+        return this.winner === '' && isEmpty(this.pending) && side === this.active && !this.sides[side]?.out;
+    }
+
+    // ── Seats (two players, or FFA) ────────────────────────────────────────
+
+    /** The opponents still in, in turn order after side (two players: just the other one). */
+    foesOf(side) {
+        const i = this.seats.indexOf(side);
+        const out = [];
+        for (let k = 1; k < this.seats.length; k++) {
+            const s = this.seats[(i + k) % this.seats.length];
+            if (!this.sides[s].out) out.push(s);
+        }
+        return out;
+    }
+
+    _alive() {
+        return this.seats.filter(s => !this.sides[s].out);
+    }
+
+    /** The next seat still in after side. */
+    _nextSeat(side) {
+        const i = this.seats.indexOf(side);
+        for (let k = 1; k <= this.seats.length; k++) {
+            const s = this.seats[(i + k) % this.seats.length];
+            if (!this.sides[s].out) return s;
+        }
+        return side;
+    }
+
+    /** Every seat, starting with this one. */
+    _order(start) {
+        const i = this.seats.indexOf(start);
+        return this.seats.map((_, k) => this.seats[(i + k) % this.seats.length]);
+    }
+
+    /** How many more turns until the next turn of everyone else has passed (two players: 1). */
+    _roundSpan() {
+        return Math.max(1, this._alive().length - 1);
+    }
+
+    /** The opponent an effect on "your opponent" hits: in a brawl, the other side of it; otherwise
+     *  the only one, or the one its player chooses (lowest Morale first). ok: which can be hit at all. */
+    _withFoe(side, c, vs, ok, fn) {
+        const foes = this.foesOf(side).filter(ok);
+        if (!foes.length) return;
+        const ctx = this._attackCtx;
+        let fixed = null;
+        if (vs && vs.side && vs.side !== side && foes.includes(vs.side)) fixed = vs.side;
+        else if (ctx && ctx.side === side && foes.includes(ctx.foe)) fixed = ctx.foe;
+        else if (ctx && ctx.foe === side && foes.includes(ctx.side)) fixed = ctx.side;
+        else if (foes.length === 1) fixed = foes[0];
+        if (fixed != null) {
+            fn(fixed);
+            return;
+        }
+        const order = [...foes].sort((a, b) => (this.sides[a].morale - this.sides[b].morale) || (this.seats.indexOf(a) - this.seats.indexOf(b)));
+        this._ask(side, 'foe', `${c.name}: choose an opponent`, c, order.map(x => ({ id: x, label: x, side: x })), (x) => {
+            if (this.sides[x] && !this.sides[x].out) fn(x);
+        });
     }
 
     canDeployNow(side) {
@@ -302,8 +375,13 @@ export class DuelState {
     }
 
     _equipTargets(side, c) {
-        const on = String(c.equip_to ?? 'ally') === 'enemy' ? other(side) : side;
-        return this.characters(on).filter(x => !this.inStasis(x.card) && (on === side || isEmpty(this._passive(on, x.slot, x.card, 'untargetable'))));
+        const out = [];
+        for (const on of String(c.equip_to ?? 'ally') === 'enemy' ? this.foesOf(side) : [side]) {
+            for (const x of this.characters(on)) {
+                if (!this.inStasis(x.card) && (on === side || isEmpty(this._passive(on, x.slot, x.card, 'untargetable')))) out.push({ side: on, slot: x.slot, card: x.card });
+            }
+        }
+        return out;
     }
 
     _sweepEquips() {
@@ -355,7 +433,7 @@ export class DuelState {
         if (!this._fxCond(side, slot, e, def)) return false;
         if (String(e.per ?? '') !== '' && this._perCount(side, slot, e) <= 0) return false;
         const s = this.sides[side];
-        const foe = this.sides[other(side)];
+        const foes = this.foesOf(side).map(x => this.sides[x]);
         const mine = (x) => x !== c && this._fxKindOk(x, e);
         switch (String(e.do ?? '')) {
             case 'draw': return s.deck.length > 0;
@@ -364,10 +442,10 @@ export class DuelState {
             case 'revive': return this._emptyLane(side) >= 0 && s.gutter.some(mine);
             case 'call': return this._emptyLane(side) >= 0 && s.deck.some(mine);
             case 'token': return this._emptyLane(side) >= 0 && !!CARD_CATALOG[String(e.token ?? '')];
-            case 'discard': return foe.hand.length > 0;
-            case 'mill': return foe.deck.length > 0;
+            case 'discard': return foes.some(x => x.hand.length > 0);
+            case 'mill': return foes.some(x => x.deck.length > 0);
             case 'heal': return s.morale < START_MORALE;
-            case 'break_ambush': return BACK.some(b => foe.field[b] != null);
+            case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null));
             case 'influence': {
                 const l = s.leader;
                 return s.leader_state === 'dormant' && l != null && toInt(l.influence) < toInt(l.influence_max ?? l.influence);
@@ -467,9 +545,10 @@ export class DuelState {
     }
 
     // Any enemy character; DIRECT when none is still standing (empty row or only Downed);
-    // the enemy LEADER whenever it is dormant.
-    attackTargets(side) {
-        const foe = other(side);
+    // the enemy LEADER whenever it is dormant. foe: which opponent (FFA; default: the first one)
+    attackTargets(side, foe = null) {
+        foe = foe ?? this.foesOf(side)[0];
+        if (foe == null || foe === side || !this.sides[foe] || this.sides[foe].out) return [];
         const foes = this.characters(foe).filter(e => !this.inStasis(e.card));
         // Elusive characters can't be attacked while their owner has another character that can be
         const open = foes.filter(e => !this._passive(foe, e.slot, e.card, 'elusive'));
@@ -590,24 +669,29 @@ export class DuelState {
     // ── Actions ────────────────────────────────────────────────────────────
 
     start() {
+        const order = this._order(this.active);
         for (let i = 0; i < (toInt(this.rules.opening_hand) || OPENING_HAND); i++) {
-            this._draw(this.active, true);
-            this._draw(other(this.active), true);
+            for (const side of order) this._draw(side, true);
         }
-        // Each player may redraw their opening hand once, first player first; then turn 1 begins
-        const first = this.active;
-        this._askMulligan(first, () => this._askMulligan(other(first), () => this._beginTurn()));
+        // Each player may redraw their opening hand once, in turn order; then turn 1 begins
+        const chain = (k) => {
+            if (k < order.length) this._askMulligan(order[k], () => chain(k + 1));
+            else this._beginTurn();
+        };
+        chain(0);
         this._flushAsks();
     }
 
     doAction(side, a) {
         if (this.winner !== '' || !a || typeof a !== 'object') return false;
         let ok = false;
+        // A new move (not an answer to a prompt): no brawl is going on any more
+        if (a.kind !== 'choose' && a.kind !== 'discard') this._attackCtx = null;
         switch (a.kind) {
             case 'summon': ok = this._summon(side, toInt(a.uid), toInt(a.slot), String(a.position ?? 'atk'), Array.isArray(a.tributes) ? a.tributes : toInt(a.tribute ?? -1)); break;
             case 'set': ok = this._setAmbush(side, toInt(a.uid), toInt(a.slot)); break;
             case 'hustle': ok = this._hustle(side, toInt(a.uid)); break;
-            case 'attack': ok = this._attack(side, toInt(a.from), toInt(a.target)); break;
+            case 'attack': ok = this._attack(side, toInt(a.from), toInt(a.target), a.foe == null ? null : String(a.foe)); break;
             case 'position': ok = this._changePosition(side, toInt(a.slot)); break;
             case 'promote':
                 if (this.canPromote(side, toInt(a.slot))) {
@@ -623,6 +707,7 @@ export class DuelState {
         }
         if (ok) {
             this._flushAsks();
+            if (this.ffa) this._sweepOut();
             this._recalc();
         }
         return ok;
@@ -691,13 +776,13 @@ export class DuelState {
             s.field[b] = c;
             this._emit('lasting', { side, slot: b, card: clone(c) });
             if (String(c.subtype) === 'equip') {
-                const on = String(c.equip_to ?? 'ally') === 'enemy' ? other(side) : side;
+                const on = String(c.equip_to ?? 'ally') === 'enemy' ? (this.foesOf(side)[0] ?? side) : side;
                 const entries = this._equipTargets(side, c);
                 entries.sort(strongestFirst);
                 this._askTarget(side, 'equip', `${c.name}: choose a character to equip`, c, entries, on, (x) => {
                     if (s.field[b] !== c) return;
                     c.equipped_to = x.card.uid;
-                    this._emit('equip', { side, slot: b, target_side: on, target_slot: x.slot, card: clone(c) });
+                    this._emit('equip', { side, slot: b, target_side: x.side ?? on, target_slot: x.slot, card: clone(c) });
                     this._effect(side, c, `${c.name} is equipped to ${x.card.name}`, b);
                     this._recalc();
                 });
@@ -785,8 +870,10 @@ export class DuelState {
 
     // ── Attacks ────────────────────────────────────────────────────────────
 
-    _attack(side, from, target) {
-        if (!this.canAttackWith(side, from) || !this.attackTargets(side).includes(target)) return false;
+    _attack(side, from, target, foe = null) {
+        foe = foe ?? this.foesOf(side)[0];
+        if (foe == null || !this.foesOf(side).includes(foe)) return false;
+        if (!this.canAttackWith(side, from) || !this.attackTargets(side, foe).includes(target)) return false;
         const att = this.cardAt(side, from);
         att.has_attacked = true;
         // Attacks twice each turn: the first attack leaves it ready for one more
@@ -794,11 +881,11 @@ export class DuelState {
             att.has_attacked = false;
             att.second_attack = this.turn;
         }
-        this._emit('attack', { side, from, target, card: clone(att) });
-        const ctx = { side, foe: other(side), from, target, att, bonus: 0 };
+        this._emit('attack', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
+        const ctx = { side, foe, from, target, att, bonus: 0 };
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
         if (this._passive(side, from, att, 'pierce') || this.rules.pierce) ctx.pierce = true;
-        const defNow = target >= 0 ? this.cardAt(other(side), target) : null;
+        const defNow = target >= 0 ? this.cardAt(foe, target) : null;
         let k = 0;
         for (const e of this._fx(att, 'attack')) {
             k += 1;
@@ -842,7 +929,7 @@ export class DuelState {
                             be.card.redirect_turn = this.turn;
                             ctx.target = be.slot;
                             this._effect(foe, be.card, 'Block Enforcer steps in and takes the hit', be.slot);
-                            this._emit('retarget', { side: ctx.side, from: ctx.from, target: ctx.target });
+                            this._emit('retarget', this.ffa ? { side: ctx.side, from: ctx.from, target: ctx.target, foe } : { side: ctx.side, from: ctx.from, target: ctx.target });
                         }
                         this._atkAmbush(ctx);
                     });
@@ -923,7 +1010,7 @@ export class DuelState {
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
             const dmg = Math.max(0, att.attack + ctx.bonus);
-            this._emit('clash', { side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' });
+            this._emit('clash', this._withFoeKey({ side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' }, foe));
             this._damage(foe, dmg);
             if (this.winner === '' && this.cardAt(side, from) === att) this._runFx(side, from, att, 'direct');
             this._bleed(side, att);
@@ -967,7 +1054,7 @@ export class DuelState {
         const vsDef = def.downed || def.position === 'def';
         const aVal = Math.max(0, att.attack + bonus);
         const dVal = vsDef ? def.defense + defDef : def.attack + defAtk;
-        this._emit('clash', { side, from, target, att: aVal, def: dVal, vs: vsDef ? 'DEF' : 'ATK' });
+        this._emit('clash', this._withFoeKey({ side, from, target, att: aVal, def: dVal, vs: vsDef ? 'DEF' : 'ATK' }, foe));
 
         let result = '';
         if (vsDef) {
@@ -989,10 +1076,10 @@ export class DuelState {
         }
         if (this.winner === '' && this.cardAt(side, from) === att && !att.downed) {
             if (result === 'ko') {
-                this._onKo(side, from, att, defWasDowned, target);
+                this._onKo(side, from, att, defWasDowned, target, foe);
                 this._runFx(side, this._slotOf(side, att, from), att, 'ko', defInfo);
             } else if (result === 'downed') {
-                this._onDown(side, from, att);
+                this._onDown(side, from, att, foe);
                 this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo);
             }
         }
@@ -1013,7 +1100,7 @@ export class DuelState {
         const foe = ctx.foe;
         const leader = this.sides[foe].leader;
         const dmg = Math.max(0, ctx.att.attack + ctx.bonus);
-        this._emit('clash', { side: ctx.side, from: ctx.from, target: LEADER, att: dmg, def: leader.influence, vs: 'INFLUENCE' });
+        this._emit('clash', this._withFoeKey({ side: ctx.side, from: ctx.from, target: LEADER, att: dmg, def: leader.influence, vs: 'INFLUENCE' }, foe));
         leader.influence = Math.max(0, leader.influence - dmg);
         this._emit('leader_hit', { side: foe, amount: dmg, influence: leader.influence });
         if (leader.influence <= 0) {
@@ -1062,9 +1149,11 @@ export class DuelState {
         // "When another of your characters is KO'd"
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'ally_ko', c);
         this._runLasting(side, 'ally_ko', c);
-        // "When an enemy character is KO'd" (by anything)
-        for (const x of this.characters(other(side))) this._runFx(other(side), x.slot, x.card, 'foe_ko', c);
-        this._runLasting(other(side), 'foe_ko', c);
+        // "When an enemy character is KO'd" (by anything): every opponent's cards
+        for (const foe of this.foesOf(side)) {
+            for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_ko', c);
+            this._runLasting(foe, 'foe_ko', c);
+        }
     }
 
     _damage(side, amount) {
@@ -1072,7 +1161,62 @@ export class DuelState {
         const s = this.sides[side];
         s.morale = Math.max(0, s.morale - amount);
         this._emit('damage', { side, amount, morale: s.morale });
-        if (s.morale <= 0 && this.winner === '') this._end(other(side), 'morale');
+        if (s.morale <= 0 && this.winner === '') this._lose(side, 'morale');
+    }
+
+    /** side is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
+     *  last place still open, their cards leave at the end of the action (_sweepOut), and the last
+     *  player standing wins. */
+    _lose(side, reason) {
+        if (this.winner !== '') return;
+        if (!this.ffa) {
+            this._end(this.seats.find(x => x !== side), reason);
+            return;
+        }
+        const s = this.sides[side];
+        if (s.out) return;
+        s.out = this._alive().length;
+        this.places[side] = s.out;
+        this._emit('eliminated', { side, place: s.out, reason });
+        const left = this._alive();
+        if (left.length === 1) {
+            this.places[left[0]] = 1;
+            this._end(left[0], reason);
+        }
+    }
+
+    /** FFA, after each action: the cards of players who went out leave the game, their prompts are
+     *  dropped, and if it was their turn the next player's begins. */
+    _sweepOut() {
+        let changed = false;
+        for (const side of this.seats) {
+            const s = this.sides[side];
+            if (!s.out || s.cleared) continue;
+            s.cleared = true;
+            changed = true;
+            s.field = Array(10).fill(null);
+            s.hand = [];
+            if (s.leader_state === 'dormant') s.leader_state = 'defeated';
+        }
+        if (!changed || this.winner !== '') return;
+        this._asks = this._asks.filter(a => !this.sides[a.side].out);
+        if (this.pending.side && this.sides[this.pending.side].out) this.pending = {};
+        while (this.winner === '' && this.sides[this.active].out) {
+            for (const side of this.seats) {
+                for (const c of this.sides[side].field) if (c != null) c.mods = c.mods.filter(m => m.until_turn > this.turn);
+            }
+            this.active = this._nextSeat(this.active);
+            this.turn += 1;
+            this._beginTurn();
+        }
+        this._flushAsks();
+        if (this.seats.some(x => this.sides[x].out && !this.sides[x].cleared)) this._sweepOut();
+    }
+
+    /** FFA events about a brawl say which opponent it's with (two players: unchanged). */
+    _withFoeKey(ev, foe) {
+        if (this.ffa) ev.foe = foe;
+        return ev;
     }
 
     _end(winSide, reason) {
@@ -1114,9 +1258,9 @@ export class DuelState {
         return 0;
     }
 
-    _onKo(side, slot, att, wasDowned, target) {
+    _onKo(side, slot, att, wasDowned, target, foe = null) {
         const key = att.effectKey || '';
-        const foe = other(side);
+        foe = foe ?? this.foesOf(side)[0];
         if (key === 'brutus_enter') {
             this.sides[side].brutus_bonus = 300;
             this._effect(side, att, 'Brutus: your next LIONS attacker gains +300 ATK', slot);
@@ -1159,15 +1303,15 @@ export class DuelState {
         }
     }
 
-    _onDown(side, slot, att) {
+    _onDown(side, slot, att, foe = null) {
         switch (att.effectKey || '') {
             case 'brutus_enter':
                 this.sides[side].brutus_bonus = 300;
                 this._effect(side, att, 'Brutus: your next LIONS attacker gains +300 ATK', slot);
                 break;
             case 'debt_collector': {
-                const foe = other(side);
-                if (this.sides[foe].hand.length) {
+                foe = foe ?? this.foesOf(side)[0];
+                if (foe != null && this.sides[foe].hand.length) {
                     this._effect(side, att, 'Debt Collector: your opponent discards 1 card', slot);
                     this._askDiscard(foe, 1, null);
                 }
@@ -1209,12 +1353,12 @@ export class DuelState {
         for (const x of this.characters(side)) {
             if (x.slot !== slot) this._runFx(side, x.slot, x.card, 'ally_deployed', c);
         }
-        const foe = other(side);
-        for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
+        const foes = this.foesOf(side);
+        for (const foe of foes) for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
         this._runLasting(side, 'ally_deployed', c);
-        this._runLasting(foe, 'foe_deployed', c);
+        for (const foe of foes) this._runLasting(foe, 'foe_deployed', c);
         this._leaderFx(side, 'dormant_ally_deployed', c);
-        this._leaderFx(foe, 'dormant_foe_deployed', c);
+        for (const foe of foes) this._leaderFx(foe, 'dormant_foe_deployed', c);
         switch (c.effectKey || '') {
             case 'pride_lieutenant_deploy': {
                 const allies = this.characters(side).filter(e => e.slot !== slot && isLion(e.card));
@@ -1227,23 +1371,25 @@ export class DuelState {
                 break;
             }
             case 'brutus_enter': {
-                const foes = this.characters(foe);
-                foes.sort(strongestFirst);
+                const enemies = foes.flatMap(f => this.characters(f).map(x => ({ side: f, slot: x.slot, card: x.card })));
+                enemies.sort(strongestFirst);
                 this._askTarget(side, 'brutus', 'Brutus: choose an enemy character to lose 700 ATK', c,
-                    foes, foe, (e) => {
-                        e.card.mods.push({ atk: -700, until_turn: this.turn + 1 });
+                    enemies, foes[0] ?? side, (e) => {
+                        e.card.mods.push({ atk: -700, until_turn: this.turn + this._roundSpan() });
                         this._effect(side, c, `${e.card.name} loses 700 ATK until the end of your opponent's next turn`, slot);
                     });
                 break;
             }
             case 'sovereign': {
                 let hit = 0;
-                for (const e of this.characters(foe)) {
-                    if (!e.card.downed && e.card.defense <= 1500 && !this._staysUp(foe, e.slot, e.card)) {
-                        e.card.downed = true;
-                        e.card.position = 'def';   // a Downed character is in DEF
-                        hit += 1;
-                        this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
+                for (const foe of foes) {
+                    for (const e of this.characters(foe)) {
+                        if (!e.card.downed && e.card.defense <= 1500 && !this._staysUp(foe, e.slot, e.card)) {
+                            e.card.downed = true;
+                            e.card.position = 'def';   // a Downed character is in DEF
+                            hit += 1;
+                            this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
+                        }
                     }
                 }
                 if (hit > 0) this._effect(side, c, `Sovereign's arrival Downs ${hit} enem${hit === 1 ? 'y' : 'ies'}`, slot);
@@ -1310,7 +1456,7 @@ export class DuelState {
             || s.authority_max >= toInt(cond.authorityThreshold ?? cond.authority ?? 99)
             || (cond.morale != null && s.morale <= toInt(cond.morale))
             || (cond.gutter != null && s.gutter.length >= toInt(cond.gutter))
-            || (cond.foe_morale != null && this.sides[other(side)].morale <= toInt(cond.foe_morale))
+            || (cond.foe_morale != null && this.foesOf(side).some(f => this.sides[f].morale <= toInt(cond.foe_morale)))
             || (cond.influence != null && toInt(s.leader.influence) <= toInt(cond.influence));
         if (!ready) return;
         const empties = [];
@@ -1356,11 +1502,12 @@ export class DuelState {
         const values = {};
         for (const side of Object.keys(this.sides)) {
             const s = this.sides[side];
-            const foeHasDowned = this.characters(other(side)).some(e => e.card.downed);
+            const foes = this.foesOf(side);
+            const foeHasDowned = foes.some(f => this.characters(f).some(e => e.card.downed));
             const lions = this.lionCount(side);
             const roan = s.leader_state === 'dormant' && s.leader.effectKey === 'king_roan_leader' && lions >= 2;
             const auras = this._auras(side);
-            const foeAuras = this._auras(other(side)).filter(a => String(a[1].target ?? '') === 'enemies');
+            const foeAuras = foes.flatMap(f => this._auras(f)).filter(a => String(a[1].target ?? '') === 'enemies');
             values[side] = {};
             for (const slot of FRONT) {
                 const c = s.field[slot];
@@ -1480,6 +1627,13 @@ export class DuelState {
         return true;
     }
 
+    /** Every opponent's characters, with their side. */
+    _enemyChars(side) {
+        const out = [];
+        for (const f of this.foesOf(side)) for (const x of this.characters(f)) out.push({ side: f, slot: x.slot, card: x.card });
+        return out;
+    }
+
     _fxPool(side, e, except, standingOnly = false) {
         const clan = String(e.clan ?? '');
         return this.characters(side).filter(x => x.slot !== except && (clan === '' || x.card.clanTag === clan)
@@ -1494,8 +1648,8 @@ export class DuelState {
         let n;
         switch (String(e.per ?? '')) {
             case 'allies': n = this.characters(side).filter(x => x.slot !== slot && ofClan(x.card)).length; break;
-            case 'enemies': n = this.characters(other(side)).length; break;
-            case 'foe_downed': n = this.characters(other(side)).filter(x => x.card.downed).length; break;
+            case 'enemies': n = this._enemyChars(side).length; break;
+            case 'foe_downed': n = this._enemyChars(side).filter(x => x.card.downed).length; break;
             case 'gutter': n = s.gutter.filter(ofClan).length; break;
             case 'hand': n = s.hand.filter(ofClan).length; break;
             default: return 1;
@@ -1547,22 +1701,22 @@ export class DuelState {
             case 'allies_le': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length <= n;
             case 'alone': return this.characters(side).every(x => x.slot === slot);
             case 'adjacent': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).some(x => Math.abs(x.slot - slot) === 1);
-            case 'foe_downed': return this.characters(other(side)).some(x => x.card.downed);
+            case 'foe_downed': return this._enemyChars(side).some(x => x.card.downed);
             case 'hand_le': return s.hand.length <= n;
             case 'morale_le': return s.morale <= n;
-            case 'foe_morale_le': return this.sides[other(side)].morale <= n;
-            case 'enemies_ge': return this.characters(other(side)).length >= n;
+            case 'foe_morale_le': return this.foesOf(side).some(f => this.sides[f].morale <= n);
+            case 'enemies_ge': return this._enemyChars(side).length >= n;
             case 'gutter_ge': return ofIfClan(s.gutter, e).length >= n;
             case 'leader_dormant': return s.leader_state === 'dormant';
             case 'leader_awake': return s.leader_state === 'awake';
-            case 'foe_hand_le': return this.sides[other(side)].hand.length <= n;
-            case 'foe_ambush': return BACK.some(b => this.sides[other(side)].field[b] != null);
+            case 'foe_hand_le': return this.foesOf(side).some(f => this.sides[f].hand.length <= n);
+            case 'foe_ambush': return this.foesOf(side).some(f => BACK.some(b => this.sides[f].field[b] != null));
             case 'authority_ge': return s.authority_max >= n;
             case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed && ofIfClan([x.card], e).length > 0);
             case 'hand_ge': return ofIfClan(s.hand, e).length >= n;
             case 'self_def': { const me = this.cardAt(side, slot); return me != null && me.position === 'def'; }
             case 'self_atk': { const me = this.cardAt(side, slot); return me != null && me.position === 'atk' && !me.downed; }
-            case 'enemies_le': return this.characters(other(side)).length <= n;
+            case 'enemies_le': return this._enemyChars(side).length <= n;
             case 'turn_ge': return this.turn >= n;
             case 'deck_le': return s.deck.length <= n;
         }
@@ -1609,7 +1763,6 @@ export class DuelState {
     }
 
     _doFxOne(side, slot, c, e, vs = {}) {
-        const foe = other(side);
         const s = this.sides[side];
         if (String(e.per ?? '') !== '') {   // "for each ...": nothing to count, nothing happens
             if (this._perCount(side, slot, e) <= 0) return;
@@ -1708,7 +1861,7 @@ export class DuelState {
             }
             case 'silence':
                 this._fxApply(side, slot, c, e, vs, 'any', 'silence', (x) => {
-                    x.card.silence_until = this.turn + (String(e.until ?? 'turn') === 'next_turn' ? 1 : 0);
+                    x.card.silence_until = this.turn + (String(e.until ?? 'turn') === 'next_turn' ? this._roundSpan() : 0);
                     this._recalc();
                     return `${c.name} silences ${x.card.name}: its effects stop`;
                 }, `${c.name} silences %s`);
@@ -1778,20 +1931,21 @@ export class DuelState {
                 }
                 break;
             }
-            case 'break_ambush': {
+            case 'break_ambush':
                 // The opponent's face-down cards in the back row, left to right
-                let k = n;
-                for (const b of BACK) {
-                    const a = this.sides[foe].field[b];
-                    if (k <= 0 || a == null) continue;
-                    this.sides[foe].field[b] = null;
-                    this.sides[foe].gutter.push(a);
-                    this._emit('ko', { side: foe, slot: b, card: clone(a) });
-                    this._effect(side, c, `${c.name}: destroys a face-down card`, slot);
-                    k -= 1;
-                }
+                this._withFoe(side, c, vs, (f) => BACK.some(b => this.sides[f].field[b] != null), (foe) => {
+                    let k = n;
+                    for (const b of BACK) {
+                        const a = this.sides[foe].field[b];
+                        if (k <= 0 || a == null) continue;
+                        this.sides[foe].field[b] = null;
+                        this.sides[foe].gutter.push(a);
+                        this._emit('ko', { side: foe, slot: b, card: clone(a) });
+                        this._effect(side, c, `${c.name}: destroys a face-down card`, slot);
+                        k -= 1;
+                    }
+                });
                 break;
-            }
             case 'recover': {
                 const back = this._fxTake(side, c, e, s.gutter, `${c.name}: choose a card to return to your hand`, (card) => {
                     card.downed = false;
@@ -1804,38 +1958,40 @@ export class DuelState {
                 if (back) return;
                 break;
             }
-            case 'discard': {
-                const k = Math.min(n, this.sides[foe].hand.length);
-                if (k > 0) {
+            case 'discard':
+                this._withFoe(side, c, vs, (f) => this.sides[f].hand.length > 0, (foe) => {
+                    const k = Math.min(n, this.sides[foe].hand.length);
                     this._effect(side, c, `${c.name}: your opponent discards ${k}`, slot);
                     this._askDiscard(foe, k, null);
-                }
+                });
                 break;
-            }
-            case 'mill': {
-                const fd = this.sides[foe].deck;
-                const lost = Math.min(n, fd.length);
-                if (lost > 0) {
+            case 'mill':
+                this._withFoe(side, c, vs, (f) => this.sides[f].deck.length > 0, (foe) => {
+                    const fd = this.sides[foe].deck;
+                    const lost = Math.min(n, fd.length);
                     this._effect(side, c, `${c.name}: your opponent loses ${lost} card${lost === 1 ? '' : 's'} from the deck`, slot);
                     for (let i = 0; i < lost; i++) {
                         const milled = fd.pop();
                         this.sides[foe].gutter.push(milled);
                         this._emit('mill', { side: foe, card: clone(milled) });
                     }
-                }
+                });
                 break;
-            }
             case 'damage':
-                this._effect(side, c, `${c.name}: ${n} Morale damage`, slot);
-                this._damage(foe, n);
+                this._withFoe(side, c, vs, () => true, (foe) => {
+                    this._effect(side, c, `${c.name}: ${n} Morale damage`, slot);
+                    this._damage(foe, n);
+                });
                 break;
             case 'heal':
                 this._heal(side, c, n, slot);
                 break;
             case 'drain':
-                this._effect(side, c, `${c.name} drains ${n} Morale`, slot);
-                this._damage(foe, n);
-                if (this.winner === '') this._heal(side, c, n, slot);
+                this._withFoe(side, c, vs, () => true, (foe) => {
+                    this._effect(side, c, `${c.name} drains ${n} Morale`, slot);
+                    this._damage(foe, n);
+                    if (this.winner === '') this._heal(side, c, n, slot);
+                });
                 break;
             case 'authority':
                 s.authority += n;
@@ -1930,10 +2086,16 @@ export class DuelState {
     // The last turn a change lasts: this turn, through the next one, or (forever) while the card stays on the field
     _until(e) {
         const u = String(e.until ?? 'turn');
-        return u === 'next_turn' ? this.turn + 1 : u === 'forever' ? FOREVER : this.turn;
+        return u === 'next_turn' ? this.turn + this._roundSpan() : u === 'forever' ? FOREVER : this.turn;
     }
 
-    _ownerNextTurn(side) { return this.turn + (side === this.active ? 2 : 1); }
+    /** The turn on which side's next turn ends (two players: the active one's is 2 away, the other's 1). */
+    _ownerNextTurn(side) {
+        if (side === this.active) return this.turn + Math.max(2, this._alive().length);
+        let d = 1;
+        for (let s = this._nextSeat(this.active); s !== side && d < this.seats.length; s = this._nextSeat(s)) d += 1;
+        return this.turn + d;
+    }
 
     _clearStatus(c) { for (const k of STATUS_KEYS) delete c[k]; }
 
@@ -1954,15 +2116,14 @@ export class DuelState {
     }
 
     _fxApply(side, slot, c, e, vs, poolKind, what, fn, allText) {
-        const foe = other(side);
         const target = String(e.target ?? 'self');
         const entries = this._fxTargets(side, slot, c, e, vs, poolKind);
         if (target === 'ally' || target === 'enemy') {
             entries.sort((a, b) => {
                 const va = this._targetValue(side, e, a), vb = this._targetValue(side, e, b);
-                return va !== vb ? vb - va : a.slot - b.slot;
+                return va !== vb ? vb - va : (this.seats.indexOf(a.side) - this.seats.indexOf(b.side)) || a.slot - b.slot;
             });
-            const on = target === 'ally' ? side : foe;
+            const on = target === 'ally' ? side : (this.foesOf(side)[0] ?? side);
             this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
                 entries, on, (x) => this._effect(side, c, fn(x), slot), true);
         } else if (target === 'allies' || target === 'enemies') {
@@ -1979,7 +2140,6 @@ export class DuelState {
 
     // The characters effect e of card c would affect, before choosing one (same as _fx_targets)
     _fxTargets(side, slot, c, e, vs, poolKind) {
-        const foe = other(side);
         const target = String(e.target ?? 'self');
         const pick = (x) => {
             switch (poolKind) {
@@ -2003,7 +2163,7 @@ export class DuelState {
                 entries = this._fxPool(side, e, slot).map(x => ({ side, slot: x.slot, card: x.card }));
                 break;
             case 'enemy': case 'enemies':
-                entries = this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card }));
+                for (const foe of this.foesOf(side)) entries.push(...this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card })));
                 break;
         }
         const what_ = String(e.do ?? '');
@@ -2159,15 +2319,16 @@ export class DuelState {
         const s = this.sides[this.active];
         s.promoted = {};
         s.mentor_used = false;
+        s.turns = toInt(s.turns) + 1;
         this._setPhase('upkeep');
         this._emit('turn', { side: this.active, turn: this.turn });
-        if (this.turn > 2) {
+        if (s.turns > 1) {   // (every turn but your first)
             s.authority_max = Math.min(MAX_AUTHORITY, s.authority_max + 1);
             s.authority = s.authority_max;
             this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: 1 });
         }
-        // Going second is a disadvantage; one extra Authority on that player's first turn
-        if (this.turn === 2 && SECOND_PLAYER_AUTHORITY > 0) {
+        // Going second (or later) is a disadvantage; one extra Authority on that player's first turn
+        if (s.turns === 1 && this.active !== this.first && SECOND_PLAYER_AUTHORITY > 0) {
             s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY;
             this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: SECOND_PLAYER_AUTHORITY });
         }
@@ -2211,8 +2372,10 @@ export class DuelState {
     _endTurn() {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_end');
         this._runLasting(this.active, 'turn_end');
-        for (const e of this.characters(other(this.active))) this._runFx(other(this.active), e.slot, e.card, 'foe_turn_end');
-        this._runLasting(other(this.active), 'foe_turn_end');
+        for (const foe of this.foesOf(this.active)) {
+            for (const e of this.characters(foe)) this._runFx(foe, e.slot, e.card, 'foe_turn_end');
+            this._runLasting(foe, 'foe_turn_end');
+        }
         this._leaderFx(this.active, 'dormant_turn_end');
         if (this.winner !== '') return;
         const s = this.sides[this.active];
@@ -2223,7 +2386,7 @@ export class DuelState {
                 if (c != null) c.mods = c.mods.filter(m => m.until_turn > this.turn);
             }
         }
-        this.active = other(this.active);
+        this.active = this._nextSeat(this.active);
         this.turn += 1;
         this._beginTurn();
     }
@@ -2243,22 +2406,27 @@ export class DuelState {
     }
 
     /** optional: the player always chooses (even from one) and may skip it (a card effect's target). */
+    /** Entries may carry their own side (FFA: cards on several opponents' boards; their option ids
+     *  are then "side:slot"); otherwise they're on targetSide. */
     _askTarget(side, key, prompt, source, entries, targetSide, cb, optional = false) {
+        const sideOf = (e) => e.side ?? targetSide;
         // Your opponent's effects can't choose a card that can't be targeted
-        if (targetSide !== side) entries = entries.filter(e => !this._passive(targetSide, e.slot, e.card, 'untargetable'));
+        entries = entries.filter(e => sideOf(e) === side || !this._passive(sideOf(e), e.slot, e.card, 'untargetable'));
         if (!entries.length) return;
         if (entries.length === 1 && !optional) {
             cb(entries[0]);
             return;
         }
+        const multi = new Set(entries.map(sideOf)).size > 1;
+        const idOf = (e) => (multi ? `${sideOf(e)}:${e.slot}` : String(e.slot));
         const options = entries.map(e => ({
-            id: String(e.slot), label: `${String(e.card.name).toUpperCase()}  (${e.card.attack} / ${e.card.defense})`,
-            side: targetSide, slot: e.slot,
+            id: idOf(e), label: `${String(e.card.name).toUpperCase()}  (${e.card.attack} / ${e.card.defense})`,
+            side: sideOf(e), slot: e.slot,
         }));
         if (optional) options.push({ id: 'skip', label: 'SKIP' });
         this._ask(side, key, prompt, source, options, (choice) => {
             for (const e of entries) {
-                if (String(e.slot) === choice && this.cardAt(targetSide, e.slot) === e.card) cb(e);
+                if (idOf(e) === choice && this.cardAt(sideOf(e), e.slot) === e.card) cb(e);
             }
         });
     }
@@ -2347,7 +2515,7 @@ export class DuelState {
         const s = this.sides[side];
         if (!s.deck.length) {
             // Decked out: a player who has to draw from an empty deck loses
-            if (this.winner === '') this._end(other(side), 'deck_out');
+            if (this.winner === '') this._lose(side, 'deck_out');
             return;
         }
         const c = s.deck.pop();
@@ -2423,6 +2591,7 @@ export class DuelState {
                 leader_state: s.leader_state,
                 influence: s.leader ? s.leader.influence : 0,
             };
+            if (this.ffa) out[side].out = toInt(s.out);
         }
         return out;
     }

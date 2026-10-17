@@ -2,6 +2,7 @@ extends SceneTree
 ## Records CPU-vs-CPU games on the Godot rules (decks, every action, every event) so the
 ## server's JavaScript rules can replay them and prove they match (shared/duel/engine.test.mjs).
 ## Run:  godot --headless --path godot --script res://tests/export_golden.gd -- <out.json> [games]
+## Games 4, 10, 16, ... are 4-player free-for-alls and 5, 11, 17, ... 3-player ones (seats p1..p4).
 
 const MAX_ACTIONS := 1500
 # Odd-numbered games give every character one of these data effects (Card Forge building
@@ -174,11 +175,20 @@ func _init() -> void:
 	var records: Array = []
 	for g in games:
 		rng.seed = 1000 + g
-		var setup := DuelAI.test_setup()
-		for side in ["player", "opponent"]:
+		var seats: Array = ["player", "opponent"]
+		if g % 6 == 4:
+			seats = ["p1", "p2", "p3", "p4"]
+		elif g % 6 == 5:
+			seats = ["p1", "p2", "p3"]
+		var base := DuelAI.test_setup()
+		var setup := {"decks": {}, "hideouts": {}, "leaders": {}}
+		for side in seats:
+			setup.decks[side] = base.decks.player.duplicate(true)
+			setup.hideouts[side] = base.hideouts.player.duplicate(true)
+			setup.leaders[side] = base.leaders.player
 			_shuffle(setup.decks[side], rng)
 		if g % 2 == 1:
-			for side in ["player", "opponent"]:
+			for side in seats:
 				var deck: Array = setup.decks[side]
 				for i in deck.size():
 					var kind: String = CardDB.get_card(deck[i]).get("cardType", "")
@@ -195,22 +205,25 @@ func _init() -> void:
 						deck[i] = spec
 					elif kind in ["hustle", "ambush"]:
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_CARD_SAMPLES[rng.randi_range(0, FX_CARD_SAMPLES.size() - 1)]}
-		var first := "player" if g % 2 == 0 else "opponent"
-		var levels := {"player": DuelAI.LEVELS[g % 3], "opponent": DuelAI.LEVELS[(g + 1) % 3]}
+		var first: String = seats[g % seats.size()] if seats.size() > 2 else ("player" if g % 2 == 0 else "opponent")
+		var levels := {}
+		for i in seats.size():
+			levels[seats[i]] = DuelAI.LEVELS[(g + i) % 3]
 		# Every fifth game is played with a weekly-challenge twist (shared/challenges.js)
 		var rules: Dictionary = TWIST_RULES[(g / 5) % TWIST_RULES.size()] if g % 5 == 2 else {}
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1, rules)
 		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
 		var leader_fx := {}
 		if g % 4 == 3:
-			for side in ["player", "opponent"]:
+			for i in seats.size():
+				var side: String = seats[i]
 				if d.sides[side].leader != null:
-					leader_fx[side] = LEADER_SAMPLES[(g / 4 + (1 if side == "opponent" else 0)) % LEADER_SAMPLES.size()]
+					leader_fx[side] = LEADER_SAMPLES[(g / 4 + i) % LEADER_SAMPLES.size()]
 					d.sides[side].leader.merge(leader_fx[side].duplicate(true), true)
 		d.start()
 		var steps: Array = [{"action": null, "side": "", "events": d.take_events()}]
 		var n := 0
-		while d.winner == "" and n < MAX_ACTIONS:
+		while d.winner == "" and n < MAX_ACTIONS * (2 if seats.size() > 2 else 1):
 			var side: String = d.pending.side if not d.pending.is_empty() else d.active
 			var a := DuelAI.choose(d, side, levels[side])
 			if a.is_empty() or not d.do_action(side, a):

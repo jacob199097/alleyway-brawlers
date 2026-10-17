@@ -1,11 +1,12 @@
 /**
  * CPU player for the server (CPU matches run on the server so their results can be trusted).
  * A line-by-line port of godot/scripts/duel/duel_ai.gd: choose() returns the next action for
- * DuelState.doAction(), one at a time.
+ * DuelState.doAction(), one at a time. In a free-for-all (3-4 players) every opponent is an enemy:
+ * it attacks whichever one it can hurt most, going for finishing blows and then the weakest.
  */
 import { CARD_CATALOG } from '../cards.js';
 import { pickableClans, starterRecipe, expand } from '../clans.js';
-import { DuelState, FRONT, BACK, DIRECT, LEADER, other } from './DuelState.js';
+import { DuelState, FRONT, BACK, DIRECT, LEADER } from './DuelState.js';
 
 const SLOT_ORDER = [2, 1, 3, 0, 4];   // deploy toward the middle first
 const NO_TARGET = -99;
@@ -77,9 +78,9 @@ export function choose(d, side, level = 'normal') {
 function hustleUseful(d, side, c) {
     const effects = c.effects || [];
     if (!effects.length) return true;
-    const foe = other(side);
+    const foes = d.foesOf(side);
     const allies = d.characters(side).filter(e => !d.inStasis(e.card));
-    const enemies = d.characters(foe).filter(e => !d.inStasis(e.card));
+    const enemies = foes.flatMap(f => d.characters(f)).filter(e => !d.inStasis(e.card));
     for (const e of effects) {
         const what = String(e.do ?? '');
         switch (String(e.target ?? '')) {
@@ -91,7 +92,7 @@ function hustleUseful(d, side, c) {
                 if (enemies.length) return true;
                 break;
             default:
-                if (what === 'discard') { if (d.sides[foe].hand.length) return true; }
+                if (what === 'discard') { if (foes.some(f => d.sides[f].hand.length)) return true; }
                 else return true;
         }
     }
@@ -206,7 +207,6 @@ function activation(d, side, level = 'normal') {
 }
 
 function brawl(d, side, level) {
-    const foe = other(side);
     // Maya Lv.3 buffs an ally before the punches start
     for (const slot of FRONT) if (d.canUseAbility(side, slot)) return { kind: 'ability', slot };
     const act = activation(d, side, level);
@@ -218,28 +218,37 @@ function brawl(d, side, level) {
         if (level === 'easy' && roll(d, side, slot) < 35) continue;   // an easy CPU sometimes forgets to attack
         const att = d.cardAt(side, slot);
         let best = NO_TARGET;
+        let bestFoe = '';
         let bestScore = 0;
-        for (const t of d.attackTargets(side)) {
-            let score;
-            if (t === DIRECT) {
-                // Finish the game if this hit does it; otherwise chip the opponent's morale
-                score = att.attack >= d.sides[foe].morale ? 100 : 2.5 + att.attack / 2000;
-            } else if (t === LEADER) {
-                // Knock out a dormant leader when one hit does it; chipping its Influence is a last resort
-                score = att.attack >= d.sides[foe].leader.influence ? 4 : 0.5;
-            } else {
-                score = targetScore(att, d.cardAt(foe, t), level);
+        for (const foe of d.foesOf(side)) {
+            // FFA: a little extra for hitting whoever is weakest, so the CPU closes players out
+            const focus = d.ffa ? (6000 - d.sides[foe].morale) / 6000 : 0;
+            for (const t of d.attackTargets(side, foe)) {
+                let score;
+                if (t === DIRECT) {
+                    // Finish the game (or a player) if this hit does it; otherwise chip their morale
+                    score = att.attack >= d.sides[foe].morale ? 100 : 2.5 + att.attack / 2000 + focus;
+                } else if (t === LEADER) {
+                    // Knock out a dormant leader when one hit does it; chipping its Influence is a last resort
+                    score = att.attack >= d.sides[foe].leader.influence ? 4 : 0.5;
+                } else {
+                    score = targetScore(att, d.cardAt(foe, t), level);
+                    if (score > 0) score += focus * 0.5;
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = t;
+                    bestFoe = foe;
+                    if (level === 'easy') break;
+                }
             }
-            if (score > bestScore) {
-                bestScore = score;
-                best = t;
-                if (level === 'easy') break;
-            }
+            if (level === 'easy' && best !== NO_TARGET) break;
         }
-        if (best !== NO_TARGET && level !== 'hard') return { kind: 'attack', from: slot, target: best };
+        const hit = (t) => (d.ffa ? { kind: 'attack', from: slot, target: t, foe: bestFoe } : { kind: 'attack', from: slot, target: t });
+        if (best !== NO_TARGET && level !== 'hard') return hit(best);
         if (best !== NO_TARGET && bestScore > planScore) {
             planScore = bestScore;
-            plan = { kind: 'attack', from: slot, target: best };
+            plan = hit(best);
         }
     }
     return plan;
@@ -249,7 +258,9 @@ function brawl(d, side, level) {
  *  next turn switch to DEF, so a lost brawl costs no Morale. Same as _brace in duel_ai.gd. */
 function brace(d, side) {
     let danger = 0;
-    for (const e of d.characters(other(side))) if (!e.card.downed && !e.card.face_down) danger = Math.max(danger, e.card.attack);
+    for (const foe of d.foesOf(side)) {
+        for (const e of d.characters(foe)) if (!e.card.downed && !e.card.face_down) danger = Math.max(danger, e.card.attack);
+    }
     for (const slot of FRONT) {
         const c = d.cardAt(side, slot);
         if (c && c.position === 'atk' && c.cardType !== 'leader' && danger > c.attack && d.canChangePosition(side, slot)) return { kind: 'position', slot };
@@ -287,11 +298,13 @@ function roll(d, side, slot) {
     return (d.turn * 37 + slot * 53 + d.sides[side].hand.length * 17) % 100;
 }
 
-/** The strongest face-up attacker the opponent shows. */
+/** The strongest face-up attacker any opponent shows. */
 function threat(d, side) {
     let t = 0;
-    for (const e of d.characters(other(side))) {
-        if (e.card.position === 'atk' && !e.card.downed && !e.card.face_down) t = Math.max(t, e.card.attack);
+    for (const foe of d.foesOf(side)) {
+        for (const e of d.characters(foe)) {
+            if (e.card.position === 'atk' && !e.card.downed && !e.card.face_down) t = Math.max(t, e.card.attack);
+        }
     }
     return t;
 }

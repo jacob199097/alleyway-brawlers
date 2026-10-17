@@ -13,6 +13,14 @@ extends RefCounted
 ## Options are listed best-first for the deciding side, so the CPU can simply take the first.
 ##
 ## Ported from client/scenes/DuelScene.js, client/cards/BrawlPhase.js and EffectBus.js.
+##
+## Free-for-all (FFA): pass 3-4 decks (seats in turn order, e.g. p1..p4) instead of player and
+## opponent. Every opponent is an enemy: attacks name the opponent they go at ({kind = "attack", from,
+## target, foe}), effects on "an enemy" can pick any opponent's card, "enemies" hit them all, and an
+## effect on "your opponent" (discard, mill, Morale damage, face-down cards) hits the one being fought
+## (in a brawl) or the one its player chooses. A player at 0 Morale (or decked out) is out (their place
+## in `places`); their cards leave at the end of the action and the last one standing wins. Durations
+## that run "through the next turn" last a full round. With two players everything is as before.
 
 const START_MORALE := 6000
 const MAX_AUTHORITY := 15
@@ -52,6 +60,10 @@ var _did := 0                # effects that did something (see then in _do_fx)
 var _attack_ctx := {}        # the attack being resolved
 var rules := {}              # a challenge's twist (see _init)
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
+var seats: Array = ["player", "opponent"]   # turn order (FFA: p1, p2, ... by name)
+var ffa := false             # 3-4 players
+var first_seat := "player"
+var places := {}             # FFA: side -> finishing place (1 = the winner)
 
 
 ## decks/hideouts: {"player": [card ids], "opponent": [...]}; leaders: {"player": id, ...}
@@ -64,8 +76,17 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 	else:
 		rng.randomize()
 	active = first
+	first_seat = first
 	_fixed_order = seed_value == -1
-	for side in ["player", "opponent"]:
+	# Turn order: player, opponent; FFA seats by name (p1, p2, ...), whatever order they come in
+	var keys: Array = decks.keys()
+	if keys.size() == 2 and keys.has("player"):
+		seats = ["player", "opponent"]
+	else:
+		seats = keys.duplicate()
+		seats.sort()
+	ffa = seats.size() > 2
+	for side in seats:
 		var deck: Array = []
 		for id in decks[side]:
 			deck.append(make_card(id))
@@ -86,7 +107,7 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 			"authority": maxi(1, int(rules.get("start_authority", 1))), "authority_max": maxi(1, int(rules.get("start_authority", 1))),
 			"deck": deck, "hand": [], "field": field, "gutter": [], "hideout": hideout,
 			"leader": leader, "leader_state": "dormant" if leader != null else "none",
-			"brutus_bonus": 0, "promoted": {}, "mentor_used": false,
+			"brutus_bonus": 0, "promoted": {}, "mentor_used": false, "turns": 0,
 		}
 
 
@@ -129,6 +150,8 @@ func load_view(v: Dictionary) -> void:
 	winner = str(v.get("winner", ""))
 	pending = v.get("pending", {}) if v.get("pending") is Dictionary else {}
 	sides = v.get("sides", {})
+	seats = v.get("seats", ["player", "opponent"]) if v.get("seats") is Array else ["player", "opponent"]
+	ffa = seats.size() > 2
 	_asks.clear()
 	_new_asks.clear()
 
@@ -176,7 +199,87 @@ func leader_dormant(side: String) -> bool:
 
 
 func can_act(side: String) -> bool:
-	return winner == "" and pending.is_empty() and side == active
+	return winner == "" and pending.is_empty() and side == active and sides.has(side) and not _is_out(side)
+
+
+# ── Seats (two players, or FFA) ──────────────────────────────────────────────
+
+func _is_out(side: String) -> bool:
+	return int(sides[side].get("out", 0)) > 0
+
+
+## The opponents still in, in turn order after `side` (two players: just the other one).
+func foes_of(side: String) -> Array:
+	var i := seats.find(side)
+	var out: Array = []
+	for k in range(1, seats.size()):
+		var s: String = seats[(i + k) % seats.size()]
+		if not _is_out(s):
+			out.append(s)
+	return out
+
+
+func _alive() -> Array:
+	return seats.filter(func(s): return not _is_out(s))
+
+
+## The next seat still in after `side`.
+func _next_seat(side: String) -> String:
+	var i := seats.find(side)
+	for k in range(1, seats.size() + 1):
+		var s: String = seats[(i + k) % seats.size()]
+		if not _is_out(s):
+			return s
+	return side
+
+
+## Every seat, starting with this one.
+func _order(start_side: String) -> Array:
+	var i := seats.find(start_side)
+	var out: Array = []
+	for k in seats.size():
+		out.append(seats[(i + k) % seats.size()])
+	return out
+
+
+## How many more turns until the next turn of everyone else has passed (two players: 1).
+func _round_span() -> int:
+	return maxi(1, _alive().size() - 1)
+
+
+## The opponent an effect on "your opponent" hits: in a brawl, the other side of it; otherwise the
+## only one, or the one its player chooses (lowest Morale first). ok: which can be hit at all.
+func _with_foe(side: String, c: Dictionary, vs: Dictionary, ok: Callable, fn: Callable) -> void:
+	var foes := foes_of(side).filter(ok)
+	if foes.is_empty():
+		return
+	var fixed := ""
+	if not vs.is_empty() and str(vs.get("side", "")) != "" and vs.side != side and vs.side in foes:
+		fixed = vs.side
+	elif not _attack_ctx.is_empty() and _attack_ctx.side == side and _attack_ctx.foe in foes:
+		fixed = _attack_ctx.foe
+	elif not _attack_ctx.is_empty() and _attack_ctx.foe == side and _attack_ctx.side in foes:
+		fixed = _attack_ctx.side
+	elif foes.size() == 1:
+		fixed = foes[0]
+	if fixed != "":
+		fn.call(fixed)
+		return
+	var order := foes.duplicate()
+	order.sort_custom(func(a, b): return sides[a].morale < sides[b].morale or (sides[a].morale == sides[b].morale and seats.find(a) < seats.find(b)))
+	var options: Array = order.map(func(x): return {"id": x, "label": x, "side": x})
+	_ask(side, "foe", "%s: choose an opponent" % c.name, c, options, func(x: String):
+		if sides.has(x) and not _is_out(x):
+			fn.call(x))
+
+
+## Every opponent's characters, with their side.
+func _enemy_chars(side: String) -> Array:
+	var out: Array = []
+	for f in foes_of(side):
+		for x in characters(f):
+			out.append({"side": f, "slot": x.slot, "card": x.card})
+	return out
 
 
 func can_deploy_now(side: String) -> bool:
@@ -296,9 +399,12 @@ func _equips_on(c) -> Array:
 
 ## The characters an Equip Hustle can go on (its owner's, or with equip_to "enemy" the foe's).
 func _equip_targets(side: String, c: Dictionary) -> Array:
-	var on := other(side) if str(c.get("equip_to", "ally")) == "enemy" else side
-	return characters(on).filter(func(x): return not in_stasis(x.card) \
-		and (on == side or _passive(on, x.slot, x.card, "untargetable").is_empty()))
+	var out: Array = []
+	for on in (foes_of(side) if str(c.get("equip_to", "ally")) == "enemy" else [side]):
+		for x in characters(on):
+			if not in_stasis(x.card) and (on == side or _passive(on, x.slot, x.card, "untargetable").is_empty()):
+				out.append({"side": on, "slot": x.slot, "card": x.card})
+	return out
 
 
 ## An Equip whose character has left the field goes to the Gutter.
@@ -362,7 +468,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	if str(e.get("per", "")) != "" and _per_count(side, slot, e) <= 0:
 		return false
 	var s: Dictionary = sides[side]
-	var foe: Dictionary = sides[other(side)]
+	var foes: Array = foes_of(side).map(func(x): return sides[x])
 	var mine := func(x): return not is_same(x, c) and _fx_kind_ok(x, e)
 	match str(e.get("do", "")):
 		"draw":
@@ -378,13 +484,13 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"token":
 			return _empty_lane(side) >= 0 and not CardDB.get_card(str(e.get("token", ""))).is_empty()
 		"discard":
-			return not foe.hand.is_empty()
+			return foes.any(func(x): return not x.hand.is_empty())
 		"mill":
-			return not foe.deck.is_empty()
+			return foes.any(func(x): return not x.deck.is_empty())
 		"heal":
 			return s.morale < START_MORALE
 		"break_ambush":
-			return BACK.any(func(b): return foe.field[b] != null)
+			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null))
 		"influence":
 			var l = s.leader
 			return s.leader_state == "dormant" and l != null and int(l.influence) < int(l.get("influence_max", l.influence))
@@ -514,8 +620,13 @@ func can_attack_with(side: String, slot: int) -> bool:
 
 ## Attack targets: any enemy character; DIRECT when none of them is still standing (an empty
 ## front row, or only Downed characters); and the enemy LEADER whenever it is dormant.
-func attack_targets(side: String) -> Array:
-	var foe := other(side)
+## foe: which opponent (FFA; default: the first one)
+func attack_targets(side: String, foe := "") -> Array:
+	if foe == "":
+		var all_foes := foes_of(side)
+		foe = all_foes[0] if not all_foes.is_empty() else ""
+	if foe == "" or foe == side or not sides.has(foe) or _is_out(foe):
+		return []
 	# A character in STASIS can't be attacked and doesn't block a direct attack
 	var foes := characters(foe).filter(func(e): return not in_stasis(e.card))
 	# Elusive characters can't be attacked while their owner has another character that can be
@@ -661,19 +772,29 @@ func fx_has_targets(side: String, slot: int, e: Dictionary) -> bool:
 # ── Actions ──────────────────────────────────────────────────────────────────
 
 func start() -> void:
+	var order := _order(active)
 	for i in (int(rules.get("opening_hand", 0)) if int(rules.get("opening_hand", 0)) > 0 else OPENING_HAND):
-		_draw(active, true)
-		_draw(other(active), true)
-	# Each player may redraw their opening hand once, first player first; then turn 1 begins
-	var first := active
-	_ask_mulligan(first, func(): _ask_mulligan(other(first), _begin_turn))
+		for side in order:
+			_draw(side, true)
+	# Each player may redraw their opening hand once, in turn order; then turn 1 begins
+	_mulligan_chain(order, 0)
 	_flush_asks()
+
+
+func _mulligan_chain(order: Array, k: int) -> void:
+	if k < order.size():
+		_ask_mulligan(order[k], func(): _mulligan_chain(order, k + 1))
+	else:
+		_begin_turn()
 
 
 func do_action(side: String, a: Dictionary) -> bool:
 	if winner != "":
 		return false
 	var ok := false
+	# A new move (not an answer to a prompt): no brawl is going on any more
+	if a.get("kind", "") != "choose" and a.get("kind", "") != "discard":
+		_attack_ctx = {}
 	match a.get("kind", ""):
 		"summon":
 			ok = _summon(side, int(a.uid), int(a.slot), str(a.get("position", "atk")), a.tributes if a.get("tributes") is Array else int(a.get("tribute", -1)))
@@ -682,7 +803,7 @@ func do_action(side: String, a: Dictionary) -> bool:
 		"hustle":
 			ok = _hustle(side, int(a.uid))
 		"attack":
-			ok = _attack(side, int(a.from), int(a.target))
+			ok = _attack(side, int(a.from), int(a.target), str(a.foe) if a.get("foe") != null else "")
 		"position":
 			ok = _change_position(side, int(a.slot))
 		"promote":
@@ -701,6 +822,8 @@ func do_action(side: String, a: Dictionary) -> bool:
 			ok = _next_phase(side)
 	if ok:
 		_flush_asks()
+		if ffa:
+			_sweep_out()
 		_recalc()
 	return ok
 
@@ -773,14 +896,16 @@ func _hustle(side: String, uid: int) -> bool:
 		s.field[b] = c
 		_emit("lasting", {"side": side, "slot": b, "card": c.duplicate(true)})
 		if str(c.subtype) == "equip":
-			var on := other(side) if str(c.get("equip_to", "ally")) == "enemy" else side
+			var on := side
+			if str(c.get("equip_to", "ally")) == "enemy":
+				on = foes_of(side)[0] if not foes_of(side).is_empty() else side
 			var entries := _equip_targets(side, c)
 			entries.sort_custom(_strongest_first)
 			_ask_target(side, "equip", "%s: choose a character to equip" % c.name, c, entries, on, func(x: Dictionary):
 				if s.field[b] != c:
 					return
 				c.equipped_to = x.card.uid
-				_emit("equip", {"side": side, "slot": b, "target_side": on, "target_slot": x.slot, "card": c.duplicate(true)})
+				_emit("equip", {"side": side, "slot": b, "target_side": x.get("side", on), "target_slot": x.slot, "card": c.duplicate(true)})
 				_effect(side, c, "%s is equipped to %s" % [c.name, x.card.name], b)
 				_recalc())
 		_run_fx(side, b, c, "deploy")
@@ -858,8 +983,13 @@ func _next_phase(side: String) -> bool:
 # ── Attacks ──────────────────────────────────────────────────────────────────
 # An attack runs in steps; any step may pause for a prompt and continue from its answer.
 
-func _attack(side: String, from: int, target: int) -> bool:
-	if not can_attack_with(side, from) or not target in attack_targets(side):
+func _attack(side: String, from: int, target: int, foe := "") -> bool:
+	var foes := foes_of(side)
+	if foe == "":
+		foe = foes[0] if not foes.is_empty() else ""
+	if foe == "" or not foe in foes:
+		return false
+	if not can_attack_with(side, from) or not target in attack_targets(side, foe):
 		return false
 	var att: Dictionary = card_at(side, from)
 	att.has_attacked = true
@@ -867,12 +997,12 @@ func _attack(side: String, from: int, target: int) -> bool:
 	if not _passive(side, from, att, "double_attack").is_empty() and int(att.get("second_attack", -1)) != turn:
 		att.has_attacked = false
 		att.second_attack = turn
-	_emit("attack", {"side": side, "from": from, "target": target, "card": att.duplicate(true)})
-	var ctx := {"side": side, "foe": other(side), "from": from, "target": target, "att": att, "bonus": 0}
+	_emit("attack", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
+	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0}
 	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
 	if not _passive(side, from, att, "pierce").is_empty() or rules.get("pierce", false):
 		ctx.pierce = true
-	var def_now = card_at(other(side), target) if target >= 0 else null
+	var def_now = card_at(foe, target) if target >= 0 else null
 	var k := 0
 	for e in _fx(att, "attack"):
 		k += 1
@@ -915,7 +1045,7 @@ func _atk_redirect(ctx: Dictionary) -> void:
 						be.card.redirect_turn = turn
 						ctx.target = be.slot
 						_effect(foe, be.card, "Block Enforcer steps in and takes the hit", be.slot)
-						_emit("retarget", {"side": ctx.side, "from": ctx.from, "target": ctx.target})
+						_emit("retarget", _with_foe_key({"side": ctx.side, "from": ctx.from, "target": ctx.target}, ctx.foe))
 					_atk_ambush(ctx))
 			return
 	_atk_ambush(ctx)
@@ -1010,7 +1140,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 
 	if target == DIRECT:
 		var dmg: int = maxi(0, att.attack + ctx.bonus)
-		_emit("clash", {"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"})
+		_emit("clash", _with_foe_key({"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"}, foe))
 		_damage(foe, dmg)
 		if winner == "" and card_at(side, from) == att:
 			_run_fx(side, from, att, "direct")
@@ -1057,8 +1187,8 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	var vs_def: bool = def.downed or def.position == "def"
 	var a_val: int = maxi(0, att.attack + bonus)
 	var d_val: int = (def.defense + def_def) if vs_def else (def.attack + def_atk)
-	_emit("clash", {"side": side, "from": from, "target": target, "att": a_val, "def": d_val,
-		"vs": "DEF" if vs_def else "ATK"})
+	_emit("clash", _with_foe_key({"side": side, "from": from, "target": target, "att": a_val, "def": d_val,
+		"vs": "DEF" if vs_def else "ATK"}, foe))
 
 	var result := ""
 	if vs_def:
@@ -1081,10 +1211,10 @@ func _atk_resolve(ctx: Dictionary) -> void:
 
 	if winner == "" and card_at(side, from) == att and not att.downed:
 		if result == "ko":
-			_on_ko(side, from, att, def_was_downed, target)
+			_on_ko(side, from, att, def_was_downed, target, foe)
 			_run_fx(side, _slot_of(side, att, from), att, "ko", def_info)
 		elif result == "downed":
-			_on_down(side, from, att)
+			_on_down(side, from, att, foe)
 			_run_fx(side, _slot_of(side, att, from), att, "down", def_info)
 	_bleed(side, att)
 	_bleed(foe, def)
@@ -1108,8 +1238,8 @@ func _hit_leader(ctx: Dictionary) -> void:
 	var foe: String = ctx.foe
 	var leader: Dictionary = sides[foe].leader
 	var dmg: int = maxi(0, ctx.att.attack + ctx.bonus)
-	_emit("clash", {"side": ctx.side, "from": ctx.from, "target": LEADER, "att": dmg,
-		"def": leader.influence, "vs": "INFLUENCE"})
+	_emit("clash", _with_foe_key({"side": ctx.side, "from": ctx.from, "target": LEADER, "att": dmg,
+		"def": leader.influence, "vs": "INFLUENCE"}, ctx.foe))
 	leader.influence = maxi(0, leader.influence - dmg)
 	_emit("leader_hit", {"side": foe, "amount": dmg, "influence": leader.influence})
 	if leader.influence <= 0:
@@ -1158,10 +1288,11 @@ func _ko(side: String, slot: int) -> void:
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "ally_ko", c)
 	_run_lasting(side, "ally_ko", c)
-	# "When an enemy character is KO'd" (by anything)
-	for x in characters(other(side)):
-		_run_fx(other(side), x.slot, x.card, "foe_ko", c)
-	_run_lasting(other(side), "foe_ko", c)
+	# "When an enemy character is KO'd" (by anything): every opponent's cards
+	for foe in foes_of(side):
+		for x in characters(foe):
+			_run_fx(foe, x.slot, x.card, "foe_ko", c)
+		_run_lasting(foe, "foe_ko", c)
 
 
 func _damage(side: String, amount: int) -> void:
@@ -1171,7 +1302,69 @@ func _damage(side: String, amount: int) -> void:
 	s.morale = maxi(0, s.morale - amount)
 	_emit("damage", {"side": side, "amount": amount, "morale": s.morale})
 	if s.morale <= 0 and winner == "":
-		_end(other(side), "morale")
+		_lose(side, "morale")
+
+
+## `side` is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
+## last place still open, their cards leave at the end of the action (_sweep_out), and the last
+## player standing wins.
+func _lose(side: String, reason: String) -> void:
+	if winner != "":
+		return
+	if not ffa:
+		_end(seats[1] if seats[0] == side else seats[0], reason)
+		return
+	var s: Dictionary = sides[side]
+	if _is_out(side):
+		return
+	s.out = _alive().size()
+	places[side] = s.out
+	_emit("eliminated", {"side": side, "place": s.out, "reason": reason})
+	var left := _alive()
+	if left.size() == 1:
+		places[left[0]] = 1
+		_end(left[0], reason)
+
+
+## FFA, after each action: the cards of players who went out leave the game, their prompts are
+## dropped, and if it was their turn the next player's begins.
+func _sweep_out() -> void:
+	var changed := false
+	for side in seats:
+		var s: Dictionary = sides[side]
+		if not _is_out(side) or s.get("cleared", false):
+			continue
+		s.cleared = true
+		changed = true
+		var field: Array = []
+		field.resize(10)
+		s.field = field
+		s.hand = []
+		if s.leader_state == "dormant":
+			s.leader_state = "defeated"
+	if not changed or winner != "":
+		return
+	_asks = _asks.filter(func(a): return not _is_out(a.side))
+	if pending.has("side") and _is_out(str(pending.side)):
+		pending = {}
+	while winner == "" and _is_out(active):
+		for side in seats:
+			for c in sides[side].field:
+				if c != null:
+					c.mods = c.mods.filter(func(m): return m.until_turn > turn)
+		active = _next_seat(active)
+		turn += 1
+		_begin_turn()
+	_flush_asks()
+	if seats.any(func(x): return _is_out(x) and not sides[x].get("cleared", false)):
+		_sweep_out()
+
+
+## FFA events about a brawl say which opponent it's with (two players: unchanged).
+func _with_foe_key(ev: Dictionary, foe: String) -> Dictionary:
+	if ffa:
+		ev.foe = foe
+	return ev
 
 
 func _end(win_side: String, reason: String) -> void:
@@ -1208,9 +1401,10 @@ func _key_brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary)
 	return 0
 
 
-func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: int) -> void:
+func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: int, foe := "") -> void:
 	var key: String = att.get("effectKey", "")
-	var foe := other(side)
+	if foe == "":
+		foe = foes_of(side)[0] if not foes_of(side).is_empty() else side
 	if key == "brutus_enter":
 		sides[side].brutus_bonus = 300
 		_effect(side, att, "Brutus: your next LIONS attacker gains +300 ATK", slot)
@@ -1244,15 +1438,16 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 			_effect(side, att, "%s may attack again this turn" % att.name, slot)
 
 
-func _on_down(side: String, slot: int, att: Dictionary) -> void:
+func _on_down(side: String, slot: int, att: Dictionary, foe := "") -> void:
 	var key: String = att.get("effectKey", "")
 	match key:
 		"brutus_enter":
 			sides[side].brutus_bonus = 300
 			_effect(side, att, "Brutus: your next LIONS attacker gains +300 ATK", slot)
 		"debt_collector":
-			var foe := other(side)
-			if not sides[foe].hand.is_empty():
+			if foe == "":
+				foe = foes_of(side)[0] if not foes_of(side).is_empty() else ""
+			if foe != "" and not sides[foe].hand.is_empty():
 				_effect(side, att, "Debt Collector: your opponent discards 1 card", slot)
 				_ask_discard(foe, 1, Callable())
 
@@ -1287,13 +1482,16 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 	for x in characters(side):
 		if x.slot != slot:
 			_run_fx(side, x.slot, x.card, "ally_deployed", c)
-	var foe := other(side)
-	for x in characters(foe):
-		_run_fx(foe, x.slot, x.card, "foe_deployed", c)
+	var foes := foes_of(side)
+	for foe in foes:
+		for x in characters(foe):
+			_run_fx(foe, x.slot, x.card, "foe_deployed", c)
 	_run_lasting(side, "ally_deployed", c)
-	_run_lasting(foe, "foe_deployed", c)
+	for foe in foes:
+		_run_lasting(foe, "foe_deployed", c)
 	_leader_fx(side, "dormant_ally_deployed", c)
-	_leader_fx(foe, "dormant_foe_deployed", c)
+	for foe in foes:
+		_leader_fx(foe, "dormant_foe_deployed", c)
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
 			var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
@@ -1303,20 +1501,21 @@ func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
 					e.card.mods.append({"atk": 500, "until_turn": turn})
 					_effect(side, c, "%s gains +500 ATK this turn" % e.card.name, slot))
 		"brutus_enter":
-			var foes := characters(foe)
-			foes.sort_custom(_strongest_first)
+			var enemies := _enemy_chars(side)
+			enemies.sort_custom(_strongest_first)
 			_ask_target(side, "brutus", "Brutus: choose an enemy character to lose 700 ATK", c,
-				foes, foe, func(e: Dictionary):
-					e.card.mods.append({"atk": -700, "until_turn": turn + 1})
+				enemies, foes[0] if not foes.is_empty() else side, func(e: Dictionary):
+					e.card.mods.append({"atk": -700, "until_turn": turn + _round_span()})
 					_effect(side, c, "%s loses 700 ATK until the end of your opponent's next turn" % e.card.name, slot))
 		"sovereign":
 			var hit := 0
-			for e in characters(foe):
-				if not e.card.downed and e.card.defense <= 1500 and not _stays_up(foe, e.slot, e.card):
-					e.card.downed = true
-					e.card.position = "def"   # a Downed character is in DEF
-					hit += 1
-					_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)})
+			for foe in foes:
+				for e in characters(foe):
+					if not e.card.downed and e.card.defense <= 1500 and not _stays_up(foe, e.slot, e.card):
+						e.card.downed = true
+						e.card.position = "def"   # a Downed character is in DEF
+						hit += 1
+						_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)})
 			if hit > 0:
 				_effect(side, c, "Sovereign's arrival Downs %d enem%s" % [hit, "y" if hit == 1 else "ies"], slot)
 
@@ -1391,7 +1590,7 @@ func _check_awaken(side: String) -> void:
 	var ready: bool = chars >= int(need_chars) or s.authority_max >= int(need_auth) \
 			or (cond.get("morale") != null and s.morale <= int(cond.morale)) \
 			or (cond.get("gutter") != null and s.gutter.size() >= int(cond.gutter)) \
-			or (cond.get("foe_morale") != null and sides[other(side)].morale <= int(cond.foe_morale)) \
+			or (cond.get("foe_morale") != null and foes_of(side).any(func(f): return sides[f].morale <= int(cond.foe_morale))) \
 			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence))
 	if not ready:
 		return
@@ -1441,11 +1640,13 @@ func _recalc() -> void:
 	var values := {}
 	for side in sides:
 		var s: Dictionary = sides[side]
-		var foe_has_downed := characters(other(side)).any(func(e): return e.card.downed)
+		var foe_has_downed := _enemy_chars(side).any(func(e): return e.card.downed)
 		var lions := lion_count(side)
 		var roan: bool = s.leader_state == "dormant" and s.leader.get("effectKey") == "king_roan_leader" and lions >= 2
 		var auras := _auras(side)
-		var foe_auras := _auras(other(side)).filter(func(a): return str(a[1].get("target", "")) == "enemies")
+		var foe_auras: Array = []
+		for f in foes_of(side):
+			foe_auras.append_array(_auras(f).filter(func(a): return str(a[1].get("target", "")) == "enemies"))
 		values[side] = {}
 		for slot in FRONT:
 			var c = s.field[slot]
@@ -1632,9 +1833,9 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 		"allies":
 			n = characters(side).filter(func(x): return x.slot != slot and of_clan.call(x.card)).size()
 		"enemies":
-			n = characters(other(side)).size()
+			n = _enemy_chars(side).size()
 		"foe_downed":
-			n = characters(other(side)).filter(func(x): return x.card.downed).size()
+			n = _enemy_chars(side).filter(func(x): return x.card.downed).size()
 		"gutter":
 			n = s.gutter.filter(of_clan).size()
 		"hand":
@@ -1709,15 +1910,15 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 		"adjacent":
 			return _fx_pool(side, _cond_clan(e), slot).any(func(x): return absi(x.slot - slot) == 1)
 		"foe_downed":
-			return characters(other(side)).any(func(x): return x.card.downed)
+			return _enemy_chars(side).any(func(x): return x.card.downed)
 		"hand_le":
 			return s.hand.size() <= n
 		"morale_le":
 			return s.morale <= n
 		"foe_morale_le":
-			return sides[other(side)].morale <= n
+			return foes_of(side).any(func(f): return sides[f].morale <= n)
 		"enemies_ge":
-			return characters(other(side)).size() >= n
+			return _enemy_chars(side).size() >= n
 		"gutter_ge":
 			return _of_if_clan(s.gutter, e).size() >= n
 		"leader_dormant":
@@ -1725,9 +1926,9 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 		"leader_awake":
 			return s.leader_state == "awake"
 		"foe_hand_le":
-			return sides[other(side)].hand.size() <= n
+			return foes_of(side).any(func(f): return sides[f].hand.size() <= n)
 		"foe_ambush":
-			return BACK.any(func(b): return sides[other(side)].field[b] != null)
+			return foes_of(side).any(func(f): return BACK.any(func(b): return sides[f].field[b] != null))
 		"authority_ge":
 			return s.authority_max >= n
 		"ally_downed":
@@ -1742,7 +1943,7 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			var me = card_at(side, slot)
 			return me != null and me.get("position") == "atk" and not me.get("downed", false)
 		"enemies_le":
-			return characters(other(side)).size() <= n
+			return _enemy_chars(side).size() <= n
 		"turn_ge":
 			return turn >= n
 		"deck_le":
@@ -1818,7 +2019,6 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 
 
 func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
-	var foe := other(side)
 	var s: Dictionary = sides[side]
 	if str(e.get("per", "")) != "":   # "for each ...": nothing to count, nothing happens
 		if _per_count(side, slot, e) <= 0:
@@ -1913,7 +2113,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_effect(side, c, "%s: +%d max Authority" % [c.name, d], slot)
 			_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": d})
 		"silence":
-			var until_turn: int = turn + (1 if str(e.get("until", "turn")) == "next_turn" else 0)
+			var until_turn: int = turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
 			var fn := func(x: Dictionary) -> String:
 				x.card.silence_until = until_turn
 				_recalc()
@@ -1984,16 +2184,17 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_recalc()
 		"break_ambush":
 			# The opponent's face-down cards in the back row, left to right
-			var k := n
-			for b in BACK:
-				var a = sides[foe].field[b]
-				if k <= 0 or a == null:
-					continue
-				sides[foe].field[b] = null
-				sides[foe].gutter.append(a)
-				_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
-				_effect(side, c, "%s: destroys a face-down card" % c.name, slot)
-				k -= 1
+			_with_foe(side, c, vs, func(f): return BACK.any(func(b): return sides[f].field[b] != null), func(foe: String):
+				var k := n
+				for b in BACK:
+					var a = sides[foe].field[b]
+					if k <= 0 or a == null:
+						continue
+					sides[foe].field[b] = null
+					sides[foe].gutter.append(a)
+					_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
+					_effect(side, c, "%s: destroys a face-down card" % c.name, slot)
+					k -= 1)
 		"recover":
 			var back := _fx_take(side, c, e, s.gutter, "%s: choose a card to return to your hand" % c.name, func(card: Dictionary) -> bool:
 				card.downed = false
@@ -2005,29 +2206,31 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			if back:
 				return
 		"discard":
-			var k: int = mini(n, sides[foe].hand.size())
-			if k > 0:
+			_with_foe(side, c, vs, func(f): return not sides[f].hand.is_empty(), func(foe: String):
+				var k: int = mini(n, sides[foe].hand.size())
 				_effect(side, c, "%s: your opponent discards %d" % [c.name, k], slot)
-				_ask_discard(foe, k, Callable())
+				_ask_discard(foe, k, Callable()))
 		"mill":
-			var fd: Array = sides[foe].deck
-			var lost := mini(n, fd.size())
-			if lost > 0:
+			_with_foe(side, c, vs, func(f): return not sides[f].deck.is_empty(), func(foe: String):
+				var fd: Array = sides[foe].deck
+				var lost := mini(n, fd.size())
 				_effect(side, c, "%s: your opponent loses %d card%s from the deck" % [c.name, lost, "" if lost == 1 else "s"], slot)
 				for i in lost:
 					var milled: Dictionary = fd.pop_back()
 					sides[foe].gutter.append(milled)
-					_emit("mill", {"side": foe, "card": milled.duplicate(true)})
+					_emit("mill", {"side": foe, "card": milled.duplicate(true)}))
 		"damage":
-			_effect(side, c, "%s: %d Morale damage" % [c.name, n], slot)
-			_damage(foe, n)
+			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
+				_effect(side, c, "%s: %d Morale damage" % [c.name, n], slot)
+				_damage(foe, n))
 		"heal":
 			_heal(side, c, n, slot)
 		"drain":
-			_effect(side, c, "%s drains %d Morale" % [c.name, n], slot)
-			_damage(foe, n)
-			if winner == "":
-				_heal(side, c, n, slot)
+			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
+				_effect(side, c, "%s drains %d Morale" % [c.name, n], slot)
+				_damage(foe, n)
+				if winner == "":
+					_heal(side, c, n, slot))
 		"authority":
 			s.authority += n
 			_effect(side, c, "%s: +%d Authority this turn" % [c.name, n], slot)
@@ -2103,15 +2306,23 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 func _until(e: Dictionary) -> int:
 	match str(e.get("until", "turn")):
 		"next_turn":
-			return turn + 1
+			return turn + _round_span()
 		"forever":
 			return FOREVER
 	return turn
 
 
-## The last turn of "through its owner's next turn" for a character on `side`.
+## The last turn of "through its owner's next turn" for a character on `side` (two players: the
+## active one's is 2 away, the other's 1).
 func _owner_next_turn(side: String) -> int:
-	return turn + (2 if side == active else 1)
+	if side == active:
+		return turn + maxi(2, _alive().size())
+	var d := 1
+	var s := _next_seat(active)
+	while s != side and d < seats.size():
+		s = _next_seat(s)
+		d += 1
+	return turn + d
 
 
 func _clear_status(c: Dictionary) -> void:
@@ -2142,16 +2353,21 @@ func _status_ticks(side: String) -> void:
 ## \`fn\` changes one character and returns its callout; \`all_text\` has a %s for "N enemies" etc.
 func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String,
 		what: String, fn: Callable, all_text: String) -> void:
-	var foe := other(side)
 	var target := str(e.get("target", "self"))
 	var entries := _fx_targets(side, slot, c, e, vs, pool_kind)
 	if target == "ally" or target == "enemy":
 		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
 			var va := _target_value(side, e, a)
 			var vb := _target_value(side, e, b)
-			return va > vb or (va == vb and a.slot < b.slot)
+			if va != vb:
+				return va > vb
+			var sa := seats.find(a.side)
+			var sb := seats.find(b.side)
+			return sa < sb or (sa == sb and a.slot < b.slot)
 		entries.sort_custom(best_first)
-		var on := side if target == "ally" else foe
+		var on := side
+		if target != "ally":
+			on = foes_of(side)[0] if not foes_of(side).is_empty() else side
 		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
 		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
 			entries, on, cb, true)
@@ -2170,7 +2386,6 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 ## The characters effect `e` of card `c` would affect ({side, slot, card}), before choosing one.
 ## pool_kind: any | standing | downed | attackers (in ATK, standing) | spent (attacked this turn)
 func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String) -> Array:
-	var foe := other(side)
 	var target := str(e.get("target", "self"))
 	var pick := func(x) -> bool:
 		match pool_kind:
@@ -2196,7 +2411,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 		"ally", "allies":
 			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 		"enemy", "enemies":
-			entries = _fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card})
+			for foe in foes_of(side):
+				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
 	var what_ := str(e.get("do", ""))
 	# (a leader on the field can be affected like any character, but has no hand to go back to)
 	entries = entries.filter(func(x): return pick.call(x) and not (x.card.get("cardType") == "leader" and what_ == "bounce") and not in_stasis(x.card))
@@ -2407,16 +2623,17 @@ func _begin_turn() -> void:
 	var s: Dictionary = sides[active]
 	s.promoted = {}
 	s.mentor_used = false
+	s.turns = int(s.get("turns", 0)) + 1
 	_set_phase("upkeep")
 	_emit("turn", {"side": active, "turn": turn})
-	# Authority grows once both players have had a turn
-	if turn > 2:
+	# Authority grows every turn but your first
+	if s.turns > 1:
 		s.authority_max = mini(MAX_AUTHORITY, s.authority_max + 1)
 		s.authority = s.authority_max
 		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": 1})
-	# Going second is a disadvantage (in CPU mirror matches the first player won ~70%);
+	# Going second (or later) is a disadvantage (in CPU mirror matches the first player won ~70%);
 	# one extra Authority on that player's first turn brings it close to even
-	if turn == 2 and SECOND_PLAYER_AUTHORITY > 0:
+	if s.turns == 1 and active != first_seat and SECOND_PLAYER_AUTHORITY > 0:
 		s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY
 		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": SECOND_PLAYER_AUTHORITY})
 	if turn > 1:
@@ -2461,9 +2678,10 @@ func _end_turn() -> void:
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_end")
 	_run_lasting(active, "turn_end")
-	for e in characters(other(active)):
-		_run_fx(other(active), e.slot, e.card, "foe_turn_end")
-	_run_lasting(other(active), "foe_turn_end")
+	for foe in foes_of(active):
+		for e in characters(foe):
+			_run_fx(foe, e.slot, e.card, "foe_turn_end")
+		_run_lasting(foe, "foe_turn_end")
 	_leader_fx(active, "dormant_turn_end")
 	if winner != "":
 		return
@@ -2476,7 +2694,7 @@ func _end_turn() -> void:
 		for c in sides[side].field:
 			if c != null:
 				c.mods = c.mods.filter(func(m): return m.until_turn > turn)
-	active = other(active)
+	active = _next_seat(active)
 	turn += 1
 	_begin_turn()
 
@@ -2500,25 +2718,35 @@ func _ask(side: String, key: String, prompt: String, card: Dictionary, options: 
 
 ## Pick one character from `entries` ([{slot, card}], best first). One option resolves at once.
 ## optional: the player always chooses (even from one) and may skip it (a card effect's target).
+## Entries may carry their own side (FFA: cards on several opponents' boards; their option ids are
+## then "side:slot"); otherwise they're on target_side.
 func _ask_target(side: String, key: String, prompt: String, source: Dictionary, entries: Array,
 		target_side: String, cb: Callable, optional := false) -> void:
 	# Your opponent's effects can't choose a card that can't be targeted
-	if target_side != side:
-		entries = entries.filter(func(e): return _passive(target_side, e.slot, e.card, "untargetable").is_empty())
+	entries = entries.filter(func(e): return str(e.get("side", target_side)) == side \
+		or _passive(str(e.get("side", target_side)), e.slot, e.card, "untargetable").is_empty())
 	if entries.is_empty():
 		return
 	if entries.size() == 1 and not optional:
 		cb.call(entries[0])
 		return
+	var multi := false
+	for e in entries:
+		if str(e.get("side", target_side)) != str(entries[0].get("side", target_side)):
+			multi = true
 	var options: Array = []
 	for e in entries:
-		options.append({"id": str(e.slot), "label": "%s  (%d / %d)" % [str(e.card.name).to_upper(), e.card.attack, e.card.defense],
-			"side": target_side, "slot": e.slot})
+		var on := str(e.get("side", target_side))
+		options.append({"id": ("%s:%d" % [on, e.slot]) if multi else str(e.slot),
+			"label": "%s  (%d / %d)" % [str(e.card.name).to_upper(), e.card.attack, e.card.defense],
+			"side": on, "slot": e.slot})
 	if optional:
 		options.append({"id": "skip", "label": "SKIP"})
 	_ask(side, key, prompt, source, options, func(choice: String):
 		for e in entries:
-			if str(e.slot) == choice and card_at(target_side, e.slot) == e.card:
+			var on := str(e.get("side", target_side))
+			var id := ("%s:%d" % [on, e.slot]) if multi else str(e.slot)
+			if id == choice and card_at(on, e.slot) == e.card:
 				cb.call(e))
 
 
@@ -2626,7 +2854,7 @@ func _draw(side: String, opening := false) -> void:
 	if s.deck.is_empty():
 		# Decked out: a player who has to draw from an empty deck loses
 		if winner == "":
-			_end(other(side), "deck_out")
+			_lose(side, "deck_out")
 		return
 	var c: Dictionary = s.deck.pop_back()
 	s.hand.append(c)
@@ -2740,4 +2968,6 @@ func _counts() -> Dictionary:
 			"leader_state": s.leader_state,
 			"influence": s.leader.influence if s.leader != null else 0,
 		}
+		if ffa:
+			out[side].out = int(s.get("out", 0))
 	return out

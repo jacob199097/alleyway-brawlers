@@ -74,9 +74,10 @@ static func choose(d: DuelState, side: String, level := "normal") -> Dictionary:
 ## next turn switch to DEF, so a lost brawl costs no Morale. Same as brace in DuelAI.js.
 static func _brace(d: DuelState, side: String) -> Dictionary:
 	var danger := 0
-	for e in d.characters(DuelState.other(side)):
-		if not e.card.downed and not e.card.get("face_down", false):
-			danger = maxi(danger, int(e.card.attack))
+	for foe in d.foes_of(side):
+		for e in d.characters(foe):
+			if not e.card.downed and not e.card.get("face_down", false):
+				danger = maxi(danger, int(e.card.attack))
 	for slot in DuelState.FRONT:
 		var c = d.card_at(side, slot)
 		if c != null and c.position == "atk" and c.get("cardType") != "leader" and danger > int(c.attack) and d.can_change_position(side, slot):
@@ -204,7 +205,6 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 
 
 static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
-	var foe := DuelState.other(side)
 	# Maya Lv.3 buffs an ally before the punches start
 	for slot in DuelState.FRONT:
 		if d.can_use_ability(side, slot):
@@ -221,30 +221,41 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 		if level == "easy" and _roll(d, side, slot) < 35:
 			continue   # an easy CPU sometimes forgets to attack
 		var att: Dictionary = d.card_at(side, slot)
-		var targets := d.attack_targets(side)
 		var best := NO_TARGET
+		var best_foe := ""
 		var best_score := 0.0
-		for t in targets:
-			var score := 0.0
-			if t == DuelState.DIRECT:
-				# Finish the game if this hit does it; otherwise chip the opponent's morale
-				score = 100.0 if att.attack >= d.sides[foe].morale else 2.5 + att.attack / 2000.0
-			elif t == DuelState.LEADER:
-				# Knock out a dormant leader when one hit does it (−1000 morale, no Dormant bonus);
-				# chipping its Influence is a last resort
-				score = 4.0 if att.attack >= d.sides[foe].leader.influence else 0.5
-			else:
-				score = _target_score(att, d.card_at(foe, t), level)
-			if score > best_score:
-				best_score = score
-				best = t
-				if level == "easy":
-					break
+		for foe in d.foes_of(side):
+			# FFA: a little extra for hitting whoever is weakest, so the CPU closes players out
+			var focus: float = (6000.0 - d.sides[foe].morale) / 6000.0 if d.ffa else 0.0
+			for t in d.attack_targets(side, foe):
+				var score := 0.0
+				if t == DuelState.DIRECT:
+					# Finish the game (or a player) if this hit does it; otherwise chip their morale
+					score = 100.0 if att.attack >= d.sides[foe].morale else 2.5 + att.attack / 2000.0 + focus
+				elif t == DuelState.LEADER:
+					# Knock out a dormant leader when one hit does it (−1000 morale, no Dormant bonus);
+					# chipping its Influence is a last resort
+					score = 4.0 if att.attack >= d.sides[foe].leader.influence else 0.5
+				else:
+					score = _target_score(att, d.card_at(foe, t), level)
+					if score > 0.0:
+						score += focus * 0.5
+				if score > best_score:
+					best_score = score
+					best = t
+					best_foe = foe
+					if level == "easy":
+						break
+			if level == "easy" and best != NO_TARGET:
+				break
+		var hit := {"kind": "attack", "from": slot, "target": best}
+		if d.ffa:
+			hit.foe = best_foe
 		if best != NO_TARGET and level != "hard":
-			return {"kind": "attack", "from": slot, "target": best}
+			return hit
 		if best != NO_TARGET and best_score > plan_score:
 			plan_score = best_score
-			plan = {"kind": "attack", "from": slot, "target": best}
+			plan = hit
 	return plan
 
 
@@ -284,9 +295,10 @@ static func _roll(d: DuelState, side: String, slot: int) -> int:
 ## The strongest face-up attacker the opponent shows.
 static func _threat(d: DuelState, side: String) -> int:
 	var threat := 0
-	for e in d.characters(DuelState.other(side)):
-		if e.card.position == "atk" and not e.card.downed and not e.card.face_down:
-			threat = maxi(threat, e.card.attack)
+	for foe in d.foes_of(side):
+		for e in d.characters(foe):
+			if e.card.position == "atk" and not e.card.downed and not e.card.face_down:
+				threat = maxi(threat, e.card.attack)
 	return threat
 
 
@@ -296,9 +308,9 @@ static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 	var effects: Array = c.get("effects", [])
 	if effects.is_empty():
 		return true
-	var foe := DuelState.other(side)
+	var foes := d.foes_of(side)
 	var allies := d.characters(side).filter(func(e): return not d.in_stasis(e.card))
-	var enemies := d.characters(foe).filter(func(e): return not d.in_stasis(e.card))
+	var enemies := d._enemy_chars(side).filter(func(e): return not d.in_stasis(e.card))
 	for e in effects:
 		var what := str(e.get("do", ""))
 		match str(e.get("target", "")):
@@ -313,7 +325,7 @@ static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 					return true
 			_:
 				if what == "discard":
-					if not d.sides[foe].hand.is_empty():
+					if foes.any(func(f): return not d.sides[f].hand.is_empty()):
 						return true
 				else:
 					return true

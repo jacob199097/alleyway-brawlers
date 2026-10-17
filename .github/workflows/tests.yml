@@ -31,6 +31,8 @@ jobs:
         run: node backend/socket/spectate.test.cjs
       - name: Card Forge passives do what their text says
         run: node shared/duel/passives.test.mjs
+      - name: Free-for-all rules (3-4 players)
+        run: node shared/duel/ffa.test.mjs
 
   database:
     runs-on: ubuntu-latest
