@@ -2490,5 +2490,112 @@
   "level": 1,
   "subtype": "heavy",
   "promotesTo": null
+ },
+ "card_nebu_039": {
+  "id": "card_nebu_039",
+  "name": "Star Cartographer",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_039",
+  "code": "NEBU-039",
+  "flavourText": "The cosmos is a labyrinth, and I hold the thread.",
+  "effectText": "When deployed: Draw 3 cards, then discard 2 cards.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "loot",
+    "amount": 3
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 800,
+  "defense": 1300,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_040": {
+  "id": "card_nebu_040",
+  "name": "Gravity Inversion",
+  "clan": "nebula",
+  "cardType": "hustle",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_040",
+  "code": "NEBU-040",
+  "flavourText": "Defy gravity. Deny survival.",
+  "effectText": "Swap the ATK and DEF of all enemy characters until the end of your turn.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "swap",
+    "target": "enemies",
+    "until": "turn"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff"
+ },
+ "card_nebu_041": {
+  "id": "card_nebu_041",
+  "name": "Black hole",
+  "clan": "nebula",
+  "cardType": "hustle",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_041",
+  "code": "NEBU-041",
+  "flavourText": "The point where everything becomes nothing.",
+  "effectText": "Put one enemy character on top of its owner's deck.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "topdeck",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff"
+ },
+ "card_nebu_042": {
+  "id": "card_nebu_042",
+  "name": "Alysse",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_042",
+  "code": "NEBU-042",
+  "flavourText": "He's cute.... until the screaming starts.",
+  "effectText": "When this card attacks: Put one enemy character in STASIS.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "stasis",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1800,
+  "defense": 700,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
  }
 }

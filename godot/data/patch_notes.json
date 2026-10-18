@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.19",
+        "notes": [
+            "New Nebula cards: Star Cartographer, Gravity Inversion, Black Hole and Alysse.",
+            "The CPU only swaps ATK and DEF when it makes the enemy easier to beat."
+        ]
+    },
+    {
         "version": "0.9.18",
         "notes": [
             "Loot can draw and discard different numbers of cards (draw 2, discard 1)."

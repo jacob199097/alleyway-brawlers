@@ -321,6 +321,12 @@ static func _threat(d: DuelState, side: String) -> int:
 
 ## A Card Forge Hustle is worth playing now if at least one of its effects would do something
 ## (buffing allies needs allies, hitting enemies needs enemies). Hand-written Hustles: always.
+## Swapping its ATK and DEF lowers what an attacker must beat (its ATK when it stands in ATK
+## position, its DEF in DEF or Downed). Same as swapWeakens in DuelAI.js.
+static func _swap_weakens(c: Dictionary) -> bool:
+	return c.attack < c.defense if c.position == "def" or c.downed else c.defense < c.attack
+
+
 static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 	var effects: Array = c.get("effects", [])
 	if effects.is_empty():
@@ -341,7 +347,10 @@ static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 				elif not allies.is_empty():
 					return true
 			"enemy", "enemies":
-				if not enemies.is_empty():
+				if what == "swap":   # (only when it makes them easier to beat)
+					if enemies.any(func(x): return _swap_weakens(x.card)):
+						return true
+				elif not enemies.is_empty():
 					return true
 			"all":   # (everyone's characters: worth it when it hits more of theirs than ours)
 				if enemies.size() > allies.size():

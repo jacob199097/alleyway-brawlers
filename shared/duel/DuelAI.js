@@ -74,6 +74,12 @@ export function choose(d, side, level = 'normal') {
     return Object.keys(a).length ? a : { kind: 'next' };
 }
 
+/** Same as _swap_weakens in duel_ai.gd: swapping its ATK and DEF lowers what an attacker must beat
+ *  (its ATK when it stands in ATK position, its DEF in DEF or Downed). */
+function swapWeakens(c) {
+    return c.position === 'def' || c.downed ? c.attack < c.defense : c.defense < c.attack;
+}
+
 /** Same as _hustle_useful in duel_ai.gd: a Card Forge Hustle only when one of its effects would do something. */
 function hustleUseful(d, side, c) {
     const effects = c.effects || [];
@@ -90,7 +96,8 @@ function hustleUseful(d, side, c) {
                 else if (allies.length) return true;
                 break;
             case 'enemy': case 'enemies':
-                if (enemies.length) return true;
+                if (what === 'swap') { if (enemies.some(x => swapWeakens(x.card))) return true; }   // (only when it makes them easier to beat)
+                else if (enemies.length) return true;
                 break;
             case 'all':   // (everyone's characters: worth it when it hits more of theirs than ours)
                 if (enemies.length > allies.length) return true;
