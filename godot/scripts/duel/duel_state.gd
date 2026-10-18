@@ -2277,13 +2277,14 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_effect(side, c, "%s: draw %d" % [c.name, n], slot)
 			for i in n:
 				_draw(side)
-		"loot":   # draw, then discard as many
-			_effect(side, c, "%s: draw %d, then discard %d" % [c.name, n, n], slot)
+		"loot":   # draw N, then discard discard_n (as many as drawn unless set; 0: none)
+			var d: int = maxi(0, int(e.get("discard_n", n)))
+			_effect(side, c, "%s: draw %d, then discard %d" % [c.name, n, d], slot)
 			for i in n:
 				if winner != "":
 					break
 				_draw(side)
-			var k: int = mini(n, s.hand.size())
+			var k: int = mini(d, s.hand.size())
 			if k > 0 and winner == "":
 				_ask_discard(side, k, Callable(), "%s: loot" % c.name)
 		"search":

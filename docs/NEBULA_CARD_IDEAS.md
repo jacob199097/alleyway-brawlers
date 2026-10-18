@@ -12,7 +12,7 @@ Rarity: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary.
 
 | # | Card | Type | Auth | Rarity | ATK / DEF | The idea |
 |---|---|---|---|---|---|---|
-| 1 | Star Cartographer | Brawler | 2 | 1 | 600 / 1200 | loot: dig for the right card |
+| 1 | Star Cartographer | Brawler | 2 | 1 | 600 / 1200 | loot: draw 2, keep the best |
 | 2 | Gravity Inversion | Hustle | 2 | 2 | - | swap ATK and DEF: walls become glass |
 | 3 | Black Hole | Hustle | 4 | 3 | - | top of the deck: send a threat back |
 | 4 | Singularity | Hustle | 6 | 4 | - | exile: gone for good |
@@ -38,9 +38,9 @@ The Forge puts the frame, name and text on, so the art has none.
 
 **Brawler · Authority 2 · Common · 600 / 1200**
 
-> When deployed: Draw 2 cards, then discard 2 cards.
+> When deployed: Draw 2 cards, then discard 1 card.
 
-Forge: When deployed → Loot (2). It thins out the cards you don't need right now.
+Forge: When deployed → Loot, Draw 2, Then discard 1. One card ahead, and the worst of three gone.
 
 ```
 Trading card illustration for "Alleyway Brawlers", Nebula clan. A young cosmic navigator in a long violet coat with brass instruments clipped to her belt, standing on a rooftop at night unrolling a glowing star chart that floats in the air in front of her, constellations of cyan light connecting into a map of the neon city below, a swirling purple galaxy overhead. Style: bold comic-book ink linework with cel shading, gritty grunge texture, deep black and violet with iridescent purple and cyan glow, scattered stars and cosmic dust. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.

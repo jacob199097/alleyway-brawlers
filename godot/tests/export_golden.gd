@@ -16,6 +16,7 @@ const FX_SAMPLES := [
 	[{"when": "defend", "do": "cleanse", "target": "self"}, {"when": "deploy", "do": "poison", "target": "enemies", "amount": 200}],
 	# Top of the deck, loot, exile, swapped ATK / DEF, lifesteal, bounties
 	[{"when": "deploy", "do": "topdeck", "target": "enemy"}, {"when": "ko", "do": "loot", "amount": 1}],
+	[{"when": "deploy", "do": "loot", "amount": 2, "discard_n": 1}, {"when": "turn_end", "do": "loot", "amount": 1, "discard_n": 0}],
 	[{"when": "deploy", "do": "exile", "target": "enemy", "if": "foe_downed"}, {"when": "passive", "do": "lifesteal"}],
 	[{"when": "attack", "do": "swap", "target": "enemies", "until": "turn"}],
 	[{"when": "deploy", "do": "bounty", "target": "enemies", "amount": 1}, {"when": "passive", "do": "lifesteal"}],

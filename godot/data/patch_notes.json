@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.18",
+        "notes": [
+            "Loot can draw and discard different numbers of cards (draw 2, discard 1)."
+        ]
+    },
+    {
         "version": "0.9.17",
         "notes": [
             "New card effect: CLEANSE takes away STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY.",

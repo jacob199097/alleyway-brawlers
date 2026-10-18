@@ -2001,10 +2001,11 @@ export class DuelState {
                 this._effect(side, c, `${c.name}: draw ${n}`, slot);
                 for (let i = 0; i < n; i++) this._draw(side);
                 break;
-            case 'loot': {   // draw, then discard as many
-                this._effect(side, c, `${c.name}: draw ${n}, then discard ${n}`, slot);
+            case 'loot': {   // draw N, then discard discard_n (as many as drawn unless set; 0: none)
+                const d = Math.max(0, toInt(e.discard_n ?? n));
+                this._effect(side, c, `${c.name}: draw ${n}, then discard ${d}`, slot);
                 for (let i = 0; i < n && this.winner === ''; i++) this._draw(side);
-                const k = Math.min(n, s.hand.length);
+                const k = Math.min(d, s.hand.length);
                 if (k > 0 && this.winner === '') this._askDiscard(side, k, null, `${c.name}: loot`);
                 break;
             }

@@ -36,6 +36,16 @@ const ask = st.pending.kind ? st.pending : st._asks[0];   // (asked once the eff
 assert.equal(ask.kind, 'discard');
 assert.equal(ask.count, 2, 'then discards 2');
 
+// Loot with its own discard count: draw 3, then discard 1 (or none)
+st = board();
+const hand1 = st.sides.player.hand.length;
+st._doFx('player', -1, src, { do: 'loot', amount: 3, discard_n: 1 });
+assert.equal(st.sides.player.hand.length, hand1 + 3, 'drew 3');
+assert.equal((st.pending.kind ? st.pending : st._asks[0]).count, 1, 'then discards 1');
+st = board();
+st._doFx('player', -1, src, { do: 'loot', amount: 2, discard_n: 0 });
+assert.ok(!st.pending.kind && !st._asks.length, 'discard 0: nothing to discard');
+
 // Top of the deck: off the field, onto the top of its owner's deck (drawn next)
 st = board([], [{}]);
 const deck0 = st.sides.opponent.deck.length;
