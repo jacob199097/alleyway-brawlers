@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.9",
+        "notes": [
+            "Fixed: the main menu art, backgrounds and some sounds went missing after the last updates."
+        ]
+    },
+    {
         "version": "0.9.8",
         "notes": [
             "Menus come alive: cards deal into the Card Library and Deck Builder, lift and glow when you hover them, and Rare and better cards have a light running round their border.",

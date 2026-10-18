@@ -1,4 +1,4 @@
-// Builds an in-place update (patch) for the game: the code and scenes without the art and audio.
+// Builds an in-place update (patch) for the game: whatever changed since the full build players have.
 //
 //   node tools/make_patch.mjs <path to Godot console exe>
 //
@@ -6,14 +6,15 @@
 //    (same number; leave "minimum" and "patchBase" alone).
 // 2. Run this: it writes builds/AlleywayBrawlers-<version>-patch.pck. With the patchBase build at
 //    builds/windows_<patchBase>/AlleywayBrawlers.exe (where a full build is exported), the patch holds
-//    only what changed since that build (a few hundred KB); without it, everything the Patch preset
-//    allows (much bigger).
+//    only what changed since that build (a few hundred KB); without it, the whole game (much bigger).
+//    The Patch preset must export everything the full build does: a file it leaves out is written
+//    into the patch as deleted, and players lose it (0.9.7-0.9.8 lost the menu art that way).
 // 3. Copy that file into downloads/ on the server. Players on patchBase or newer get it at
 //    start-up and the game restarts into it (godot/scripts/patcher.gd).
 //
 // A patch can't change project settings, the autoload list or add class_name scripts (use
 // preload); those need a full build, with "minimum" and "patchBase" raised to its version.
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,7 +47,33 @@ if (existsSync(base)) {
     execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', 'Patch', out], { stdio: 'inherit' });
 }
 if (!existsSync(out)) throw new Error('Godot did not write the patch.');
+const removed = deletedFiles(out);
+if (removed.length) {
+    console.error(`\nThe patch deletes ${removed.length} file(s) from the full build, e.g.\n  ${removed.slice(0, 5).join('\n  ')}\n` +
+        'The Patch preset (godot/export_presets.cfg) must export everything the Windows Desktop preset does.');
+    unlinkSync(out);
+    process.exit(1);
+}
 console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for builds ${v.patchBase} and newer.`);
 console.log(`Next: push, then  node tools/deploy.mjs --patch  (or by hand):\n` +
     `  scp "${out}" jacob199097@192.168.0.200:/opt/Turf_War/downloads/\n` +
     `  (on the server) cd /opt/Turf_War && git pull && sudo systemctl restart alleyway-backend`);
+
+// The files a .pck marks as removed (Godot's PCK directory: path, offset, size, md5, flags; bit 2 = removed).
+function deletedFiles(file) {
+    const b = readFileSync(file);
+    let o = 4;
+    const u32 = () => { const x = b.readUInt32LE(o); o += 4; return x; };
+    const u64 = () => { const x = Number(b.readBigUInt64LE(o)); o += 8; return x; };
+    const format = u32();
+    o += 16 + 8;                       // engine version, pack flags, file base
+    o = format >= 3 ? u64() : o + 64;  // the directory (at the end from format 3)
+    const out = [];
+    for (let n = u32(); n > 0; n--) {
+        const len = u32();
+        const path = b.toString('utf8', o, o + len).replace(/\0+$/, '');
+        o += len + 8 + 8 + 16;
+        if (u32() & 2) out.push(path);
+    }
+    return out;
+}
