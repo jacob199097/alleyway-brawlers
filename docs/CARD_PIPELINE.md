@@ -84,11 +84,10 @@ downloads the patch (a few hundred KB), checks it and restarts into it.
        scp builds/AlleywayBrawlers-<version>-patch.pck jacob199097@192.168.0.200:/opt/Turf_War/downloads/
 
 A patch can't change project settings (`project.godot`), the autoload list, add `class_name` scripts
-(use `preload` instead) or bring new art and audio from `assets/`, except files whose name starts with a letter the Patch preset doesn't leave out (it skips
-`assets/` names starting with c, d, f, k, p, q, s, t or v, and the menu art and music, `main_menu*` and
-`menu_*`): that lets the level and rank emblems
-(`assets/levels`, `assets/ranks`) and clan packs and deck boxes (`assets/nebula_booster.png`, `assets/militia_deckbox.png`,
-`assets/nebula_deckbox.png`) ship in patches. Other new art needs a full build.
+(use `preload` instead). New or changed art and audio in `assets/` do ship in patches (only what changed
+since the patchBase build). The Patch preset must export everything the full build does: a file it
+leaves out is written into the patch as deleted (0.9.7 to 0.9.8 lost the menu art that way), and
+`make_patch` refuses a patch that deletes files.
 
 **Full build.** Raise the version in both files and set `minimum` and `patchBase` to it. Export the
 "Windows Desktop" preset to `builds/windows_<version>/AlleywayBrawlers.exe` (keep it: `make_patch`
