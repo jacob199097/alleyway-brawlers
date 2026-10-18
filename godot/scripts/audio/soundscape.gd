@@ -8,7 +8,7 @@ extends Node
 ##   Game.sound.music("duel")   Game.sound.ambience("crowd")   Game.sound.sting("victory", "menu")
 
 const MUSIC_DB := -9.0
-const AMBIENCE_DB := 0.0   # (the ambience files sit at about -23 dB RMS)
+const AMBIENCE_DB := 0.0   # (the ambience files sit at about -43 dB RMS, well under the music)
 const DUCK_DB := -16.0   # the music under a sting
 ## Tracks that existed before the sound folder had music (used until it has its own)
 const OLD_TRACKS := {"menu": "res://assets/main_menu_theme_loop.mp3"}
