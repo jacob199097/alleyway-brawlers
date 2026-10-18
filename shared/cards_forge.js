@@ -556,12 +556,15 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_027",
         "code": "NEBU-027",
         "flavourText": "Call down the sky",
-        "effectText": "DOWN all characters.",
+        "effectText": "If you control 2 or fewer characters, DOWN all enemy characters.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "down",
-                "target": "all"
+                "target": "enemies",
+                "if": "allies_le",
+                "n": 2,
+                "if_clan": ""
             }
         ],
         "clanName": "Nebula",
@@ -2373,7 +2376,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_037",
         "code": "MILI-037",
         "flavourText": "Step aside. Or get rolled.",
-        "effectText": "When deployed: This card gains SHIELD.\nACTIVATE (once per turn, this card can't attack this turn): If your opponent controls 4 or more characters, KO one enemy character.",
+        "effectText": "When deployed: This card gains SHIELD.\nACTIVATE (once per turn, this card can't attack this turn): If your opponent controls 3 or more characters, KO one enemy character.",
         "effects": [
             {
                 "when": "deploy",
@@ -2386,7 +2389,7 @@ export const FORGE_CARDS = {
                 "target": "enemy",
                 "if": "enemies_ge",
                 "cost": "exhaust",
-                "n": 4
+                "n": 3
             }
         ],
         "clanName": "Militia",
