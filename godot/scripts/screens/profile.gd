@@ -64,6 +64,7 @@ func _render(p: Dictionary) -> void:
 	fill.color = UI.BLUE
 	fill.size = Vector2(620 * xp.pct, 16)
 	track.add_child(fill)
+	UI.grow_bar(fill, 0.4, 1.0)
 	var rp := UI.label("%d Rank Points" % int(p.get("rank_points", 0)), 22, UI.MUTED)
 	rp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(rp)
@@ -123,8 +124,22 @@ func _render(p: Dictionary) -> void:
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(val)
 		grid.add_child(cell)
+		_count_in(val, str(s[1]))
+	UI.stagger(grid.get_children(), 0.15, 0.06)
 	if not Game.offline and not _friend:
 		_recent_matches(stats_view)
+
+
+## A stat's number counting up to what it says ("1200", "63.2%"; anything else is left as it is).
+func _count_in(l: Label, text: String) -> void:
+	var pct := text.ends_with("%")
+	var num := text.trim_suffix("%")
+	if not num.is_valid_float():
+		return
+	var to := float(num)
+	l.text = "0%" if pct else "0"
+	l.create_tween().tween_method(func(x: float):
+		l.text = ("%.1f%%" % x) if pct else str(int(round(x))), 0.0, to, 0.9).set_delay(0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _tab(which: String) -> void:
@@ -186,6 +201,7 @@ func _mastery(view: Control) -> void:
 		var pct := 1.0 if next == null else clampf(float(int(m.xp) - int(m.floor)) / maxf(1.0, float(int(next) - int(m.floor))), 0.0, 1.0)
 		fill.size = Vector2(860 * pct, 14)
 		track.add_child(fill)
+		UI.grow_bar(fill, 0.2)
 		var coming := ""
 		for rw in m.get("rewards", []):
 			if int(rw.level) > int(m.level):

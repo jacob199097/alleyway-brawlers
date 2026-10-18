@@ -110,6 +110,8 @@ func _open(m: Dictionary) -> void:
 	text.add_theme_font_size_override("normal_font_size", 22)
 	_body.add_child(text)
 	_body.add_child(UI.button("DELETE", _delete.bind(m), Vector2(200, 52), UI.RED))
+	UI.stagger(_body.get_children(), 0.0, 0.05)   # (the letter unfolds, line by line)
+	Sfx.play("flip", 1.2, -8.0)
 
 
 func _delete(m: Dictionary) -> void:

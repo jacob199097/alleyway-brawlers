@@ -89,6 +89,7 @@ func _render_list() -> void:
 		return _pct(a) > _pct(b))
 	for a in rows:
 		_list.add_child(_row(a))
+	UI.stagger(_list.get_children())
 	if rows.is_empty():
 		_list.add_child(UI.label("Nothing here yet." if _filter == "done" else "You've unlocked everything!", 26, UI.MUTED, true))
 
@@ -109,6 +110,11 @@ func _row(a: Dictionary) -> Control:
 	icon.custom_minimum_size = Vector2(64, 0)
 	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(icon)
+	if got:   # (a trophy that catches the light now and then)
+		var shine := icon.create_tween().set_loops()
+		shine.tween_interval(randf_range(2.0, 6.0))
+		shine.tween_property(icon, "self_modulate", Color(1.6, 1.5, 1.1), 0.25)
+		shine.tween_property(icon, "self_modulate", Color.WHITE, 0.6)
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", 4)
@@ -127,6 +133,7 @@ func _row(a: Dictionary) -> Control:
 		fill.color = UI.BLUE
 		fill.size = Vector2(420 * _pct(a), 10)
 		track.add_child(fill)
+		UI.grow_bar(fill, 0.35)
 		line.add_child(track)
 		line.add_child(UI.label("%d / %d" % [int(a.get("progress", 0)), target], 17, UI.BLUE, true))
 		col.add_child(line)

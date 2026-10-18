@@ -148,7 +148,50 @@ static func button(text: String, on_press: Callable, size := Vector2(240, 56), a
 	return b
 
 
-## A button made of artwork (menu tiles): brightens and grows on hover.
+## Rows of a list arriving one after another: each fades up and grows from slightly small (from its
+## left edge, so they read as sliding in). Works inside containers (it doesn't move them).
+static func stagger(nodes: Array, delay := 0.05, step := 0.045) -> void:
+	var i := 0
+	for n in nodes:
+		if not n is Control or not is_instance_valid(n):
+			continue
+		var c: Control = n
+		c.modulate.a = 0.0
+		c.scale = Vector2(0.96, 0.96)
+		var at := delay + minf(i * step, 0.6)
+		var t := c.create_tween().set_parallel()
+		t.tween_callback(func(): c.pivot_offset = Vector2(0, c.size.y / 2)).set_delay(at)
+		t.tween_property(c, "modulate:a", 1.0, 0.22).set_delay(at)
+		t.tween_property(c, "scale", Vector2.ONE, 0.3).set_delay(at).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		i += 1
+
+
+## A bar's fill (a Control sized in code) growing from empty to the width it was given.
+static func grow_bar(fill: Control, delay := 0.25, secs := 0.75) -> void:
+	var w := fill.size.x
+	fill.size.x = 0.0
+	fill.create_tween().tween_property(fill, "size:x", w, secs).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+## Counts a label up (or down) to a number, ticking as it goes: currencies arriving.
+static func count_up(l: Label, from: int, to: int, secs := 0.7, fmt := "%d", tick := "") -> void:
+	if not is_instance_valid(l):
+		return
+	l.text = fmt % from
+	if from == to:
+		return
+	var last := [from]
+	l.create_tween().tween_method(func(x: float):
+		var v := int(round(x))
+		if v != last[0]:
+			last[0] = v
+			l.text = fmt % v
+			if tick != "" and v % maxi(1, abs(to - from) / 8) == 0:
+				Sfx.play(tick, randf_range(1.2, 1.4), -16.0), float(from), float(to), secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## A button made of artwork (menu tiles): its neon blooms (a blurred glow that breathes), and it
+## brightens, grows and flares on hover.
 static func image_button(path: String, size: Vector2, on_press: Callable, fallback := "") -> TextureButton:
 	var b := TextureButton.new()
 	b.texture_normal = tex(path)
@@ -163,23 +206,47 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		b.add_child(l)
+	var glow: TextureRect = null
+	if b.texture_normal:
+		glow = TextureRect.new()
+		glow.texture = b.texture_normal
+		glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		glow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		glow.size = size
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var gm := ShaderMaterial.new()
+		gm.shader = preload("res://shaders/neon_glow.gdshader")
+		gm.set_shader_parameter("seed", randf())
+		glow.material = gm
+		b.add_child(glow)
 	b.mouse_entered.connect(func():
-		Sfx.play("click", 1.4, -10.0)
+		Sfx.play("hover", 1.0, -8.0)
 		var t := b.create_tween().set_parallel()
-		t.tween_property(b, "scale", Vector2.ONE * 1.04, 0.1)
-		t.tween_property(b, "modulate", Color(1.25, 1.25, 1.25), 0.1))
+		t.tween_property(b, "scale", Vector2.ONE * 1.04, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(b, "modulate", Color(1.2, 1.2, 1.2), 0.12)
+		if glow:
+			t.tween_property(glow.material, "shader_parameter/boost", 1.0, 0.15))
 	b.mouse_exited.connect(func():
 		var t := b.create_tween().set_parallel()
-		t.tween_property(b, "scale", Vector2.ONE, 0.12)
-		t.tween_property(b, "modulate", Color.WHITE, 0.12))
+		t.tween_property(b, "scale", Vector2.ONE, 0.14)
+		t.tween_property(b, "modulate", Color.WHITE, 0.14)
+		if glow:
+			t.tween_property(glow.material, "shader_parameter/boost", 0.0, 0.25))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		on_press.call())
-	# Neon signs flicker now and then, each on its own rhythm
+	# Neon signs flicker now and then, each on its own rhythm (the glow dips with them, and now and
+	# then the tube buzzes)
 	var flicker := b.create_tween().set_loops()
-	flicker.tween_interval(randf_range(3.0, 9.0))
+	flicker.tween_interval(randf_range(4.0, 11.0))
+	flicker.tween_callback(func():
+		if randf() < 0.35 and b.is_visible_in_tree():
+			Sfx.play("neon_buzz", randf_range(0.95, 1.08), -20.0))
 	for a in [0.55, 1.0, 0.7, 1.0, 0.85, 1.0]:
-		flicker.tween_property(b, "self_modulate:a", a, randf_range(0.03, 0.07))
+		var d := randf_range(0.03, 0.07)
+		flicker.tween_property(b, "self_modulate:a", a, d)
+		if glow:
+			flicker.parallel().tween_property(glow, "modulate:a", a * a, d)
 	return b
 
 

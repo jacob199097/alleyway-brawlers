@@ -71,8 +71,23 @@ func _pack(p: Dictionary, at: Vector2) -> void:
 	_art_rects[p.id] = Rect2(at + Vector2(0, 5), Vector2(400, 533))
 	art.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(art)
-	art.mouse_entered.connect(func(): create_tween().tween_property(art, "scale", Vector2.ONE * 1.04, 0.12))
-	art.mouse_exited.connect(func(): create_tween().tween_property(art, "scale", Vector2.ONE, 0.12))
+	art.mouse_entered.connect(func():
+		Sfx.play("hover", 0.9, -8.0)
+		var h := create_tween().set_parallel()
+		h.tween_property(art, "scale", Vector2.ONE * 1.06, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		h.tween_property(art, "modulate", Color(1.15, 1.15, 1.15), 0.14))
+	art.mouse_exited.connect(func():
+		var h := create_tween().set_parallel()
+		h.tween_property(art, "scale", Vector2.ONE, 0.14)
+		h.tween_property(art, "modulate", Color.WHITE, 0.14))
+	# Packs float, each on its own beat
+	var bob := art.create_tween().set_loops()
+	var phase := randf_range(1.6, 2.2)
+	bob.tween_property(art, "position:y", at.y - 8.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bob.tween_property(art, "position:y", at.y + 4.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var sway := art.create_tween().set_loops()
+	sway.tween_property(art, "rotation", 0.015, phase * 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	sway.tween_property(art, "rotation", -0.015, phase * 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var name := UI.label(str(p.label).to_upper(), 30, p.color, true)
 	name.size = Vector2(400, 40)
 	name.position = at + Vector2(0, 555)

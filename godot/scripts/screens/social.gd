@@ -52,6 +52,7 @@ func _load() -> void:
 	_list.add_child(UI.label("FRIENDS", 20, UI.MUTED, true))
 	for f in r.data:
 		_list.add_child(_row(f))
+	UI.stagger(_list.get_children())
 
 
 func _row(f: Dictionary) -> Control:

@@ -34,6 +34,9 @@ var _record: Label      # the deck's games and wins
 var _leader_box: HBoxContainer
 var _stats: VBoxContainer       # the Authority curve, the deck's make-up and anything worth fixing
 var _chips := {}
+var _shown_ids := ""            # what the collection grid showed last (it deals in when this changes)
+var _rows := {}                 # card id -> its row in the deck list
+var _curve_was: Array = [0, 0, 0, 0, 0, 0, 0]
 
 
 func _ready() -> void:
@@ -282,7 +285,7 @@ func _copies(card_id) -> int:
 	return _deck.filter(func(c): return c.cardId == card_id).size()
 
 
-func _add(item: Dictionary) -> void:
+func _add(item: Dictionary, from: Control = null) -> void:
 	var have := _copies(item.id)
 	if have >= 3:
 		UI.toast(self, "Max 3 copies per card", UI.RED)
@@ -296,7 +299,11 @@ func _add(item: Dictionary) -> void:
 	_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 	_dirty = true
 	Sfx.play("draw", 1.2)
+	var start := from.get_global_rect() if from and is_instance_valid(from) else Rect2()
 	_render_all()
+	_fly_in(item, start)
+	if _deck.size() == 40:
+		_complete()
 
 
 func _remove(card_id) -> void:
@@ -307,6 +314,65 @@ func _remove(card_id) -> void:
 			Sfx.play("flip")
 			break
 	_render_all()
+	var row = _rows.get(card_id)
+	if row is Control and is_instance_valid(row):
+		row.modulate = Color(1.6, 0.6, 0.6)
+		row.create_tween().tween_property(row, "modulate", Color.WHITE, 0.35)
+
+
+## The card flies from where it was clicked in the grid to its row in the deck list, shrinking as it
+## goes; the row pops and lights up when it lands.
+func _fly_in(item: Dictionary, start: Rect2) -> void:
+	var row = _rows.get(item.id)
+	if not row is Control or not is_instance_valid(row):
+		return
+	var land := func():
+		if not is_instance_valid(row):
+			return
+		row.pivot_offset = row.size / 2
+		row.modulate = Color(1.5, 1.4, 1.0)
+		var t: Tween = row.create_tween().set_parallel()
+		t.tween_property(row, "scale", Vector2(1.04, 1.12), 0.08)
+		t.chain().tween_property(row, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(row, "modulate", Color.WHITE, 0.4)
+		_count.pivot_offset = _count.size / 2
+		var c := _count.create_tween()
+		c.tween_property(_count, "scale", Vector2.ONE * 1.18, 0.07)
+		c.tween_property(_count, "scale", Vector2.ONE, 0.2)
+	if start.size == Vector2.ZERO:
+		land.call()
+		return
+	var ghost := UI.texture_rect(UI.card_art(item), start.size)
+	ghost.top_level = true
+	ghost.z_index = 100
+	ghost.global_position = start.position
+	ghost.pivot_offset = start.size / 2
+	add_child(ghost)
+	await get_tree().process_frame   # (the row's place, now that the list is laid out)
+	if not is_instance_valid(row):
+		ghost.queue_free()
+		return
+	var to: Vector2 = row.get_global_rect().get_center() - start.size / 2
+	var t := ghost.create_tween().set_parallel()
+	t.tween_property(ghost, "global_position", to, 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(ghost, "scale", Vector2.ONE * 0.3, 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.tween_property(ghost, "rotation", 0.25, 0.32)
+	t.tween_property(ghost, "modulate:a", 0.0, 0.12).set_delay(0.22)
+	t.chain().tween_callback(func():
+		ghost.queue_free()
+		land.call())
+
+
+## Forty cards: the count glows gold.
+func _complete() -> void:
+	Sfx.play("promote", 1.15, -6.0)
+	_count.pivot_offset = _count.size / 2
+	_count.modulate = Color(1.8, 1.6, 0.8)
+	var t := _count.create_tween()
+	t.tween_property(_count, "scale", Vector2.ONE * 1.35, 0.12)
+	t.tween_property(_count, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_count, "modulate", Color.WHITE, 0.8)
+	UI.toast(self, "Deck complete: 40 cards", UI.GOLD)
 
 
 # ── Auto-fill and deck codes ─────────────────────────────────────────────────
@@ -562,15 +628,17 @@ func _render_collection() -> void:
 		return
 	for c in _grid.get_children():
 		c.queue_free()
+	var ids := ""
 	for item in _inventory:
 		if not _matches(item):
 			continue
+		ids += str(item.id) + ","
 		var used := _copies(item.id)
 		var tile := CardTile.make(item, TILE)
 		tile.badge = "%d/%d" % [used, mini(3, int(item.get("quantity", 0)))]
 		tile.count_badge = "×%d" % int(item.get("quantity", 0))
 		tile.dimmed = used >= mini(3, int(item.get("quantity", 0)))
-		tile.pressed.connect(func(_t): _add(item))
+		tile.pressed.connect(func(t): _add(item, t))
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
 		tile.set_drag_forwarding(func(_at):
 			var prev := UI.texture_rect(UI.card_art(item), TILE * 0.8)
@@ -578,6 +646,9 @@ func _render_collection() -> void:
 			tile.set_drag_preview(prev)
 			return {"source": "collection", "item": item}, Callable(), Callable())
 		_grid.add_child(tile)
+	if ids != _shown_ids:   # (a new filter or deck: deal the grid in; adding a card doesn't)
+		_shown_ids = ids
+		CardTile.cascade(_grid.get_children())
 
 
 func _render_deck() -> void:
@@ -585,6 +656,7 @@ func _render_deck() -> void:
 		return
 	for c in _list.get_children():
 		c.queue_free()
+	_rows.clear()
 	var grouped := {}
 	var order: Array = []
 	for c in _deck:
@@ -594,7 +666,8 @@ func _render_deck() -> void:
 			order.append(c.cardId)
 		grouped[c.cardId].count += 1
 	for id in order:
-		_list.add_child(_deck_row(grouped[id]))
+		_rows[id] = _deck_row(grouped[id])
+		_list.add_child(_rows[id])
 	_count.text = "%d/40" % _deck.size()
 	_count.label_settings.font_color = UI.BLUE if _deck.size() == 40 else UI.RED
 	_render_stats()
@@ -633,6 +706,8 @@ func _render_stats() -> void:
 	row.add_theme_constant_override("separation", 6)
 	_stats.add_child(row)
 	var top: int = curve.max()
+	var was := _curve_was
+	_curve_was = curve.duplicate()
 	for i in curve.size():
 		var b := VBoxContainer.new()
 		b.add_theme_constant_override("separation", 0)
@@ -643,7 +718,12 @@ func _render_stats() -> void:
 		b.add_child(n)
 		var bar := ColorRect.new()
 		bar.color = UI.GOLD if i < 6 else UI.RED
-		bar.custom_minimum_size = Vector2(26, 2.0 + 40.0 * curve[i] / maxf(1.0, top))
+		var h: float = 2.0 + 40.0 * curve[i] / maxf(1.0, top)
+		bar.custom_minimum_size = Vector2(26, 2.0 + 40.0 * int(was[i]) / maxf(1.0, top))   # (grows from where it was)
+		bar.create_tween().tween_property(bar, "custom_minimum_size:y", h, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if curve[i] != int(was[i]):
+			bar.modulate = Color(1.6, 1.6, 1.6)
+			bar.create_tween().tween_property(bar, "modulate", Color.WHITE, 0.4)
 		bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		b.add_child(bar)
 		var a := UI.label(str(i + 1) if i < 6 else "7+", 14, UI.MUTED)

@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.8",
+        "notes": [
+            "Menus come alive: cards deal into the Card Library and Deck Builder, lift and glow when you hover them, and Rare and better cards have a light running round their border.",
+            "Card Library: the card you hover shows big and tilts toward your mouse, and before you hover one you get your collection at a glance, by clan and by rarity.",
+            "Deck Builder: cards fly into your deck, the curve animates as it changes, and a full 40-card deck gets a celebration.",
+            "Quests, achievements, profile stats and the mailbox animate in; claimed Karat and Contraband fly to your wallet; the main menu signs glow, and the shop packs float."
+        ]
+    },
+    {
         "version": "0.9.7",
         "notes": [
             "All-new music: a new main menu theme, new duel music with a harder track for the final stretch, and new victory and defeat themes.",

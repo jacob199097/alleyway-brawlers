@@ -96,6 +96,8 @@ jobs:
           node shared/duel/engine.test.mjs /tmp/golden.json
       - name: Rules simulation
         run: ~/godot/godot --headless --path godot --script res://tests/sim.gd
+      - name: Every script compiles
+        run: timeout 300 ~/godot/godot --headless --path godot res://tests/scripts_compile.tscn
       - name: Duel screen smoke test
         run: timeout 600 ~/godot/godot --headless --path godot res://tests/ui_smoke.tscn
       - name: Tutorial smoke test

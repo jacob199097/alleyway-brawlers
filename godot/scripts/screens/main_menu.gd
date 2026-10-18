@@ -155,10 +155,16 @@ func _build_bar(p: Dictionary) -> void:
 	add_child(track)
 	var fill := ColorRect.new()
 	fill.color = UI.BLUE
-	fill.size = Vector2(track.size.x * xp.pct, 7)
+	fill.size = Vector2(0, 7)
 	track.add_child(fill)
-	_contraband = _text(str(int(p.get("contraband", 0))), _bar(1960, 100), 26, UI.PURPLE)
-	_karat = _text(str(int(p.get("karat", 0))), _bar(2110, 104), 26, UI.GOLD)
+	fill.create_tween().tween_property(fill, "size:x", track.size.x * xp.pct, 0.9).set_delay(0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_contraband = _text("0", _bar(1960, 100), 26, UI.PURPLE)
+	_karat = _text("0", _bar(2110, 104), 26, UI.GOLD)
+	# (currencies count up as the menu opens: from a bit below, so it's quick)
+	var c := int(p.get("contraband", 0))
+	var k := int(p.get("karat", 0))
+	UI.count_up(_contraband, int(c * 0.6), c, 0.8)
+	UI.count_up(_karat, int(k * 0.6), k, 0.8)
 	_hotspot(_bar(1392, 124), func(): SettingsPanel.open(self))
 	var mail := _hotspot(_bar(1524, 126), func(): Game.go("mailbox"))
 	_hotspot(_bar(1656, 126), func(): Game.go("social"))
@@ -269,21 +275,29 @@ func _build_quests() -> void:
 	var main: Array = r.data.get("main", []).filter(func(q): return not q.claimed)
 	main.sort_custom(func(a, b): return float(a.progress) / a.target > float(b.progress) / b.target)
 	var top := Vector2(118, 216) * QUEST_SCALE
+	var n := 0
 	for i in mini(3, main.size()):
-		_quest_row(main[i], top + Vector2(0, 14 + i * 74))
+		_quest_row(main[i], top + Vector2(0, 14 + i * 74), n)
+		n += 1
 	var daily: Array = r.data.get("daily", [])
 	var bottom := Vector2(118, 640) * QUEST_SCALE
 	for i in mini(4, daily.size()):
-		_quest_row(daily[i], bottom + Vector2(0, 10 + i * 58))
+		_quest_row(daily[i], bottom + Vector2(0, 10 + i * 58), n)
+		n += 1
 
 
-func _quest_row(q: Dictionary, at: Vector2) -> void:
+## A quest: it slides in (n: its place in the list), its bar fills; one ready to claim pulses.
+func _quest_row(q: Dictionary, at: Vector2, n := 0) -> void:
 	var w := 500.0
 	var done: bool = int(q.progress) >= int(q.target)
 	var claimed: bool = q.get("claimed", false)
 	var row := Control.new()
-	row.position = at
+	row.position = at - Vector2(40, 0)
+	row.modulate.a = 0.0
 	_quest_box.add_child(row)
+	var slide := row.create_tween().set_parallel()
+	slide.tween_property(row, "position", at, 0.35).set_delay(0.2 + n * 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	slide.tween_property(row, "modulate:a", 1.0, 0.25).set_delay(0.2 + n * 0.07)
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.55)
 	bg.size = Vector2(w, 50)
@@ -298,8 +312,10 @@ func _quest_row(q: Dictionary, at: Vector2) -> void:
 	row.add_child(track)
 	var fill := ColorRect.new()
 	fill.color = UI.GREEN if done else UI.BLUE
-	fill.size = Vector2(track.size.x * clampf(float(q.progress) / float(q.target), 0, 1), 8)
+	fill.size = Vector2(0, 8)
 	track.add_child(fill)
+	fill.create_tween().tween_property(fill, "size:x", track.size.x * clampf(float(q.progress) / float(q.target), 0, 1), 0.7) \
+		.set_delay(0.35 + n * 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if done and not claimed:
 		var reward := "+%dK" % int(q.rewardKarat) if int(q.get("rewardKarat", 0)) > 0 else "+%dC" % int(q.get("rewardContraband", 0))
 		var b := UI.button("CLAIM %s" % reward, func(): pass, Vector2(140, 40), UI.GREEN)
@@ -307,6 +323,9 @@ func _quest_row(q: Dictionary, at: Vector2) -> void:
 		b.position = Vector2(w - 146, 5)
 		b.pressed.connect(_claim.bind(q, b))
 		row.add_child(b)
+		var pulse := b.create_tween().set_loops()   # (waiting to be claimed)
+		pulse.tween_property(b, "self_modulate", Color(1.35, 1.35, 1.35), 0.6).set_trans(Tween.TRANS_SINE)
+		pulse.tween_property(b, "self_modulate", Color.WHITE, 0.6).set_trans(Tween.TRANS_SINE)
 	else:
 		var prog := UI.label("%d / %d" % [int(q.progress), int(q.target)], 18, UI.MUTED)
 		prog.position = Vector2(w - 130, 22)
@@ -321,10 +340,44 @@ func _claim(q: Dictionary, b: Button) -> void:
 		b.text = "ERROR"
 		UI.toast(self, r.error, UI.RED)
 		return
+	var from := b.get_global_rect().get_center()
 	b.queue_free()
+	var k0 := int(Game.player.get("karat", 0))
+	var c0 := int(Game.player.get("contraband", 0))
 	Game.player.karat = r.data.get("karat", Game.player.get("karat", 0))
 	Game.player.contraband = r.data.get("contraband", Game.player.get("contraband", 0))
-	_karat.text = str(int(Game.player.karat))
-	_contraband.text = str(int(Game.player.contraband))
+	# Coins fly from the quest to the counter, which counts up as they land
+	var to: Label = _karat if int(Game.player.karat) != k0 else _contraband
+	_coins(from, to.get_global_rect().get_center(), UI.GOLD if to == _karat else UI.PURPLE)
+	await get_tree().create_timer(0.5).timeout
+	Sfx.play("karat", 1.0, -2.0)
+	UI.count_up(_karat, k0, int(Game.player.karat), 0.7, "%d", "click")
+	UI.count_up(_contraband, c0, int(Game.player.contraband), 0.7, "%d", "click")
+	to.pivot_offset = to.size / 2
+	var pop := to.create_tween()
+	pop.tween_property(to, "scale", Vector2.ONE * 1.3, 0.1)
+	pop.tween_property(to, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	Sfx.play("promote", 1.2, -6.0)
 	UI.toast(self, "Quest reward claimed!", UI.GREEN)
+
+
+## A spray of coins from one point that curve up and into another.
+func _coins(from: Vector2, to: Vector2, col: Color) -> void:
+	for i in 14:
+		var dot := ColorRect.new()
+		dot.color = col.lightened(randf() * 0.4)
+		dot.size = Vector2(10, 10)
+		dot.pivot_offset = dot.size / 2
+		dot.rotation = PI / 4
+		dot.top_level = true
+		dot.z_index = 100
+		dot.position = from - dot.size / 2
+		add_child(dot)
+		var mid := from.lerp(to, 0.5) + Vector2(randf_range(-160, 160), randf_range(-220, -60))
+		var t := dot.create_tween()
+		var d := 0.45 + randf() * 0.25
+		t.tween_method(func(k: float):
+			var a := from.lerp(mid, k)
+			var b2 := mid.lerp(to, k)
+			dot.position = a.lerp(b2, k) - dot.size / 2, 0.0, 1.0, d).set_delay(i * 0.025).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.tween_callback(dot.queue_free)

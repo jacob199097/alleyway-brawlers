@@ -26,6 +26,11 @@ var _craft: Dictionary = {}     # GET /api/craft: dust, values per rarity, extra
 var _pick: Dictionary = {}      # the card picked for crafting
 var _tiles := {}                # card id -> its tile
 var _bar: HBoxContainer
+var _hero: TextureRect          # the side panel's big card (tilts toward the mouse)
+var _hero_mat: ShaderMaterial
+var _hero_tilt := Vector2.ZERO
+var _detail_id := "-"           # the card the side panel shows ("" = the collection)
+var _detail_panel: Control
 
 
 func _ready() -> void:
@@ -54,6 +59,7 @@ func _ready() -> void:
 	dp.position = Vector2(1380, 190)
 	dp.size = Vector2(520, 790)
 	add_child(dp)
+	_detail_panel = dp
 	_detail = VBoxContainer.new()
 	_detail.add_theme_constant_override("separation", 10)
 	dp.add_child(_detail)
@@ -70,6 +76,8 @@ func _ready() -> void:
 		else:
 			UI.toast(self, r.error, UI.RED)
 		_build_craft_bar()
+		_detail_id = "-"   # (the collection, now that it is known)
+		_show_detail({})
 	_sync_chips()
 	_render()
 
@@ -228,6 +236,7 @@ func _render() -> void:
 	if shown == 0:
 		var l := UI.label("No cards match these filters", 28, UI.MUTED, true)
 		_grid.add_child(l)
+	CardTile.cascade(_grid.get_children())
 
 
 static func _rarest_first(a: Dictionary, b: Dictionary) -> bool:
@@ -239,12 +248,32 @@ static func _rarest_first(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _show_detail(c: Dictionary) -> void:
+	var id := str(c.get("id", ""))
+	if id == _detail_id:
+		return
+	_detail_id = id
 	for n in _detail.get_children():
 		n.queue_free()
+	_hero = null
+	_hero_mat = null
 	if c.is_empty():
-		_detail.add_child(UI.label("Hover a card to see it here.", 22, UI.MUTED))
+		_show_collection()
 		return
-	_detail.add_child(UI.texture_rect(UI.card_art(c), Vector2(480, 520)))
+	# The card, big, in 3D: it tilts toward the mouse over the panel, and sways gently otherwise
+	var holder := CenterContainer.new()
+	holder.custom_minimum_size = Vector2(480, 470)
+	_detail.add_child(holder)
+	_hero = UI.texture_rect(UI.card_art(c), Vector2(330, 467))
+	_hero.pivot_offset = _hero.size / 2
+	if _hero.texture:
+		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)))
+		_hero.material = _hero_mat
+	holder.add_child(_hero)
+	_hero.modulate.a = 0.0
+	_hero.scale = Vector2.ONE * 0.9
+	var tw := _hero.create_tween().set_parallel()
+	tw.tween_property(_hero, "modulate:a", 1.0, 0.14)
+	tw.tween_property(_hero, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_detail.add_child(UI.label(str(c.get("name", "?")), 34, Color.WHITE, true))
 	var rarity := int(c.get("rarity", 1))
 	var kind := str(UI.TYPE_NAMES.get(c.get("cardType", ""), "CARD"))
@@ -267,8 +296,102 @@ func _show_detail(c: Dictionary) -> void:
 	t.meta_hover_started.connect(func(meta): t.tooltip_text = Keywords.LIST.get(str(meta), [null, ""])[1])
 	t.meta_hover_ended.connect(func(_meta): t.tooltip_text = "")
 	_detail.add_child(t)
-	if not Game.offline:
-		_detail.add_child(UI.label("Owned: %d" % int(c.get("quantity", 0)), 18, UI.BLUE, true))
+	if not Game.offline:   # owned: a pip for each copy a deck can hold
+		var have := int(c.get("quantity", 0))
+		var cap := 1 if c.get("cardType") == "leader" else 3
+		var pips := ""
+		for i in cap:
+			pips += "◆ " if i < have else "◇ "
+		var extra := "  +%d" % (have - cap) if have > cap else ""
+		_detail.add_child(UI.label("OWNED  %s%s" % [pips.strip_edges(), extra], 20, UI.BLUE if have > 0 else UI.MUTED, true))
+
+
+## Before a card is hovered: the collection at a glance (all of it, then each clan, then each
+## rarity), every bar filling as it appears.
+func _show_collection() -> void:
+	var all: Array = []
+	for id in CardDB.all():
+		var cd: Dictionary = CardDB.get_card(id)
+		if not cd.get("token", false):
+			all.append(cd)
+	var owned := func(cd: Dictionary) -> bool:
+		var row = _owned.get(str(cd.get("id", "")))
+		return Game.offline or (row is Dictionary and int(row.get("quantity", 0)) > 0)
+	var head := UI.label("YOUR COLLECTION", 30, UI.GOLD, true)
+	_detail.add_child(head)
+	var have := all.filter(owned).size()
+	var big := UI.label("%d / %d cards" % [have, all.size()], 44, Color.WHITE, true)
+	_detail.add_child(big)
+	var i := 0
+	_detail.add_child(_bar_row("", have, all.size(), UI.GOLD, i))
+	_detail.add_child(_gap(14))
+	_detail.add_child(UI.label("BY CLAN", 18, UI.MUTED, true))
+	for clan in CardDB.clans():
+		var of_clan := all.filter(func(cd): return str(cd.get("clan", "")) == clan.id)
+		i += 1
+		_detail.add_child(_bar_row(str(clan.name).to_upper(), of_clan.filter(owned).size(), of_clan.size(), clan.color, i))
+	_detail.add_child(_gap(14))
+	_detail.add_child(UI.label("BY RARITY", 18, UI.MUTED, true))
+	for r in [5, 4, 3, 2, 1]:
+		var of_r := all.filter(func(cd): return int(cd.get("rarity", 1)) == r)
+		if of_r.is_empty():
+			continue
+		i += 1
+		_detail.add_child(_bar_row(str(UI.RARITY_LABEL.get(r, "")).to_upper(), of_r.filter(owned).size(), of_r.size(), UI.rarity_color(r), i))
+	_detail.add_child(_gap(18))
+	var hint := UI.label("Hover a card to see it here. Click one to scrap or craft it.", 17, UI.MUTED)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(470, 0)
+	_detail.add_child(hint)
+
+
+func _gap(h: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	return c
+
+
+## "NEBULA  ███████░░░  31 / 38": the bar fills from empty, one row after another.
+func _bar_row(text: String, n: int, of: int, col: Color, i: int) -> Control:
+	var row := Control.new()
+	row.custom_minimum_size = Vector2(470, 30 if text != "" else 22)
+	var y := 0.0
+	if text != "":
+		var l := UI.label(text, 17, col, true)
+		l.position = Vector2(0, 3)
+		row.add_child(l)
+	var back := ColorRect.new()
+	back.color = Color(1, 1, 1, 0.08)
+	back.position = Vector2(130 if text != "" else 0, 9 if text != "" else 4)
+	back.size = Vector2(240 if text != "" else 470, 12)
+	row.add_child(back)
+	var fill := ColorRect.new()
+	fill.color = col
+	fill.position = back.position
+	fill.size = Vector2(0, back.size.y)
+	row.add_child(fill)
+	var k := float(n) / maxf(1.0, of)
+	fill.create_tween().tween_property(fill, "size:x", back.size.x * k, 0.7).set_delay(0.15 + i * 0.06).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if text != "":
+		var num := UI.label("%d / %d" % [n, of], 16, Color.WHITE if n == of else UI.MUTED, n == of)
+		num.position = Vector2(388, 4)
+		row.add_child(num)
+	return row
+
+
+func _process(delta: float) -> void:
+	if _hero_mat == null or not is_instance_valid(_hero):
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var target := Vector2(sin(t * 0.7) * 5.0, cos(t * 0.53) * 3.5)   # (a slow sway)
+	if _detail_panel and _detail_panel.get_global_rect().has_point(get_global_mouse_position()):
+		var c := _hero.get_global_rect().get_center()
+		var m := ((get_global_mouse_position() - c) / (_hero.size * 0.6)).clamp(-Vector2.ONE, Vector2.ONE)
+		target = Vector2(-m.x, m.y) * 14.0
+	_hero_tilt = _hero_tilt.lerp(target, 1.0 - exp(-8.0 * delta))
+	_hero_mat.set_shader_parameter("y_rot", _hero_tilt.x)
+	_hero_mat.set_shader_parameter("x_rot", _hero_tilt.y)
+	_hero_mat.set_shader_parameter("glare", clampf(_hero_tilt.length() / 14.0, 0.0, 1.0))
 
 
 # ── Crafting ─────────────────────────────────────────────────────────────────
@@ -387,6 +510,7 @@ func _do(path: String, body: Dictionary, c: Dictionary, crafting: bool) -> void:
 	_pick.quantity = qty
 	_render()
 	_render_bar()
+	_detail_id = "-"   # (its owned count changed)
 	_show_detail(_pick)
 	var tile = _tiles.get(id)
 	if is_instance_valid(tile):
