@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.10",
+        "notes": [
+            "Music is louder, and the rain, crowd and wind sit quietly underneath it.",
+            "Fixed: switching screens mid-fade could leave the music silent."
+        ]
+    },
+    {
         "version": "0.9.9",
         "notes": [
             "Fixed: the main menu art, backgrounds and some sounds went missing after the last updates."

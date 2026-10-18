@@ -217,6 +217,7 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 		var gm := ShaderMaterial.new()
 		gm.shader = preload("res://shaders/neon_glow.gdshader")
 		gm.set_shader_parameter("seed", randf())
+		gm.set_shader_parameter("boost", 0.0)   # (set, so hover tweens have a value to start from)
 		glow.material = gm
 		b.add_child(glow)
 	b.mouse_entered.connect(func():

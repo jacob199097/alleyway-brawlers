@@ -7,7 +7,7 @@ extends Node
 ## generated track dropped into assets/sfx replaces the stand-in. docs/AUDIO_PROMPTS.md lists them.
 ##   Game.sound.music("duel")   Game.sound.ambience("crowd")   Game.sound.sting("victory", "menu")
 
-const MUSIC_DB := -9.0
+const MUSIC_DB := -3.0
 const AMBIENCE_DB := 0.0   # (the ambience files sit at about -43 dB RMS, well under the music)
 const DUCK_DB := -16.0   # the music under a sting
 ## Tracks that existed before the sound folder had music (used until it has its own)
@@ -19,6 +19,7 @@ var _sting: AudioStreamPlayer
 var _now := {"music": "", "amb": ""}
 var _use := {"music": 0, "amb": 0}
 var _resume := ""   # the track to bring in once the sting is over
+var _fades := {}     # player -> the fade running on it (a new fade replaces it)
 
 
 func _ready() -> void:
@@ -84,7 +85,7 @@ func sting(name: String, then := "") -> void:
 	_sting.play()
 	var p := _music[_use.music]
 	if p.playing:
-		_tween().tween_property(p, "volume_db", MUSIC_DB + DUCK_DB, 0.25)
+		_fade(p, MUSIC_DB + DUCK_DB, 0.25)
 
 
 func _sting_done() -> void:
@@ -95,24 +96,38 @@ func _sting_done() -> void:
 	else:
 		var p := _music[_use.music]
 		if p.playing:
-			_tween().tween_property(p, "volume_db", MUSIC_DB, 1.5)
+			_fade(p, MUSIC_DB, 1.5)
 
 
 ## The new stream fades in on the spare player while the old one fades out and stops.
 func _swap(players: Array[AudioStreamPlayer], key: String, stream: AudioStream, target_db: float, fade: float) -> void:
 	var old := players[_use[key]]
 	if old.playing:
-		var t := _tween()
-		t.tween_property(old, "volume_db", -80.0, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		t.tween_callback(old.stop)
+		_fade(old, -80.0, fade, true)
 	if stream == null:
 		return
 	_use[key] = 1 - _use[key]
 	var p := players[_use[key]]
+	_fade(p, -80.0, 0.0)   # (stops a fade-out still running on it from stopping the new track)
 	p.stream = stream
 	p.volume_db = -80.0
 	p.play()
-	_tween().tween_property(p, "volume_db", target_db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_fade(p, target_db, fade)
+
+
+## Fades a player to a volume (then stops it), replacing any fade already running on it.
+func _fade(p: AudioStreamPlayer, db: float, secs: float, stop := false) -> void:
+	var was: Tween = _fades.get(p)
+	if was and was.is_valid():
+		was.kill()
+	_fades.erase(p)
+	if secs <= 0.0:
+		return
+	var t := _tween()
+	t.tween_property(p, "volume_db", db, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN if db < p.volume_db else Tween.EASE_OUT)
+	if stop:
+		t.tween_callback(p.stop)
+	_fades[p] = t
 
 
 ## A looping copy of the named sound (a random one of its recordings), or null.
