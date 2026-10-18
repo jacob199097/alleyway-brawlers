@@ -10,7 +10,7 @@ import { choose } from './DuelAI.js';
 
 const { viewFor } = createRequire(import.meta.url)('../../backend/socket/onlineMatch.js');
 
-const SUPERNOVA = 'card_nebu_010';   // Hustle (1): search the deck for a NEBULA card with 4 or less Authority
+const SUPERNOVA = 'card_nebu_010';   // Hustle (1): search the deck for a NEBULA card with 4 or less Authority, then draw 1
 const STATIC = 'card_mili_002';      // Militia character: ACTIVATE, search for a MILITIA character (4 or less)
 
 /** A duel on turn 3, player to act in the deployment phase; `hand` comes off the top of the deck. */
@@ -30,13 +30,16 @@ assert.ok(st.canHustle('player', inHand(st, SUPERNOVA)), 'Supernova Run can be p
 assert.ok(st.doAction('player', { kind: 'hustle', uid: inHand(st, SUPERNOVA).uid }));
 assert.equal(st.pending.key, 'fx_pick');
 assert.equal(st.pending.options[0].card.id, 'card_nebu_011', 'each option carries its card (the game shows them to pick from)');
+assert.ok(!st.pending.options.some(o => o.card?.id === 'card_nebu_003'), 'not the Authority 7 Kade');
 st.takeEvents();
 st.doAction('player', { kind: 'choose', option: st.pending.options[0].id });
 assert.ok(inHand(st, 'card_nebu_011'), 'it found Sprintz (Authority 1)');
 assert.ok(st.takeEvents().some(e => e.type === 'shuffle' && e.side === 'player'), 'then the deck is shuffled');
-assert.ok(!inHand(st, 'card_nebu_003'), 'not the Authority 7 Kade');
+assert.ok(inHand(st, 'card_nebu_003'), 'then it draws a card (Kade, the last one left)');
 st = duel(['card_nebu_003'], [SUPERNOVA]);
-assert.ok(!st.canHustle('player', inHand(st, SUPERNOVA)), 'nothing to find: it can\'t be played');
+assert.ok(st.canHustle('player', inHand(st, SUPERNOVA)), 'nothing to find, but a card to draw: it can be played');
+st = duel([], [SUPERNOVA]);
+assert.ok(!st.canHustle('player', inHand(st, SUPERNOVA)), 'nothing to find or draw: it can\'t be played');
 
 // Online: your view of your own deck has its cards (in no particular order), so the game knows
 // a search has something to find; the opponent's deck is only a count

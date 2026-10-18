@@ -206,7 +206,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_010",
         "code": "NEBU-010",
         "flavourText": "The star's about to blow. Grab what matters and run.",
-        "effectText": "Search your deck for a NEBULA card with 4 or less Authority and add it to your hand.",
+        "effectText": "Search your deck for a NEBULA card with 4 or less Authority and add it to your hand.\nDraw 1 card.",
         "effects": [
             {
                 "when": "deploy",
@@ -215,6 +215,11 @@ export const FORGE_CARDS = {
                 "amount": 1,
                 "max_auth": 4,
                 "choose": true
+            },
+            {
+                "when": "deploy",
+                "do": "draw",
+                "amount": 1
             }
         ],
         "clanName": "Nebula",
@@ -475,7 +480,7 @@ export const FORGE_CARDS = {
         "name": "Jax",
         "clan": "nebula",
         "cardType": "gang_member",
-        "authority": 7,
+        "authority": 6,
         "tributeCost": 1,
         "rarity": 3,
         "clanTag": "nebula",
@@ -550,14 +555,13 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_nebu_027",
         "code": "NEBU-027",
-        "flavourText": "Out of allies? Call down the sky",
-        "effectText": "If you control no characters, DOWN all enemy characters.",
+        "flavourText": "Call down the sky",
+        "effectText": "DOWN all characters.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "down",
-                "target": "enemies",
-                "if": "alone"
+                "target": "all"
             }
         ],
         "clanName": "Nebula",
@@ -1004,7 +1008,7 @@ export const FORGE_CARDS = {
         "name": "Emergency Resuscitation",
         "clan": "nebula",
         "cardType": "hustle",
-        "authority": 3,
+        "authority": 2,
         "tributeCost": 0,
         "rarity": 3,
         "clanTag": "nebula",
@@ -1332,7 +1336,7 @@ export const FORGE_CARDS = {
         "cardType": "hustle",
         "authority": 1,
         "tributeCost": 0,
-        "rarity": 2,
+        "rarity": 1,
         "clanTag": "militia",
         "effectKey": "",
         "art_url": "card_mili_010",
@@ -2252,5 +2256,170 @@ export const FORGE_CARDS = {
         "level": 3,
         "subtype": "striver",
         "promotesTo": null
+    },
+    "card_mili_034": {
+        "id": "card_mili_034",
+        "name": "Quartermaster Vance",
+        "clan": "militia",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_034",
+        "code": "MILI-034",
+        "flavourText": "“You want to win a war? Count your ammo, check your gear, and stop wasting my damn supplies!”",
+        "effectText": "When deployed: If you control 2 or more other MILITIA characters, draw 1 card.\nAt the end of your turn: If you have 3 or fewer cards in hand, draw 1 card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "draw",
+                "if": "allies",
+                "amount": 1,
+                "n": 2,
+                "if_clan": "militia"
+            },
+            {
+                "when": "turn_end",
+                "do": "draw",
+                "clan": "militia",
+                "if": "hand_le",
+                "amount": 1,
+                "n": 3
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635",
+        "attack": 1800,
+        "defense": 2000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_mili_035": {
+        "id": "card_mili_035",
+        "name": "Doorkicker Diaz",
+        "clan": "militia",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_035",
+        "code": "MILI-035",
+        "flavourText": "A Breaching charge costs supplies. My boot costs nothing.”",
+        "effectText": "When this card attacks: It has PIERCE for this attack.\nWhen this card KOs a character: Your opponent discards 1 card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "pierce"
+            },
+            {
+                "when": "ko",
+                "do": "discard",
+                "amount": 1
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635",
+        "attack": 2000,
+        "defense": 1000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_mili_036": {
+        "id": "card_mili_036",
+        "name": "Mortar Team",
+        "clan": "militia",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_036",
+        "code": "MILI-036",
+        "flavourText": "",
+        "effectText": "ACTIVATE (once per turn, this card can't attack this turn): Your opponent loses 500 Morale.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "damage",
+                "cost": "exhaust",
+                "amount": 500
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635",
+        "attack": 1000,
+        "defense": 2000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_mili_037": {
+        "id": "card_mili_037",
+        "name": "Rhodes - Tank Commander",
+        "clan": "militia",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 2,
+        "rarity": 4,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_037",
+        "code": "MILI-037",
+        "flavourText": "Step aside. Or get rolled.",
+        "effectText": "When deployed: This card gains SHIELD.\nACTIVATE (once per turn, this card can't attack this turn): If your opponent controls 4 or more characters, KO one enemy character.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "shield",
+                "target": "self"
+            },
+            {
+                "when": "activate",
+                "do": "ko",
+                "target": "enemy",
+                "if": "enemies_ge",
+                "cost": "exhaust",
+                "n": 4
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635",
+        "attack": 3000,
+        "defense": 3500,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
+    },
+    "card_mili_038": {
+        "id": "card_mili_038",
+        "name": "Artillery strike",
+        "clan": "militia",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_038",
+        "code": "MILI-038",
+        "flavourText": "“Coordinates locked. Heads down, boys — this street belongs to us now.”",
+        "effectText": "If an enemy character is Downed, KO one enemy character.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "ko",
+                "target": "enemy",
+                "if": "foe_downed"
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635"
     }
 };
