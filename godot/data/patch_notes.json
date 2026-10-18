@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.11",
+        "notes": [
+            "A new neon alley behind the main menu and the other menus.",
+            "New Militia cards: Quartermaster Vance, Doorkicker Diaz, Mortar Team, Rhodes - Tank Commander and Artillery Strike.",
+            "Balance: Supernova Run also draws a card, Jax and Emergency Resuscitation cost less, Orbital Strike now Downs all characters, Supply Drop is Common."
+        ]
+    },
+    {
         "version": "0.9.10",
         "notes": [
             "Music is louder, and the rain, crowd and wind sit quietly underneath it.",
