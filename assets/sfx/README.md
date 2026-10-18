@@ -48,7 +48,7 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `hover`, `karat` | the pointer over a button; Karat earned on the results screen | generated (ElevenLabs) |
 | `click`, `error` | a button pressed; a move that isn't allowed | stand-in (.wav) |
 
-Generated files were levelled to sit together (music about -18 dB RMS, ambience -43 dB so it stays well under the music, short sounds
+Generated files were levelled to sit together (music about -18 dB RMS, ambience -43 dB so it stays well under the music (duel rain -49 dB), short sounds
 matched to what they replaced), with silence trimmed off the start; the .m4a music was converted to
 .mp3 (Godot can't play .m4a).
 | `gunshot` | Militia: each shot | **wanted** (synthesised) |
