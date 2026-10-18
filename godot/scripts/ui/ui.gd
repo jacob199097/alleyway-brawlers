@@ -519,6 +519,29 @@ static func xp_progress(p: Dictionary) -> Dictionary:
 	return {"current": current, "needed": needed, "pct": float(current) / needed if needed > 0 else 1.0}
 
 
+## How long ago a server time was ("2026-10-18T09:30:00.000Z"): "just now", "5 minutes ago",
+## "yesterday", "3 weeks ago", or the date once it's months back; "never" for none.
+static func ago(iso) -> String:
+	if not (iso is String) or iso.length() < 19:
+		return "never"
+	var at := Time.get_unix_time_from_datetime_string(iso.left(19))
+	var secs := maxi(0, int(Time.get_unix_time_from_system() - at))
+	var units := [[60, "minute"], [3600, "hour"], [86400, "day"], [604800, "week"]]
+	if secs < 60:
+		return "just now"
+	if secs >= 86400 and secs < 172800:
+		return "yesterday"
+	if secs >= 60 * 86400:
+		return iso.left(10)
+	var n := 0
+	var unit := ""
+	for u in units:
+		if secs >= int(u[0]):
+			n = secs / int(u[0])
+			unit = u[1]
+	return "%d %s%s ago" % [n, unit, "" if n == 1 else "s"]
+
+
 static func rarity_color(r) -> Color:
 	return RARITY_COLOR.get(int(r) if r != null else 1, RARITY_COLOR[1])
 

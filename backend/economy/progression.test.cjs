@@ -133,6 +133,8 @@ async function rejects(promise, pattern) {
     for (let i = 0; i < 9; i++) {
         await achievements.recordMatch({ playerId: id, outcome: 'win', mode: 'casual', clan: 'nebula', morale: 3000 });
     }
+    const { rows: [lp] } = await q('SELECT last_played_at FROM players WHERE id = $1', [id]);
+    assert.ok(lp.last_played_at, 'a finished match sets when they last played');
     const ov = await achievements.overview(id);
     const loyal = ov.achievements.find(a => a.id === 'clan_nebula_10');
     assert.ok(loyal && loyal.unlocked, 'Nebula Loyalist unlocks after 10 Nebula wins');

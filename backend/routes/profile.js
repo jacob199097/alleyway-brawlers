@@ -11,7 +11,7 @@ router.get('/me', requireAuth, async (req, res) => {
         const { rows } = await pool.query(
             `SELECT p.id, p.username, p.email, p.karat, p.contraband, p.level, p.xp,
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
-                    p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at,
+                    p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.last_played_at,
                     p.dust, p.title AS title_id, p.card_back, p.free_packs,
                     -- Collection completion %
                     (
@@ -45,7 +45,7 @@ router.get('/player/:id', requireAuth, async (req, res) => {
         const { rows } = await pool.query(
             `SELECT p.id, p.username, p.level, p.xp, p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.title AS title_id,
-                    p.card_back, p.is_online,
+                    p.card_back, p.is_online, p.last_played_at,
                     (SELECT COUNT(*)::int FROM player_achievements pa WHERE pa.player_id = p.id) AS achievements,
                     (
                         SELECT COUNT(DISTINCT pi.card_id)::float /

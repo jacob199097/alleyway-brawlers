@@ -52,7 +52,7 @@ function loginAs(email) {
         const name = email.split('@')[0];
         players.set(token, {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
-            contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, wins: 12, losses: 7, draws: 0,
+            contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, last_played_at: new Date(Date.now() - 3 * 3600e3).toISOString(), wins: 12, losses: 7, draws: 0,
             avatar_url: null, profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
             created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null, free_packs: 2,
         });
@@ -163,7 +163,7 @@ const routes = {
         if (b.back !== undefined) player.card_back = b.back;
         return [200, { ok: true }];
     },
-    'GET /api/profile/player/:id': (_b, id) => [200, { id, username: 'AlleyCat', level: 9, xp: 400, rank: 'enforcer', rank_points: 820,
+    'GET /api/profile/player/:id': (_b, id) => [200, { id, username: 'AlleyCat', level: 9, xp: 400, rank: 'enforcer', rank_points: 820, last_played_at: new Date(Date.now() - 2 * 86400e3).toISOString(),
         wins: 41, losses: 22, draws: 2, avatar_url: 'level:5', profile_bio: 'Never lost on my home turf.', chosen_clan: pickableClans()[0]?.id ?? null,
         created_at: '2026-09-02T10:00:00Z', title: 'Collector', achievements: 7, collection_pct: 38.5, is_online: true }],
     'GET /api/profile/inventory': () => [200, cards.map(c => ({ ...c, quantity: inventory.get(c.id) })).filter(c => c.quantity > 0)

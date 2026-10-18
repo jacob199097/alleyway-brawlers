@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.14",
+        "notes": [
+            "Profiles show when someone last played (or that they are online now).",
+            "The Contraband briefcase and count at the top of the main menu open the Contraband store."
+        ]
+    },
+    {
         "version": "0.9.13",
         "notes": [
             "Discard prompts say why: the hand limit (only above 9 cards), the card making you discard (Adira, Doorkicker Diaz...), or an ability's cost."

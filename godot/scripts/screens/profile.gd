@@ -68,6 +68,12 @@ func _render(p: Dictionary) -> void:
 	var rp := UI.label("%d Rank Points" % int(p.get("rank_points", 0)), 22, UI.MUTED)
 	rp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(rp)
+	if p.has("last_played_at"):   # (online now, or when they last finished a match)
+		var online: bool = _friend and p.get("is_online", false)
+		var seen := UI.label("● Online now" if online else "Last played %s" % UI.ago(p.get("last_played_at")),
+			20, UI.GREEN if online else UI.MUTED)
+		seen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		left.add_child(seen)
 	var bio = p.get("profile_bio")
 	if bio is String and bio != "":
 		var b := UI.label("\"%s\"" % bio, 20, UI.MUTED)

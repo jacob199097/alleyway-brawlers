@@ -168,7 +168,8 @@ func _build_bar(p: Dictionary) -> void:
 	_hotspot(_bar(1392, 124), func(): SettingsPanel.open(self))
 	var mail := _hotspot(_bar(1524, 126), func(): Game.go("mailbox"))
 	_hotspot(_bar(1656, 126), func(): Game.go("social"))
-	_hotspot(_bar(1858, 126), func(): Game.go("shop"))
+	_hotspot(_bar(1858, 126), func(): Game.go("contraband"))   # the briefcase and the Contraband count: the CB store
+	_hotspot(_bar(1975, 112), func(): Game.go("contraband"))
 	if not Game.offline:
 		_mail_badge(mail)
 

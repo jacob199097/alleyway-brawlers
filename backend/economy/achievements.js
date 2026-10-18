@@ -148,6 +148,7 @@ async function recordMatch(m) {
     const win = m.outcome === 'win';
     const id = m.playerId;
     try {
+        await pool.query('UPDATE players SET last_played_at = NOW() WHERE id = $1', [id]);   // (profiles: "last played")
         await bump(pool, id, 'kos', m.kos || 0);
         await best(pool, id, 'best_kos', m.kos || 0);
         await bump(pool, id, 'promotes', m.promotes || 0);
