@@ -525,7 +525,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	if not e.has("target"):
 		return true
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -1369,6 +1369,12 @@ func _ko(side: String, slot: int) -> void:
 			_draw(str(bounty.by))
 
 
+## Whether a character has a status CLEANSE would take away.
+func _afflicted(c: Dictionary) -> bool:
+	return c.has("poison") or c.has("burn") or c.has("bleed") or c.has("bounty") or frozen(c) or in_stasis(c) \
+		or int(c.get("stun_until", 0)) >= turn or int(c.get("suppress_until", 0)) >= turn or int(c.get("silence_until", 0)) >= turn
+
+
 ## Put a character back on top of its owner's deck (a token just vanishes).
 func _topdeck(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
@@ -2202,6 +2208,13 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				x.card.mods.append({"swap": true, "until_turn": until})
 				return "%s: ATK and DEF swapped" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "any", "swap ATK and DEF", fn, "%s swaps the ATK and DEF of %%s" % c.name)
+		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
+			var fn := func(x: Dictionary) -> String:
+				_clear_status(x.card)
+				x.card.erase("stun_until")
+				_emit("cleanse", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
+				return "%s is cleansed" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "statused", "cleanse", fn, "%s cleanses %%s" % c.name)
 		"bounty":   # BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
 			var fn := func(x: Dictionary) -> String:
 				x.card.bounty = {"by": side, "n": n}
@@ -2551,6 +2564,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				return x.card.position == "def" and not x.card.downed and not x.card.get("face_down", false) and not frozen(x.card)
 			"spent":
 				return x.card.has_attacked and not x.card.downed and int(x.card.get("again_turn", 0)) != turn
+			"statused":
+				return _afflicted(x.card)
 		return true
 	var entries: Array = []
 	match target:
@@ -2571,7 +2586,9 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
 	var what_ := str(e.get("do", ""))
 	# (a leader on the field can be affected like any character, but has no hand to go back to)
-	entries = entries.filter(func(x): return pick.call(x) and not (x.card.get("cardType") == "leader" and what_ == "bounce") and not in_stasis(x.card))
+	# (STASIS can't be targeted, except to be cleansed of it)
+	entries = entries.filter(func(x): return pick.call(x) and not (x.card.get("cardType") == "leader" and what_ in ["bounce", "topdeck", "exile"]) \
+		and (what_ == "cleanse" or not in_stasis(x.card)))
 	# immune: to the statuses it lists (none listed: all of them)
 	var covers := func(im: Dictionary) -> bool:
 		var list = im.get("statuses")

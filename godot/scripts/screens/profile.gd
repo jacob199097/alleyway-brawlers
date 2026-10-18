@@ -168,11 +168,15 @@ func _tab(which: String) -> void:
 
 ## Clan mastery (economy/mastery.js): each clan's level, progress and what the next levels pay.
 func _mastery(view: Control) -> void:
+	var scroll := ScrollContainer.new()   # (one panel per clan: with many clans it scrolls)
+	scroll.position = Vector2(900, 250)
+	scroll.size = Vector2(920, 780)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	view.add_child(scroll)
 	var col := VBoxContainer.new()
-	col.position = Vector2(900, 250)
 	col.custom_minimum_size = Vector2(888, 0)
 	col.add_theme_constant_override("separation", 18)
-	view.add_child(col)
+	scroll.add_child(col)
 	var wait := UI.label("Loading…", 22, UI.MUTED)
 	col.add_child(wait)
 	var r := await Api.request("GET", "/api/achievements")

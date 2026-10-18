@@ -11,6 +11,9 @@ const MAX_ACTIONS := 1500
 const TWIST_RULES := [{"start_authority": 3}, {"start_morale": 3000}, {"opening_hand": 7}, {"pierce": true}]
 
 const FX_SAMPLES := [
+	# Cleanse (allies at the start of the turn; itself when attacked)
+	[{"when": "turn_start", "do": "cleanse", "target": "allies"}, {"when": "deploy", "do": "stasis", "target": "enemy"}],
+	[{"when": "defend", "do": "cleanse", "target": "self"}, {"when": "deploy", "do": "poison", "target": "enemies", "amount": 200}],
 	# Top of the deck, loot, exile, swapped ATK / DEF, lifesteal, bounties
 	[{"when": "deploy", "do": "topdeck", "target": "enemy"}, {"when": "ko", "do": "loot", "amount": 1}],
 	[{"when": "deploy", "do": "exile", "target": "enemy", "if": "foe_downed"}, {"when": "passive", "do": "lifesteal"}],

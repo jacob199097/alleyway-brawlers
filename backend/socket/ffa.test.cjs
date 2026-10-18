@@ -82,8 +82,10 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check([a, b, c].every(s => !last(s, 'ffa:out') || last(s, 'ffa:over').place >= 3), "only those out before the end (3rd, 4th) heard ffa:out");
     check(out.every(s => last(s, 'ffa:out').place === last(s, 'ffa:over').place), "and their place didn't change");
     check(results.length === 3 && results.every(r => r.humans === 3), 'everyone is rewarded once, as a 3-person game');
+    // (the table is filled with a CPU, which can win too: then no player sees themself 1st)
     const win = [a, b, c].find(s => last(s, 'ffa:over').place === 1);
-    check(last(win, 'ffa:over').places.player === 1, 'the winner sees themself in 1st');
+    if (win) check(last(win, 'ffa:over').places.player === 1, 'the winner sees themself in 1st');
+    else check([a, b, c].every(s => last(s, 'ffa:over').places.player !== 1), 'the CPU won: nobody sees themself in 1st');
     check(!/"p[1-4]"/.test(JSON.stringify(a.got.filter(([e]) => e.startsWith('ffa:')))), 'no seat names in any message to a player');
 
     // 3. On your own: CPUs fill the other 3 seats; someone not ready drops out

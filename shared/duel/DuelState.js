@@ -471,7 +471,7 @@ export class DuelState {
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
         }
         if (!('target' in e)) return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent' }[String(e.do ?? '')] ?? 'any';
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -1207,6 +1207,13 @@ export class DuelState {
         }
     }
 
+    /** Whether a character has a status CLEANSE would take away. */
+    _afflicted(c) {
+        return c.poison !== undefined || c.burn !== undefined || c.bleed !== undefined || c.bounty !== undefined
+            || this.frozen(c) || this.inStasis(c) || toInt(c.stun_until ?? 0) >= this.turn
+            || toInt(c.suppress_until ?? 0) >= this.turn || toInt(c.silence_until ?? 0) >= this.turn;
+    }
+
     /** Put a character back on top of its owner's deck (a token just vanishes). */
     _topdeck(side, slot) {
         const c = this.cardAt(side, slot);
@@ -1927,6 +1934,14 @@ export class DuelState {
                 }, `${c.name} swaps the ATK and DEF of %s`);
                 break;
             }
+            case 'cleanse':   // CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
+                this._fxApply(side, slot, c, e, vs, 'statused', 'cleanse', (x) => {
+                    this._clearStatus(x.card);
+                    delete x.card.stun_until;
+                    this._emit('cleanse', { side: x.side, slot: x.slot, card: clone(x.card) });
+                    return `${x.card.name} is cleansed`;
+                }, `${c.name} cleanses %s`);
+                break;
             case 'bounty':   // BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
                 this._fxApply(side, slot, c, e, vs, 'any', 'put a BOUNTY on', (x) => {
                     x.card.bounty = { by: side, n };
@@ -2272,6 +2287,7 @@ export class DuelState {
                 case 'attackers': return x.card.position === 'atk' && !x.card.downed;
                 case 'defenders': return x.card.position === 'def' && !x.card.downed && !x.card.face_down && !this.frozen(x.card);
                 case 'spent': return !!x.card.has_attacked && !x.card.downed && (x.card.again_turn ?? 0) !== this.turn;
+                case 'statused': return this._afflicted(x.card);
             }
             return true;
         };
@@ -2296,7 +2312,9 @@ export class DuelState {
         }
         const what_ = String(e.do ?? '');
         // (a leader on the field can be affected like any character, but has no hand to go back to)
-        entries = entries.filter(x => pick(x) && !(x.card.cardType === 'leader' && what_ === 'bounce') && !this.inStasis(x.card));
+        // (STASIS can't be targeted, except to be cleansed of it)
+        entries = entries.filter(x => pick(x) && !(x.card.cardType === 'leader' && ['bounce', 'topdeck', 'exile'].includes(what_))
+            && (what_ === 'cleanse' || !this.inStasis(x.card)));
         // immune: to the statuses it lists (none listed: all of them)
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(what_);
         if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));

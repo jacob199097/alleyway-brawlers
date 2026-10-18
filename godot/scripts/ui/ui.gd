@@ -308,7 +308,27 @@ static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> Texture
 
 ## Full-screen background art with a dark veil, brought to life (see living_bg.gd).
 static func background(parent: Control, path := "menu_background.png", dim := 0.55) -> void:
-	parent.add_child(LivingBackground.new().setup(tex(path), dim))
+	# A screen's own background once it has one (assets/bg_<screen>.png, e.g. bg_shop.png), else the alley
+	var own: Texture2D = null
+	if path == "menu_background.png" and parent.scene_file_path != "":
+		own = tex("bg_%s.png" % parent.scene_file_path.get_file().get_basename())
+	parent.add_child(LivingBackground.new().setup(own if own else tex(path), dim))
+
+
+## A clan's emblem (assets/emblems/<clan>.png), or its rarest character's picture until it has one.
+static func clan_emblem(clan: String) -> Texture2D:
+	var t := tex("emblems/%s.png" % clan)
+	return t if t else avatar("clan:%s" % clan)
+
+
+## An achievement's icon: assets/achievement_trophy.png / achievement_locked.png, else 🏆 / 🔒.
+static func achievement_icon(unlocked: bool, size: float, color: Color) -> Control:
+	var t := tex("achievement_trophy.png" if unlocked else "achievement_locked.png")
+	if t:
+		var r := texture_rect(t, Vector2(size, size))
+		r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		return r
+	return label("🏆" if unlocked else "🔒", int(size * 0.75), color)
 
 
 ## Screen title centred at the top.

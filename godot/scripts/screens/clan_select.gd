@@ -28,27 +28,34 @@ func _ready() -> void:
 		msg.position = Vector2(0, 480)
 		msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		add_child(msg)
-	# One row, centred; tiles get narrower the more clans there are
-	var w := minf(600.0, 1820.0 / maxi(1, clans.size()) - 40.0)
+	# Centred rows (two once there are more than 4 clans); tiles get narrower the more there are
+	var per_row := clans.size() if clans.size() <= 4 else ceili(clans.size() / 2.0)
+	var two := clans.size() > 4
+	var w := minf(600.0, 1820.0 / maxi(1, per_row) - 40.0)
 	var gap := w + 40.0
+	var h := 380.0 if two else 680.0
+	var art_h := 236.0 if two else 448.0
 	for i in clans.size():
 		var c := _clan_info(clans[i])
+		var row := i / per_row
+		var in_row := mini(per_row, clans.size() - row * per_row)   # (a shorter last row is centred too)
 		var tile := Button.new()
 		tile.toggle_mode = true
-		tile.custom_minimum_size = Vector2(w, 680)
-		tile.position = Vector2(960 - clans.size() * gap / 2 + 20 + i * gap, 170)
+		tile.custom_minimum_size = Vector2(w, h)
+		tile.position = Vector2(960 - in_row * gap / 2 + 20 + (i % per_row) * gap, 170 + row * (h + 20))
 		add_child(tile)
-		var art := UI.texture_rect(c.image, Vector2(w - 40, 448))
+		var art := UI.texture_rect(c.image, Vector2(w - 40, art_h))
 		art.position = Vector2(20, 20)
 		tile.add_child(art)
-		var name := UI.label(c.label, 48, c.color, true)
+		var name := UI.label(c.label, int(minf(48.0, w / 6.0)), c.color, true)
 		name.size = Vector2(w, 60)
-		name.position = Vector2(0, 490)
+		name.position = Vector2(0, art_h + 36)
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(name)
-		var blurb := UI.label(c.blurb, 22, Color(0.85, 0.85, 0.9))
-		blurb.size = Vector2(w, 80)
-		blurb.position = Vector2(0, 570)
+		var blurb := UI.label(c.blurb, 17 if two else 22, Color(0.85, 0.85, 0.9))
+		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+		blurb.size = Vector2(w - 16, 70)
+		blurb.position = Vector2(8, art_h + (92 if two else 116))
 		blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(blurb)
 		tile.pressed.connect(_select.bind(c.id))

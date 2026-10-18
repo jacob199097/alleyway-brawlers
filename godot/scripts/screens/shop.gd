@@ -11,7 +11,16 @@ var _free := 0                   # free packs from levelling up (any pack, the p
 var _free_buttons: Array[Button] = []
 var _busy := false
 var _opening = null              # the pack opening (ui/pack_opening.gd), while it's up
-var _art_rects := {}             # pack id -> where its art sits on the shelf (the opening starts there)
+var _arts := {}                  # pack id -> its art on the shelf (the opening starts where it is)
+## More packs than fit (one per clan): a carousel showing SHOWN at a time, scrolled with the arrows,
+## the mouse wheel or the arrow keys
+const SHOWN := 3
+const STEP := 480.0
+var _row: Control
+var _first := 0
+var _count := 0
+var _dots: HBoxContainer
+var _arrows: Array[Button] = []
 ## The pack opening's synthesised sounds (sfx.gd), made ready while the shop is open
 const PACK_SOUNDS := ["tear", "charge", "burst", "shimmer", "reveal_rare", "reveal_epic", "new_card"]
 
@@ -49,10 +58,67 @@ func _ready() -> void:
 			var info := CardDB.clan(id)
 			packs.append(known.get(id, {"id": id, "label": str(info.get("name", sp.get("name", id))), "image": "%s_booster.png" % id,
 				"color": info.get("color", Color("b388ff"))}))
-	var step: float = minf(480.0, 1700.0 / maxi(1, packs.size()))
-	for i in packs.size():
-		_pack(packs[i], Vector2(760.0 - (packs.size() - 1) * step / 2.0 + i * step, 170))
+	_count = packs.size()
+	var shown := mini(SHOWN, _count)
+	var clip := Control.new()   # (packs scrolled out of view are cut off at its edges)
+	clip.clip_contents = _count > SHOWN
+	clip.size = Vector2(STEP * shown, 830)
+	clip.position = Vector2(960 - clip.size.x / 2, 150)
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(clip)
+	_row = Control.new()
+	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.add_child(_row)
+	for i in _count:
+		var holder := _pack(packs[i])
+		holder.position = Vector2(i * STEP + 40, 20)
+		_row.add_child(holder)
+	if _count > SHOWN:
+		for dir in [-1, 1]:
+			var b := UI.button("◀" if dir < 0 else "▶", _scroll.bind(dir), Vector2(90, 130), UI.GOLD)
+			b.position = Vector2(clip.position.x - 120 if dir < 0 else clip.position.x + clip.size.x + 30, 330)
+			add_child(b)
+			_arrows.append(b)
+		_dots = HBoxContainer.new()
+		_dots.add_theme_constant_override("separation", 10)
+		_dots.position = Vector2(960 - _count * 13, 960)
+		add_child(_dots)
+		for i in _count:
+			var d := ColorRect.new()
+			d.custom_minimum_size = Vector2(16, 16)
+			_dots.add_child(d)
+		_scroll(0)
 	Sfx.warm(PACK_SOUNDS)
+
+
+## Move the carousel by dir packs (0: just show where it is).
+func _scroll(dir: int) -> void:
+	var to := clampi(_first + dir, 0, maxi(0, _count - SHOWN))
+	if dir != 0 and to == _first:
+		return
+	_first = to
+	if dir != 0:
+		Sfx.play("whoosh", 1.3, -10.0)
+	_row.create_tween().tween_property(_row, "position:x", -_first * STEP, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_arrows[0].disabled = _first == 0
+	_arrows[1].disabled = _first >= _count - SHOWN
+	for i in _dots.get_child_count():
+		var on := i >= _first and i < _first + SHOWN
+		(_dots.get_child(i) as ColorRect).color = UI.GOLD if on else Color(1, 1, 1, 0.25)
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if _count > SHOWN and not _opening:
+		var dir := 0
+		if e is InputEventMouseButton and e.pressed and e.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			dir = -1 if e.button_index == MOUSE_BUTTON_WHEEL_UP else 1
+		elif e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_LEFT, KEY_RIGHT]:
+			dir = -1 if e.keycode == KEY_LEFT else 1
+		if dir != 0:
+			_scroll(dir)
+			get_viewport().set_input_as_handled()
+			return
+	super(e)   # (Esc: back)
 
 
 func _refresh_balance() -> void:
@@ -64,13 +130,18 @@ func _refresh_balance() -> void:
 		b.text = "OPEN FREE  (%d LEFT)" % _free
 
 
-func _pack(p: Dictionary, at: Vector2) -> void:
+## One pack on the shelf (its art, name, prices and free-pack button), laid out from its top-left.
+func _pack(p: Dictionary) -> Control:
+	var holder := Control.new()
+	holder.size = Vector2(400, 790)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var at := Vector2.ZERO
 	var art := UI.texture_rect(UI.tex(p.image) if UI.tex(p.image) else CardDB.back(), Vector2(400, 543))
 	art.position = at
 	art.pivot_offset = art.size / 2
-	_art_rects[p.id] = Rect2(at + Vector2(0, 5), Vector2(400, 533))
+	_arts[p.id] = art
 	art.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(art)
+	holder.add_child(art)
 	art.mouse_entered.connect(func():
 		Sfx.play("hover", 0.9, -8.0)
 		var h := create_tween().set_parallel()
@@ -92,24 +163,25 @@ func _pack(p: Dictionary, at: Vector2) -> void:
 	name.size = Vector2(400, 40)
 	name.position = at + Vector2(0, 555)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(name)
+	holder.add_child(name)
 	var sub := UI.label("3 cards per pack", 18, UI.MUTED)
 	sub.size = Vector2(400, 24)
 	sub.position = at + Vector2(0, 596)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(sub)
+	holder.add_child(sub)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	row.position = at + Vector2(8, 640)
 	row.add_child(UI.button("200 KARAT", _buy.bind(p, "karat"), Vector2(184, 60), UI.GOLD))
 	row.add_child(UI.button("100 CB", _buy.bind(p, "contraband"), Vector2(184, 60), UI.PURPLE))
-	add_child(row)
+	holder.add_child(row)
 	# A free pack from levelling up: any pack the player picks
 	var free := UI.button("", _buy.bind(p, "free"), Vector2(384, 60), UI.GREEN)
 	free.position = at + Vector2(8, 712)
-	add_child(free)
+	holder.add_child(free)
 	_free_buttons.append(free)
 	_refresh_balance()
+	return holder
 
 
 func _buy(p: Dictionary, currency: String) -> void:
@@ -118,7 +190,9 @@ func _buy(p: Dictionary, currency: String) -> void:
 	var data := await _purchase(p, currency, self)
 	if data.is_empty() or not is_inside_tree():
 		return
-	_opening = load("res://scripts/ui/pack_opening.gd").open(self, p, data, currency, _art_rects.get(p.id, Rect2()))
+	var art: Control = _arts.get(p.id)
+	var from := Rect2(art.global_position + Vector2(0, 5), Vector2(400, 533)) if art else Rect2()
+	_opening = load("res://scripts/ui/pack_opening.gd").open(self, p, data, currency, from)
 	_opening.another.connect(func(cur: String):
 		var next := await _purchase(p, cur, _opening)
 		if _opening:

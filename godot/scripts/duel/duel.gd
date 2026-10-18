@@ -593,6 +593,8 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s was %s" % [_cname(ev.card), "removed from the game" if ev.get("exiled", false) else "KO'd"], side)
 		"topdeck":
 			_log("%s went back on top of the deck" % _cname(ev.card), side)
+		"cleanse":
+			_log("%s was cleansed" % _cname(ev.card), side)
 		"damage":
 			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side)
 		"heal":
@@ -1414,6 +1416,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_bounce(ev)
 		"topdeck":
 			await _ev_topdeck(ev)
+		"cleanse":
+			await _ev_cleanse(ev)
 		"mill":
 			await _ev_mill(ev)
 		"recover":
@@ -2124,7 +2128,7 @@ func _legendary_entrance(v: CardView, c: Dictionary) -> void:
 	_post_pulse("aberration", 12.0, 0.45)
 	_burst(center, col.lightened(0.4), 50, 700, 1.0, -100.0)
 	_ring(center, Color.WHITE, 2.8)
-	Sfx.play("boom", 0.8)
+	Sfx.play("legendary")
 	await _wait(0.35)
 
 
@@ -2148,15 +2152,14 @@ func _ev_luck(ev: Dictionary) -> void:
 	up.tween_property(tok, "position", at + Vector2(0, -150), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	up.tween_property(tok, "scale", Vector2.ONE * 1.3, 0.28)
 	for i in 10:   # a coin turns edge-on and over; a die tumbles through its faces
+		if i == 0:
+			Sfx.play("coin_flip" if coin else "dice_roll")
 		if coin:
 			tok.scale.x = 1.3 * absf(cos(i * 1.2))
 			tok.face = i % 2
-			if i % 3 == 0:
-				Sfx.play("flip", randf_range(1.3, 1.6), -10.0)
 		else:
 			tok.face = randi_range(1, 6)
 			tok.rotation = randf_range(-0.6, 0.6)
-			Sfx.play("click", randf_range(0.8, 1.2), -8.0)
 		tok.queue_redraw()
 		await _wait(0.055)
 	tok.face = value
@@ -2165,7 +2168,7 @@ func _ev_luck(ev: Dictionary) -> void:
 	tok.edge = Color("6ef08a") if won else RED
 	tok.queue_redraw()
 	create_tween().tween_property(tok, "scale", Vector2.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	Sfx.play("karat" if coin else "slam", 1.2 if won else 0.8, -4.0)
+	Sfx.play("coin_land" if coin else "dice_land", 1.0, -2.0)
 	_burst(tok.position, tok.edge, 18, 260, 0.6, 0.0)
 	var need := int(ev.get("need", 1))
 	var text := ("HEADS!" if value == 1 else "TAILS") if coin else ("ROLLED %d" % value + ((" · SUCCESS" if won else " · FAILED") if need > 1 else ""))
@@ -2623,6 +2626,22 @@ func _ev_topdeck(ev: Dictionary) -> void:
 		v.flip(false)
 	await v.move_to(pile_pos(side, "deck"), 1.0, 0.0, 0.35, Tween.TRANS_CUBIC).finished
 	v.queue_free()
+
+
+## CLEANSE: a wash of white light rises through the card and its statuses fall away.
+func _ev_cleanse(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	if v == null:
+		return
+	v.set_card(ev.card)
+	v.statuses = []
+	Sfx.play("cleanse")
+	_light_column(v.position, Color(0.8, 1.0, 1.0))
+	_sparks(v.position + Vector2(0, 60), Vector2.UP, Color(0.85, 1.0, 1.0), 24, 260.0)
+	_ring(v.position, Color.WHITE, 1.1)
+	v.flash()
+	_float_text(v.position + Vector2(0, -110 if ev.side == "player" else 110), "CLEANSED", Color(0.75, 1.0, 1.0), 30)
+	await _wait(0.45)
 
 
 ## The top card of a deck goes straight to the Gutter.

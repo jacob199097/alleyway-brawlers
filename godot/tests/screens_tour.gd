@@ -21,6 +21,24 @@ func _shot(name: String, wait := 1.6) -> void:
 	print("shot ", name)
 
 
+## The screens that list every clan, with 8 made-up clans added to the real ones.
+func _clan_shots() -> void:
+	var names := ["Syndicate", "Ronin", "Voodoo", "Chrome", "Lucky Sevens", "Tide", "Ember", "Phantom"]
+	var colors := ["#e05252", "#e0a052", "#52e0a0", "#52a0e0", "#f2c14e", "#4fc3ff", "#ff7a3d", "#b8b4cc"]
+	for i in names.size():   # (a card each, so the game's own clan list has them)
+		var id: String = names[i].to_lower().replace(" ", "_")
+		CardDB.all()["fake_%s" % id] = {"id": "fake_%s" % id, "name": names[i] + " Grunt", "clan": id, "clanName": names[i],
+			"clanColor": colors[i], "clanTag": id, "cardType": "gang_member", "authority": 1, "attack": 500, "defense": 500, "rarity": 1}
+	for s in ["clan_select", "shop", "card_library", "deck_builder"]:
+		Game.go(s)
+		await _shot("10_" + s, 2.4)
+	Game.go("shop")
+	await get_tree().create_timer(2.0).timeout
+	_screen()._scroll(1)
+	_screen()._scroll(1)
+	await _shot("10_shop_scrolled", 0.8)
+
+
 func _screen() -> Node:
 	return get_tree().current_scene
 
@@ -44,6 +62,10 @@ func _run() -> void:
 	# only saves when it offers the tutorial or meets a new version, so neither happens
 	Game.settings.tutorial_offered = true
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
+	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
+		await _clan_shots()
+		get_tree().quit()
+		return
 	if "--ffa-only" in OS.get_cmdline_user_args():   # (just the free-for-all screens)
 		await _ffa_shots()
 		get_tree().quit()

@@ -106,9 +106,10 @@ func _row(a: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	p.add_child(row)
-	var icon := UI.label("🏆" if got else "🔒", 44, UI.GOLD if got else Color(0.45, 0.47, 0.6))
+	var icon := UI.achievement_icon(got, 60, UI.GOLD if got else Color(0.45, 0.47, 0.6))
 	icon.custom_minimum_size = Vector2(64, 0)
-	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if icon is Label:
+		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(icon)
 	if got:   # (a trophy that catches the light now and then)
 		var shine := icon.create_tween().set_loops()

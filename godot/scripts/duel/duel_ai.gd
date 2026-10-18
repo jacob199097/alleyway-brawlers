@@ -335,6 +335,9 @@ static func _hustle_useful(d: DuelState, side: String, c: Dictionary) -> bool:
 				if what == "stand":
 					if allies.any(func(x): return x.card.downed):
 						return true
+				elif what == "cleanse":   # (STASIS too)
+					if d.characters(side).any(func(x): return d._afflicted(x.card)):
+						return true
 				elif not allies.is_empty():
 					return true
 			"enemy", "enemies":

@@ -91,9 +91,25 @@ func _build_filters() -> void:
 		bar.add_child(_chip("show", "owned", "OWNED"))
 		bar.add_child(_chip("show", "all", "ALL CARDS"))
 		bar.add_child(_spacer())
-	bar.add_child(_chip("faction", "all", "ALL CLANS"))
-	for c in CardDB.clans():
-		bar.add_child(_chip("faction", c.id, str(c.name).to_upper()))
+	var clans := CardDB.clans()
+	if clans.size() <= 3:
+		bar.add_child(_chip("faction", "all", "ALL CLANS"))
+		for c in clans:
+			bar.add_child(_chip("faction", c.id, str(c.name).to_upper()))
+	else:   # (more clans than fit as buttons: a list, like the Deck Builder's)
+		var pick := OptionButton.new()
+		pick.add_item("ALL CLANS")
+		pick.set_item_metadata(0, "all")
+		for c in clans:
+			pick.add_item(str(c.name).to_upper())
+			pick.set_item_metadata(pick.item_count - 1, c.id)
+		pick.custom_minimum_size = Vector2(220, 50)
+		pick.add_theme_font_size_override("font_size", 17)
+		pick.item_selected.connect(func(i):
+			Sfx.play("click")
+			_faction = str(pick.get_item_metadata(i))
+			_render())
+		bar.add_child(pick)
 	bar.add_child(_spacer())
 	for k in [["all", "ANY TYPE"], ["gang_member", "UNITS"], ["hustle", "HUSTLE"], ["ambush", "AMBUSH"], ["leader", "LEADER"]]:
 		bar.add_child(_chip("kind", k[0], k[1]))
@@ -256,6 +272,7 @@ func _show_detail(c: Dictionary) -> void:
 		n.queue_free()
 	_hero = null
 	_hero_mat = null
+	_detail.add_theme_constant_override("separation", 10)
 	if c.is_empty():
 		_show_collection()
 		return
@@ -309,6 +326,9 @@ func _show_detail(c: Dictionary) -> void:
 ## Before a card is hovered: the collection at a glance (all of it, then each clan, then each
 ## rarity), every bar filling as it appears.
 func _show_collection() -> void:
+	var many := CardDB.clans().size() > 4   # (a row per clan: closer together when there are many)
+	if many:
+		_detail.add_theme_constant_override("separation", 3)
 	var all: Array = []
 	for id in CardDB.all():
 		var cd: Dictionary = CardDB.get_card(id)
@@ -329,7 +349,7 @@ func _show_collection() -> void:
 	for clan in CardDB.clans():
 		var of_clan := all.filter(func(cd): return str(cd.get("clan", "")) == clan.id)
 		i += 1
-		_detail.add_child(_bar_row(str(clan.name).to_upper(), of_clan.filter(owned).size(), of_clan.size(), clan.color, i))
+		_detail.add_child(_bar_row(str(clan.name).to_upper(), of_clan.filter(owned).size(), of_clan.size(), clan.color, i, many))
 	_detail.add_child(_gap(14))
 	_detail.add_child(UI.label("BY RARITY", 18, UI.MUTED, true))
 	for r in [5, 4, 3, 2, 1]:
@@ -337,7 +357,7 @@ func _show_collection() -> void:
 		if of_r.is_empty():
 			continue
 		i += 1
-		_detail.add_child(_bar_row(str(UI.RARITY_LABEL.get(r, "")).to_upper(), of_r.filter(owned).size(), of_r.size(), UI.rarity_color(r), i))
+		_detail.add_child(_bar_row(str(UI.RARITY_LABEL.get(r, "")).to_upper(), of_r.filter(owned).size(), of_r.size(), UI.rarity_color(r), i, many))
 	_detail.add_child(_gap(18))
 	var hint := UI.label("Hover a card to see it here. Click one to scrap or craft it.", 17, UI.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -352,9 +372,9 @@ func _gap(h: float) -> Control:
 
 
 ## "NEBULA  ███████░░░  31 / 38": the bar fills from empty, one row after another.
-func _bar_row(text: String, n: int, of: int, col: Color, i: int) -> Control:
+func _bar_row(text: String, n: int, of: int, col: Color, i: int, compact := false) -> Control:
 	var row := Control.new()
-	row.custom_minimum_size = Vector2(470, 30 if text != "" else 22)
+	row.custom_minimum_size = Vector2(470, (25 if compact else 30) if text != "" else 22)
 	var y := 0.0
 	if text != "":
 		var l := UI.label(text, 17, col, true)

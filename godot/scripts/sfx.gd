@@ -14,7 +14,10 @@ const DOWNLOADED := "user://content/sfx"
 ## New sounds fall back to an older one until they have recordings of their own
 const FALLBACK := {"laser": "whoosh", "laser_beam": "riser", "pack_open": "ko", "shuffle": "draw",
 	"phase_deployment": "phase", "phase_brawl": "phase", "phase_regroup": "phase",
-	"turn_yours": "turn", "turn_theirs": "turn", "hover": "click", "error": "click", "karat": "click"}
+	"turn_yours": "turn", "turn_theirs": "turn", "hover": "click", "error": "click", "karat": "click",
+	# (named moments that use a near sound until they have their own recording: assets/sfx/README.md)
+	"coin_flip": "flip", "coin_land": "karat", "dice_roll": "click", "dice_land": "slam", "cleanse": "promote",
+	"legendary": "boom", "friend_online": "karat", "level_up": "promote", "achievement": "promote"}
 
 var volume_db := -3.0
 var _streams := {}

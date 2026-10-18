@@ -78,4 +78,21 @@ assert.ok(st._attack('player', 0, DIRECT), 'attacks directly');
 assert.equal(st.sides.opponent.morale, 6000 - 1000);
 assert.equal(st.sides.player.morale, 4000, 'gained the 1000 it dealt');
 
+// CLEANSE: an ally in STASIS (which nothing else can target) and one POISONED get their statuses back to none
+st = board([{}, {}], [{}]);
+st.cardAt('player', 0).stasis_until = st.turn + 2;
+st.cardAt('player', 1).poison = { amt: 200, left: 3 };
+st.cardAt('player', 1).stun_until = st.turn + 1;
+assert.ok(st.inStasis(st.cardAt('player', 0)));
+st._doFx('player', -1, src, { do: 'cleanse', target: 'allies' });
+assert.ok(!st.inStasis(st.cardAt('player', 0)), 'out of STASIS');
+assert.deepEqual(st.statuses(st.cardAt('player', 1)), [], 'no POISON or STUN');
+assert.equal(st.takeEvents().filter(e => e.type === 'cleanse').length, 2);
+assert.ok(!st.fxCan('player', -1, src, { do: 'cleanse', target: 'allies' }), 'nothing left to cleanse: it would do nothing');
+
+// A leader on the field can't be sent to the deck or removed from the game (like back to the hand)
+st = board([], [{ cardType: 'leader' }]);
+assert.ok(!st.fxCan('player', -1, src, { do: 'topdeck', target: 'enemies' }));
+assert.ok(!st.fxCan('player', -1, src, { do: 'exile', target: 'enemies' }));
+
 console.log('blocks: ok');

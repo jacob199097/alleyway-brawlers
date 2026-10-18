@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.17",
+        "notes": [
+            "New card effect: CLEANSE takes away STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY.",
+            "Ready for more clans: the shop scrolls through the packs, the Card Library picks a clan from a list, and the clan choice, clan mastery and collection screens fit them all.",
+            "Fixed: a leader on the field could be sent back to the deck or removed from the game."
+        ]
+    },
+    {
         "version": "0.9.16",
         "notes": [
             "A pop-up in the corner when one of your friends comes online.",

@@ -20,6 +20,7 @@ const LIST := {
 	"SUPPRESS": [Color("b5e655"), "SUPPRESS X (Militia): pinned down: it loses X ATK and can't attack until the end of its owner's next turn."],
 	"BOUNTY": [Color("f2c14e"), "BOUNTY X: when it is KO'd, whoever put the bounty on it draws X cards."],
 	"LIFESTEAL": [Color("ff5d8f"), "LIFESTEAL: the Morale it takes from your opponent in a brawl, you gain."],
+	"CLEANSE": [Color("bff6ff"), "CLEANSE: its statuses are gone: STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]

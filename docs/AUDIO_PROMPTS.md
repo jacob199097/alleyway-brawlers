@@ -76,6 +76,15 @@ quietly under everything.
 | `reveal_epic` | Shop: an Epic turns over | 1.5 s | `Epic synth chord hit, purple magic reveal` |
 | `reveal_legendary` | Shop: a Legendary turns over | 2.5 s | `Legendary reveal fanfare, golden choir and synth brass hit` |
 | `new_card` | Shop: NEW on a card | 0.5 s | `Pleasant short ding, a new item` |
+| `coin_flip` | Luck: a coin is flipped | 0.8 s | `A coin flicked into the air with a metallic ping, spinning, short` |
+| `coin_land` | Luck: the coin lands (heads or tails) | 0.5 s | `A coin landing on a hard surface and settling, crisp metallic clink` |
+| `dice_roll` | Luck: a die is rolled | 0.8 s | `A single die rattling and tumbling across a wooden table` |
+| `dice_land` | Luck: the die stops on its number | 0.4 s | `A die knocking to a stop on a table, one solid tap` |
+| `cleanse` | CLEANSE: a character's statuses fall away | 1 s | `Cleansing magical whoosh rising into a bright clear chime, purification` |
+| `legendary` | A Legendary card lands (after its entrance) | 1.5 s | `Huge cinematic impact boom with a golden choir swell and a shimmering tail` |
+| `friend_online` | A friend comes online (the pop-up) | 0.6 s | `Soft friendly two-note notification chime, a friend is online` |
+| `level_up` | Your level or clan mastery goes up (results screen) | 1.5 s | `Triumphant level up sound, rising synth arpeggio ending on a sparkle` |
+| `achievement` | An achievement unlocks (the banner) | 1.2 s | `Achievement unlocked jingle, short bright brass and chime flourish` |
 
 ### Already recorded (keep)
 

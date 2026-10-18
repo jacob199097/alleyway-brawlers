@@ -86,6 +86,7 @@ function hustleUseful(d, side, c) {
         switch (String(e.target ?? '')) {
             case 'ally': case 'allies':
                 if (what === 'stand') { if (allies.some(x => x.card.downed)) return true; }
+                else if (what === 'cleanse') { if (d.characters(side).some(x => d._afflicted(x.card))) return true; }   // (STASIS too)
                 else if (allies.length) return true;
                 break;
             case 'enemy': case 'enemies':

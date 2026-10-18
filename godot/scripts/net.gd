@@ -243,7 +243,7 @@ func _friend_online(f: Dictionary) -> void:
 	_friend_toasts.append(p)
 	var home := Vector2(1920 - p.size.x - 24, 1080 - p.size.y - 24)
 	p.position = Vector2(1940, home.y)
-	Sfx.play("karat", 1.5, -10.0)
+	Sfx.play("friend_online", 1.0, -8.0)
 	var t := p.create_tween()
 	t.tween_property(p, "position:x", home.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_interval(4.5)
@@ -277,7 +277,7 @@ func _next_banner() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	p.add_child(row)
-	var cup := UI.label("🏆", 54, UI.GOLD)
+	var cup := UI.achievement_icon(true, 72, UI.GOLD)
 	row.add_child(cup)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
@@ -293,7 +293,7 @@ func _next_banner() -> void:
 	p.size = sz
 	var y := 24.0
 	p.position = Vector2(960 - sz.x / 2, -sz.y - 20)
-	Sfx.play("promote", 1.2, -4.0)
+	Sfx.play("achievement", 1.0, -2.0)
 	var t := p.create_tween()
 	t.tween_property(p, "position:y", y, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_interval(3.2)

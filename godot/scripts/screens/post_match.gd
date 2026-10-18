@@ -597,7 +597,7 @@ func _fill_bar(fill: Control, from_pct: float, to_pct: float, levels: int, delay
 
 ## A level reached: the emblem pops and changes, and "LEVEL UP!" rises off the title.
 func _level_reached(icon: TextureRect, title: Label, tex: Texture2D, text: String, col: Color, tag: String) -> void:
-	Sfx.play("promote", 1.1)
+	Sfx.play("level_up")
 	title.text = text
 	if tex:
 		icon.texture = tex
@@ -630,7 +630,7 @@ func _show_mastery(m) -> void:
 	var after: int = level_of.call(xp)
 	var col := Color(str(m.get("color", "#ffffff")))
 	var name := str(m.get("name", "")).to_upper()
-	var row := _track_row(UI.avatar("clan:%s" % m.get("clan", "")), "%s MASTERY %d" % [name, before], col)
+	var row := _track_row(UI.clan_emblem(str(m.get("clan", ""))), "%s MASTERY %d" % [name, before], col)
 	_mastery_box.add_child(row.root)
 	row.numbers.text = "MAX LEVEL" if after >= levels.size() else "%d / %d XP" % [xp, int(levels[after])]
 	_count(row.gain, gained, "+%d XP", 0.8, 0.9)

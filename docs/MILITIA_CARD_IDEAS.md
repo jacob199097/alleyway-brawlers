@@ -11,8 +11,7 @@ what it lacks:
 - **An answer to Stasis:** Nebula's main weapon.
 - **A second leader** and a **Legendary** (no clan has one yet).
 
-Every effect below is buildable in the Card Forge today except **Signal Jammer** (it needs a new
-"Cleanse" effect in both rules engines). Stats are starting points: press **Test this card** in the
+Every effect below is buildable in the Card Forge today. Stats are starting points: press **Test this card** in the
 Forge, then run `node tools/balance.mjs --vs militia,nebula` once they're in.
 
 Rarity: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary.
@@ -27,7 +26,7 @@ Rarity: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary.
 | 6 | Artillery Strike | Hustle | 3 | 3 | - | KO removal |
 | 7 | Full Assault | Hustle | 4 | 3 | - | finisher |
 | 8 | Smoke Screen | Ambush | 1 | 2 | - | protection |
-| 9 | Signal Jammer | Hustle | 1 | 2 | - | answer to Stasis (needs code) |
+| 9 | Signal Jammer | Hustle | 1 | 2 | - | answer to Stasis (CLEANSE) |
 | 10 | Major Kestrel | Leader | 10 | 4 | 3000 / 2200 | second leader (aggro) |
 | 11 | Warlord Brannigan | Heavy | 9 | 5 | 3400 / 3000 | Legendary |
 
@@ -159,15 +158,15 @@ give the Shield to the character being attacked: it survives, and the attacker s
 Trading card illustration for "Alleyway Brawlers", Militia clan. A smoke grenade bursting in a narrow alley at night, thick billowing lime-green smoke filling the street, the silhouettes of militia soldiers slipping away into it, an enemy fighter coughing and shielding his eyes, neon signs glowing through the haze, rain falling through the smoke. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents. Square 1024x1024. No text, no border, no card frame.
 ```
 
-## 9. Signal Jammer (needs code)
+## 9. Signal Jammer
 
 **Hustle · Authority 1 · Uncommon**
 
-> Remove STASIS, SUPPRESS and Stun from all your characters. Draw 1 card.
+> CLEANSE your MILITIA characters. Draw 1 card.
 
-The Forge has no effect that removes statuses yet: it needs a "Cleanse" effect added to both rules
-engines and the Forge (ask Claude). Until then, a stand-in that works today: "Stand up all your Downed
-MILITIA characters. Draw 1 card."
+Forge: CLEANSE, All other allies, clan Militia; then Draw cards (1). CLEANSE takes away STASIS,
+FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY, and is the one effect that can reach
+a character in STASIS.
 
 ```
 Trading card illustration for "Alleyway Brawlers", Militia clan. A grizzled militia radio operator in a woodland-camo jacket and headphones, hunched over a battered field radio covered in duct tape and antennas, cranking a dial, a crackling lime-green electric pulse bursting outward from the antenna and shattering floating purple cosmic energy chains in the air around him, rain on a rooftop at night. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents against shards of violet cosmic energy. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.

@@ -72,6 +72,15 @@ matched to what they replaced), with silence trimmed off the start; the .m4a mus
 | `click` | buttons, counting numbers up | **wanted** (synthesised) |
 | `victory` | you win | **wanted** (synthesised fanfare) |
 | `defeat` | you lose | **wanted** (synthesised) |
+| `coin_flip` | Luck: a coin is flipped | **wanted** (uses a near sound until then) |
+| `coin_land` | Luck: the coin lands (heads or tails) | **wanted** (uses a near sound until then) |
+| `dice_roll` | Luck: a die is rolled | **wanted** (uses a near sound until then) |
+| `dice_land` | Luck: the die stops on its number | **wanted** (uses a near sound until then) |
+| `cleanse` | CLEANSE: a character's statuses fall away | **wanted** (uses a near sound until then) |
+| `legendary` | A Legendary card lands (after its entrance) | **wanted** (uses a near sound until then) |
+| `friend_online` | A friend comes online (the pop-up) | **wanted** (uses a near sound until then) |
+| `level_up` | Your level or clan mastery goes up (results screen) | **wanted** (uses a near sound until then) |
+| `achievement` | An achievement unlocks (the banner) | **wanted** (uses a near sound until then) |
 
 A clan's attack can have its own sound like `laser` and `gunshot`; the clan's style lives in
 `CLAN_STYLE` in `godot/scripts/duel/duel.gd`.

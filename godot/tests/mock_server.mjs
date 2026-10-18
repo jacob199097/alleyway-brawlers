@@ -9,6 +9,14 @@ import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
 import { pickableClans, starterRecipe, freeAvatars } from '../../shared/clans.js';
 
+/** EXTRA_CLANS=8: that many made-up clans too (to see the screens with 10 clans). */
+function extraClans() {
+    const names = ['Syndicate', 'Ronin', 'Voodoo', 'Chrome', 'Lucky Sevens', 'Tide', 'Ember', 'Phantom', 'Iron', 'Jade'];
+    const colors = ['#e05252', '#e0a052', '#52e0a0', '#52a0e0', '#f2c14e', '#4fc3ff', '#ff7a3d', '#b8b4cc', '#9aa4b2', '#52e07a'];
+    return Array.from({ length: Number(process.env.EXTRA_CLANS || 0) }, (_, i) => ({
+        id: names[i].toLowerCase().replace(/ /g, '_'), name: names[i], color: colors[i], cards: 30, blurb: 'A made-up clan for the screenshots.' }));
+}
+
 const port = Number(process.argv[2] || 3999);
 
 const cards = Object.values(CARD_CATALOG).map(c => ({
@@ -72,12 +80,12 @@ for (const c of cards) {
 }
 const leader = cards.find(c => c.card_type === 'leader');
 const decks = [
-    { id: randomUUID(), name: 'Lion Pride', is_active: true, leader_card_id: leader.id, cards: deckCards, updated_at: new Date().toISOString() },
+    { id: randomUUID(), name: 'Nebula Starter', is_active: true, leader_card_id: leader.id, cards: deckCards, updated_at: new Date().toISOString() },
     { id: randomUUID(), name: 'Half Built', is_active: false, leader_card_id: null, cards: new Map([...deckCards].slice(0, 6)), updated_at: new Date().toISOString() },
 ];
 
 const mail = [
-    { id: randomUUID(), sender: 'System', subject: 'Welcome to the Lions', body: 'Your starter inventory and a 40-card Lions deck have been added to your account.\n\nOpen the Deck Editor to customise it.', read_at: null, created_at: new Date().toISOString() },
+    { id: randomUUID(), sender: 'System', subject: 'Welcome to the Nebula', body: 'Your starter inventory and a 40-card Nebula deck have been added to your account.\n\nOpen the Deck Editor to customise it.', read_at: null, created_at: new Date().toISOString() },
     { id: randomUUID(), sender: 'Daily Quests', subject: 'Reward delivered', body: '+50 Karat for winning a match today.', read_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400e3).toISOString() },
 ];
 const friends = [
@@ -190,7 +198,7 @@ const routes = {
     },
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },
     'GET /api/shop/packs': () => [200, { karat: player.karat, freePacks: player.free_packs, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
-        .map(id => ({ id, name: id, cost: 200, cards: 3 })) }],
+        .map(id => ({ id, name: id, cost: 200, cards: 3 })).concat(extraClans().map(c => ({ id: c.id, name: c.name, cost: 200, cards: 3 }))) }],
     'POST /api/shop/open': (b) => {
         const cost = b.currency === 'contraband' ? 100 : b.currency === 'free' ? 1 : 200;
         const field = b.currency === 'contraband' ? 'contraband' : b.currency === 'free' ? 'free_packs' : 'karat';
@@ -243,7 +251,7 @@ const routes = {
     'PATCH /api/social/friends/:id/accept': (_b, id) => { const f = friends.find(x => x.friendship_id === id); if (f) f.status = 'accepted'; return [200, { success: true }]; },
     'GET /api/social/messages/:id': (_b, id) => [200, [
         { sender_id: id, body: 'You up for a brawl later?' }, { sender_id: player.id, body: 'Always. Bring your best deck.' }]],
-    'GET /api/onboarding/clans': () => [200, pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader }))],
+    'GET /api/onboarding/clans': () => [200, [...pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader })), ...extraClans()]],
     'POST /api/onboarding/start-clan': (b) => { player.chosen_clan = b.clan; return [200, { success: true, clan: b.clan }]; },
     'POST /api/match/start': () => { const id = randomUUID(); matches.set(id, Date.now()); return [200, { matchId: id }]; },
     'POST /api/match/complete': (b) => {
