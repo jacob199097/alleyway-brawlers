@@ -760,7 +760,7 @@ func _activate(side: String, slot: int, k: int) -> bool:
 				go.call()
 		"discard":
 			_effect(side, c, "%s: discard %d to activate" % [c.name, n], slot)
-			_ask_discard(side, n, go)
+			_ask_discard(side, n, go, "%s: discard to activate" % c.name)
 		"sacrifice":
 			var allies := characters(side).filter(func(x): return x.slot != slot) \
 				.map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
@@ -974,7 +974,7 @@ func _hustle(side: String, uid: int) -> bool:
 				_effect(side, c, "You control a Striver: no discard")
 			else:
 				_effect(side, c, "Drew 2 — now discard 1")
-				_ask_discard(side, 1, Callable())
+				_ask_discard(side, 1, Callable(), "%s: drew 2" % c.name)
 		"lion_rescue":
 			_ask_target(side, "lion_rescue", "Lion Rescue: choose a Downed LIONS character to stand", c,
 				_downed_lions(side), side, func(e: Dictionary):
@@ -1019,7 +1019,7 @@ func _next_phase(side: String) -> bool:
 			_set_phase("end")
 			var extra: int = sides[side].hand.size() - HAND_LIMIT
 			if extra > 0:
-				_ask_discard(side, extra, _end_turn)
+				_ask_discard(side, extra, _end_turn, "Hand limit: %d cards, keep %d" % [sides[side].hand.size(), HAND_LIMIT])
 			else:
 				_end_turn()
 		_:
@@ -1496,7 +1496,7 @@ func _on_down(side: String, slot: int, att: Dictionary, foe := "") -> void:
 				foe = foes_of(side)[0] if not foes_of(side).is_empty() else ""
 			if foe != "" and not sides[foe].hand.is_empty():
 				_effect(side, att, "Debt Collector: your opponent discards 1 card", slot)
-				_ask_discard(foe, 1, Callable())
+				_ask_discard(foe, 1, Callable(), "Debt Collector makes you discard")
 
 
 func _spring_kings_test(side: String, slot: int, c: Dictionary) -> bool:
@@ -2256,7 +2256,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_with_foe(side, c, vs, func(f): return not sides[f].hand.is_empty(), func(foe: String):
 				var k: int = mini(n, sides[foe].hand.size())
 				_effect(side, c, "%s: your opponent discards %d" % [c.name, k], slot)
-				_ask_discard(foe, k, Callable()))
+				_ask_discard(foe, k, Callable(), "%s makes you discard" % c.name))
 		"mill":
 			_with_foe(side, c, vs, func(f): return not sides[f].deck.is_empty(), func(foe: String):
 				var fd: Array = sides[foe].deck
@@ -2850,9 +2850,11 @@ func _mulligan(side: String) -> void:
 		_draw(side, true)
 
 
-func _ask_discard(side: String, count: int, then: Callable) -> void:
+## why: what the prompt says first, so the player knows what's making them discard.
+func _ask_discard(side: String, count: int, then: Callable, why := "") -> void:
+	var choose := "Choose %d card%s to discard" % [count, "" if count == 1 else "s"]
 	var ask := {"kind": "discard", "side": side, "count": count, "cb": then,
-		"prompt": "Choose %d card%s to discard" % [count, "" if count == 1 else "s"]}
+		"prompt": ("%s. %s" % [why, choose]) if why != "" else choose}
 	if _in_answer:
 		_new_asks.append(ask)
 	else:

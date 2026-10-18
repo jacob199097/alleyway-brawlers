@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.13",
+        "notes": [
+            "Discard prompts say why: the hand limit (only above 9 cards), the card making you discard (Adira, Doorkicker Diaz...), or an ability's cost."
+        ]
+    },
+    {
         "version": "0.9.12",
         "notes": [
             "New victory and defeat screens: your level and clan mastery fill up with the XP you earned (with a level-up when you reach one), and the MVP card flips in with its Morale dealt and KOs.",

@@ -653,7 +653,7 @@ export class DuelState {
                 break;
             case 'discard':
                 this._effect(side, c, `${c.name}: discard ${n} to activate`, slot);
-                this._askDiscard(side, n, go);
+                this._askDiscard(side, n, go, `${c.name}: discard to activate`);
                 break;
             case 'sacrifice': {
                 const allies = this.characters(side).filter(x => x.slot !== slot).map(x => ({ side, slot: x.slot, card: x.card }));
@@ -839,7 +839,7 @@ export class DuelState {
                     this._effect(side, c, 'You control a Striver: no discard');
                 } else {
                     this._effect(side, c, 'Drew 2 — now discard 1');
-                    this._askDiscard(side, 1, null);
+                    this._askDiscard(side, 1, null, `${c.name}: drew 2`);
                 }
                 break;
             case 'lion_rescue':
@@ -892,7 +892,7 @@ export class DuelState {
             case 'regroup': {
                 this._setPhase('end');
                 const extra = this.sides[side].hand.length - HAND_LIMIT;
-                if (extra > 0) this._askDiscard(side, extra, () => this._endTurn());
+                if (extra > 0) this._askDiscard(side, extra, () => this._endTurn(), `Hand limit: ${this.sides[side].hand.length} cards, keep ${HAND_LIMIT}`);
                 else this._endTurn();
                 break;
             }
@@ -1347,7 +1347,7 @@ export class DuelState {
                 foe = foe ?? this.foesOf(side)[0];
                 if (foe != null && this.sides[foe].hand.length) {
                     this._effect(side, att, 'Debt Collector: your opponent discards 1 card', slot);
-                    this._askDiscard(foe, 1, null);
+                    this._askDiscard(foe, 1, null, 'Debt Collector makes you discard');
                 }
                 break;
             }
@@ -1996,7 +1996,7 @@ export class DuelState {
                 this._withFoe(side, c, vs, (f) => this.sides[f].hand.length > 0, (foe) => {
                     const k = Math.min(n, this.sides[foe].hand.length);
                     this._effect(side, c, `${c.name}: your opponent discards ${k}`, slot);
-                    this._askDiscard(foe, k, null);
+                    this._askDiscard(foe, k, null, `${c.name} makes you discard`);
                 });
                 break;
             case 'mill':
@@ -2507,8 +2507,10 @@ export class DuelState {
         for (let i = 0; i < n; i++) this._draw(side, true);
     }
 
-    _askDiscard(side, count, then) {
-        const ask = { kind: 'discard', side, count, cb: then, prompt: `Choose ${count} card${count === 1 ? '' : 's'} to discard` };
+    /** why: what the prompt says first, so the player knows what's making them discard. */
+    _askDiscard(side, count, then, why = '') {
+        const choose = `Choose ${count} card${count === 1 ? '' : 's'} to discard`;
+        const ask = { kind: 'discard', side, count, cb: then, prompt: why ? `${why}. ${choose}` : choose };
         if (this._inAnswer) this._newAsks.push(ask);
         else this._asks.push(ask);
     }
