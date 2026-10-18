@@ -95,6 +95,20 @@ async function overview(playerId) {
     return out;
 }
 
+/**
+ * Where a player stands with a clan after a match (recorded already), for the post-match screen:
+ * {clan, name, color, xp, gained, levels} (levels: the XP each level starts at), or null.
+ */
+async function progress(playerId, clan, outcome) {
+    if (!clan || !/^[a-z0-9_]+$/.test(clan)) return null;
+    const { clanList } = await import('../../shared/clans.js');
+    const c = clanList().find(x => x.id === clan);
+    const { rows: [row] } = await pool.query('SELECT xp FROM clan_mastery WHERE player_id = $1 AND clan = $2', [playerId, clan]);
+    if (!row) return null;
+    return { clan, name: c?.name || clan, color: c?.color || '#ffffff', xp: row.xp,
+        gained: outcome === 'win' ? XP.win : XP.other, levels: LEVELS };
+}
+
 /** The pictures and titles a player's mastery levels have unlocked: {avatars, titles: [{id, text}]}. */
 async function cosmetics(playerId) {
     const { rows } = await pool.query('SELECT clan, xp FROM clan_mastery WHERE player_id = $1', [playerId]);
@@ -116,4 +130,4 @@ async function titleText(id) {
     return (await rewardAt(m[1], Number(m[2]))).title || null;
 }
 
-module.exports = { record, overview, cosmetics, titleText, LEVELS, REWARDS };
+module.exports = { record, progress, overview, cosmetics, titleText, LEVELS, REWARDS };

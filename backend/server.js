@@ -116,6 +116,7 @@ const online = createOnlineService(io, {
     recordDailyWin,
     saveReplay,
     recordMatch: achievements.recordMatch,
+    masteryProgress: require('./economy/mastery').progress,
     recordDeck: (deckId, outcome) => pool.query(
         'UPDATE decks SET games = games + 1, wins = wins + $2 WHERE id = $1', [deckId, outcome === 'win' ? 1 : 0]),
     recordStats: (row) => pool.query(
@@ -136,6 +137,7 @@ ffa = createFfaService(io, {
     leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
     resolveFfa: resolveFfaMatch,
     recordMatch: achievements.recordMatch,
+    masteryProgress: require('./economy/mastery').progress,
     recordDeck: (deckId, outcome) => pool.query(
         'UPDATE decks SET games = games + 1, wins = wins + $2 WHERE id = $1', [deckId, outcome === 'win' ? 1 : 0]),
     incrementDailyQuest,

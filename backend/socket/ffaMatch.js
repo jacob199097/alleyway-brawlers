@@ -325,7 +325,7 @@ function createFfaService(io, deps) {
         const s = match.seats[seat];
         if (s.settled) return s.settled;
         const place = match.state.places[seat] || match.state.sides[seat].out || 0;
-        s.settled = { place, rewards: null, achievements: [] };
+        s.settled = { place, rewards: null, achievements: [], mastery: null };
         if (!s.bot) {
             const outcome = place === 1 ? 'win' : 'loss';
             try {
@@ -336,14 +336,17 @@ function createFfaService(io, deps) {
             if (s.setup?.deckId) deps.recordDeck?.(s.setup.deckId, outcome)?.catch?.(() => {});
             if (s.cardsPlayed > 0) deps.incrementDailyQuest?.(s.playerId, 'daily_play_10', Math.min(40, s.cardsPlayed))?.catch?.(() => {});
             if (place === 1) deps.recordDailyWin?.(s.playerId)?.catch?.(() => {});
+            const clan = await deckClan(s.setup);
             s.settled.achievements = await deps.recordMatch?.({
                 playerId: s.playerId, outcome, mode: match.humans >= 2 ? 'ffa' : 'cpu_ffa', difficulty: null,
-                clan: await deckClan(s.setup), kos: s.kos, promotes: s.promotes, awakens: s.awakens,
+                clan, kos: s.kos, promotes: s.promotes, awakens: s.awakens,
                 morale: match.state.sides[seat].morale,
             })?.catch?.(() => []) || [];
+            s.settled.mastery = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
             if (event && s.watching) {
                 emitTo(s.playerId, event, { matchId: match.id, place, ...placesFor(match, seat),
-                    rewards: s.settled.rewards, achievements: s.settled.achievements, turns: match.state.turn });
+                    rewards: s.settled.rewards, achievements: s.settled.achievements, mastery: s.settled.mastery,
+                    turns: match.state.turn });
             }
         }
         return s.settled;
@@ -369,7 +372,8 @@ function createFfaService(io, deps) {
             if (byPlayer.get(s.playerId) === match) byPlayer.delete(s.playerId);
             if (s.watching) {
                 emitTo(s.playerId, 'ffa:over', { matchId: match.id, place: s.settled.place, ...placesFor(match, seat),
-                    rewards: s.settled.rewards, achievements: s.settled.achievements, turns: match.state.turn });
+                    rewards: s.settled.rewards, achievements: s.settled.achievements, mastery: s.settled.mastery,
+                    turns: match.state.turn });
             }
         }
         const winner = match.state.winner ? match.seats[match.state.winner] : null;

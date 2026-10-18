@@ -499,14 +499,18 @@ function createOnlineService(io, deps) {
         }
         // Achievements: what each player did this match
         const unlocked = {};
+        const mastery = {};   // each player's clan mastery after the match (the post-match screen)
         for (const seat of ['player', 'opponent']) {
             const s = match.seats[seat];
             if (s.bot || !deps.recordMatch) continue;
+            const outcome = !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss';
+            const clan = await deckClan(s.setup);
             unlocked[s.playerId] = await deps.recordMatch({
-                playerId: s.playerId, outcome: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
-                mode: match.mode, difficulty: bot?.level || null, clan: await deckClan(s.setup),
+                playerId: s.playerId, outcome,
+                mode: match.mode, difficulty: bot?.level || null, clan,
                 kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: match.state.sides[seat].morale,
             }).catch(() => []);
+            mastery[s.playerId] = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
             // The weekly challenge: the first win of the week pays (economy/challenge.js)
             if (match.challenge && winnerSeat === seat) {
                 const won = await deps.claimChallenge?.(s.playerId, match.challenge.week)?.catch?.(() => null);
@@ -520,6 +524,7 @@ function createOnlineService(io, deps) {
                 result: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
                 rewards: rewards[s.playerId] || null,
                 achievements: unlocked[s.playerId] || [],
+                mastery: mastery[s.playerId] || null,
                 player_morale: match.state.sides[seat].morale,
                 opponent_morale: match.state.sides[other(seat)].morale,
                 turns: match.state.turn,
@@ -834,6 +839,9 @@ async function loadSetupFromDb(pool, playerId) {
     for (const r of rows) {
         if (!Object.keys(getCard(r.art_url)).length) {
             return { error: `${r.name} isn't playable online yet. Take it out of your deck to play.` };
+        }
+        if (r.card_type === 'gang_member' && Math.trunc(Number(getCard(r.art_url).level) || 1) > 1) {
+            return { error: `${r.name} (level ${getCard(r.art_url).level}) waits in the Hideout: swap it for its level 1 card in the Deck Builder.` };
         }
         for (let i = 0; i < r.copies; i++) deck.push(spec(r));
     }

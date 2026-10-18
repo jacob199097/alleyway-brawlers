@@ -90,9 +90,11 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
     const totalCopies = [...wanted.values()].reduce((s, n) => s + n, 0);
     if (totalCopies !== 40) return res.status(400).json({ error: `Deck must be exactly 40 cards (currently ${totalCopies}).` });
 
-    // Every card must be a non-leader card the player owns enough copies of (max 3)
+    // Every card must be a non-leader card the player owns enough copies of (max 3), and a
+    // character's first level: its promoted forms wait in the Hideout by themselves
+    const { CARD_CATALOG } = await import('../../shared/cards.js');
     const { rows: owned } = await pool.query(
-        `SELECT c.id, c.name, c.card_type, pi.quantity
+        `SELECT c.id, c.name, c.card_type, c.art_url, pi.quantity
          FROM   cards c
          JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1
          WHERE  c.id::text = ANY($2::text[])`,
@@ -103,6 +105,10 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
         const row = ownedById.get(cardId);
         if (!row) return res.status(400).json({ error: 'Deck contains a card you do not own.' });
         if (row.card_type === 'leader') return res.status(400).json({ error: 'Leader cards cannot go in the main deck.' });
+        const level = Math.trunc(Number(CARD_CATALOG[row.art_url]?.level) || 1);
+        if (row.card_type === 'gang_member' && level > 1) {
+            return res.status(400).json({ error: `${row.name} (level ${level}) waits in the Hideout: put its level 1 card in the deck instead.` });
+        }
         if (copies > 3) return res.status(400).json({ error: `Max 3 copies of ${row.name}.` });
         if (copies > row.quantity) return res.status(400).json({ error: `You only own ${row.quantity} of ${row.name}.` });
     }

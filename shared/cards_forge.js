@@ -2424,5 +2424,76 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Militia",
         "clanColor": "#a3e635"
+    },
+    "card_mili_039": {
+        "id": "card_mili_039",
+        "name": "All out warfare",
+        "clan": "militia",
+        "cardType": "hustle",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_039",
+        "code": "MILI-039",
+        "flavourText": "They’ve got the firepower, boys — WE’VE GOT THE NUMBERS!",
+        "effectText": "Your MILITIA characters gain +600 ATK until the end of your turn.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "buff",
+                "target": "allies",
+                "until": "turn",
+                "clan": "militia",
+                "atk": 600
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635"
+    },
+    "card_mili_040": {
+        "id": "card_mili_040",
+        "name": "Warlord Brannigan",
+        "clan": "militia",
+        "cardType": "gang_member",
+        "authority": 9,
+        "tributeCost": 2,
+        "rarity": 5,
+        "clanTag": "militia",
+        "effectKey": "",
+        "art_url": "card_mili_040",
+        "code": "MILI-040",
+        "flavourText": "A war is not won with blood; it is won by choosing whose blood gets spent first.",
+        "effectText": "This card can't be targeted by your opponent's effects.\nWhen deployed: Your other MILITIA characters gain +1000 ATK permanently.\nACTIVATE (once per turn): Put a MILITIA character with 6 or less Authority of your choice from your deck onto the field in ATK position.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "untargetable"
+            },
+            {
+                "when": "deploy",
+                "do": "buff",
+                "target": "allies",
+                "until": "forever",
+                "clan": "militia",
+                "atk": 1000
+            },
+            {
+                "when": "activate",
+                "do": "call",
+                "clan": "militia",
+                "amount": 1,
+                "max_auth": 6,
+                "choose": true
+            }
+        ],
+        "clanName": "Militia",
+        "clanColor": "#a3e635",
+        "attack": 4000,
+        "defense": 3000,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
     }
 };

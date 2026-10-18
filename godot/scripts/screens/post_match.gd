@@ -1,17 +1,24 @@
 extends Screen
 ## After a duel: Victory/Defeat art (its BRAWL AGAIN / MENU buttons are part of the artwork),
-## the match stats, the MVP card, and the rewards the server grants for the match.
+## the match stats, your level and clan mastery filling with the XP the server grants, what the
+## match paid, and the MVP card.
 ## After a match against a player, either can offer a REMATCH (backend/socket/onlineMatch.js).
 
 const ART_SIZE := Vector2(920, 613)     # victory.png / defeat.png are 1536×1024
 const ART_POS := Vector2(500, 0)
 
+const PANEL_Y := 610.0
+const BAR_W := 420.0   # the XP and mastery bars
 const INTRO := 0.9   # seconds until the result has landed and the panels are in; counters wait for it
 const GOLD_LIGHT := Color(1.0, 0.85, 0.45)
 const BLOOD := Color(0.85, 0.05, 0.1)
 
-var _xp_fill: ColorRect
-var _xp_label: Label
+var _xp_fill: Control
+var _xp_label: Label        # "+37 XP"
+var _xp_numbers: Label      # "481 / 1469 XP"
+var _level_icon: TextureRect
+var _level_text: Label
+var _mastery_box: VBoxContainer
 var _rewards: Label
 var _rematch: Button
 var _rematch_note: Label
@@ -52,7 +59,8 @@ func _ready() -> void:
 	# The two buttons drawn into the artwork (in its 1536×1024 pixels)
 	_art_button(Rect2(205, 745, 555, 160), "BRAWL AGAIN", func(): Game.go("ffa_lobby" if d.get("ffa", false) else "fight_mode"))
 	_art_button(Rect2(805, 745, 495, 160), "MENU", func(): Game.go("main_menu"))
-	var panels: Array[Control] = [_outcome_panel(d, _won), _mvp_panel(d.get("mvp", {}))]
+	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), _mvp_panel(d.get("mvp", {}) if d.get("mvp") is Dictionary else {})]
+	_show_mastery(d.get("mastery"))
 	_submit(d)
 	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "" and not d.get("ffa", false):
 		_rematch_box()
@@ -361,7 +369,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _rematch_box() -> void:
 	var col := VBoxContainer.new()
-	col.position = Vector2(700, 700)
+	col.position = Vector2(700, 790)
 	col.custom_minimum_size = Vector2(520, 0)
 	col.add_theme_constant_override("separation", 12)
 	add_child(col)
@@ -444,14 +452,13 @@ func _art_button(r: Rect2, text: String, cb: Callable) -> void:
 	add_child(b)
 
 
-func _outcome_panel(d: Dictionary, won: bool) -> Control:
-	var p := UI.panel(UI.GOLD if won else UI.RED)
-	p.position = Vector2(60, 640)
-	p.custom_minimum_size = Vector2(560, 400)
-	add_child(p)
+## The result in numbers, under the title: why it ended, and Morale and turns counting up.
+func _stats_strip(d: Dictionary, won: bool) -> Control:
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 14)
-	p.add_child(v)
+	v.position = Vector2(660, 598)
+	v.custom_minimum_size = Vector2(600, 0)
+	v.add_theme_constant_override("separation", 6)
+	add_child(v)
 	var reason := "Opponent's Morale reduced to 0" if won else "Your Morale reduced to 0"
 	match str(d.get("reason", "")):
 		"concede":
@@ -473,7 +480,7 @@ func _outcome_panel(d: Dictionary, won: bool) -> Control:
 		v.add_child(_placings(d))
 	var stats := HBoxContainer.new()
 	stats.alignment = BoxContainer.ALIGNMENT_CENTER
-	stats.add_theme_constant_override("separation", 50)
+	stats.add_theme_constant_override("separation", 60)
 	v.add_child(stats)
 	var rows := [["YOUR MORALE", d.get("player_morale", "—"), UI.BLUE if won else UI.RED],
 			["OPP MORALE", d.get("opponent_morale", "—"), UI.RED if won else UI.BLUE],
@@ -485,31 +492,150 @@ func _outcome_panel(d: Dictionary, won: bool) -> Control:
 		var cap := UI.label(s[0], 16, UI.MUTED)
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		c.add_child(cap)
-		var val := UI.label(str(s[1]), 36, s[2], true)
+		var val := UI.label(str(s[1]), 40, s[2], true)
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		c.add_child(val)
 		if s[1] is int or s[1] is float:
 			_count(val, int(s[1]), "%d", 0.7, 0.35)
 		stats.add_child(c)
+	return v
+
+
+## Your level and clan mastery, each with its emblem and a bar that fills with this match's XP,
+## then what the match paid.
+func _progress_panel(won: bool) -> Control:
+	var p := UI.panel(UI.GOLD if won else UI.RED)
+	p.position = Vector2(40, PANEL_Y)
+	p.custom_minimum_size = Vector2(600, 440)
+	add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 16)
+	p.add_child(v)
+	var h := UI.label("YOUR PROGRESS", 22, UI.GOLD if won else UI.RED, true)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(h)
+	var lvl := int(Game.player.get("level", 1))
+	var row := _track_row(UI.level_icon(lvl), "LEVEL %d" % lvl, UI.BLUE)
+	_level_icon = row.icon
+	_level_text = row.title
+	_xp_fill = row.fill
+	_xp_label = row.gain
+	_xp_numbers = row.numbers
+	var now := UI.xp_progress(Game.player)
+	_xp_fill.size.x = (BAR_W - 4.0) * now.pct
+	_xp_numbers.text = "%d / %d XP" % [now.current, now.needed]
+	v.add_child(row.root)
+	_mastery_box = VBoxContainer.new()
+	v.add_child(_mastery_box)
 	v.add_child(HSeparator.new())
-	var cap := UI.label("XP EARNED", 16, UI.MUTED)
-	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(cap)
-	var track := ColorRect.new()
-	track.color = Color("1a1a3a")
-	track.custom_minimum_size = Vector2(500, 14)
-	v.add_child(track)
-	_xp_fill = ColorRect.new()
-	_xp_fill.color = UI.BLUE
-	_xp_fill.size = Vector2(0, 14)
-	track.add_child(_xp_fill)
-	_xp_label = UI.label("…", 20, UI.BLUE, true)
-	_xp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(_xp_label)
-	_rewards = UI.label("", 24, UI.GOLD, true)
+	_rewards = UI.label("", 22, UI.GOLD, true)
 	_rewards.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_rewards.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_rewards.custom_minimum_size = Vector2(560, 0)
 	v.add_child(_rewards)
 	return p
+
+
+## A progress line: an emblem, the title and "+N XP", a rounded bar, and the numbers under it.
+func _track_row(icon_tex: Texture2D, title: String, col: Color) -> Dictionary:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	var icon := UI.texture_rect(icon_tex, Vector2(92, 92))
+	icon.pivot_offset = Vector2(46, 46)
+	row.add_child(icon)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(v)
+	var top := HBoxContainer.new()
+	v.add_child(top)
+	var t := UI.label(title, 24, col, true)
+	t.custom_minimum_size = Vector2(BAR_W - 130.0, 0)
+	top.add_child(t)
+	var gain := UI.label("", 22, Color.WHITE, true)
+	gain.custom_minimum_size = Vector2(130, 0)
+	gain.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	top.add_child(gain)
+	var track := Panel.new()
+	track.custom_minimum_size = Vector2(BAR_W, 16)
+	track.add_theme_stylebox_override("panel", UI.box(Color("10102a"), Color(col, 0.4), 1, 8))
+	v.add_child(track)
+	var fill := Panel.new()
+	fill.add_theme_stylebox_override("panel", UI.box(col, col, 0, 6))
+	fill.position = Vector2(2, 2)
+	fill.size = Vector2(0, 12)
+	fill.clip_contents = true
+	track.add_child(fill)
+	var sheen := ColorRect.new()   # light running along the bar now and then
+	sheen.color = Color(1, 1, 1, 0.45)
+	sheen.size = Vector2(26, 12)
+	sheen.position.x = -40.0
+	fill.add_child(sheen)
+	var run := sheen.create_tween().set_loops()
+	run.tween_interval(randf_range(2.0, 3.0))
+	run.tween_property(sheen, "position:x", BAR_W, 0.9).from(-40.0).set_trans(Tween.TRANS_SINE)
+	var numbers := UI.label("", 16, UI.MUTED)
+	v.add_child(numbers)
+	return {"root": row, "icon": icon, "title": t, "gain": gain, "fill": fill, "numbers": numbers}
+
+
+## A bar filling from one point to another, rolling over with a flash at each level gained.
+func _fill_bar(fill: Control, from_pct: float, to_pct: float, levels: int, delay: float, on_level: Callable) -> void:
+	var w := BAR_W - 4.0
+	fill.size.x = w * from_pct
+	var t := create_tween()
+	t.tween_interval(delay)
+	for i in levels:
+		t.tween_property(fill, "size:x", w, 0.45).set_trans(Tween.TRANS_QUAD)
+		t.tween_callback(func():
+			on_level.call(i)
+			fill.modulate = Color(2.5, 2.5, 2.5)
+			fill.create_tween().tween_property(fill, "modulate", Color.WHITE, 0.45)
+			fill.size.x = 0.0)
+	t.tween_property(fill, "size:x", w * to_pct, 0.8).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## A level reached: the emblem pops and changes, and "LEVEL UP!" rises off the title.
+func _level_reached(icon: TextureRect, title: Label, tex: Texture2D, text: String, col: Color, tag: String) -> void:
+	Sfx.play("promote", 1.1)
+	title.text = text
+	if tex:
+		icon.texture = tex
+	icon.scale = Vector2.ONE * 1.45
+	icon.create_tween().tween_property(icon, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_burst(icon.get_global_rect().get_center(), col, 50, 500.0, 0.8, 200.0)
+	var l := UI.label(tag, 26, col, true)
+	l.position = title.get_global_rect().position + Vector2(title.get_minimum_size().x + 14, -4)
+	add_child(l)
+	var t := l.create_tween().set_parallel()
+	t.tween_property(l, "position:y", l.position.y - 46, 1.6).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "modulate:a", 0.0, 0.6).set_delay(1.0)
+	t.chain().tween_callback(l.queue_free)
+
+
+## Clan mastery after the match (sent with the result): the clan's emblem and its bar in the
+## clan's colour, filling with this match's XP.
+func _show_mastery(m) -> void:
+	if not (m is Dictionary) or not (m.get("levels") is Array):
+		return
+	var levels: Array = m.levels
+	var xp := int(m.get("xp", 0))
+	var gained := int(m.get("gained", 0))
+	var level_of := func(x: int) -> int: return levels.filter(func(t): return x >= int(t)).size()
+	var pct_at := func(x: int, lv: int) -> float:
+		if lv >= levels.size():
+			return 1.0
+		return clampf(float(x - int(levels[lv - 1])) / maxf(1.0, int(levels[lv]) - int(levels[lv - 1])), 0.0, 1.0)
+	var before: int = level_of.call(xp - gained)
+	var after: int = level_of.call(xp)
+	var col := Color(str(m.get("color", "#ffffff")))
+	var name := str(m.get("name", "")).to_upper()
+	var row := _track_row(UI.avatar("clan:%s" % m.get("clan", "")), "%s MASTERY %d" % [name, before], col)
+	_mastery_box.add_child(row.root)
+	row.numbers.text = "MAX LEVEL" if after >= levels.size() else "%d / %d XP" % [xp, int(levels[after])]
+	_count(row.gain, gained, "+%d XP", 0.8, 0.9)
+	_fill_bar(row.fill, pct_at.call(xp - gained, before), pct_at.call(xp, after), after - before, 0.9 + INTRO, func(i):
+		_level_reached(row.icon, row.title, null, "%s MASTERY %d" % [name, before + i + 1], col, "LEVEL UP!"))
 
 
 static func _place_text(place: int) -> String:
@@ -533,50 +659,112 @@ func _placings(d: Dictionary) -> Control:
 	return row
 
 
+## The MVP: the card that did the most (Morale dealt, KOs), flipping in on a turning burst of light
+## in its rarity's colour, with what it did counting up beside it.
 func _mvp_panel(mvp: Dictionary) -> Control:
 	var p := UI.panel(UI.GOLD)
-	p.position = Vector2(1300, 640)
-	p.custom_minimum_size = Vector2(560, 400)
+	p.position = Vector2(1280, PANEL_Y)
+	p.custom_minimum_size = Vector2(600, 440)
 	add_child(p)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 6)
 	p.add_child(v)
-	var h := UI.label("MVP BRAWLER", 22, UI.GOLD, true)
+	var h := UI.label("★  MVP  ★", 24, UI.GOLD, true)
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(h)
-	if mvp.is_empty():
-		var none := UI.label("No damage dealt", 22, UI.MUTED)
+	if mvp.is_empty() or not (mvp.get("card") is Dictionary):
+		var none := UI.label("No Morale dealt this match", 22, UI.MUTED)
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(none)
 		return p
+	var card: Dictionary = mvp.card
+	var rarity := int(card.get("rarity", 1))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", 26)
 	v.add_child(row)
-	var tile := CardTile.make(mvp.card, Vector2(200, 283))
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(250, 362)
+	row.add_child(stage)
+	var rays := _spin_rays(Vector2(125, 181), 240.0, UI.rarity_color(rarity).lightened(0.25), 14)
+	stage.add_child(rays)
+	var tile := CardTile.make(card, Vector2(236, 334))
+	tile.position = Vector2(7, 14)
 	tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
 	tile.pressed.connect(func(t): UI.card_zoom(self, t.card))
-	row.add_child(tile)
+	stage.add_child(tile)
+	var ribbon := UI.label(" MVP ", 22, Color("1a1200"), true)
+	ribbon.add_theme_stylebox_override("normal", UI.box(UI.GOLD, Color.WHITE, 2, 6))
+	ribbon.position = Vector2(-6, 0)
+	ribbon.rotation = deg_to_rad(-12)
+	stage.add_child(ribbon)
 	var info := VBoxContainer.new()
-	info.add_theme_constant_override("separation", 10)
+	info.add_theme_constant_override("separation", 4)
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(info)
 	var mine: bool = mvp.get("owner") == "player"
 	info.add_child(UI.label("YOUR CARD" if mine else "THEIR CARD", 18, UI.BLUE if mine else UI.RED, true))
-	var n := UI.label(str(mvp.card.get("name", "?")).to_upper(), 30, Color("ffd86b"), true)
+	var n := UI.label(str(card.get("name", "?")).to_upper(), 30, Color("ffd86b"), true)
 	n.autowrap_mode = TextServer.AUTOWRAP_WORD
-	n.custom_minimum_size = Vector2(280, 0)
+	n.custom_minimum_size = Vector2(270, 0)
 	info.add_child(n)
-	var dmg := UI.label("0", 56, Color.WHITE, true)
+	info.add_child(UI.label(str(UI.RARITY_LABEL.get(rarity, "")).to_upper(), 16, UI.rarity_color(rarity), true))
+	info.add_child(_gap_box(10))
+	var dmg := UI.label("0", 58, Color.WHITE, true)
 	info.add_child(dmg)
-	_count(dmg, int(mvp.get("damage", 0)), "%d", 0.9, 0.6)
-	info.add_child(UI.label("MORALE DEALT", 18, UI.MUTED, true))
+	_count(dmg, int(mvp.get("damage", 0)), "%d", 0.9, 0.9)
+	info.add_child(UI.label("MORALE DEALT", 16, UI.MUTED, true))
+	var kos := int(mvp.get("kos", 0))
+	if kos > 0:
+		info.add_child(_gap_box(6))
+		var k := UI.label("0", 40, UI.RED, true)
+		info.add_child(k)
+		_count(k, kos, "%d", 0.5, 1.4)
+		info.add_child(UI.label("KO%s" % ("" if kos == 1 else "S"), 16, UI.MUTED, true))
+	# The card flips in once the panel has landed, and the light behind it comes up
+	tile.modulate.a = 0.0
+	rays.modulate.a = 0.0
+	var t := create_tween()
+	t.tween_interval(0.75 + INTRO)
+	t.tween_callback(func():
+		tile.pivot_offset = tile.size / 2
+		tile.scale = Vector2(0.0, 1.0)
+		tile.modulate.a = 1.0
+		Sfx.play("flip", 0.9, -4.0))
+	t.tween_property(tile, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_callback(func():
+		Sfx.play("promote", 1.3, -8.0)
+		_burst(tile.get_global_rect().get_center(), UI.rarity_color(rarity).lightened(0.4), 70, 700.0, 0.9, 250.0)
+		rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.6))
 	return p
+
+
+func _gap_box(h: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	return c
+
+
+## Slowly turning rays of light around a point (the MVP card's burst).
+func _spin_rays(center: Vector2, reach: float, col: Color, count: int) -> Node2D:
+	var rays := Node2D.new()
+	rays.position = center
+	rays.material = _add
+	rays.draw.connect(func():
+		for i in count:
+			var a := i * TAU / count
+			var w := 0.11 if i % 2 == 0 else 0.06
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * reach, Vector2.from_angle(a + w) * reach]),
+				PackedColorArray([Color(col, 0.42), Color(col, 0.0), Color(col, 0.0)])))
+	var spin := rays.create_tween().set_loops()
+	spin.tween_property(rays, "rotation", TAU, 24.0).from(0.0)
+	return rays
 
 
 ## Rewards are decided by the server (solo-match session from match/start).
 func _submit(d: Dictionary) -> void:
 	if d.get("tutorial", false):
-		_xp_label.text = "TUTORIAL COMPLETE"
-		_rewards.text = "You know the basics. See you in the alley!" if d.get("result") == "win" else "Replay it any time from Fight → Tutorial."
+		_rewards.text = "TUTORIAL COMPLETE
+" + ("You know the basics. See you in the alley!" if d.get("result") == "win" else "Replay it any time from Fight → Tutorial.")
 		return
 	if d.get("online", false):
 		# Online matches are recorded by the server, which sends the rewards with the result
@@ -603,27 +791,23 @@ func _submit(d: Dictionary) -> void:
 
 
 func _show_rewards(rw: Dictionary) -> void:
-	var xp := UI.xp_progress({"level": rw.get("newLevel", Game.player.get("level", 1)), "xp": rw.get("newXp", 0)})
-	_count(_xp_label, int(rw.get("xpEarned", 0)), "+%d XP", 0.8, 0.4)
-	var bar := create_tween()
-	bar.tween_interval(0.4 + INTRO)
-	if rw.get("leveledUp", false):
-		# Fill to the top, flash, and roll over into the new level
-		bar.tween_property(_xp_fill, "size:x", 500.0, 0.5).set_trans(Tween.TRANS_QUAD)
-		bar.tween_callback(func():
-			Sfx.play("promote", 1.1)
-			_xp_fill.color = Color.WHITE
-			_xp_fill.create_tween().tween_property(_xp_fill, "color", UI.BLUE, 0.4)
-			_xp_fill.size.x = 0.0)
-	bar.tween_property(_xp_fill, "size:x", 500.0 * xp.pct, 0.7).set_trans(Tween.TRANS_QUAD)
+	var new_level := int(rw.get("newLevel", Game.player.get("level", 1)))
+	var gained := int(rw.get("xpEarned", 0))
+	var old_level := new_level - 1 if rw.get("leveledUp", false) else new_level
+	var xp_now := int(rw.get("newXp", int(Game.player.get("xp", 0)) + gained))   # (newXp: the server's total)
+	var before := UI.xp_progress({"level": old_level, "xp": xp_now - gained})
+	var after := UI.xp_progress({"level": new_level, "xp": xp_now})
+	_level_icon.texture = UI.level_icon(old_level)
+	_level_text.text = "LEVEL %d" % old_level
+	_xp_numbers.text = "%d / %d XP" % [after.current, after.needed]
+	_count(_xp_label, gained, "+%d XP", 0.8, 0.4)
+	_fill_bar(_xp_fill, before.pct, after.pct, new_level - old_level, 0.4 + INTRO, func(_i):
+		_level_reached(_level_icon, _level_text, UI.level_icon(new_level), "LEVEL %d" % new_level, UI.BLUE, "LEVEL UP!"))
 	var lines := ["+%d Karat" % int(rw.get("karatEarned", 0))]
 	if rw.get("dailyCapReached", false):
 		lines.append("Daily reward limit reached")
 	if rw.get("firstWinBonus", false):
 		lines.append("★ First Win Bonus!")
-	if rw.get("leveledUp", false):
-		lines.append("→ Level %d!" % int(rw.newLevel))
-		_level_up_icon(int(rw.newLevel))
 	# Level rewards (backend economy/postMatch.js): a free pack per level, a picture every 5 levels
 	var pics: Array = rw.get("avatarsUnlocked", [])
 	if not pics.is_empty():
@@ -645,7 +829,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	# Achievements this match unlocked (sent with the result)
 	var got = Game.match_result.get("achievements", [])
 	if got is Array and not got.is_empty():
-		get_tree().create_timer(1.8 + INTRO).timeout.connect(func(): Net.show_achievements(got))
+		get_tree().create_timer(2.4 + INTRO).timeout.connect(func(): Net.show_achievements(got))
 
 
 ## Roll a number up to its final value, ticking as it goes.
@@ -733,26 +917,13 @@ func _new_avatar(key: String) -> void:
 	t.tween_property(pic, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## The new level's emblem pops in under the rewards.
-func _level_up_icon(level: int) -> void:
-	var box := CenterContainer.new()
-	var icon := UI.texture_rect(UI.level_icon(level), Vector2(140, 140))
-	icon.pivot_offset = Vector2(70, 70)
-	icon.scale = Vector2.ZERO
-	box.add_child(icon)
-	_showcase_row().add_child(box)
-	var t := icon.create_tween()
-	t.tween_interval(1.2 + INTRO)
-	t.tween_property(icon, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
 ## The row under the title where a level-up shows off what it earned.
 func _showcase_row() -> HBoxContainer:
 	if _showcase == null:
 		_showcase = HBoxContainer.new()
 		_showcase.alignment = BoxContainer.ALIGNMENT_CENTER
 		_showcase.add_theme_constant_override("separation", 28)
-		_showcase.position = Vector2(620, 870)
-		_showcase.size = Vector2(680, 170)
+		_showcase.position = Vector2(660, 900)
+		_showcase.size = Vector2(600, 150)
 		add_child(_showcase)
 	return _showcase

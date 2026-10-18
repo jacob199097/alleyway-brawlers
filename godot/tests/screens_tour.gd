@@ -121,13 +121,18 @@ func _run() -> void:
 	var session := await Api.request("POST", "/api/match/start", {"ranked": false})
 	Game.match_result = {"result": "win", "player_morale": 3400, "opponent_morale": 0, "turns": 14,
 		"cards_played": 9, "match_id": session.data.matchId,
-		"mvp": {"card": CardDB.get_card("goldfang"), "owner": "player", "damage": 2300}}
+		"mvp": {"card": CardDB.get_card("card_nebu_025"), "owner": "player", "damage": 2300, "kos": 2},
+		"mastery": {"clan": "nebula", "name": "Nebula", "color": "#9b7bff", "xp": 1250, "gained": 100,
+			"levels": [0, 300, 700, 1200, 1800, 2500, 3300, 4200, 5200, 6300]}}
 	Game.go("post_match")
-	await _shot("06_post_match", 2.0)
+	await _shot("06_post_match_early", 1.6)
+	await _shot("06_post_match", 2.6)
 	# After a match against a player: the rematch offer
 	Game.match_result = {"result": "loss", "player_morale": 0, "opponent_morale": 2100, "turns": 11,
 		"online": true, "mode": "casual", "reason": "afk", "rewards": {"xpEarned": 20, "karatEarned": 10},
-		"mvp": {"card": CardDB.get_card("goldfang"), "owner": "opponent", "damage": 2300}}
+		"mvp": {"card": CardDB.get_card("card_mili_037"), "owner": "opponent", "damage": 2300},
+		"mastery": {"clan": "militia", "name": "Militia", "color": "#9bd84a", "xp": 340, "gained": 40,
+			"levels": [0, 300, 700, 1200, 1800, 2500, 3300, 4200, 5200, 6300]}}
 	Game.go("post_match")
 	await get_tree().create_timer(1.0).timeout
 	Net.rematch_inbox.append(["mp:rematch_offer", {"fromUsername": "Rival"}])

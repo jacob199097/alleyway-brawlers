@@ -161,6 +161,12 @@ async function rejects(promise, pattern) {
     const pic = nebula.rewards.find(r => r.level === 3).reward.avatar;
     assert.ok(pic && (await achievements.cosmetics(id)).avatars.includes(pic), 'the level 3 picture can be worn');
     assert.deepEqual(await achievements.equip(id, { avatar: pic }), { ok: true });
+    // ...and the post-match screen's view of it
+    const prog = await mastery.progress(id, 'nebula', 'win');
+    assert.equal(prog.xp, 1000);
+    assert.equal(prog.gained, 100);
+    assert.deepEqual(prog.levels, mastery.LEVELS);
+    assert.equal((await mastery.progress(id, 'militia', 'loss')), null, 'no Militia games yet');
 
     // The weekly challenge pays once a week
     const challenge = require('./challenge');

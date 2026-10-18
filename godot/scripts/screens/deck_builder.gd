@@ -285,7 +285,18 @@ func _copies(card_id) -> int:
 	return _deck.filter(func(c): return c.cardId == card_id).size()
 
 
+## A Striver above level 1 (a promoted form): it never goes in the deck, it waits in the Hideout
+## and comes with its level 1 card. Its level, or 0 for any other card.
+static func _hideout_level(item: Dictionary) -> int:
+	var lv := int(item.get("level", 1))
+	return lv if item.get("card_type") == "gang_member" and lv > 1 else 0
+
+
 func _add(item: Dictionary, from: Control = null) -> void:
+	if _hideout_level(item) > 0:
+		UI.toast(self, "Level %d %s waits in the Hideout: add its level 1 card and it comes along" % [_hideout_level(item), item.get("name", "")], UI.GOLD)
+		Sfx.play("error")
+		return
 	var have := _copies(item.id)
 	if have >= 3:
 		UI.toast(self, "Max 3 copies per card", UI.RED)
@@ -479,6 +490,8 @@ func _load_code(code: String) -> void:
 		var bits := part.split("*")
 		var want := clampi(int(bits[1]) if bits.size() > 1 else 1, 1, 3)
 		var item: Dictionary = by_art.get(bits[0], {})
+		if _hideout_level(item) > 0:   # (promoted forms wait in the Hideout, never in the deck)
+			continue
 		var have := mini(want, int(item.get("quantity", 0)))
 		for n in have:
 			deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
@@ -640,6 +653,12 @@ func _render_collection() -> void:
 		tile.dimmed = used >= mini(3, int(item.get("quantity", 0)))
 		tile.pressed.connect(func(t): _add(item, t))
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
+		if _hideout_level(item) > 0:   # (a promoted form: it comes with its level 1 card)
+			tile.badge = "LV%d" % _hideout_level(item)
+			tile.dimmed = true
+			tile.tooltip_text = "Waits in the Hideout: add its level 1 card to the deck"
+			_grid.add_child(tile)
+			continue
 		tile.set_drag_forwarding(func(_at):
 			var prev := UI.texture_rect(UI.card_art(item), TILE * 0.8)
 			prev.modulate.a = 0.85

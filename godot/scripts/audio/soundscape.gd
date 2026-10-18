@@ -10,8 +10,6 @@ extends Node
 const MUSIC_DB := -3.0
 const AMBIENCE_DB := 0.0   # (the ambience files sit at about -43 dB RMS, well under the music)
 const DUCK_DB := -16.0   # the music under a sting
-## Tracks that existed before the sound folder had music (used until it has its own)
-const OLD_TRACKS := {"menu": "res://assets/main_menu_theme_loop.mp3"}
 
 var _music: Array[AudioStreamPlayer] = []   # two, so one fades in while the other fades out
 var _amb: Array[AudioStreamPlayer] = []
@@ -47,8 +45,6 @@ func music(track: String, fade := 1.6) -> void:
 	var stream: AudioStream = null
 	if track != "":
 		stream = _looping("music_" + track)
-		if stream == null and OLD_TRACKS.has(track) and ResourceLoader.exists(OLD_TRACKS[track]):
-			stream = _looped(load(OLD_TRACKS[track]))
 	_swap(_music, "music", stream, MUSIC_DB, fade)
 
 

@@ -1,5 +1,17 @@
 [
     {
+        "version": "0.9.12",
+        "notes": [
+            "New victory and defeat screens: your level and clan mastery fill up with the XP you earned (with a level-up when you reach one), and the MVP card flips in with its Morale dealt and KOs.",
+            "Card backs come alive on your opponent's hand and on the deck and Hideout piles, and speed up when you hover them.",
+            "Statuses on hovered cards are coloured (DOWNED in red), and the Gutter's hint no longer shows stray text.",
+            "Strivers above level 1 can't go in a deck: they wait in the Hideout and come with their level 1 card.",
+            "New Militia cards: All Out Warfare, and Warlord Brannigan, the first Legendary.",
+            "Balance: Rhodes KOs when your opponent controls 3 or more characters; Orbital Strike Downs all enemies if you control 2 or fewer characters.",
+            "A new full download with the new menu, music and art built in."
+        ]
+    },
+    {
         "version": "0.9.11",
         "notes": [
             "A new neon alley behind the main menu and the other menus.",

@@ -77,6 +77,8 @@ const PHASE_NAMES := {"deployment": "DEPLOYMENT", "brawl": "BRAWL", "regroup": "
 var ai_sides := ["opponent"]
 
 @onready var cards_layer: Node2D = $Cards
+var _pile_backs := {}       # "side:pile" (deck, hideout) -> the moving back on top of it (_update_pile_backs)
+var _pile_ink: Node2D       # their counts and names, drawn over them
 @onready var fx: Node2D = $FX
 @onready var camera: Camera2D = $Camera
 @onready var ui: Control = $HUD/UI
@@ -851,6 +853,7 @@ func _process(delta: float) -> void:
 		camera.offset = Vector2.ZERO
 	_update_post()
 	_update_aim()
+	_update_pile_backs(delta)
 	if _tutorial:
 		_tutorial.update()
 	if _ui.has("detail_art"):
@@ -1164,18 +1167,84 @@ func _draw_pile(side: String, pile: String) -> void:
 		else:
 			draw_rect(r, Color("1d2140"))
 			draw_rect(r, Color(1, 1, 1, 0.3), false, 2.0)
+	if not _pile_backs.has("%s:%s" % [side, pile]):   # (a moving back has its count and name drawn over it)
+		_draw_pile_text(self, side, pile)
+
+
+## The deck and Hideout wear the side's moving back on top (like a face-down card): it turns
+## slowly, and speeds up and glows while hovered. Their count and name are drawn over it.
+func _update_pile_backs(delta: float) -> void:
+	var m := get_global_mouse_position()
+	for side in _sides:
+		var style := CardDB.back_style(_back_clan(side))
+		if not CardView.BACK_SPEEDS.has(style):
+			continue
+		for pile in ["deck", "hideout"]:
+			var key := "%s:%s" % [side, pile]
+			var n: int = counts.get(side, {}).get(pile, 0)
+			if not _pile_backs.has(key):
+				if n <= 0:
+					continue
+				_pile_backs[key] = _new_pile_back(side, style)
+			var b: Dictionary = _pile_backs[key]
+			var k := _sc(side)
+			var size := CARD * k
+			var layers := mini(4, ceili(n / 8.0))
+			var r: TextureRect = b.rect
+			r.visible = n > 0
+			r.position = pile_pos(side, pile) - size / 2 + Vector2(-(layers - 1) * 2.0, -(layers - 1) * 3.0) * k
+			r.size = size
+			var want: float = b.hover if r.visible and Rect2(r.position, size).has_point(m) else b.idle
+			b.speed = lerpf(b.speed, want, 1.0 - exp(-4.0 * delta))
+			b.angle = fmod(b.angle + b.speed * delta, TAU)
+			b.mat.set_shader_parameter("galaxy_angle", b.angle)
+			b.mat.set_shader_parameter("galaxy_glow", clampf((b.speed - b.idle) / (b.hover - b.idle), 0.0, 1.0))
+	if _pile_ink:
+		_pile_ink.queue_redraw()
+
+
+func _new_pile_back(side: String, style: String) -> Dictionary:
+	var r := TextureRect.new()
+	r.texture = _back_for(side)
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := UI.card_material(CARD * _sc(side))
+	mat.set_shader_parameter(style, 1.0)
+	r.material = mat
+	add_child(r)
+	move_child(r, cards_layer.get_index())   # (under the cards, over the board)
+	if _pile_ink == null:
+		_pile_ink = Node2D.new()
+		_pile_ink.draw.connect(func():
+			for key in _pile_backs:
+				if _pile_backs[key].rect.visible:
+					var part: PackedStringArray = str(key).split(":")
+					_draw_pile_text(_pile_ink, part[0], part[1]))
+		add_child(_pile_ink)
+	move_child(_pile_ink, cards_layer.get_index())
+	var speeds: Array = CardView.BACK_SPEEDS[style]
+	return {"rect": r, "mat": mat, "angle": randf() * TAU, "speed": speeds[0], "idle": speeds[0], "hover": speeds[1]}
+
+
+## A pile's count and name (on: the board, or the layer over the moving backs).
+func _draw_pile_text(on: CanvasItem, side: String, pile: String) -> void:
+	var p := pile_pos(side, pile)
+	var k := _sc(side)
+	var n: int = counts.get(side, {}).get(pile, 0)
 	var at := Vector2(p.x - 60, p.y + 16 * k)
-	draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), 10, Color(0, 0, 0, 0.9))
-	draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), RED if pile == "deck" and n <= 5 else Color.WHITE)
-	_draw_zone_label(p, pile.to_upper(), k)
+	on.draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), 10, Color(0, 0, 0, 0.9))
+	on.draw_string(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), RED if pile == "deck" and n <= 5 else Color.WHITE)
+	_draw_zone_label(p, pile.to_upper(), k, on)
 
 
 ## Zone name on a dark strip along the bottom of the zone (stays readable over pile art).
-func _draw_zone_label(p: Vector2, text: String, k := 1.0) -> void:
+func _draw_zone_label(p: Vector2, text: String, k := 1.0, on: CanvasItem = null) -> void:
+	var c: CanvasItem = on if on else self
 	var w := CARD.x * k
 	var strip := Rect2(p.x - w / 2, p.y + CARD.y * k / 2 - 24 * k, w, 24 * k)
-	draw_rect(strip, Color(0, 0, 0, 0.6))
-	draw_string(_font, Vector2(strip.position.x, strip.position.y + 18 * k), text, HORIZONTAL_ALIGNMENT_CENTER,
+	c.draw_rect(strip, Color(0, 0, 0, 0.6))
+	c.draw_string(_font, Vector2(strip.position.x, strip.position.y + 18 * k), text, HORIZONTAL_ALIGNMENT_CENTER,
 		w, maxi(8, int(16 * k)), Color(1, 1, 1, 0.7))
 
 
@@ -1276,8 +1345,14 @@ func _track(ev: Dictionary) -> void:
 		"damage":
 			if not _last_hit.is_empty() and _last_hit.side != ev.side and not _last_hit.card.is_empty():
 				var key := "%s:%s" % [_last_hit.side, _last_hit.card.get("uid", 0)]
-				var entry: Dictionary = _damage_log.get(key, {"card": _last_hit.card, "owner": _last_hit.side, "damage": 0})
+				var entry: Dictionary = _damage_log.get(key, {"card": _last_hit.card, "owner": _last_hit.side, "damage": 0, "kos": 0})
 				entry.damage += int(ev.amount)
+				_damage_log[key] = entry
+		"ko":   # (the MVP's KOs: the card whose brawl it was)
+			if not _last_hit.is_empty() and _last_hit.side != ev.side and not _last_hit.card.is_empty():
+				var key := "%s:%s" % [_last_hit.side, _last_hit.card.get("uid", 0)]
+				var entry: Dictionary = _damage_log.get(key, {"card": _last_hit.card, "owner": _last_hit.side, "damage": 0, "kos": 0})
+				entry.kos = int(entry.get("kos", 0)) + 1
 				_damage_log[key] = entry
 		"attack", "turn":
 			_last_hit = {}
@@ -2699,11 +2774,16 @@ func _ev_game_over(ev: Dictionary) -> void:
 	overlay.add_child(row)
 
 
+## The MVP: Morale dealt, and a KO is worth 800 of it.
+static func _mvp_score(e: Dictionary) -> int:
+	return int(e.get("damage", 0)) + 800 * int(e.get("kos", 0))
+
+
 ## Hand the result (and a snapshot of the board for the background) to the post-match screen.
 func _finish_match(won: bool) -> void:
 	var mvp := {}
 	for key in _damage_log:
-		if mvp.is_empty() or _damage_log[key].damage > mvp.damage:
+		if mvp.is_empty() or _mvp_score(_damage_log[key]) > _mvp_score(mvp):
 			mvp = _damage_log[key]
 	var snap: Texture2D = _end_snap
 	if snap == null and DisplayServer.get_name() != "headless":
@@ -2734,6 +2814,7 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.reason = str(_over.get("reason", "morale"))
 		Game.match_result.rewards = _over.get("rewards")
 		Game.match_result.achievements = _over.get("achievements", [])
+		Game.match_result.mastery = _over.get("mastery")
 		if _over.has("result"):
 			Game.match_result.result = _over.result
 		if _ffa:
@@ -3442,6 +3523,17 @@ func _live_statuses(v: CardView) -> Array:
 const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
 	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)"}
+## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
+const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a"}
+
+
+## A status in the card panel, in its colour: "DOWNED" red, "STASIS" violet...
+func _status_word(k) -> String:
+	var word: String = STATUS_WORDS.get(k, str(k).to_upper())
+	var kw := Keywords.find(word)
+	if kw != "" and STATUS_COLORS.get(k) == null:
+		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, Keywords.LIST[kw][0].to_html(false), word]
+	return "[b][color=#%s]%s[/color][/b]" % [STATUS_COLORS.get(k, "e6e6f0"), Keywords._escape(word)]
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
@@ -3489,10 +3581,12 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_stats.text = ""
 	var body := Keywords.markup(str(c.get("effectText", "")))
 	if not live_status.is_empty():
-		var words: Array = live_status.map(func(k): return STATUS_WORDS.get(k, str(k).to_upper()))
-		body = "[color=#8a8aa0]Status:[/color] %s\n\n%s" % [Keywords.markup("  ".join(words)), body]
+		var words: Array = live_status.map(_status_word)
+		body = "[color=#8a8aa0]Status:[/color] %s\n\n%s" % ["[color=#8a8aa0]  ·  [/color]".join(words), body]
 	if c.get("flavourText") is String:
 		body += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % c.flavourText
+	if c.get("note") is String:   # (where the card is: shown above its text, not part of it)
+		body = "[color=#8a8aa0]%s[/color]\n\n%s" % [Keywords._escape(c.note), body]
 	_ui.detail_text.text = body
 
 
@@ -4101,6 +4195,15 @@ func _view_at(p: Vector2) -> CardView:
 	var hv := _hand_view_at(p)
 	if hv:
 		return hv
+	for s in hand:   # an opponent's hand: a hovered card's back comes alive, like a face-down card's
+		if s == "player":
+			continue
+		var top: CardView = null
+		for v in hand[s]:
+			if is_instance_valid(v) and not v.busy and v.hit(p) and (top == null or v.z_index > top.z_index):
+				top = v
+		if top:
+			return top
 	for side in field:
 		for slot in field[side]:
 			var v: CardView = field[side][slot]
@@ -4149,7 +4252,7 @@ func _update_hover() -> void:
 			var top: String = counts.get(side, {}).get("gutter_top", "")
 			if top != "":
 				var shown: Dictionary = CardDB.get_card(top).duplicate()
-				shown.effectText = "[color=#8a8aa0]Top of the Gutter · click to see every card in it[/color]\n\n" + str(shown.get("effectText", ""))
+				shown.note = "Top of the Gutter · click to see every card in it"
 				shown.uid = "gutter:%s:%s" % [side, top]
 				_show_detail(shown)
 		# The deck and Hideout show that side's card back, with how many cards are in them
@@ -5073,3 +5176,5 @@ func _ffa_result_into(r: Dictionary, data: Dictionary) -> void:
 		r.rewards = data.rewards
 	if data.get("achievements") is Array:
 		r.achievements = data.achievements
+	if data.get("mastery") is Dictionary:
+		r.mastery = data.mastery
