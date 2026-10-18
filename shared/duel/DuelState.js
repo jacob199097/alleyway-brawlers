@@ -62,7 +62,7 @@ const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
 // Keyword statuses (Card Forge effects); same rules as duel_state.gd
 const FOREVER = 1000000;
 const STATUS_TICKS = 3;
-const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until'];
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until', 'bounty'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -453,7 +453,7 @@ export class DuelState {
         const foes = this.foesOf(side).map(x => this.sides[x]);
         const mine = (x) => x !== c && this._fxKindOk(x, e);
         switch (String(e.do ?? '')) {
-            case 'draw': return s.deck.length > 0;
+            case 'draw': case 'loot': return s.deck.length > 0;
             case 'search': return s.deck.some(mine);
             case 'recover': return s.gutter.some(mine);
             case 'revive': return this._emptyLane(side) >= 0 && s.gutter.some(mine);
@@ -548,6 +548,7 @@ export class DuelState {
         if (toInt(c.suppress_until ?? 0) >= this.turn) out.push('suppress');
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
+        if (c.bounty) out.push('bounty');
         if (this._equipsOn(c).length) out.push('equipped');
         // Just promoted or Awakened: it can't attack this turn
         if (toInt(c.rest_turn ?? -1) === this.turn && c.has_attacked && !c.downed) out.push('resting');
@@ -1052,6 +1053,7 @@ export class DuelState {
             const dmg = Math.max(0, att.attack + ctx.bonus);
             this._emit('clash', this._withFoeKey({ side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' }, foe));
             this._damage(foe, dmg);
+            this._lifesteal(side, from, att, dmg);
             if (this.winner === '' && this.cardAt(side, from) === att) this._runFx(side, from, att, 'direct');
             this._bleed(side, att);
             return;
@@ -1100,15 +1102,17 @@ export class DuelState {
         let result = '';
         if (vsDef) {
             if (aVal > dVal) {
-                if (ctx.pierce) this._damage(foe, aVal - dVal);
+                if (ctx.pierce) { this._damage(foe, aVal - dVal); this._lifesteal(side, from, att, aVal - dVal); }
                 result = this._defeat(foe, target);
             }
             else this._emit('blocked', { side: foe, slot: target });
         } else if (aVal > dVal) {
             this._damage(foe, aVal - dVal);
+            this._lifesteal(side, from, att, aVal - dVal);
             result = this._defeat(foe, target);
         } else if (aVal < dVal) {
             this._damage(side, dVal - aVal);
+            this._lifesteal(foe, target, def, dVal - aVal);
             this._defeat(side, from);
         } else {
             this._emit('notice', { text: 'TIE — BOTH GO DOWN' });
@@ -1181,6 +1185,7 @@ export class DuelState {
     _ko(side, slot) {
         const c = this.cardAt(side, slot);
         this.sides[side].field[slot] = null;
+        const bounty = c.bounty;
         c.downed = false;
         c.mods = [];
         this._clearStatus(c);
@@ -1195,6 +1200,44 @@ export class DuelState {
             for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_ko', c);
             this._runLasting(foe, 'foe_ko', c);
         }
+        // BOUNTY: whoever put it on draws
+        if (bounty && this.winner === '' && this.sides[bounty.by]) {
+            this._effect(bounty.by, c, `BOUNTY on ${c.name} collected: draw ${bounty.n}`, -1);
+            for (let i = 0; i < toInt(bounty.n) && this.winner === ''; i++) this._draw(bounty.by);
+        }
+    }
+
+    /** Put a character back on top of its owner's deck (a token just vanishes). */
+    _topdeck(side, slot) {
+        const c = this.cardAt(side, slot);
+        this.sides[side].field[slot] = null;
+        if (c.token) {
+            this._emit('ko', { side, slot, card: clone(c) });
+            return;
+        }
+        c.downed = false;
+        c.mods = [];
+        c.position = 'atk';
+        c.face_down = false;
+        c.has_attacked = false;
+        for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used', 'fx_count']) delete c[k];
+        this._clearStatus(c);
+        this.sides[side].deck.push(c);   // (draws take from the end)
+        this._emit('topdeck', { side, slot, card: clone(c) });
+    }
+
+    /** Remove a character from the game: it doesn't go to the Gutter, and no KO effects happen. */
+    _exile(side, slot) {
+        const c = this.cardAt(side, slot);
+        this.sides[side].field[slot] = null;
+        this._clearStatus(c);
+        this._emit('ko', { side, slot, card: clone(c), exiled: true });
+    }
+
+    /** LIFESTEAL (Card Forge passive): the Morale a character takes from an opponent in a brawl, its owner gains. */
+    _lifesteal(side, slot, c, amount) {
+        if (amount <= 0 || this.winner !== '' || c == null || isEmpty(this._passive(side, slot, c, 'lifesteal'))) return;
+        this._heal(side, c, amount, slot);
     }
 
     _damage(side, amount) {
@@ -1594,6 +1637,7 @@ export class DuelState {
                 for (const adj of [slot - 1, slot + 1]) {
                     if (FRONT.includes(adj) && s.field[adj] != null && s.field[adj].effectKey === 'bulwark') df += 400;
                 }
+                if (c.mods.filter(m => m.swap).length % 2 === 1) [atk, df] = [df, atk];   // (swapped: ATK and DEF trade places)
                 c.attack = Math.max(0, atk);
                 c.defense = Math.max(0, df);
                 values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down, this.statuses(c)];
@@ -1861,6 +1905,34 @@ export class DuelState {
                     return `${c.name} sends ${name} back to the hand`;
                 }, `${c.name} sends %s back to the hand`);
                 break;
+            case 'topdeck':   // back on top of its owner's deck: they draw it again
+                this._fxApply(side, slot, c, e, vs, 'any', 'put on top of the deck', (x) => {
+                    const name = x.card.name;
+                    this._topdeck(x.side, x.slot);
+                    return `${c.name} puts ${name} on top of its owner's deck`;
+                }, `${c.name} puts %s on top of the deck`);
+                break;
+            case 'exile':   // gone for good: not to the Gutter, so nothing can bring it back
+                this._fxApply(side, slot, c, e, vs, 'any', 'remove from the game', (x) => {
+                    const name = x.card.name;
+                    this._exile(x.side, x.slot);
+                    return `${c.name} removes ${name} from the game`;
+                }, `${c.name} removes %s from the game`);
+                break;
+            case 'swap': {   // ATK and DEF trade places (until the end of the turn, the next, or for good)
+                const until = this._until(e);
+                this._fxApply(side, slot, c, e, vs, 'any', 'swap ATK and DEF', (x) => {
+                    x.card.mods.push({ swap: true, until_turn: until });
+                    return `${x.card.name}: ATK and DEF swapped`;
+                }, `${c.name} swaps the ATK and DEF of %s`);
+                break;
+            }
+            case 'bounty':   // BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
+                this._fxApply(side, slot, c, e, vs, 'any', 'put a BOUNTY on', (x) => {
+                    x.card.bounty = { by: side, n };
+                    return `${c.name} puts a BOUNTY of ${n} on ${x.card.name}`;
+                }, `${c.name} puts a BOUNTY of ${n} on %s`);
+                break;
             case 'force_def':
                 this._fxApply(side, slot, c, e, vs, 'attackers', 'force into DEF', (x) => {
                     x.card.position = 'def';
@@ -1914,6 +1986,13 @@ export class DuelState {
                 this._effect(side, c, `${c.name}: draw ${n}`, slot);
                 for (let i = 0; i < n; i++) this._draw(side);
                 break;
+            case 'loot': {   // draw, then discard as many
+                this._effect(side, c, `${c.name}: draw ${n}, then discard ${n}`, slot);
+                for (let i = 0; i < n && this.winner === ''; i++) this._draw(side);
+                const k = Math.min(n, s.hand.length);
+                if (k > 0 && this.winner === '') this._askDiscard(side, k, null, `${c.name}: loot`);
+                break;
+            }
             case 'search': {
                 const found = this._fxTake(side, c, e, s.deck, `${c.name}: choose a card to add to your hand`, (card) => {
                     s.hand.push(card);

@@ -18,6 +18,8 @@ const LIST := {
 	"DRAIN": [Color("e07aff"), "DRAIN X: your opponent loses X Morale and you gain X Morale."],
 	"HEAL": [Color("6ff0c0"), "HEAL X: you gain X Morale (up to the starting 6000)."],
 	"SUPPRESS": [Color("b5e655"), "SUPPRESS X (Militia): pinned down: it loses X ATK and can't attack until the end of its owner's next turn."],
+	"BOUNTY": [Color("f2c14e"), "BOUNTY X: when it is KO'd, whoever put the bounty on it draws X cards."],
+	"LIFESTEAL": [Color("ff5d8f"), "LIFESTEAL: the Morale it takes from your opponent in a brawl, you gain."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]

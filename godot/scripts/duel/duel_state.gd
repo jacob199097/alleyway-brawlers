@@ -495,7 +495,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	var foes: Array = foes_of(side).map(func(x): return sides[x])
 	var mine := func(x): return not is_same(x, c) and _fx_kind_ok(x, e)
 	match str(e.get("do", "")):
-		"draw":
+		"draw", "loot":
 			return not s.deck.is_empty()
 		"search":
 			return s.deck.any(mine)
@@ -597,7 +597,7 @@ func _stays_up(side: String, slot: int, c) -> bool:
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
 const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
 const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until", "bounty"]
 
 
 func in_stasis(c) -> bool:
@@ -626,6 +626,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("shield")
 	if int(c.get("silence_until", 0)) >= turn:
 		out.append("silence")
+	if c.has("bounty"):
+		out.append("bounty")
 	if not _equips_on(c).is_empty():
 		out.append("equipped")
 	# Just promoted or Awakened: it can't attack this turn
@@ -1200,6 +1202,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		var dmg: int = maxi(0, att.attack + ctx.bonus)
 		_emit("clash", _with_foe_key({"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"}, foe))
 		_damage(foe, dmg)
+		_lifesteal(side, from, att, dmg)
 		if winner == "" and card_at(side, from) == att:
 			_run_fx(side, from, att, "direct")
 		_bleed(side, att)
@@ -1255,14 +1258,17 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		if a_val > d_val:
 			if ctx.get("pierce", false):
 				_damage(foe, a_val - d_val)
+				_lifesteal(side, from, att, a_val - d_val)
 			result = _defeat(foe, target)
 		else:
 			_emit("blocked", {"side": foe, "slot": target})
 	elif a_val > d_val:
 		_damage(foe, a_val - d_val)
+		_lifesteal(side, from, att, a_val - d_val)
 		result = _defeat(foe, target)
 	elif a_val < d_val:
 		_damage(side, d_val - a_val)
+		_lifesteal(foe, target, def, d_val - a_val)
 		_defeat(side, from)
 	else:
 		_emit("notice", {"text": "TIE — BOTH GO DOWN"})
@@ -1337,6 +1343,7 @@ func _defeat(side: String, slot: int) -> String:
 func _ko(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
+	var bounty = c.get("bounty")
 	c.downed = false
 	c.mods = []
 	_clear_status(c)
@@ -1353,6 +1360,47 @@ func _ko(side: String, slot: int) -> void:
 		for x in characters(foe):
 			_run_fx(foe, x.slot, x.card, "foe_ko", c)
 		_run_lasting(foe, "foe_ko", c)
+	# BOUNTY: whoever put it on draws
+	if bounty is Dictionary and winner == "" and sides.has(str(bounty.by)):
+		_effect(str(bounty.by), c, "BOUNTY on %s collected: draw %d" % [c.name, int(bounty.n)], -1)
+		for i in int(bounty.n):
+			if winner != "":
+				break
+			_draw(str(bounty.by))
+
+
+## Put a character back on top of its owner's deck (a token just vanishes).
+func _topdeck(side: String, slot: int) -> void:
+	var c: Dictionary = card_at(side, slot)
+	sides[side].field[slot] = null
+	if c.get("token", false):
+		_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
+		return
+	c.downed = false
+	c.mods = []
+	c.position = "atk"
+	c.face_down = false
+	c.has_attacked = false
+	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used", "fx_count"]:
+		c.erase(k)
+	_clear_status(c)
+	sides[side].deck.append(c)   # (draws take from the end)
+	_emit("topdeck", {"side": side, "slot": slot, "card": c.duplicate(true)})
+
+
+## Remove a character from the game: it doesn't go to the Gutter, and no KO effects happen.
+func _exile(side: String, slot: int) -> void:
+	var c: Dictionary = card_at(side, slot)
+	sides[side].field[slot] = null
+	_clear_status(c)
+	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true), "exiled": true})
+
+
+## LIFESTEAL (Card Forge passive): the Morale a character takes from an opponent in a brawl, its owner gains.
+func _lifesteal(side: String, slot: int, c, amount: int) -> void:
+	if amount <= 0 or winner != "" or c == null or _passive(side, slot, c, "lifesteal").is_empty():
+		return
+	_heal(side, c, amount, slot)
 
 
 func _damage(side: String, amount: int) -> void:
@@ -1755,6 +1803,10 @@ func _recalc() -> void:
 			for adj in [slot - 1, slot + 1]:
 				if adj in FRONT and s.field[adj] != null and s.field[adj].get("effectKey") == "bulwark":
 					df += 400
+			if c.mods.filter(func(m): return m.get("swap", false)).size() % 2 == 1:   # (swapped: ATK and DEF trade places)
+				var was := atk
+				atk = df
+				df = was
 			c.attack = maxi(0, atk)
 			c.defense = maxi(0, df)
 			values[side][slot] = [c.attack, c.defense, c.base_attack, c.base_defense, c.face_down, statuses(c)]
@@ -2132,6 +2184,29 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_bounce(x.side, x.slot)
 				return "%s sends %s back to the hand" % [c.name, name]
 			_fx_apply(side, slot, c, e, vs, "any", "send back to the hand", fn, "%s sends %%s back to the hand" % c.name)
+		"topdeck":   # back on top of its owner's deck: they draw it again
+			var fn := func(x: Dictionary) -> String:
+				var name: String = x.card.name
+				_topdeck(x.side, x.slot)
+				return "%s puts %s on top of its owner's deck" % [c.name, name]
+			_fx_apply(side, slot, c, e, vs, "any", "put on top of the deck", fn, "%s puts %%s on top of the deck" % c.name)
+		"exile":   # gone for good: not to the Gutter, so nothing can bring it back
+			var fn := func(x: Dictionary) -> String:
+				var name: String = x.card.name
+				_exile(x.side, x.slot)
+				return "%s removes %s from the game" % [c.name, name]
+			_fx_apply(side, slot, c, e, vs, "any", "remove from the game", fn, "%s removes %%s from the game" % c.name)
+		"swap":   # ATK and DEF trade places (until the end of the turn, the next, or for good)
+			var until := _until(e)
+			var fn := func(x: Dictionary) -> String:
+				x.card.mods.append({"swap": true, "until_turn": until})
+				return "%s: ATK and DEF swapped" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "any", "swap ATK and DEF", fn, "%s swaps the ATK and DEF of %%s" % c.name)
+		"bounty":   # BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
+			var fn := func(x: Dictionary) -> String:
+				x.card.bounty = {"by": side, "n": n}
+				return "%s puts a BOUNTY of %d on %s" % [c.name, n, x.card.name]
+			_fx_apply(side, slot, c, e, vs, "any", "put a BOUNTY on", fn, "%s puts a BOUNTY of %d on %%s" % [c.name, n])
 		"force_def":
 			var fn := func(x: Dictionary) -> String:
 				x.card.position = "def"
@@ -2189,6 +2264,15 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_effect(side, c, "%s: draw %d" % [c.name, n], slot)
 			for i in n:
 				_draw(side)
+		"loot":   # draw, then discard as many
+			_effect(side, c, "%s: draw %d, then discard %d" % [c.name, n, n], slot)
+			for i in n:
+				if winner != "":
+					break
+				_draw(side)
+			var k: int = mini(n, s.hand.size())
+			if k > 0 and winner == "":
+				_ask_discard(side, k, Callable(), "%s: loot" % c.name)
 		"search":
 			var found := _fx_take(side, c, e, s.deck, "%s: choose a card to add to your hand" % c.name, func(card: Dictionary) -> bool:
 				s.hand.append(card)

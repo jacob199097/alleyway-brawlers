@@ -146,15 +146,36 @@ ffa = createFfaService(io, {
 achievements.setNotifier(online.notify);   // unlocks outside matches reach the player's game
 
 // ── Socket connections ────────────────────────────────────────────────────────
+// When each player last went offline: a reconnect soon after (a network blip, a patch restart)
+// doesn't tell their friends they came online again
+const wentOffline = new Map();
+const QUIET_RECONNECT_MS = 2 * 60 * 1000;
+
+/** A player came online: their online friends' games show a pop-up (net.gd "friend:online"). */
+async function announceOnline(playerId) {
+    const { rows: [me] } = await pool.query('SELECT username, avatar_url, level FROM players WHERE id = $1', [playerId]);
+    if (!me) return;
+    const { rows: friends } = await pool.query(
+        `SELECT p.socket_id FROM friendships f
+         JOIN players p ON p.id = CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END
+         WHERE f.status = 'accepted' AND (f.requester_id = $1 OR f.addressee_id = $1)
+           AND p.is_online AND p.socket_id IS NOT NULL`, [playerId]);
+    for (const f of friends) {
+        io.to(f.socket_id).emit('friend:online', { playerId, username: me.username, avatar: me.avatar_url, level: me.level });
+    }
+}
+
 io.on('connection', (socket) => {
     const { playerData } = socket;
     console.log(`[Socket] Connected: ${playerData.username} (${socket.id})`);
 
-    // Mark player online in DB (fire-and-forget)
+    // Mark player online in DB, then tell their friends (unless they were only away a moment)
+    const away = Date.now() - (wentOffline.get(playerData.playerId) || 0);
     pool.query(
         'UPDATE players SET is_online = TRUE, socket_id = $1, last_login = NOW() WHERE id = $2',
         [socket.id, playerData.playerId]
-    ).catch(err => console.error('[Socket] Online update failed:', err.message));
+    ).then(() => (away > QUIET_RECONNECT_MS ? announceOnline(playerData.playerId) : null))
+        .catch(err => console.error('[Socket] Online update failed:', err.message));
 
     // Matches, the queue and friend challenges (socket/onlineMatch.js); free-for-all (socket/ffaMatch.js)
     online.register(socket, playerData);
@@ -187,6 +208,7 @@ io.on('connection', (socket) => {
     // ── Disconnect ───────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
         console.log(`[Socket] Disconnected: ${playerData.username}`);
+        wentOffline.set(playerData.playerId, Date.now());
         pool.query(
             'UPDATE players SET is_online = FALSE, socket_id = NULL WHERE id = $1',
             [playerData.playerId]

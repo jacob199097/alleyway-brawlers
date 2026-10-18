@@ -190,6 +190,9 @@ func _on_global_event(name: String, data) -> void:
 				if data is Dictionary and data.get("resync", false) and not data.get("spectate", false):
 					_toast("Rejoining your match…", UI.GOLD)
 				Game.go("duel")
+		"friend:online":
+			if data is Dictionary:
+				_friend_online(data)
 		"mp:challenge":
 			_show_challenge(data)
 		"mp:declined":
@@ -204,6 +207,50 @@ func _on_global_event(name: String, data) -> void:
 				_toast(str(data.get("message", "Something went wrong.")), UI.RED)
 			else:
 				scene.on_online_error(str(data.get("message", "")))
+
+
+## "Friend is now online" pop-ups in the bottom-right corner (like Steam's): each slides in with
+## the friend's picture, stacks above the ones still showing, and slides away after a few seconds.
+var _friend_toasts: Array[Control] = []
+
+func _friend_online(f: Dictionary) -> void:
+	if _banner_layer == null:
+		_banner_layer = CanvasLayer.new()
+		_banner_layer.layer = 90
+		add_child(_banner_layer)
+	var p := UI.panel(UI.GREEN, Color(0.05, 0.07, 0.09, 0.96))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.custom_minimum_size = Vector2(400, 0)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	p.add_child(row)
+	var pic := UI.texture_rect(UI.avatar(f.get("avatar")), Vector2(72, 72), true)
+	row.add_child(pic)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(col)
+	col.add_child(UI.label(str(f.get("username", "A friend")), 26, Color.WHITE, true))
+	col.add_child(UI.label("● is now online", 18, UI.GREEN))
+	if f.get("level") != null:
+		col.add_child(UI.label("Level %d" % int(f.level), 15, UI.MUTED))
+	_banner_layer.add_child(p)
+	await get_tree().process_frame   # (its size, before it's placed)
+	var h: float = p.size.y + 12.0
+	for t in _friend_toasts:   # the ones still up move up to make room
+		if is_instance_valid(t):
+			t.create_tween().tween_property(t, "position:y", t.position.y - h, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_friend_toasts.append(p)
+	var home := Vector2(1920 - p.size.x - 24, 1080 - p.size.y - 24)
+	p.position = Vector2(1940, home.y)
+	Sfx.play("karat", 1.5, -10.0)
+	var t := p.create_tween()
+	t.tween_property(p, "position:x", home.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(4.5)
+	t.tween_property(p, "position:x", 1940.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		_friend_toasts.erase(p)
+		p.queue_free())
 
 
 ## "Achievement unlocked" banners, one after another at the top of the screen. They sit on their

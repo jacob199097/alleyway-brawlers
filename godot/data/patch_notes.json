@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.16",
+        "notes": [
+            "A pop-up in the corner when one of your friends comes online.",
+            "New card effects: loot, send a card back on top of its deck, exile, swap ATK and DEF, BOUNTY and LIFESTEAL."
+        ]
+    },
+    {
         "version": "0.9.15",
         "notes": [
             "Luck: cards can flip a coin or roll a die. You see the coin flip or the die tumble, and whether it came up.",

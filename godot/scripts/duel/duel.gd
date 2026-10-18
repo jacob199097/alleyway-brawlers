@@ -590,7 +590,9 @@ func _log_event(ev: Dictionary) -> void:
 		"downed":
 			_log("%s went Down" % _cname(ev.card), side)
 		"ko":
-			_log("%s was KO'd" % _cname(ev.card), side)
+			_log("%s was %s" % [_cname(ev.card), "removed from the game" if ev.get("exiled", false) else "KO'd"], side)
+		"topdeck":
+			_log("%s went back on top of the deck" % _cname(ev.card), side)
 		"damage":
 			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side)
 		"heal":
@@ -1410,6 +1412,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_status_tick(ev)
 		"bounce":
 			await _ev_bounce(ev)
+		"topdeck":
+			await _ev_topdeck(ev)
 		"mill":
 			await _ev_mill(ev)
 		"recover":
@@ -2599,6 +2603,28 @@ func _ev_bounce(ev: Dictionary) -> void:
 	await _wait(0.4)
 
 
+## A character goes back on top of its owner's deck: it turns face-down and slides onto the pile.
+func _ev_topdeck(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(ev.slot)
+	field[side].erase(ev.slot)
+	if v == null:
+		v = _new_view(ev.card, side, true)
+		v.position = slot_pos(side, ev.slot)
+	v.show_badge = false
+	v.downed = false
+	v.glow = 0.0
+	v.busy = true
+	v.z_index = 420
+	Sfx.play("whoosh", 0.9)
+	_ring(v.position, GOLD, 1.1)
+	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "TOP OF THE DECK", GOLD, 30)
+	if v.face_up:
+		v.flip(false)
+	await v.move_to(pile_pos(side, "deck"), 1.0, 0.0, 0.35, Tween.TRANS_CUBIC).finished
+	v.queue_free()
+
+
 ## The top card of a deck goes straight to the Gutter.
 func _ev_mill(ev: Dictionary) -> void:
 	var side: String = ev.side
@@ -3645,7 +3671,7 @@ func _live_statuses(v: CardView) -> Array:
 
 const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
 	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
-	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)"}
+	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a"}
 

@@ -60,6 +60,9 @@ func _run() -> void:
 	await _shot("02_profile_decks", 1.0)
 	Net.show_achievements([{"heading": "WEEKLY CHALLENGE", "name": "War Chest", "reward": {"karat": 300, "free_packs": 1}}])
 	await _shot("02_challenge_banner", 1.0)
+	# A friend comes online: the pop-up in the bottom-right corner
+	Net._friend_online({"username": "AlleyCat", "avatar": null, "level": 9})
+	await _shot("02_friend_online", 1.0)
 	# A friend's profile (from the friends list)
 	Game.view_player_id = "00000000-0000-0000-0000-000000000001"
 	Game.go("profile")

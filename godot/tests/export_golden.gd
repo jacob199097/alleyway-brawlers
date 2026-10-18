@@ -11,6 +11,12 @@ const MAX_ACTIONS := 1500
 const TWIST_RULES := [{"start_authority": 3}, {"start_morale": 3000}, {"opening_hand": 7}, {"pierce": true}]
 
 const FX_SAMPLES := [
+	# Top of the deck, loot, exile, swapped ATK / DEF, lifesteal, bounties
+	[{"when": "deploy", "do": "topdeck", "target": "enemy"}, {"when": "ko", "do": "loot", "amount": 1}],
+	[{"when": "deploy", "do": "exile", "target": "enemy", "if": "foe_downed"}, {"when": "passive", "do": "lifesteal"}],
+	[{"when": "attack", "do": "swap", "target": "enemies", "until": "turn"}],
+	[{"when": "deploy", "do": "bounty", "target": "enemies", "amount": 1}, {"when": "passive", "do": "lifesteal"}],
+	[{"when": "turn_start", "do": "swap", "target": "self", "until": "turn", "luck": "coin"}],
 	# Luck: a coin flip (and what happens on tails), a die per pip, a die needing 4+
 	[{"when": "deploy", "do": "down", "target": "enemy", "luck": "coin"}, {"when": "deploy", "do": "draw", "amount": 1, "if_luck": "lost"}],
 	[{"when": "attack", "do": "buff", "target": "self", "atk": 150, "per": "roll"}],
