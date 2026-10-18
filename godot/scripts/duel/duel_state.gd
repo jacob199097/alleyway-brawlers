@@ -57,6 +57,14 @@ var _asks: Array = []        # prompts queued behind `pending`
 var _in_answer := false      # prompts raised while answering one go first
 var _new_asks: Array = []
 var _did := 0                # effects that did something (see then in _do_fx)
+# Luck (coin flips, die rolls) has its own generator, mulberry32 as in DuelState.js, so both
+# engines roll the same: from the match's seed, fixed for seed -1 (tests compare engines)
+const LUCK_SALT := 0x5BD1E995
+const LUCK_TEST_SEED := 0x2545F491
+const M32 := 0xFFFFFFFF
+var _luck_t := 0
+var _luck_last := {}         # the last flip or roll: {won, value} (if_luck follows it)
+var _roll := 1               # the last die's value ("for each pip")
 var _attack_ctx := {}        # the attack being resolved
 var rules := {}              # a challenge's twist (see _init)
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
@@ -75,6 +83,7 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		rng.seed = seed_value
 	else:
 		rng.randomize()
+	_luck_t = ((seed_value ^ LUCK_SALT) & M32) if seed_value > 0 else (LUCK_TEST_SEED if seed_value == -1 else rng.randi())
 	active = first
 	first_seat = first
 	_fixed_order = seed_value == -1
@@ -1059,6 +1068,8 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "attack%d" % k, e) or not _fx_once(att, "attack%d" % k, e):
 			continue
 		if self_buff:
+			if not _luck_gate(side, from, att, e):
+				continue
 			var se := _scaled(side, from, e)
 			if int(se.get("atk", 0)) != 0:
 				ctx.bonus += int(se.get("atk", 0))
@@ -1214,6 +1225,8 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		if winner != "" or card_at(foe, target) != def or not _fx_cond(foe, target, e, att) or not _fx_count_fire(def, "defend%d" % k, e) or not _fx_once(def, "defend%d" % k, e):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self":
+			if not _luck_gate(foe, target, def, e):
+				continue
 			var se := _scaled(foe, target, e)
 			def_atk += int(se.get("atk", 0))
 			def_def += int(se.get("def", 0))
@@ -1430,6 +1443,8 @@ func _brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> 
 		k += 1
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self" \
 				and str(e.get("if", "")) != "" and _fx_cond(side, from, e, def) and _fx_once(att, "attack%d" % k, e):
+			if not _luck_gate(side, from, att, e):
+				continue
 			var se := _scaled(side, from, e)
 			if int(se.get("atk", 0)) != 0:
 				extra += int(se.get("atk", 0))
@@ -1887,6 +1902,8 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 			n = s.gutter.filter(of_clan).size()
 		"hand":
 			n = s.hand.filter(of_clan).size()
+		"roll":   # the die just rolled (_luck_gate)
+			n = maxi(1, _roll)
 		_:
 			return 1
 	if e.get("per_max") != null:
@@ -2034,6 +2051,8 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 ## then: a follow-up effect that happens only if this one did something ("If you do, ...").
 ## Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP.
 func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
+	if not _luck_gate(side, slot, c, e):
+		return
 	var then = e.get("then")
 	if not (then is Dictionary):
 		_do_fx_one(side, slot, c, e, vs)
@@ -2949,6 +2968,59 @@ func _spend(side: String, amount: int) -> void:
 	var s: Dictionary = sides[side]
 	s.authority = maxi(0, s.authority - amount)
 	_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": -amount})
+
+
+## Luck (Card Forge, same as _luckGate in DuelState.js): whether an effect happens.
+##   luck: "coin" (heads: it happens) | "die" (it happens on luck_on or more, 1-6; "for each pip"
+##   (per: "roll") multiplies it by the die). if_luck: "won" | "lost": no roll of its own, it
+##   follows the last flip or roll ("If tails, ..."). Anything else always happens.
+func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
+	var follow := str(e.get("if_luck", ""))
+	if follow != "":
+		if _luck_last.is_empty():
+			return false
+		_roll = int(_luck_last.value)
+		return (not _luck_last.won) if follow == "lost" else bool(_luck_last.won)
+	var kind := str(e.get("luck", ""))
+	if kind != "coin" and kind != "die" and str(e.get("per", "")) != "roll":
+		return true
+	var coin := kind == "coin"
+	var r := _luck_next()
+	var value: int = (1 if r < 0.5 else 0) if coin else 1 + int(floor(r * 6.0))   # coin: 1 heads, 0 tails
+	var need: int = 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6)
+	var won := value >= need
+	_luck_last = {"won": won, "value": value}
+	_roll = value
+	_emit("luck", {"side": side, "slot": slot, "card": c.duplicate(true), "kind": "coin" if coin else "die",
+		"value": value, "need": need, "won": won})
+	var text := ""
+	if coin:
+		text = "%s flips a coin: %s" % [c.name, "HEADS" if value == 1 else "TAILS"]
+	else:
+		var note := ""
+		if need > 1:
+			note = (" (%d+ needed)" % need) if won else (" (needed %d+)" % need)
+		text = "%s rolls a %d%s" % [c.name, value, note]
+	_effect(side, c, text, slot)
+	return won
+
+
+## mulberry32 (DuelState.js seededRandom): 0 <= x < 1, in 32-bit steps.
+func _luck_next() -> float:
+	_luck_t = (_luck_t + 0x6D2B79F5) & M32
+	var t := _luck_t
+	var r := _imul(t ^ (t >> 15), 1 | t)
+	r = ((r + _imul(r ^ (r >> 7), 61 | r)) & M32) ^ r
+	return float((r ^ (r >> 14)) & M32) / 4294967296.0
+
+
+## JavaScript's Math.imul (the low 32 bits of a product), unsigned, without overflowing 64 bits.
+static func _imul(a: int, b: int) -> int:
+	a &= M32
+	b &= M32
+	var lo := (a & 0xFFFF) * b
+	var hi := ((a >> 16) * b) & 0xFFFF
+	return (lo + (hi << 16)) & M32
 
 
 func _effect(side: String, c: Dictionary, text: String, slot := -1) -> void:

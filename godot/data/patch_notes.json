@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.15",
+        "notes": [
+            "Luck: cards can flip a coin or roll a die. You see the coin flip or the die tumble, and whether it came up.",
+            "Legendary cards make an entrance when they are played, like a leader awakening."
+        ]
+    },
+    {
         "version": "0.9.14",
         "notes": [
             "Profiles show when someone last played (or that they are online now).",

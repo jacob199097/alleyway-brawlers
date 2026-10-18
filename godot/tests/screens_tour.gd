@@ -144,6 +144,20 @@ func _run() -> void:
 	Game.duel_setup.first = "player"
 	Game.go("duel")
 	await _shot("07_duel", 4.0)
+	# Luck: a die rolled for a 4+ effect, then a coin flip; then a Legendary's entrance
+	var duel_screen = _screen()
+	duel_screen._ev_luck({"side": "player", "slot": -1, "kind": "die", "value": 5, "need": 4, "won": true})
+	await _shot("07_luck_die", 0.75)
+	await get_tree().create_timer(0.6).timeout
+	duel_screen._ev_luck({"side": "player", "slot": -1, "kind": "coin", "value": 0, "need": 1, "won": false})
+	await _shot("07_luck_coin", 0.75)
+	await get_tree().create_timer(0.6).timeout
+	var legend = duel_screen._new_view(CardDB.get_card("card_mili_040"), "player", true)
+	legend.position = Vector2(1080, 900)
+	duel_screen._legendary_entrance(legend, legend.card)
+	await _shot("07_legendary", 1.6)
+	await get_tree().create_timer(1.5).timeout
+	legend.queue_free()
 	# Let the CPU play both sides for a while, then open the battle log
 	_screen().ai_sides = ["player", "opponent"]
 	_screen()._after_events()

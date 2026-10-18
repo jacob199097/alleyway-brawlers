@@ -11,6 +11,12 @@ const MAX_ACTIONS := 1500
 const TWIST_RULES := [{"start_authority": 3}, {"start_morale": 3000}, {"opening_hand": 7}, {"pierce": true}]
 
 const FX_SAMPLES := [
+	# Luck: a coin flip (and what happens on tails), a die per pip, a die needing 4+
+	[{"when": "deploy", "do": "down", "target": "enemy", "luck": "coin"}, {"when": "deploy", "do": "draw", "amount": 1, "if_luck": "lost"}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 150, "per": "roll"}],
+	[{"when": "turn_start", "do": "damage", "amount": 400, "luck": "die", "luck_on": 4}],
+	[{"when": "defend", "do": "buff", "target": "self", "def": 600, "luck": "coin"}],
+	[{"when": "ko", "do": "heal", "amount": 100, "luck": "die", "per": "roll"}],
 	[{"when": "deploy", "do": "buff", "target": "ally", "atk": 500}],
 	[{"when": "deploy", "do": "down", "target": "enemy"}],
 	[{"when": "deploy", "do": "buff", "target": "enemies", "atk": -300, "until": "next_turn"}],

@@ -37,6 +37,8 @@ jobs:
         run: node shared/duel/ffa.test.mjs
       - name: Deck searches and set Hustles
         run: node shared/duel/hustles.test.mjs
+      - name: Luck (coin flips and die rolls)
+        run: node shared/duel/luck.test.mjs
 
   database:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)

@@ -1436,6 +1436,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_position(ev)
 		"awaken":
 			await _ev_awaken(ev)
+		"luck":
+			await _ev_luck(ev)
 		"leader_hit":
 			await _ev_leader_hit(ev)
 		"leader_heal":
@@ -1577,7 +1579,11 @@ func _ev_summon(ev: Dictionary) -> void:
 	else:
 		var heavy: bool = c.authority >= 6 or int(c.get("rarity", 1)) >= 5
 		_show_detail(c)
-		if heavy:
+		if int(c.get("rarity", 1)) >= 5:   # a Legendary makes an entrance
+			if not v.face_up:
+				v.flip(true)
+			await _legendary_entrance(v, c)
+		elif heavy:
 			_dim(0.6, 0.2)
 			if not v.face_up:
 				v.flip(true)
@@ -1670,8 +1676,13 @@ func _ev_hustle(ev: Dictionary) -> void:
 	if not v.face_up:
 		v.flip(true)
 	var center := Vector2(1080, DIVIDER_Y)
+	var legendary := int(c.get("rarity", 1)) >= 5
+	if legendary:
+		await _legendary_entrance(v, c)
 	Sfx.play("effect", 0.8)
 	await v.move_to(center, 2.1, 0.0, 0.3, Tween.TRANS_BACK).finished
+	if legendary:
+		_dim(0.0, 0.35)
 	_ring(center, BLUE, 1.5)
 	_burst(center, BLUE, 32, 420, 0.8, -250.0)
 	_float_text(center + Vector2(0, 215), "HUSTLE", BLUE, 40)
@@ -2084,6 +2095,118 @@ func _level_chevrons(pos: Vector2, col: Color) -> void:
 		t.tween_property(ch, "position:y", pos.y - 110.0, 0.55).set_delay(i * 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		t.tween_property(ch, "modulate:a", 0.0, 0.55).set_delay(i * 0.07).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 		t.chain().tween_callback(ch.queue_free)
+
+
+## A Legendary enters (summoned, called in or played): the screen darkens, the card trembles in a
+## pillar of gold light, rises to centre stage under turning rays with "LEGENDARY" and its name,
+## and lands with a shockwave (like a leader awakening).
+func _legendary_entrance(v: CardView, c: Dictionary) -> void:
+	var col := UI.rarity_color(5)
+	_dim(0.82, 0.3)
+	Sfx.play("riser", 0.6)
+	_light_column(v.position, col)
+	for i in 6:   # it stirs
+		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 10.0 + i * 3.0)
+		shake(2.0 + i)
+		if i % 2 == 0:
+			_sparks(v.position, Vector2.UP, col.lightened(0.3), 6, 120.0)
+		await _wait(0.07)
+	Sfx.play("ambush", 0.9)
+	await _showcase(v, c, col, "LEGENDARY · %s" % str(c.get("name", "")).to_upper())
+	var center := Vector2(1080, DIVIDER_Y)
+	_shockwave(center, 1.0)
+	_impact_frame(0.06)
+	shake(20)
+	_post_pulse("aberration", 12.0, 0.45)
+	_burst(center, col.lightened(0.4), 50, 700, 1.0, -100.0)
+	_ring(center, Color.WHITE, 2.8)
+	Sfx.play("boom", 0.8)
+	await _wait(0.35)
+
+
+## Luck: a coin flips (or a die tumbles) over the card, then lands on the result: outlined green
+## if the effect happens, red if it doesn't.
+func _ev_luck(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v = field.get(side, {}).get(int(ev.get("slot", -1)))
+	var at: Vector2 = v.position if v is CardView and is_instance_valid(v) else Vector2(1080, DIVIDER_Y)
+	var coin: bool = ev.get("kind") == "coin"
+	var value := int(ev.get("value", 1))
+	var won: bool = ev.get("won", false)
+	var tok := LuckToken.new()
+	tok.kind = "coin" if coin else "die"
+	tok.font = _font
+	tok.z_index = 600
+	tok.position = at
+	tok.scale = Vector2.ONE * 0.4
+	cards_layer.add_child(tok)
+	var up := create_tween().set_parallel()
+	up.tween_property(tok, "position", at + Vector2(0, -150), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	up.tween_property(tok, "scale", Vector2.ONE * 1.3, 0.28)
+	for i in 10:   # a coin turns edge-on and over; a die tumbles through its faces
+		if coin:
+			tok.scale.x = 1.3 * absf(cos(i * 1.2))
+			tok.face = i % 2
+			if i % 3 == 0:
+				Sfx.play("flip", randf_range(1.3, 1.6), -10.0)
+		else:
+			tok.face = randi_range(1, 6)
+			tok.rotation = randf_range(-0.6, 0.6)
+			Sfx.play("click", randf_range(0.8, 1.2), -8.0)
+		tok.queue_redraw()
+		await _wait(0.055)
+	tok.face = value
+	tok.rotation = 0.0
+	tok.scale = Vector2.ONE * 1.7
+	tok.edge = Color("6ef08a") if won else RED
+	tok.queue_redraw()
+	create_tween().tween_property(tok, "scale", Vector2.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Sfx.play("karat" if coin else "slam", 1.2 if won else 0.8, -4.0)
+	_burst(tok.position, tok.edge, 18, 260, 0.6, 0.0)
+	var need := int(ev.get("need", 1))
+	var text := ("HEADS!" if value == 1 else "TAILS") if coin else ("ROLLED %d" % value + ((" · SUCCESS" if won else " · FAILED") if need > 1 else ""))
+	_float_text(tok.position + Vector2(0, -80), text, tok.edge, 30)
+	await _wait(0.55)
+	var out := create_tween()
+	out.tween_property(tok, "modulate:a", 0.0, 0.25)
+	out.tween_callback(tok.queue_free)
+
+
+## A coin (a star for heads, plain for tails) or a die with its pips, for luck effects.
+class LuckToken extends Node2D:
+	const PIPS := {1: [Vector2(0, 0)], 2: [Vector2(-1, -1), Vector2(1, 1)], 3: [Vector2(-1, -1), Vector2(0, 0), Vector2(1, 1)],
+		4: [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)],
+		5: [Vector2(-1, -1), Vector2(1, -1), Vector2(0, 0), Vector2(-1, 1), Vector2(1, 1)],
+		6: [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(1, 1)]}
+	var kind := "coin"
+	var face := 1          # coin: 1 heads, 0 tails; die: 1-6
+	var edge := Color(0, 0, 0, 0)   # once it lands: green if the effect happens, red if not
+	var font: Font
+
+	func _draw() -> void:
+		if kind == "coin":
+			var metal := Color("f4c542") if face == 1 else Color("c3c7d1")
+			if edge.a > 0.0:
+				draw_circle(Vector2.ZERO, 52, edge)
+			draw_circle(Vector2.ZERO, 46, metal.darkened(0.4))
+			draw_circle(Vector2.ZERO, 41, metal)
+			draw_arc(Vector2.ZERO, 34, 0.0, TAU, 40, metal.darkened(0.25), 3.0, true)
+			if face == 1:   # heads: a star
+				var pts := PackedVector2Array()
+				for k in 10:
+					pts.append(Vector2.from_angle(-PI / 2 + k * PI / 5) * (24.0 if k % 2 == 0 else 10.0))
+				draw_colored_polygon(pts, metal.darkened(0.45))
+			elif font:
+				draw_string(font, Vector2(-40, 13), "T", HORIZONTAL_ALIGNMENT_CENTER, 80, 36, metal.darkened(0.5))
+		else:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color("f5f3ee")
+			sb.set_corner_radius_all(14)
+			sb.set_border_width_all(5 if edge.a > 0.0 else 2)
+			sb.border_color = edge if edge.a > 0.0 else Color("8a8a96")
+			draw_style_box(sb, Rect2(-40, -40, 80, 80))
+			for p in PIPS.get(face, []):
+				draw_circle(p * 21.0, 7.5, Color("1c1c28"))
 
 
 ## Leader awakening: the leader trembles while the screen darkens, rises to centre stage with

@@ -138,6 +138,11 @@ export class DuelState {
         this.first = first;
         this.places = {};                  // FFA: side -> finishing place (1 = the winner)
         this._rand = seed > 0 ? seededRandom(seed) : Math.random;
+        // Luck (coin flips, die rolls) has its own generator, the same in duel_state.gd: from the
+        // match's seed (replays repeat), fixed for seed -1 (tests compare engines), else random
+        this._luck = seededRandom(seed > 0 ? (seed ^ LUCK_SALT) >>> 0 : seed === -1 ? LUCK_TEST_SEED : Math.floor(Math.random() * 4294967296));
+        this._luckLast = null;   // the last flip or roll: {won, value} (if_luck follows it)
+        this._roll = 1;          // the last die's value ("for each pip")
         this.turn = 1;
         this.active = first;
         this.phase = 'upkeep';
@@ -927,6 +932,7 @@ export class DuelState {
             if (selfBuff && String(e.if ?? '') !== '') continue;   // settled in the brawl (_brawlBonus)
             if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `attack${k}`, e) || !this._fxOnce(att, `attack${k}`, e)) continue;
             if (selfBuff) {
+                if (!this._luckGate(side, from, att, e)) continue;
                 const se = this._scaled(side, from, e);
                 if (toInt(se.atk) !== 0) {
                     ctx.bonus += toInt(se.atk);
@@ -1067,6 +1073,7 @@ export class DuelState {
             k += 1;
             if (this.winner !== '' || this.cardAt(foe, target) !== def || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self') {
+                if (!this._luckGate(foe, target, def, e)) continue;
                 const se = this._scaled(foe, target, e);
                 defAtk += toInt(se.atk);
                 defDef += toInt(se.def);
@@ -1269,6 +1276,7 @@ export class DuelState {
             k += 1;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self'
                     && String(e.if ?? '') !== '' && this._fxCond(side, from, e, def) && this._fxOnce(att, `attack${k}`, e)) {
+                if (!this._luckGate(side, from, att, e)) continue;
                 const se = this._scaled(side, from, e);
                 if (toInt(se.atk) !== 0) {
                     extra += toInt(se.atk);
@@ -1686,6 +1694,7 @@ export class DuelState {
             case 'foe_downed': n = this._enemyChars(side).filter(x => x.card.downed).length; break;
             case 'gutter': n = s.gutter.filter(ofClan).length; break;
             case 'hand': n = s.hand.filter(ofClan).length; break;
+            case 'roll': n = Math.max(1, toInt(this._roll)); break;   // the die just rolled (_luckGate)
             default: return 1;
         }
         if (e.per_max != null) n = Math.min(n, toInt(e.per_max));
@@ -1784,6 +1793,7 @@ export class DuelState {
     /** then: a follow-up effect that happens only if this one did something ("If you do, ...").
      *  Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP. */
     _doFx(side, slot, c, e, vs = {}) {
+        if (!this._luckGate(side, slot, c, e)) return;
         const then = e.then && typeof e.then === 'object' ? e.then : null;
         if (then == null) { this._doFxOne(side, slot, c, e, vs); return; }
         const did = this._did, asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
@@ -2591,6 +2601,34 @@ export class DuelState {
         this._emit('authority', { side, value: s.authority, max: s.authority_max, delta: -amount });
     }
 
+    /**
+     * Luck (Card Forge, same as _luck_gate in duel_state.gd): whether an effect happens.
+     *   luck: 'coin' (heads: it happens) | 'die' (it happens on luck_on or more, 1-6; 'for each
+     *   pip' (per: 'roll') multiplies it by the die). if_luck: 'won' | 'lost': no roll of its own,
+     *   it follows the last flip or roll ("If tails, ..."). Anything else always happens.
+     */
+    _luckGate(side, slot, c, e) {
+        const follow = String(e.if_luck ?? '');
+        if (follow !== '') {
+            if (!this._luckLast) return false;
+            this._roll = this._luckLast.value;
+            return follow === 'lost' ? !this._luckLast.won : this._luckLast.won;
+        }
+        const kind = String(e.luck ?? '');
+        if (kind !== 'coin' && kind !== 'die' && String(e.per ?? '') !== 'roll') return true;
+        const coin = kind === 'coin';
+        const r = this._luck();
+        const value = coin ? (r < 0.5 ? 1 : 0) : 1 + Math.floor(r * 6);   // coin: 1 heads, 0 tails
+        const need = coin ? 1 : Math.max(1, Math.min(6, toInt(e.luck_on ?? 1)));
+        const won = value >= need;
+        this._luckLast = { won, value };
+        this._roll = value;
+        this._emit('luck', { side, slot, card: clone(c), kind: coin ? 'coin' : 'die', value, need, won });
+        this._effect(side, c, coin ? `${c.name} flips a coin: ${value ? 'HEADS' : 'TAILS'}`
+            : `${c.name} rolls a ${value}${need > 1 ? (won ? ` (${need}+ needed)` : ` (needed ${need}+)`) : ''}`, slot);
+        return won;
+    }
+
     _effect(side, c, text, slot = -1) {
         this._did += 1;   // effects that did something (see then in _doFx)
         this._emit('effect', { side, card: clone(c), text, slot });
@@ -2664,6 +2702,9 @@ function promptEvent(ask) {
     delete ev.still;
     return ev;
 }
+
+const LUCK_SALT = 0x5BD1E995;
+const LUCK_TEST_SEED = 0x2545F491;
 
 /** mulberry32: a small repeatable random number generator (0 <= x < 1). */
 function seededRandom(seed) {
