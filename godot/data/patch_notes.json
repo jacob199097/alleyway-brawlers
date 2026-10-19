@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.27",
+        "notes": [
+            "How to Play shows real cards for each section, and its Brawls page now says what attacking into DEF costs (it said a failed attack cost nothing, which stopped being true in 0.9.20).",
+            "New setting (Gameplay): Screen Shake & Flashes: full, reduced or off, for duels and pack openings."
+        ]
+    },
+    {
         "version": "0.9.26",
         "notes": [
             "New: the Daily Reward. Claim it once a day for Karat and Dust, growing to a free pack on day 7. Miss a day and the track starts over.",

@@ -9,12 +9,12 @@ const Keywords := preload("res://scripts/keywords.gd")
 const SECTIONS := [
 	["THE GOAL", "Bring your opponent's [b]Morale[/b] from 6000 to 0. A player who has to draw from an empty deck loses too.\n\nEach player has a 40-card deck (up to 3 copies of a card), a [b]leader[/b], and a [b]Hideout[/b] holding the higher levels of their Strivers. You start with 5 cards and may redraw your opening hand once."],
 	["A TURN", "[b]DEPLOYMENT[/b]: play cards by paying their Authority (the number in the corner). You get 1 Authority to start and 1 more every turn, up to 15. Going second, you get 1 extra on your first turn.\n\n[b]BRAWL[/b]: attack with your characters in ATK position. Nobody attacks on turn 1.\n\n[b]REGROUP[/b]: deploy again with what Authority is left, then end your turn. You can hold up to 9 cards: discard down to 9 at the end of your turn."],
-	["CHARACTERS", "Characters go in your front row, in [b]ATK[/b] (upright) or [b]DEF[/b] (sideways). You choose when you deploy, and once per turn you can switch a character's position.\n\n[b]Strivers[/b] have levels and PROMOTE into the next one from your Hideout (it can't attack the turn it promotes: the ZZZ tag).\n[b]Brawlers[/b] are standalone.\n[b]Heavies[/b] are played onto your own characters: they sacrifice as many as the card says (SACRIFICE 1-3) and take one of their lanes.\n\nA full front row? Drop a character on one of yours (orange lanes) to deploy over it: the old one goes to the Gutter."],
-	["BRAWLS", "Attacking a character in [b]ATK[/b]: the higher ATK wins. The loser goes Down and its owner loses Morale equal to the difference. A tie Downs both.\n\nAttacking a character in [b]DEF[/b] (or Downed): beat its DEF to Down it. No Morale is lost (unless the attacker has PIERCE), and a failed attack costs nothing.\n\nWhen the enemy has no standing character, you attack them [b]directly[/b]: they lose Morale equal to the attacker's ATK."],
+	["CHARACTERS", "Characters go in your front row, in [b]ATK[/b] (upright) or [b]DEF[/b] (sideways). You choose when you deploy, and once per turn you can switch a character's position.\n\n[b]Strivers[/b] have levels and PROMOTE into the next one from your Hideout (it can't attack the turn it promotes: the ZZZ tag). The [b]stars[/b] on a Striver show its level: one gold star of three is level 1.\n[b]Brawlers[/b] are standalone.\n[b]Heavies[/b] are played onto your own characters: they sacrifice as many as the card says (SACRIFICE 1-3) and take one of their lanes.\n\nA full front row? Drop a character on one of yours (orange lanes) to deploy over it: the old one goes to the Gutter."],
+	["BRAWLS", "Attacking a character in [b]ATK[/b]: the higher ATK wins. The loser goes Down and its owner loses Morale equal to the difference. A tie Downs both.\n\nAttacking a character in [b]DEF[/b] (or Downed): beat its DEF to Down it. Its owner loses no Morale (unless the attacker has PIERCE). Fall short and the attack is blocked, and [b]you[/b] lose the difference in Morale.\n\nWhen the enemy has no standing character, you attack them [b]directly[/b]: they lose Morale equal to the attacker's ATK."],
 	["DOWNED & KO", "A character that loses a brawl is [b]Downed[/b]: it drops to DEF and its effects stop working. It stands back up at the start of its owner's turn after a full round.\n\nAttacked again while Downed, it is [b]KO'd[/b] and goes to the Gutter.\n\nClick your Gutter, your opponent's Gutter or your Hideout to look through them."],
 	["LEADERS", "Your leader starts [b]Dormant[/b]: its Dormant effects help you while it waits. The enemy can attack a Dormant leader to wear down its [b]Influence[/b]: at 0 it is defeated.\n\nWhen its [b]AWAKEN[/b] condition is met (on the card), it may take the field like a character, with its full strength. Usually it can't attack the turn it Awakens."],
 	["HUSTLES & AMBUSHES", "A [b]Hustle[/b] does its effects when you play it, then goes to the Gutter. You can also set one face-down in your back row for free, and activate it whenever you choose on your turn (any phase, even the turn you set it), paying its Authority then.\n\nAn [b]Ambush[/b] is set face-down in your back row. When an enemy attacks one of your characters, you may spring it. If the attacker ends up Downed, removed or in STASIS, the attack stops.\n\nSome are CONTINUOUS (they stay face-up and keep working) or EQUIP (they attach to a character)."],
-	["ABILITIES", "Card text tells you when an effect happens: when deployed, when it attacks, when an ally is KO'd...\n\nA [b]teal glow[/b] means a character has an [b]ACTIVATE[/b] ability ready: click it to use it, once per turn, paying any cost shown (Authority, Morale, a discard, a sacrifice, or not attacking this turn).\n\nWhen an effect lets you choose, the cards you can pick glow: click one, or SKIP.\n\n[b]If you do[/b]: that part only happens if the part before it worked."],
+	["ABILITIES", "Card text tells you when an effect happens: when deployed, when it attacks, when an ally is KO'd...\n\nA [b]teal glow[/b] means a character has an [b]ACTIVATE[/b] ability ready: click it to use it, once per turn, paying any cost shown (Authority, Morale, a discard, a sacrifice, or not attacking this turn).\n\nWhen an effect lets you choose, the cards you can pick glow: click one, or SKIP.\n\n[b]If you do[/b]: that part only happens if the part before it worked.\n\n[b]Luck[/b]: some cards flip a coin or roll a die, shown on the board. \"If tails\" parts follow the same flip."],
 ]
 
 
@@ -25,6 +25,7 @@ static func open(parent: Node) -> Control:
 
 
 var _text: RichTextLabel
+var _cards: HBoxContainer   # the section's example cards, under its text
 var _tabs := {}
 
 
@@ -69,7 +70,13 @@ func _ready() -> void:
 	_text.custom_minimum_size = Vector2(1000, 0)
 	_text.add_theme_font_size_override("normal_font_size", 24)
 	_text.add_theme_font_size_override("bold_font_size", 24)
-	scroll.add_child(_text)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 22)
+	scroll.add_child(body)
+	body.add_child(_text)
+	_cards = HBoxContainer.new()
+	_cards.add_theme_constant_override("separation", 28)
+	body.add_child(_cards)
 	var close := UI.button("CLOSE", queue_free, Vector2(240, 56), UI.GOLD)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(close)
@@ -100,6 +107,87 @@ func _show(tab: String) -> void:
 			if s[0] == tab:
 				body = _colour_keywords(s[1])
 	_text.text = body
+	_show_cards(tab)
+
+
+## Real cards for a section: [card, caption, degrees turned, dimmed]. Your clan's first.
+func _show_cards(tab: String) -> void:
+	for c in _cards.get_children():
+		c.queue_free()
+	var mine := str(Game.player.get("chosen_clan", ""))
+	var pool: Array = []
+	for id in CardDB.all():
+		var c: Dictionary = CardDB.all()[id]
+		if not c.get("token", false) and str(c.get("clan", "")) != "":
+			pool.append(c)
+	pool.sort_custom(func(a, b):
+		var ma := 0 if str(a.get("clan", "")) == mine else 1
+		var mb := 0 if str(b.get("clan", "")) == mine else 1
+		return ma < mb if ma != mb else str(a.id) < str(b.id))
+	var find := func(ok: Callable) -> Dictionary:
+		for c in pool:
+			if ok.call(c):
+				return c
+		return {}
+	var unit := func(c): return c.get("cardType") == "gang_member" and int(c.get("level", 1)) == 1
+	var picks: Array = []
+	match tab:
+		"THE GOAL", "LEADERS":
+			for c in pool:
+				if c.get("cardType") == "leader" and picks.size() < 2:
+					picks.append([c, "LEADER  ·  %s" % str(c.get("clanName", "")).to_upper(), 0.0, false])
+		"A TURN":
+			for want in [1, 4, 7]:
+				var c: Dictionary = find.call(func(x): return unit.call(x) and int(x.get("authority", 0)) == want)
+				if not c.is_empty():
+					picks.append([c, "AUTHORITY %d" % want, 0.0, false])
+		"CHARACTERS":
+			for role in ["striver", "brawler", "heavy"]:
+				var c: Dictionary = find.call(func(x): return unit.call(x) and str(x.get("subtype", "")) == role)
+				if not c.is_empty():
+					picks.append([c, role.to_upper(), 0.0, false])
+		"BRAWLS":
+			var a: Dictionary = find.call(func(x): return unit.call(x) and int(x.get("attack", 0)) >= 2000)
+			var d: Dictionary = find.call(func(x): return unit.call(x) and int(x.get("defense", 0)) >= 2000 and x != a)
+			if not a.is_empty():
+				picks.append([a, "IN ATK  ·  ATK %d" % int(a.attack), 0.0, false])
+			if not d.is_empty():
+				picks.append([d, "IN DEF  ·  DEF %d" % int(d.defense), 90.0, false])
+		"DOWNED & KO":
+			var c: Dictionary = find.call(func(x): return unit.call(x))
+			if not c.is_empty():
+				picks.append([c, "DOWNED: SIDEWAYS, EFFECTS OFF", 90.0, true])
+		"HUSTLES & AMBUSHES":
+			for kind in [["hustle", "", "HUSTLE"], ["ambush", "", "AMBUSH"], ["", "continuous", "CONTINUOUS"]]:
+				var c: Dictionary = find.call(func(x): return (kind[0] == "" or x.get("cardType") == kind[0]) and (kind[1] == "" or str(x.get("subtype", "")) == kind[1]) \
+					and (kind[1] != "" or str(x.get("subtype", "")) == ""))
+				if not c.is_empty():
+					picks.append([c, kind[2], 0.0, false])
+		"ABILITIES":
+			for c in pool:
+				if picks.size() < 2 and (c.get("effects", []) as Array).any(func(e): return str(e.get("when", "")) == "activate"):
+					picks.append([c, "ACTIVATE", 0.0, false])
+	for p in picks:
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 10)
+		var holder := Control.new()
+		holder.custom_minimum_size = Vector2(212, 212) if p[2] != 0.0 else Vector2(150, 212)
+		var tile := CardTile.make(p[0], Vector2(150, 212))
+		tile.position = (holder.custom_minimum_size - tile.size) / 2
+		holder.add_child(tile)
+		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
+		tile.ready.connect(func():
+			tile.pivot_offset = tile.size / 2
+			tile.rotation_degrees = p[2]
+			if p[3]:
+				tile.modulate = Color(0.6, 0.6, 0.7))
+		box.add_child(holder)
+		var cap := UI.label(p[1], 16, UI.GOLD, true)
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cap.custom_minimum_size = Vector2(holder.custom_minimum_size.x, 0)
+		box.add_child(cap)
+		_cards.add_child(box)
+	CardTile.cascade(_cards.get_children(), 0.05)
 
 
 ## Keywords coloured like on the cards; the section's own [b] tags are kept (markup() escapes

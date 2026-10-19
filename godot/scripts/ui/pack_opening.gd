@@ -329,8 +329,9 @@ func _pack_entrance() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _shake > 0.15:
-		_layer.position = Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
+	var fx := clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0)   # (Settings → Screen Shake & Flashes)
+	if _shake * fx > 0.15:
+		_layer.position = Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake)) * fx
 		_shake *= exp(-delta * 7.0)
 	else:
 		_shake = 0.0
@@ -1227,8 +1228,11 @@ func _shockwave(at: Vector2, strength: float) -> void:
 
 
 func _flash(col: Color, alpha: float, secs: float) -> void:
+	var fx := clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0)
+	if fx <= 0.0:
+		return
 	var r := ColorRect.new()
-	r.color = Color(col, alpha)
+	r.color = Color(col, alpha * fx)
 	r.size = size
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(r)

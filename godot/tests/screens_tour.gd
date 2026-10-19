@@ -144,6 +144,13 @@ func _run() -> void:
 	panel._show("gameplay")
 	await _shot("04_settings_gameplay", 0.4)
 	panel.close()
+	var htp: Control = load("res://scripts/ui/how_to_play.gd").open(_screen())
+	await _shot("04_how_to_play", 0.8)
+	htp._show("BRAWLS")
+	await _shot("04_how_to_play_brawls", 0.8)
+	htp._show("CHARACTERS")
+	await _shot("04_how_to_play_chars", 0.8)
+	htp.queue_free()
 	_screen()._show_patch_notes("0.6.0", str(ProjectSettings.get_setting("application/config/version", "")))
 	await _shot("04_patch_notes", 1.4)
 	# Deck builder tools: empty the deck, auto-fill it, filter by a keyword

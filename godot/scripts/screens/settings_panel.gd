@@ -99,7 +99,8 @@ func _show(tab: String) -> void:
 			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
 			_cycle("Colour-Blind Symbols", [false, true], ["OFF", "ON"], "glow_symbols")
-			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind symbols add a shape to every glow in a duel: + can be played, ! can act, a bolt for an Activate ability, arrows to deploy over, X to sacrifice, a crosshair to attack.", 20, UI.MUTED)
+			_cycle("Screen Shake & Flashes", [1.0, 0.5, 0.0], ["FULL", "REDUCED", "OFF"], "screen_fx")
+			var note := UI.label("Screen shake & flashes: how hard big hits shake and flash the screen in a duel. Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind symbols add a shape to every glow in a duel: + can be played, ! can act, a bolt for an Activate ability, arrows to deploy over, X to sacrifice, a crosshair to attack.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)
 			_body.add_child(note)

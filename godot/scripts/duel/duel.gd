@@ -3171,7 +3171,12 @@ func _to_gutter(v: CardView, side: String) -> void:
 # ── Effects (juice) ──────────────────────────────────────────────────────────
 
 func shake(amount: float) -> void:
-	_shake = maxf(_shake, amount)
+	_shake = maxf(_shake, amount * _fx_level())
+
+
+## Settings → Screen Shake & Flashes: 1 full, 0.5 reduced, 0 off.
+func _fx_level() -> float:
+	return clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0)
 
 
 func _wait(seconds: float) -> void:
@@ -3279,8 +3284,10 @@ func _dim(alpha: float, seconds: float) -> void:
 
 
 func _screen_flash(color: Color, alpha: float) -> void:
+	if _fx_level() <= 0.0:
+		return
 	var r := ColorRect.new()
-	r.color = Color(color, alpha)
+	r.color = Color(color, alpha * _fx_level())
 	r.size = Vector2(1920, 1080)
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(r)
@@ -3357,6 +3364,7 @@ func _update_post() -> void:
 
 ## Spike a post effect and let it fall back to zero.
 func _post_pulse(param: String, peak: float, seconds: float) -> void:
+	peak *= _fx_level()
 	_post_fx[param] = maxf(_post_fx[param], peak)
 	var t := create_tween()
 	t.tween_method(func(x: float): _post_fx[param] = x, _post_fx[param], 0.0, seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -3452,6 +3460,8 @@ func _showcase(v: CardView, c: Dictionary, color: Color, title := "") -> void:
 
 ## A split-second stark black-and-white frame at the moment of contact (real time).
 func _impact_frame(seconds: float) -> void:
+	if _fx_level() < 1.0:   # (the black-and-white frame is the harshest flash of all)
+		return
 	_post_fx.impact = 1.0
 	await get_tree().create_timer(seconds, true, false, true).timeout
 	_post_fx.impact = 0.0

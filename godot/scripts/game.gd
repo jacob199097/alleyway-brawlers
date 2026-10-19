@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS := {
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
+	"screen_fx": 1.0,               # screen shake, flashes and impact frames: 1 full, 0.5 reduced, 0 off
 	"ambience_volume": 0.8,         # rain, the crowd, the wind (Game.sound)
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 }
