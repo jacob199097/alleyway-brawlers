@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.21",
+        "notes": [
+            "New art: the Shop, Card Library, Deck Builder and Achievements screens each have their own background, filled with real cards, packs and clan crests.",
+            "Clan emblems on the results screen, new achievement icons, and a game icon.",
+            "The main menu alley has clean walls."
+        ]
+    },
+    {
         "version": "0.9.20",
         "notes": [
             "Rules: attacking a character in DEF position and falling short now costs you the difference in Morale, as it does against ATK."

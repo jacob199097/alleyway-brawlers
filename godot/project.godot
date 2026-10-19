@@ -11,9 +11,11 @@ config_version=5
 [application]
 
 config/name="Alleyway Brawlers"
-config/version="0.9.20"
+config/version="0.9.21"
 config/description="Godot desktop client: menus and duel (see godot/README.md)."
 run/main_scene="res://scenes/boot.tscn"
+config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [debug]

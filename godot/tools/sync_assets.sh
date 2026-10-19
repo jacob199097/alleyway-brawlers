@@ -4,7 +4,7 @@ set -e
 here=$(cd "$(dirname "$0")" && pwd)
 src="$here/../../assets"
 dst="$here/../assets"
-for dir in cards ranks levels; do
+for dir in cards ranks levels emblems; do
     mkdir -p "$dst/$dir"
     cp "$src/$dir"/*.png "$dst/$dir/"
 done
