@@ -222,6 +222,28 @@ async function rejects(promise, pattern) {
     assert.ok(!('karat' in board.top[0]) && !('email' in board.top[0]), 'no currencies or emails');
     assert.ok(board.total >= 3);
 
+    // The daily reward: day 1 first, once a day, on to day 2 the next day; a missed day starts over
+    const daily = require('./daily');
+    const dp = (await q(`INSERT INTO players (username, email, password_hash) VALUES ('daily', 'daily@x', 'x') RETURNING id, karat, dust`)).rows[0];
+    let ds = await daily.status(dp.id);
+    assert.deepEqual([ds.day, ds.claimed], [1, false], 'a new player is on day 1');
+    let dc = await daily.claim(dp.id);
+    assert.equal(dc.day, 1);
+    assert.equal(dc.karat, dp.karat + daily.REWARDS[0].karat, 'day 1 pays its Karat');
+    assert.equal(await daily.claim(dp.id), null, 'only once a day');
+    assert.ok((await daily.status(dp.id)).claimed);
+    await q('UPDATE players SET daily_claimed_on = daily_claimed_on - 1 WHERE id = $1', [dp.id]);   // (it's tomorrow)
+    ds = await daily.status(dp.id);
+    assert.deepEqual([ds.day, ds.claimed], [2, false], 'the next day is day 2');
+    dc = await daily.claim(dp.id);
+    assert.equal(dc.dust, dp.dust + daily.REWARDS[1].dust, 'day 2 pays its Dust');
+    await q('UPDATE players SET daily_claimed_on = daily_claimed_on - 3 WHERE id = $1', [dp.id]);   // (days missed)
+    assert.equal((await daily.status(dp.id)).day, 1, 'a missed day starts the track over');
+    await q("UPDATE players SET daily_streak = 6, daily_claimed_on = (now() AT TIME ZONE 'UTC')::date - 1 WHERE id = $1", [dp.id]);
+    dc = await daily.claim(dp.id);
+    assert.equal(dc.day, 7);
+    assert.equal(dc.free_packs, 1, 'day 7 brings a free pack');
+
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);
 

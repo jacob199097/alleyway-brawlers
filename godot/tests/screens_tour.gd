@@ -91,6 +91,12 @@ func _run() -> void:
 	await _shot("02_friend_profile", 2.2)
 	Game.go("leaderboard")
 	await _shot("02_leaderboard", 2.4)
+	# The daily reward on the main menu (day 3: two days ticked off, today glowing)
+	Game.go("main_menu")
+	await get_tree().create_timer(1.6).timeout
+	_screen()._daily_popup({"day": 3, "claimed": false, "streak": 2, "rewards": [{"karat": 100}, {"dust": 50}, {"karat": 150},
+		{"dust": 100}, {"karat": 200}, {"dust": 150}, {"karat": 300, "free_packs": 1}]})
+	await _shot("02_daily", 1.2)
 	# Crafting: pick a card in the library, then an achievement unlocking
 	Game.go("card_library")
 	await get_tree().create_timer(2.0).timeout

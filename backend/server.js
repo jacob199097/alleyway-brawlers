@@ -48,6 +48,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const { router: mailRoutes } = require('./routes/mail');
 const craftRoutes = require('./routes/craft');
 const achievementRoutes = require('./routes/achievements');
+const dailyRoutes = require('./routes/daily');
 
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app    = express();
@@ -78,6 +79,7 @@ app.use('/api/telemetry', telemetryRoutes); // error reports from the game
 app.use('/api/replays', createReplayRoutes(replaySteps));
 app.use('/api/quests',  questRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/daily', dailyRoutes);   // the daily reward
 app.use('/api/mail',    mailRoutes);
 app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);

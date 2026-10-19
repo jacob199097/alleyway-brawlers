@@ -12,6 +12,11 @@ const TIPS := [
 	["ACTIVATE", "A teal glow means a character has an ACTIVATE ability ready. Click it to use it: once per turn, paying any cost shown."],
 	["AMBUSHES", "Set an Ambush face-down in your back row. When an enemy attacks one of your characters, you can spring it."],
 	["GUTTER & HIDEOUT", "In a duel, click your Gutter, your opponent's Gutter or your Hideout to look through every card in it."],
+	["STRIVER STARS", "The stars on a Striver show its level: one gold star of three is level 1, with two promotions still to earn."],
+	["ATTACKING DEF", "Attack a character in DEF and fall short, and you lose the difference in Morale. Check its DEF before you swing."],
+	["LUCK", "Some cards flip a coin or roll a die. The result is shown on the board, and \"if tails\" effects follow the same flip."],
+	["CRAFTING", "Scrap spare cards in the Card Library for Dust, then craft the ones you're missing."],
+	["LEADERBOARD", "Ranked wins earn Rank Points. See where you stand on the Leaderboard, from Select Battle Mode."],
 ]
 
 var _status: Label

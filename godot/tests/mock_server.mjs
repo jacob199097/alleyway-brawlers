@@ -171,6 +171,9 @@ const routes = {
         if (b.back !== undefined) player.card_back = b.back;
         return [200, { ok: true }];
     },
+    // The daily reward (backend/economy/daily.js shape): taken already, so the tour isn't held up
+    'GET /api/daily': () => [200, { day: 3, claimed: true, streak: 3, rewards: [{ karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 }, { karat: 200 }, { dust: 150 }, { karat: 300, free_packs: 1 }] }],
+    'POST /api/daily/claim': () => { player.karat += 150; return [200, { day: 3, reward: { karat: 150 }, karat: player.karat, dust: player.dust ?? 0, free_packs: player.free_packs ?? 0 }]; },
     // The leaderboard (backend/economy/leaderboard.js shape): a few rivals around the player
     'GET /api/profile/leaderboard': () => {
         const names = [['Kingpin_Vex', 'kingpin', 2140, 'Legend of the Alley'], ['AlleyCat', 'enforcer', 820, 'Collector'], ['Brickhouse', 'enforcer', 610, null],

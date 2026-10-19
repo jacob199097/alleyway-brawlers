@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.26",
+        "notes": [
+            "New: the Daily Reward. Claim it once a day for Karat and Dust, growing to a free pack on day 7. Miss a day and the track starts over.",
+            "New loading tips for Striver stars, attacking into DEF, luck, crafting and the Leaderboard."
+        ]
+    },
+    {
         "version": "0.9.25",
         "notes": [
             "Crafting a card is a reveal: the Dust pulls together, a flash, and the card turns in under light in its rarity's colour before it goes into your collection. The Dust count runs down as you spend it.",

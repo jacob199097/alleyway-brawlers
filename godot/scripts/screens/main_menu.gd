@@ -25,6 +25,9 @@ func _ready() -> void:
 	_intro()
 	if not Game.offline:
 		Net.rejoin()   # a match still running (the game closed mid-match) opens again
+		await _daily()
+		if not is_inside_tree():
+			return
 	var returning: bool = Game.settings.tutorial_offered
 	if not Game.settings.tutorial_done and not Game.settings.tutorial_offered:
 		# First visit: suggest the guided first duel once
@@ -39,6 +42,178 @@ func _ready() -> void:
 		l.position = Vector2(0, 1040)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		add_child(l)
+
+
+## Today's daily reward (GET /api/daily), if it hasn't been taken: shown, and waited on until closed.
+func _daily() -> void:
+	var r := await Api.request("GET", "/api/daily")
+	if not r.ok or not (r.data is Dictionary) or r.data.get("claimed", true) or not is_inside_tree():
+		return
+	await get_tree().create_timer(0.5).timeout
+	var popup := _daily_popup(r.data)
+	await popup.tree_exited
+
+
+## The seven-day track: past days ticked off, today's glowing, the rest to come; CLAIM pays today's.
+func _daily_popup(s: Dictionary) -> Control:
+	var day := int(s.get("day", 1))
+	var rewards: Array = s.get("rewards", [])
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0.0)
+	veil.size = Vector2(1920, 1080)
+	veil.z_index = 40
+	add_child(veil)
+	veil.create_tween().tween_property(veil, "color:a", 0.62, 0.25)
+	var panel := UI.glass(UI.panel(UI.GOLD, Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.7))
+	panel.position = Vector2(300, 250)
+	panel.custom_minimum_size = Vector2(1320, 0)
+	veil.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	panel.add_child(col)
+	var title := UI.label("DAILY REWARD", 52, UI.GOLD, true)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var sub := UI.label("Day %d of 7  ·  come back every day: day 7 brings a free pack. Miss a day and it starts over." % day, 21, UI.MUTED)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(sub)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	col.add_child(row)
+	var tiles: Array = []
+	for i in rewards.size():
+		var t := _daily_tile(i + 1, rewards[i], day)
+		row.add_child(t)
+		tiles.append(t)
+	UI.stagger(tiles, 0.15, 0.06)
+	var claim := UI.button("CLAIM DAY %d" % day, func(): pass, Vector2(360, 66), UI.GREEN)
+	var bc := CenterContainer.new()
+	bc.add_child(claim)
+	col.add_child(bc)
+	claim.pressed.connect(func():
+		claim.disabled = true
+		claim.text = "…"
+		var r := await Api.request("POST", "/api/daily/claim")
+		if not is_instance_valid(veil):
+			return
+		if not r.ok:
+			UI.toast(self, r.error, UI.RED)
+			veil.queue_free()
+			return
+		await _daily_paid(r.data, tiles[day - 1] if day <= tiles.size() else null)
+		if not is_instance_valid(veil):
+			return
+		var out := veil.create_tween()
+		out.tween_interval(0.9)
+		out.tween_property(veil, "modulate:a", 0.0, 0.3)
+		out.tween_callback(veil.queue_free))
+	# Rises in
+	panel.modulate.a = 0.0
+	var to := panel.position
+	panel.position.y += 60
+	var t := panel.create_tween().set_parallel()
+	t.tween_property(panel, "modulate:a", 1.0, 0.3)
+	t.tween_property(panel, "position", to, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Sfx.play("promote", 1.3, -8.0)
+	return veil
+
+
+## One day's tile: DAY n, what it pays, ticked off (before today), glowing (today) or dim (to come).
+func _daily_tile(n: int, reward: Dictionary, today: int) -> PanelContainer:
+	var past := n < today
+	var now := n == today
+	var col := UI.GOLD if now else Color(0.5, 0.85, 0.5) if past else Color(1, 1, 1, 0.25)
+	var tile := UI.panel(col, Color(0.12, 0.09, 0.02, 0.85) if now else Color(0.03, 0.03, 0.08, 0.75))
+	tile.custom_minimum_size = Vector2(160, 250)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 8)
+	tile.add_child(v)
+	var head := UI.label("DAY %d" % n, 24, col if not past else UI.MUTED, true)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(head)
+	var icon := CenterContainer.new()
+	icon.custom_minimum_size = Vector2(0, 110)
+	v.add_child(icon)
+	var words: Array = []
+	if int(reward.get("free_packs", 0)) > 0:
+		var art := UI.tex("%s_booster.png" % str(Game.player.get("chosen_clan", "")))
+		if art:
+			icon.add_child(UI.texture_rect(art, Vector2(80, 108)))
+		words.append("FREE PACK")
+	elif int(reward.get("dust", 0)) > 0:
+		icon.add_child(UI.label("✦", 76, UI.PURPLE, true))
+	else:
+		var coin := PanelContainer.new()
+		var cb := UI.box(Color("3b2a05"), UI.GOLD, 4, 40)
+		coin.add_theme_stylebox_override("panel", UI._glow(cb, UI.GOLD, 0.6))
+		coin.custom_minimum_size = Vector2(80, 80)
+		var k := UI.label("K", 44, UI.GOLD, true)
+		k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		k.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		coin.add_child(k)
+		icon.add_child(coin)
+	if int(reward.get("karat", 0)) > 0:
+		words.push_front("%d KARAT" % int(reward.karat))
+	if int(reward.get("dust", 0)) > 0:
+		words.push_front("%d DUST" % int(reward.dust))
+	var amt := UI.label("\n".join(words), 18, Color.WHITE if not past else UI.MUTED, true)
+	amt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(amt)
+	if past:
+		tile.modulate = Color(0.75, 0.75, 0.8)
+		var tick := UI.label("✓", 28, Color(0.5, 0.95, 0.5), true)
+		tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(tick)
+	elif now:
+		tile.pivot_offset = tile.custom_minimum_size / 2
+		var pulse := tile.create_tween().set_loops()
+		pulse.tween_property(tile, "scale", Vector2.ONE * 1.06, 0.7).set_trans(Tween.TRANS_SINE)
+		pulse.tween_property(tile, "scale", Vector2.ONE, 0.7).set_trans(Tween.TRANS_SINE)
+		tile.set_meta("pulse", pulse)
+	else:
+		tile.modulate = Color(0.6, 0.6, 0.68)
+	return tile
+
+
+## Today's reward paid: the tile stamps, coins fly to the Karat count, the menu's numbers catch up.
+func _daily_paid(d: Dictionary, tile) -> void:
+	var reward: Dictionary = d.get("reward", {})
+	var k0 := int(Game.player.get("karat", 0))
+	Game.player.karat = int(d.get("karat", k0))
+	Game.player.dust = int(d.get("dust", Game.player.get("dust", 0)))
+	Game.player.free_packs = int(d.get("free_packs", Game.player.get("free_packs", 0)))
+	Sfx.play("level_up", 1.1, -4.0)
+	var from := Vector2(960, 540)
+	if tile is Control and is_instance_valid(tile):
+		var tc: Control = tile
+		from = tc.get_global_rect().get_center()
+		if tc.has_meta("pulse"):   # (it stops breathing: it's taken)
+			(tc.get_meta("pulse") as Tween).kill()
+		var stamp := tc.create_tween()
+		stamp.tween_property(tc, "scale", Vector2.ONE * 1.18, 0.1)
+		stamp.tween_property(tc, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		var tick := UI.label("✓", 90, Color(0.5, 1.0, 0.5), true)
+		tick.size = tc.size
+		tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tick.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tick.pivot_offset = tick.size / 2
+		tick.scale = Vector2.ONE * 2.2
+		tc.add_child(tick)
+		tick.create_tween().tween_property(tick, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if int(reward.get("karat", 0)) > 0 and _karat:
+		_coins(from, _karat.get_global_rect().get_center(), UI.GOLD)
+		await get_tree().create_timer(0.5).timeout
+		Sfx.play("karat", 1.0, -2.0)
+		UI.count_up(_karat, k0, int(Game.player.karat), 0.7, "%d", "click")
+	var gained := []
+	if int(reward.get("dust", 0)) > 0:
+		gained.append("+%d DUST" % int(reward.dust))
+	if int(reward.get("free_packs", 0)) > 0:
+		gained.append("+1 FREE PACK")
+	if not gained.is_empty():
+		UI.toast(self, "  ·  ".join(gained), UI.PURPLE)
 
 
 ## "What's new" once per version (data/patch_notes.json): every version since the one the
