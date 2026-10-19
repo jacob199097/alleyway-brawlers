@@ -39,6 +39,10 @@ func _ready() -> void:
 	tut.position = Vector2(960 - 220, 958)
 	add_child(tut)
 	if not Game.offline:
+		var lb := UI.button("🏆  LEADERBOARD", func(): Game.go("leaderboard"), Vector2(300, 60), UI.GOLD)
+		lb.position = Vector2(400, 958)
+		add_child(lb)
+	if not Game.offline:
 		_weekly()
 
 

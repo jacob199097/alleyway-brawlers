@@ -209,6 +209,19 @@ async function rejects(promise, pattern) {
     const vsCpu = await resolveFfaMatch({ playerId: ffaP.id, place: 1, humans: 1 });
     assert.ok(vsCpu.karatEarned < first.karatEarned, 'against CPUs only it pays like a CPU match');
 
+    // The leaderboard: by Rank Points, then wins; everyone sees where they stand, and no currencies
+    const { leaderboard } = require('./leaderboard');
+    const lb1 = (await q(`INSERT INTO players (username, email, password_hash, rank_points, wins) VALUES ('lb_top', 'lb1@x', 'x', 900, 3) RETURNING id`)).rows[0].id;
+    await q(`INSERT INTO players (username, email, password_hash, rank_points, wins) VALUES ('lb_two', 'lb2@x', 'x', 900, 1)`);
+    const board = await leaderboard(id, 50);
+    assert.equal(board.top[0].id, lb1, 'most Rank Points first');
+    assert.equal(board.top[1].username, 'lb_two', 'a tie goes to the one with more wins');
+    assert.equal(board.top[0].place, 1);
+    assert.equal(board.me.id, id, 'the asking player sees their own place');
+    assert.ok(board.me.place >= 3);
+    assert.ok(!('karat' in board.top[0]) && !('email' in board.top[0]), 'no currencies or emails');
+    assert.ok(board.total >= 3);
+
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);
 

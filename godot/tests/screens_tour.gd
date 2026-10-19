@@ -89,6 +89,8 @@ func _run() -> void:
 	Game.view_player_id = "00000000-0000-0000-0000-000000000001"
 	Game.go("profile")
 	await _shot("02_friend_profile", 2.2)
+	Game.go("leaderboard")
+	await _shot("02_leaderboard", 2.4)
 	# Crafting: pick a card in the library, then an achievement unlocking
 	Game.go("card_library")
 	await get_tree().create_timer(2.0).timeout

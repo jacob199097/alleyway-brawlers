@@ -4,6 +4,7 @@ const router          = require('express').Router();
 const { requireAuth } = require('./middleware');
 const { pool }        = require('../db/pool');
 const achievements    = require('../economy/achievements');
+const { leaderboard } = require('../economy/leaderboard');
 
 // ── GET /api/profile/me ───────────────────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
@@ -25,6 +26,15 @@ router.get('/me', requireAuth, async (req, res) => {
         );
         if (!rows.length) return res.status(404).json({ error: 'Player not found.' });
         res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── GET /api/profile/leaderboard — the top 50 by Rank Points, and where you stand ─────────────────
+router.get('/leaderboard', requireAuth, async (req, res) => {
+    try {
+        res.json(await leaderboard(req.playerId, 50));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

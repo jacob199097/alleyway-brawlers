@@ -67,6 +67,10 @@ func _render(p: Dictionary) -> void:
 	if UI.tex("ranks/%s.png" % rank):
 		rank_row.add_child(UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(46, 46)))
 	rank_row.add_child(UI.label(rank.replace("_", " ").to_upper(), 26, UI.BLUE, true))
+	if not Game.offline and not _friend:
+		var lb := UI.button("LEADERBOARD", func(): Game.go("leaderboard"), Vector2(170, 40), UI.GOLD)
+		lb.add_theme_font_size_override("font_size", 16)
+		rank_row.add_child(lb)
 	left.add_child(rank_row)
 	var lv_box := CenterContainer.new()
 	lv_box.add_child(UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(120, 120)))

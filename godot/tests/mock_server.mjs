@@ -171,6 +171,18 @@ const routes = {
         if (b.back !== undefined) player.card_back = b.back;
         return [200, { ok: true }];
     },
+    // The leaderboard (backend/economy/leaderboard.js shape): a few rivals around the player
+    'GET /api/profile/leaderboard': () => {
+        const names = [['Kingpin_Vex', 'kingpin', 2140, 'Legend of the Alley'], ['AlleyCat', 'enforcer', 820, 'Collector'], ['Brickhouse', 'enforcer', 610, null],
+            ['NeonDrifter', 'street_tough', 410, null], ['RustBucket', 'street_tough', 300, null], ['Static', 'rookie', 120, null], ['NewKid', 'rookie', 40, null]];
+        const clans = pickableClans().map(c => c.id);
+        const rows = names.map(([username, rank, rp, title], i) => ({ id: '00000000-0000-0000-0000-00000000010' + i, username, rank, rank_points: rp, title,
+            level: 20 - i * 2, wins: 60 - i * 7, losses: 20 + i, avatar_url: 'level:' + (5 * ((i % 3) + 1)), chosen_clan: clans[i % clans.length] ?? null }));
+        rows.push({ ...player, rank_points: player.rank_points ?? 240 });
+        rows.sort((a, b) => (b.rank_points ?? 0) - (a.rank_points ?? 0) || (b.wins ?? 0) - (a.wins ?? 0));
+        rows.forEach((r, i) => { r.place = i + 1; });
+        return [200, { top: rows, me: rows.find(r => r.id === player.id), total: rows.length }];
+    },
     'GET /api/profile/player/:id': (_b, id) => [200, { id, username: 'AlleyCat', level: 9, xp: 400, rank: 'enforcer', rank_points: 820, last_played_at: new Date(Date.now() - 2 * 86400e3).toISOString(),
         wins: 41, losses: 22, draws: 2, avatar_url: 'level:5', profile_bio: 'Never lost on my home turf.', chosen_clan: pickableClans()[0]?.id ?? null,
         created_at: '2026-09-02T10:00:00Z', title: 'Collector', achievements: 7, collection_pct: 38.5, is_online: true }],
