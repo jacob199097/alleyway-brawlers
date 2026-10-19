@@ -1262,6 +1262,9 @@ func _atk_resolve(ctx: Dictionary) -> void:
 			result = _defeat(foe, target)
 		else:
 			_emit("blocked", {"side": foe, "slot": target})
+			if a_val < d_val:   # a failed attack costs the difference, as it does against ATK
+				_damage(side, d_val - a_val)
+				_lifesteal(foe, target, def, d_val - a_val)
 	elif a_val > d_val:
 		_damage(foe, a_val - d_val)
 		_lifesteal(side, from, att, a_val - d_val)

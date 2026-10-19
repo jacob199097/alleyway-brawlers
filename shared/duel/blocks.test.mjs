@@ -105,4 +105,13 @@ st = board([], [{ cardType: 'leader' }]);
 assert.ok(!st.fxCan('player', -1, src, { do: 'topdeck', target: 'enemies' }));
 assert.ok(!st.fxCan('player', -1, src, { do: 'exile', target: 'enemies' }));
 
+// Attacking a DEF character and falling short costs the difference in Morale (as against ATK);
+// beating it doesn't (unless the attack pierces)
+st = board([{}], [{ defense: 1500 }]);
+st.cardAt('opponent', 0).position = 'def';
+st._recalc();
+assert.ok(st._attack('player', 0, 0), 'attacks the DEF card');
+assert.equal(st.sides.player.morale, 6000 - 500, 'lost 1500 - 1000 = 500 Morale');
+assert.ok(st.cardAt('opponent', 0) && !st.cardAt('opponent', 0).downed, 'and the defender is fine');
+
 console.log('blocks: ok');

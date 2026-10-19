@@ -1105,7 +1105,13 @@ export class DuelState {
                 if (ctx.pierce) { this._damage(foe, aVal - dVal); this._lifesteal(side, from, att, aVal - dVal); }
                 result = this._defeat(foe, target);
             }
-            else this._emit('blocked', { side: foe, slot: target });
+            else {
+                this._emit('blocked', { side: foe, slot: target });
+                if (aVal < dVal) {   // a failed attack costs the difference, as it does against ATK
+                    this._damage(side, dVal - aVal);
+                    this._lifesteal(foe, target, def, dVal - aVal);
+                }
+            }
         } else if (aVal > dVal) {
             this._damage(foe, aVal - dVal);
             this._lifesteal(side, from, att, aVal - dVal);

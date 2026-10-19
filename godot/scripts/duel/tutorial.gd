@@ -207,7 +207,7 @@ func _build_steps() -> void:
 		{"type": WAIT, "done": func(): return d.active == "player" and d.turn == 5 and d.phase == "deployment",
 			"text": "Your rival's turn…"},
 		{"type": INFO, "mark": func(): return _field_rect("opponent", cards.o2),
-			"text": "They played a card in [b]DEF position[/b] (turned sideways). A DEF card doesn't attack; it blocks.\n\nTo beat a DEF card, your ATK must be higher than its DEF. Win and it's Downed; fall short and the attack is [b]Blocked[/b]."},
+			"text": "They played a card in [b]DEF position[/b] (turned sideways). A DEF card doesn't attack; it blocks.\n\nTo beat a DEF card, your ATK must be higher than its DEF. Win and it's Downed; fall short and the attack is [b]Blocked[/b], and you lose the difference in Morale."},
 		{"type": DO, "mark": func(): return _hand_rect(p3),
 			"allow": func(a): return a.kind == "summon" and int(a.uid) == p3.uid and a.get("position", "atk") == "atk",
 			"done": func(): return _on_field("player", p3),
