@@ -7,6 +7,7 @@
  */
 
 const { pool } = require('../db/pool');
+const { bump } = require('./counters');
 
 const REWARDS = [
     { karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 },
@@ -50,6 +51,7 @@ async function claim(playerId) {
             `UPDATE players SET karat = karat + $2, dust = dust + $3, free_packs = free_packs + $4
                WHERE id = $1 RETURNING karat, dust, free_packs`,
             [playerId, reward.karat || 0, reward.dust || 0, reward.free_packs || 0]);
+        if (day === REWARDS.length) await bump(client, playerId, 'daily_weeks', 1);   // (the Dedicated achievement)
         await client.query('COMMIT');
         return { day, reward, karat: p.karat, dust: p.dust, free_packs: p.free_packs };
     } catch (err) {

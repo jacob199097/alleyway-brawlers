@@ -9,6 +9,7 @@
 const express = require('express');
 const { requireAuth } = require('./middleware');
 const daily = require('../economy/daily');
+const { checkAndAnnounce } = require('../economy/achievements');
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.post('/claim', requireAuth, async (req, res) => {
         const r = await daily.claim(req.playerId);
         if (!r) return res.status(409).json({ error: "You've already taken today's reward. Come back tomorrow!" });
         res.json(r);
+        checkAndAnnounce(req.playerId);   // (a week of them is an achievement)
     } catch (err) {
         console.error('[Daily]', err.message);
         res.status(500).json({ error: 'Could not claim the daily reward.' });

@@ -146,6 +146,7 @@ async function craft(playerId, gameId) {
             `INSERT INTO player_inventory (player_id, card_id, quantity) VALUES ($1, $2, 1)
              ON CONFLICT (player_id, card_id) DO UPDATE SET quantity = player_inventory.quantity + 1`, [playerId, card.id]);
         await bump(client, playerId, 'crafted', 1);
+        if (card.rarity >= 5) await bump(client, playerId, 'crafted_legendary', 1);
         await client.query('COMMIT');
         return { dust: p.dust, quantity: have + 1, spent: cost };
     } catch (err) {
