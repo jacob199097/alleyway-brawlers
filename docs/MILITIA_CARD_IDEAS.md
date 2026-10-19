@@ -209,3 +209,140 @@ Trading card illustration for "Alleyway Brawlers", Militia clan, legendary card.
 - **Improvised Armor** is played in only 43% of the games it's drawn in (impact -3.3): drop it to
   Authority 0 or let it also draw a card when played.
 - **Rook, Mule and Lance** hover around zero impact: +200 ATK each would make them pull their weight.
+
+---
+
+# More Militia ideas: the Line
+
+Militia wins by having **more bodies than you can handle**. Its cards care about how many
+Militia it controls, who stands next to whom, and reinforcements arriving from the deck. It
+shells you from behind the line (Mortar Team) and gets stronger as it fills the board. Nebula wants
+a small board, so every card here pushes the other way: more characters, and rewards for keeping
+them.
+
+These also fix two current problems:
+
+- **Heavies stuck in hand.** Brannigan, Rhodes, the Colonel and Sarge sit there because Militia runs
+  out of tributes. Conscript tokens are free tributes.
+- **Militia trails 46-47%,** so these are tuned a little generous.
+
+| # | Card | Type | Auth | Rarity | ATK / DEF | Role |
+|---|---|---|---|---|---|---|
+| 12 | Conscript | Token | - | - | 500 / 500 | the bodies everything else makes |
+| 13 | Drill Sergeant Hollis | Brawler | 3 | 2 | 1100 / 1500 | makes Conscripts |
+| 14 | Reinforcements Inbound | Hustle | 3 | 3 | - | an instant line |
+| 15 | Forward Observer | Brawler | 2 | 1 | 600 / 900 | artillery that scales with width |
+| 16 | Next in Line | Ambush | 2 | 2 | - | a fallen soldier is replaced |
+| 17 | Shield Wall | Ambush | 2 | 3 | - | the whole line hits back |
+| 18 | Chain of Command | Hustle (Continuous) | 2 | 3 | - | cards for going wide |
+| 19 | "Big Bertha" Siege Gun | Heavy | 7 | 4 | 2400 / 3200 | turns bodies into Morale damage |
+
+## 12. Conscript (Token)
+
+**Token · 500 / 500 · no effect**
+
+Made in the Forge as a **Token card**, so it never goes in a deck. It's a body to fill a lane,
+stand next to someone for adjacency bonuses, or be a tribute for a Heavy.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A nervous young conscript in an oversized helmet and a mismatched camo jacket two sizes too big, clutching an old rifle, a lime-green armband tied on crooked, standing in line in a rain-soaked back alley at night with blurred silhouettes of other recruits behind him. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+```
+
+## 13. Drill Sergeant Hollis
+
+**Brawler · Authority 3 · Uncommon · 1100 / 1500**
+
+> When deployed: Create a Conscript token in ATK position.
+> At the end of your turn: If you control 2 or fewer characters, create a Conscript token.
+
+Forge: When deployed → Token (Conscript, 1); At the end of your turn → Token (Conscript, 1), Only if:
+You control 1 or fewer other characters. Two bodies for 3 Authority, and he keeps refilling a thin line.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A barrel-chested drill sergeant with a shaved head, a campaign hat and a scarred jaw, mid-shout with a whistle in one fist, pointing a row of rookie recruits into formation in a flooded back alley at night, a lime-green floodlight behind him, rain bouncing off his shoulders. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+```
+
+## 14. Reinforcements Inbound
+
+**Hustle · Authority 3 · Rare**
+
+> Create 2 Conscript tokens. If your Morale is 3000 or less, create 3 instead.
+
+Forge: Token (Conscript, 2); a second Token (Conscript, 1), Only if: Your Morale is 3000 or less.
+Gives Brannigan or the Colonel their tributes in one card. It's also the comeback card, and it
+pairs with General Graves waking at low Morale.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A battered troop truck skidding to a stop at the mouth of a neon-lit alley at night, its tailgate dropping as a squad of militia fighters in camo and lime-green armbands leap out into the rain, a flare burning lime green in the sky above. Dramatic low angle. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024. No text, no border, no card frame.
+```
+
+## 15. Forward Observer
+
+**Brawler · Authority 2 · Common · 600 / 900**
+
+> ACTIVATE (once per turn, this card can't attack this turn): Your opponent loses 200 Morale for
+> each other MILITIA character you control.
+
+Forge: Activate (cost: can't attack this turn) → Damage (200), per: your other characters, clan
+Militia. Weak alone, but with four friends it's an 800-a-turn spotter for the guns.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A lean scout lying flat on a wet rooftop ledge at night, binoculars raised, a radio handset pressed to her ear, a lime-green laser designator beam cutting through the rain toward a distant neon street, camo netting over her back. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+```
+
+## 16. Next in Line
+
+**Ambush · Authority 2 · Uncommon**
+
+> When an enemy attacks one of your MILITIA characters: Put a MILITIA Brawler with 3 or less
+> Authority from your deck onto the field in ATK position. Create a Conscript token.
+
+Forge: Ambush, when an enemy attacks one of your characters (clan Militia) → Call (Brawler, Militia,
+max Authority 3); Token (Conscript, 1). False Retreat's little brother: the line never gets thinner.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. Over the shoulder of a fallen militia fighter in the rain, a fresh fighter in camo and a lime-green armband steps forward out of the smoke to take his place in the line, more silhouettes stepping up behind, a burning barrel lighting the alley. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024. No text, no border, no card frame.
+```
+
+## 17. Shield Wall
+
+**Ambush · Authority 2 · Rare**
+
+> When an enemy attacks one of your MILITIA characters: If you control 3 or more MILITIA
+> characters, your MILITIA characters gain +600 ATK and +600 DEF until the end of the turn.
+
+Forge: Ambush, when an enemy attacks one of your characters (clan Militia) → Buff (+600 / +600), All
+your characters (clan Militia), Until the end of this turn; Only if: You control 3+ characters,
+clan Militia. One attack into a full line turns the whole formation around.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A row of militia fighters locking riot shields together across a narrow alley at night, the shields spray-painted with lime-green stars, rain and sparks bouncing off them as a blast of violet energy slams into the wall, boots braced in the puddles. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024. No text, no border, no card frame.
+```
+
+## 18. Chain of Command
+
+**Hustle · Continuous · Authority 2 · Rare**
+
+> CONTINUOUS Once per turn, when you deploy a MILITIA character: Draw 1 card.
+
+Forge: Hustle, Continuous; Once per turn, when you deploy a character (clan Militia) → Draw cards (1).
+Going wide costs Militia its hand. This refills it every turn the line grows.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A war table in a bunker lit by a hanging lime-green lamp: a city map covered in pins and string, radio sets crackling, a commander's gloved hand pushing a small tin soldier into place while orders on folded papers stack up beside it, rain streaking the slit window. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024. No text, no border, no card frame.
+```
+
+## 19. "Big Bertha" Siege Gun
+
+**Heavy · Authority 7 · Epic · 2400 / 3200 · Sacrifice 1**
+
+> ACTIVATE (once per turn, sacrifice one of your other characters): Your opponent loses 1200 Morale.
+> Your opponent must attack this card first if it is standing.
+
+Forge: Activate (cost: sacrifice) → Damage (1200); Always → Guard. Feed it Conscripts and it
+finishes games from behind the line. Its Guard makes the opponent take on the big wall before
+the gun.
+
+```
+Trading card illustration for "Alleyway Brawlers", Militia clan. A huge rusted artillery cannon bolted onto the back of a scrap-armoured truck in a ruined street at night, its barrel recoiling as it fires a shell trailing lime-green fire over the neon skyline, crew members in camo covering their ears, shell casings and rain everywhere. Epic low angle. Style: bold comic-book ink linework with cel shading, gritty grunge texture, olive drab, black and woodland camo with neon lime-green accents, rain streaks and drifting embers. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+```
