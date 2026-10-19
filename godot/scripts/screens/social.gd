@@ -50,7 +50,16 @@ func _load() -> void:
 		_list.add_child(UI.label("No friends yet. Add some!", 26, UI.MUTED, true))
 		return
 	_list.add_child(UI.label("FRIENDS", 20, UI.MUTED, true))
-	for f in r.data:
+	# Requests waiting on you first, then whoever's online (in a match last), then the rest by name
+	var rank := func(x) -> int:
+		if x.get("status") == "pending" and x.get("incoming", true):
+			return 0
+		if x.get("is_online", false):
+			return 2 if x.get("in_match", false) else 1
+		return 3
+	var rows: Array = r.data.duplicate()
+	rows.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else str(a.get("username", "")).to_lower() < str(b.get("username", "")).to_lower())
+	for f in rows:
 		_list.add_child(_row(f))
 	UI.stagger(_list.get_children())
 

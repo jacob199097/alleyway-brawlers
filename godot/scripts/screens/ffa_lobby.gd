@@ -68,7 +68,25 @@ func on_ffa_lobby() -> void:
 	pass
 
 
+var _faces: Array = []   # every character's face: they flicker through the open seats
+var _flick := 0.0
+
+
 func _process(delta: float) -> void:
+	_flick += delta
+	if _flick > 0.11:
+		_flick = 0.0
+		if _faces.is_empty():
+			for id in CardDB.all():
+				var c: Dictionary = CardDB.get_card(id)
+				if c.get("cardType") in ["gang_member", "leader"] and not c.get("token", false) and _faces.size() < 40:
+					var t := UI.card_crop(id)
+					if t:
+						_faces.append(t)
+		for seat in _seats:
+			if seat is Dictionary and not seat.get("filled", true) and not _faces.is_empty():
+				seat.avatar.texture = _faces[randi() % _faces.size()]
+				seat.avatar.modulate = Color(ACCENT.lightened(0.3), randf_range(0.18, 0.4))
 	if Net.is_open and not _sent:
 		_sent = true
 		Net.send("ffa:queue")
@@ -128,6 +146,7 @@ func _seat(at: Vector2) -> Dictionary:
 	p.size = SEAT
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(p)
+	UI.glass(p, Color(0.03, 0.03, 0.08, 0.6))
 	var av := UI.texture_rect(null, Vector2(180, 180), true)
 	av.position = Vector2((SEAT.x - 180) / 2.0, 30)
 	p.add_child(av)
@@ -157,12 +176,13 @@ func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
 	var empty := p.is_empty()
 	seat.you.visible = p.get("you", false)
 	if empty:
-		seat.avatar.texture = null
+		seat.avatar.texture = null   # (faces flicker through it while it waits: _process)
 		seat.name.text = "OPEN SEAT"
-		seat.name.label_settings.font_color = Color(1, 1, 1, 0.25)
+		seat.name.label_settings.font_color = Color(1, 1, 1, 0.35)
 		seat.sub.text = "a CPU takes it if nobody does"
-		seat.badge.text = ""
-		root.modulate = Color(1, 1, 1, 0.6)
+		seat.badge.text = "SEARCHING…"
+		seat.badge.label_settings.font_color = Color(ACCENT, 0.7)
+		root.modulate = Color(1, 1, 1, 0.75)
 		seat.filled = false
 		return
 	if not seat.filled:   # someone sat down: the seat pops in
@@ -171,6 +191,7 @@ func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
 		root.create_tween().tween_property(root, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	seat.filled = true
 	root.modulate = Color.WHITE
+	seat.avatar.modulate = Color.WHITE
 	seat.avatar.texture = UI.avatar(str(p.get("avatar_url", "")) if p.get("avatar_url") else "")
 	seat.name.text = str(p.get("username", "PLAYER")).to_upper().left(14)
 	seat.name.label_settings.font_color = Color.WHITE

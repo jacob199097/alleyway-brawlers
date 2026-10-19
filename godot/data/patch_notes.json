@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.29",
+        "notes": [
+            "New achievements: Archivist (own 60 different cards), Master Forger (craft a Legendary) and Dedicated (claim day 7 of the daily reward).",
+            "The Free-for-all lobby's open seats search through faces until someone sits down.",
+            "Your friends list puts requests and whoever's online at the top."
+        ]
+    },
+    {
         "version": "0.9.28",
         "notes": [
             "Searching for an opponent is a face-off: you on one side, VS in the middle, and the rival's frame flickering through faces until someone's found."
