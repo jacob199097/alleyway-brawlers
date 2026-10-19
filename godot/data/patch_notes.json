@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.25",
+        "notes": [
+            "Crafting a card is a reveal: the Dust pulls together, a flash, and the card turns in under light in its rarity's colour before it goes into your collection. The Dust count runs down as you spend it.",
+            "Tooltips and dropdown menus match the game.",
+            "Fixed: in Free-for-all, words floating up mid-board no longer cover the \"You finished\" panel."
+        ]
+    },
+    {
         "version": "0.9.24",
         "notes": [
             "New: the Leaderboard. The top three on a podium, everyone by Rank Points under it, and where you stand. Open it from Select Battle Mode or your profile."

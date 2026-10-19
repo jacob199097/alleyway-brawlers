@@ -10,6 +10,7 @@ const TILE := Vector2(150, 212)
 
 var _owned: Dictionary = {}     # art_url -> inventory row
 var _show_all := false
+var _dust_was := -1   # the Dust the bar last showed (it counts to a new amount)
 var _faction := "all"
 var _kind := "all"
 var _sub := "any"               # the finer filter (dropdown): a role, a Heavy's sacrifices, Continuous / Equip, tokens
@@ -437,6 +438,9 @@ func _render_bar() -> void:
 	for c in _bar.get_children():
 		c.queue_free()
 	var dust := UI.label("✦ %d DUST" % int(_craft.get("dust", 0)), 26, UI.PURPLE, true)
+	if _dust_was >= 0 and _dust_was != int(_craft.get("dust", 0)):   # (it runs to the new amount)
+		UI.count_up(dust, _dust_was, int(_craft.get("dust", 0)), 0.8, "✦ %d DUST", "click")
+	_dust_was = int(_craft.get("dust", 0))
 	dust.custom_minimum_size = Vector2(230, 0)
 	dust.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	dust.tooltip_text = "Scrap cards to make Dust, then spend it crafting the cards you're missing."
@@ -533,11 +537,12 @@ func _do(path: String, body: Dictionary, c: Dictionary, crafting: bool) -> void:
 	_detail_id = "-"   # (its owned count changed)
 	_show_detail(_pick)
 	var tile = _tiles.get(id)
+	if crafting:
+		await _reveal(c, tile)
 	if is_instance_valid(tile):
 		_burst(tile, crafting)
 	if crafting:
 		Sfx.play("promote", 1.15)
-		UI.toast(self, "Crafted %s" % str(c.get("name", "")), UI.GREEN)
 	else:
 		Sfx.play("ko", 1.3, -6.0)
 		UI.toast(self, "+%d Dust" % int(r.data.get("gained", 0)), UI.PURPLE)
@@ -569,6 +574,96 @@ func _refresh_extras() -> void:
 	var r := await Api.request("GET", "/api/craft")
 	if r.ok and r.data is Dictionary:
 		_craft = r.data
+
+
+## A crafted card's reveal: purple dust pulls together in the middle of the screen, a flash, and the
+## card turns in under light in its rarity's colour; a click (or a moment) sends it into its slot.
+func _reveal(c: Dictionary, tile) -> void:
+	var col := UI.rarity_color(c.get("rarity"))
+	var rarity := int(c.get("rarity", 1))
+	var centre := Vector2(960, 520)
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0)
+	veil.size = Vector2(1920, 1080)
+	veil.z_index = 60
+	add_child(veil)
+	veil.create_tween().tween_property(veil, "color:a", 0.86, 0.25)
+	# The dust: specks from all round that rush in
+	Sfx.play("riser", 1.1, -4.0)
+	for i in 36:
+		var speck := ColorRect.new()
+		speck.size = Vector2(6, 6)
+		speck.color = UI.PURPLE.lerp(col, randf() * 0.6)
+		speck.rotation = PI / 4
+		var from := centre + Vector2.from_angle(randf() * TAU) * randf_range(420, 760)
+		speck.position = from
+		veil.add_child(speck)
+		var t := speck.create_tween()
+		t.tween_property(speck, "position", centre, randf_range(0.45, 0.7)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_callback(speck.queue_free)
+	await get_tree().create_timer(0.7).timeout
+	# The flash, the light and the card
+	var flash := ColorRect.new()
+	flash.color = Color(col.lightened(0.5), 0.85)
+	flash.size = veil.size
+	veil.add_child(flash)
+	flash.create_tween().tween_property(flash, "color:a", 0.0, 0.5)
+	Sfx.play("boom", 1.2, -4.0)
+	Sfx.play("legendary" if rarity >= 5 else "promote", 1.0, -2.0)
+	var rays := Node2D.new()
+	rays.position = centre
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	rays.material = add
+	var count := 10 + rarity * 2
+	rays.draw.connect(func():
+		for k in count:
+			var a := k * TAU / count
+			var w := 0.1 if k % 2 == 0 else 0.05
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 900.0, Vector2.from_angle(a + w) * 900.0]),
+				PackedColorArray([Color(col, 0.26), Color(col, 0.0), Color(col, 0.0)])))
+	veil.add_child(rays)
+	rays.create_tween().set_loops().tween_property(rays, "rotation", TAU, 18.0).from(0.0)
+	var size := Vector2(380, 538)
+	var art := UI.texture_rect(UI.card_art(c), size)
+	art.position = centre - size / 2
+	art.pivot_offset = size / 2
+	var mat := UI.card_material(size, rarity)
+	art.material = mat
+	veil.add_child(art)
+	art.scale = Vector2.ONE * 0.2
+	var pop := art.create_tween().set_parallel()
+	pop.tween_property(art, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop.tween_method(func(d: float): mat.set_shader_parameter("y_rot", d), 180.0, 0.0, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var word := UI.label("CRAFTED", 54, col, true)
+	word.size = Vector2(1920, 70)
+	word.position = Vector2(0, centre.y + size.y / 2 + 20)
+	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	veil.add_child(word)
+	var name := UI.label(str(c.get("name", "")).to_upper() + "   ·   " + str(UI.RARITY_LABEL.get(rarity, "")).to_upper(), 24, Color.WHITE, true)
+	name.size = Vector2(1920, 30)
+	name.position = Vector2(0, word.position.y + 70)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	veil.add_child(name)
+	# Wait for a click, or a moment
+	var done := [false]
+	veil.mouse_filter = Control.MOUSE_FILTER_STOP
+	veil.gui_input.connect(func(e): if e is InputEventMouseButton and e.pressed: done[0] = true)
+	for i in 28:
+		if done[0]:
+			break
+		await get_tree().create_timer(0.05).timeout
+	# Into its slot
+	var to: Vector2 = tile.global_position + tile.size / 2 if is_instance_valid(tile) else centre
+	var fly := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	fly.tween_property(art, "position", to - size / 2, 0.35)
+	fly.tween_property(art, "scale", Vector2.ONE * 0.36, 0.35)
+	fly.tween_property(veil, "color:a", 0.0, 0.35)
+	fly.tween_property(rays, "modulate:a", 0.0, 0.25)
+	fly.tween_property(word, "modulate:a", 0.0, 0.2)
+	fly.tween_property(name, "modulate:a", 0.0, 0.2)
+	await fly.finished
+	veil.queue_free()
 
 
 ## Sparks over a tile: purple dust drifting up when scrapped, a bright pop when crafted.

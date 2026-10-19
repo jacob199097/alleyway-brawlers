@@ -71,6 +71,17 @@ static func theme() -> Theme:
 	th.set_stylebox("grabber", "VScrollBar", grab)
 	th.set_stylebox("grabber_highlight", "VScrollBar", box(BLUE, Color(0, 0, 0, 0), 0, 4))
 	th.set_stylebox("scroll", "VScrollBar", box(Color(1, 1, 1, 0.05), Color(0, 0, 0, 0), 0, 4))
+	# Tooltips: a dark glass slip with a gold edge, not the engine's grey box
+	var tip := box(Color(0.03, 0.03, 0.08, 0.96), Color(GOLD, 0.7), 1, 8)
+	tip.shadow_color = Color(0, 0, 0, 0.5)
+	tip.shadow_size = 6
+	th.set_stylebox("panel", "TooltipPanel", tip)
+	th.set_color("font_color", "TooltipLabel", Color(0.92, 0.92, 1.0))
+	th.set_font_size("font_size", "TooltipLabel", 18)
+	# Dropdown menus in the same look
+	th.set_stylebox("panel", "PopupMenu", box(Color(0.05, 0.05, 0.12, 0.98), Color(BLUE, 0.6), 2, 8))
+	th.set_stylebox("hover", "PopupMenu", box(Color("28305e"), Color(0, 0, 0, 0), 0, 4))
+	th.set_color("font_hover_color", "PopupMenu", GOLD)
 	_theme = th
 	return th
 

@@ -107,6 +107,13 @@ func _run() -> void:
 			UI.card_zoom(lib, sc)
 			break
 	await _shot("02_card_zoom", 0.9)
+	# Crafting a Legendary: the reveal
+	for t in lib._tiles.values():
+		if int(t.card.get("rarity", 1)) >= 5:
+			lib._reveal(t.card, t)
+			break
+	await _shot("02_craft_reveal", 1.1)
+	await get_tree().create_timer(1.6).timeout
 	# Pack opening
 	Game.go("shop")
 	await get_tree().create_timer(1.2).timeout

@@ -1476,7 +1476,8 @@ func _play(ev: Dictionary) -> void:
 			if ev.side != "player" or ev.side in ai_sides:
 				var who: String = ("%s IS DECIDING…" % str(_names.get(ev.side, "OPPONENT")).to_upper()) if _ffa \
 					else "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…"
-				_float_text(Vector2(1080, DIVIDER_Y), who, Color(1, 1, 1, 0.8), 30)
+				var out_up: bool = _ui.has("out_panel") and is_instance_valid(_ui.out_panel)
+				_float_text(Vector2(1080, DIVIDER_Y - (170 if out_up else 0)), who, Color(1, 1, 1, 0.8), 30)
 				await _wait(0.35)
 
 
@@ -5428,6 +5429,7 @@ func _show_out_panel(data: Dictionary) -> void:
 		_ffa_result_into(Game.match_result, data)
 		Game.go("post_match"), Vector2(200, 56), RED))
 	overlay.add_child(box)
+	box.z_index = 50   # (over the words that float up mid-board while the others play on)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, DIVIDER_Y - sz.y / 2)
 	_ui.out_panel = box
