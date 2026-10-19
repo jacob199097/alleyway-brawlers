@@ -398,9 +398,16 @@ static func toast(parent: Control, msg: String, color := BLUE) -> void:
 	var p := panel(color)
 	p.add_child(l)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 120   # (over popups and veils)
+	# Toasts already up stack: this one goes above them
+	var up := 0
+	for c in parent.get_children():
+		if c.has_meta("toast") and is_instance_valid(c) and not c.is_queued_for_deletion():
+			up += 1
+	p.set_meta("toast", true)
 	parent.add_child(p)
 	var sz := p.get_combined_minimum_size()
-	p.position = Vector2(960 - sz.x / 2, 1080 - 150)
+	p.position = Vector2(960 - sz.x / 2, 1080 - 150 - up * 74)
 	p.modulate.a = 0.0
 	var t := p.create_tween()
 	t.set_parallel()
