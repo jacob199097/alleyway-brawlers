@@ -804,6 +804,9 @@ func _show_rewards(rw: Dictionary) -> void:
 	_fill_bar(_xp_fill, before.pct, after.pct, new_level - old_level, 0.4 + INTRO, func(_i):
 		_level_reached(_level_icon, _level_text, UI.level_icon(new_level), "LEVEL %d" % new_level, UI.BLUE, "LEVEL UP!"))
 	var lines := ["+%d Karat" % int(rw.get("karatEarned", 0))]
+	var rp := int(rw.get("rankPointDelta", 0))
+	if rp != 0:   # (ranked matches)
+		lines.append("%+d Rank Points" % rp)
 	if rw.get("dailyCapReached", false):
 		lines.append("Daily reward limit reached")
 	if rw.get("firstWinBonus", false):
@@ -874,21 +877,88 @@ func _rays(center: Vector2) -> Node2D:
 	return rays
 
 
+const RANK_COLORS := {
+	"rookie": Color("9aa7b8"), "street_tough": Color("4ade80"), "enforcer": Color("38bdf8"),
+	"underboss": Color("a46bff"), "kingpin": Color("ff3b3b"), "legend": Color("ffd34d"),
+}
+
+
+## A new rank: the screen dims, the rank's badge slams in under light in its colour with RANK UP! over
+## it and its name under it; a click (or a few seconds) and it's gone.
 func _rank_up(rank: String) -> void:
 	await get_tree().create_timer(1.2 + INTRO).timeout
-	var l := UI.label("⬆ RANK UP!\n%s" % rank.replace("_", " ").to_upper(), 72, UI.GOLD, true)
-	l.size = Vector2(1920, 200)
-	l.position = Vector2(0, 380)
-	l.pivot_offset = l.size / 2
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.scale = Vector2.ONE * 0.4
-	add_child(l)
-	Sfx.play("promote")
+	var col: Color = RANK_COLORS.get(rank, UI.GOLD)
+	var layer := Control.new()
+	layer.size = Vector2(1920, 1080)
+	layer.z_index = 70
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(layer)
+	var veil := ColorRect.new()
+	veil.size = layer.size
+	veil.color = Color(0, 0, 0, 0)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(veil)
+	veil.create_tween().tween_property(veil, "color:a", 0.75, 0.3)
+	var centre := Vector2(960, 470)
+	var rays := _spin_rays(centre, 900.0, col, 22)
+	layer.add_child(rays)
+	rays.modulate.a = 0.4
+	var badge := UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(320, 320))
+	badge.position = centre - badge.size / 2
+	badge.pivot_offset = badge.size / 2
+	badge.scale = Vector2.ONE * 3.0
+	badge.modulate.a = 0.0
+	layer.add_child(badge)
+	var head := UI.label("RANK UP!", 64, UI.GOLD, true)
+	head.size = Vector2(1920, 80)
+	head.position = Vector2(0, centre.y - 260)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layer.add_child(head)
+	var name := UI.label(rank.replace("_", " ").to_upper(), 58, col, true)
+	name.size = Vector2(1920, 80)
+	name.position = Vector2(0, centre.y + 175)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.modulate.a = 0.0
+	layer.add_child(name)
+	Sfx.play("riser", 1.0, -4.0)
 	var t := create_tween()
-	t.tween_property(l, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK)
-	t.tween_interval(2.0)
-	t.tween_property(l, "modulate:a", 0.0, 0.4)
-	t.tween_callback(l.queue_free)
+	t.tween_property(badge, "modulate:a", 1.0, 0.12)
+	t.parallel().tween_property(badge, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_callback(func():
+		Sfx.play("boom", 0.9)
+		Sfx.play("level_up")
+		var flash := ColorRect.new()
+		flash.size = layer.size
+		flash.color = Color(col.lightened(0.5), 0.7)
+		flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(flash)
+		flash.create_tween().tween_property(flash, "color:a", 0.0, 0.5)
+		_shake_screen(14.0))
+	t.tween_property(name, "modulate:a", 1.0, 0.3)
+	# A slow float while it's up
+	var bob := badge.create_tween().set_loops()
+	bob.tween_property(badge, "position:y", badge.position.y - 10, 1.4).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(badge, "position:y", badge.position.y, 1.4).set_trans(Tween.TRANS_SINE)
+	var gone := [false]
+	layer.gui_input.connect(func(e): if e is InputEventMouseButton and e.pressed: gone[0] = true)
+	for i in 70:
+		if gone[0] or not is_instance_valid(layer):
+			break
+		await get_tree().create_timer(0.05).timeout
+	if not is_instance_valid(layer):
+		return
+	var out := layer.create_tween()
+	out.tween_property(layer, "modulate:a", 0.0, 0.35)
+	out.tween_callback(layer.queue_free)
+
+
+## A short shake of the whole screen.
+func _shake_screen(amount: float) -> void:
+	var base := position
+	var s := create_tween()
+	for i in 6:
+		s.tween_property(self, "position", base + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * amount * (1.0 - i / 6.0), 0.04)
+	s.tween_property(self, "position", base, 0.05)
 
 
 ## A free pack to claim: straight to the shop.

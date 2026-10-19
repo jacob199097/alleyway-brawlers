@@ -601,6 +601,10 @@ func _exit() -> void:
 func _matches(item: Dictionary) -> bool:
 	if item.get("card_type") == "leader":
 		return false
+	# A Striver's later levels come along with its level 1 card (its stars show how many): they're
+	# only listed when looking at Strivers
+	if _hideout_level(item) > 0 and _kind != "striver":
+		return false
 	if _faction != "all" and item.get("clan") != _faction:
 		return false
 	match _kind:
@@ -655,6 +659,8 @@ func _render_collection() -> void:
 		tile.dimmed = used >= mini(3, int(item.get("quantity", 0)))
 		tile.pressed.connect(func(t): _add(item, t))
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
+		if CardDB.striver_stage(CardDB.get_card(str(item.get("art_url", "")))).y > 1 and _hideout_level(item) == 0:
+			tile.tooltip_text = "A Striver: its higher levels wait in your Hideout and come along with it. Right-click to see them."
 		if _hideout_level(item) > 0:   # (a promoted form: it comes with its level 1 card)
 			tile.badge = "LV%d" % _hideout_level(item)
 			tile.dimmed = true

@@ -3,7 +3,9 @@
         "version": "0.9.26",
         "notes": [
             "New: the Daily Reward. Claim it once a day for Karat and Dust, growing to a free pack on day 7. Miss a day and the track starts over.",
-            "New loading tips for Striver stars, attacking into DEF, luck, crafting and the Leaderboard."
+            "New loading tips for Striver stars, attacking into DEF, luck, crafting and the Leaderboard.",
+            "Ranking up is a moment: your new rank's badge slams in under light in its colour. Ranked results show the Rank Points you won or lost.",
+            "The Deck Builder lists each Striver once (its stars show its levels, which come along in your Hideout). Choose STRIVERS to see every level."
         ]
     },
     {

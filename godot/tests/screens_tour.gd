@@ -174,6 +174,8 @@ func _run() -> void:
 	Game.go("post_match")
 	await _shot("06_post_match_early", 1.6)
 	await _shot("06_post_match", 2.6)
+	_screen()._rank_up("underboss")
+	await _shot("06_rank_up", 3.0)
 	# After a match against a player: the rematch offer
 	Game.match_result = {"result": "loss", "player_morale": 0, "opponent_morale": 2100, "turns": 11,
 		"online": true, "mode": "casual", "reason": "afk", "rewards": {"xpEarned": 20, "karatEarned": 10},
