@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.9.23",
+        "notes": [
+            "The screens with their own scene are part of it now: panels are frosted glass, and the Deck Builder's collection lies on the workbench, each card set down by hand.",
+            "The duel's side panels are glass too: the arena shows through them.",
+            "Battle modes show real cards: the clan leaders face off for Casual, a hidden hand for the CPU, a four-way fan for Free-for-all; they open up when you point at them.",
+            "Your profile is a player card: your picture framed in your clan's colour, your rank badge beside it.",
+            "A zoomed card explains its keywords, and a Striver shows its whole line with the level it's at lit up.",
+            "Choosing a clan lights it up in its colour."
+        ]
+    },
+    {
         "version": "0.9.22",
         "notes": [
             "Striver cards show their level as stars: LV1 of a 3-level Striver has one gold star and two to earn.",

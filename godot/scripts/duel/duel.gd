@@ -235,6 +235,9 @@ func _ready() -> void:
 	_build_phase_bar()
 	_build_turn_box()
 	_build_log()
+	# The HUD is glass: the arena shows through it
+	for p in [$HUD/UI/Detail, $HUD/UI/OppPanel, $HUD/UI/PlayerPanel, $HUD/UI/PhaseBar, $HUD/UI/TurnBox]:
+		UI.glass(p, Color(0.03, 0.03, 0.08, 0.66), 8.0)
 	_play_music()
 	_emotes_muted = not Game.settings.get("rival_emotes", true)
 	_base_speed = float(Game.settings.get("anim_speed", 1.0))

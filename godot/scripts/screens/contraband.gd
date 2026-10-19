@@ -26,7 +26,7 @@ func _ready() -> void:
 	UI.back_button(self, func(): Game.go("shop"))
 	if not needs_server("Purchasing"):
 		return
-	var slab := UI.panel(UI.PURPLE, Color(0, 0, 0, 0.9))
+	var slab := UI.glass(UI.panel(UI.PURPLE, Color(0, 0, 0, 0.9)), Color(0.04, 0.01, 0.06, 0.62))
 	slab.position = Vector2(60, 200)
 	slab.custom_minimum_size = Vector2(1800, 700)
 	add_child(slab)

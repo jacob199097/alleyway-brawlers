@@ -14,6 +14,7 @@ var badge := ""          # top-right, e.g. "1/3"
 var count_badge := ""    # bottom-left, e.g. "×2"
 var dimmed := false: set = set_dimmed
 var selected := false: set = set_selected   # outlined in gold (the Card Library's crafting pick)
+var rest_rotation := 0.0: set = set_rest_rotation   # degrees: laid by hand on a table; it straightens on hover
 
 var _art: TextureRect
 var _name: Label
@@ -52,6 +53,10 @@ static func make(c: Dictionary, size := Vector2(150, 212)) -> CardTile:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	pivot_offset = size / 2
+	# (a grid lays its cells out straight, so the tilt goes back on after every layout)
+	var box := get_parent() as Container
+	if box and rest_rotation != 0.0:
+		box.sort_children.connect(func(): if not _hover: rotation_degrees = rest_rotation)
 	var art_tex := UI.card_art(card)
 	_art = UI.texture_rect(art_tex, size - Vector2(8, 8))
 	_art.position = Vector2(4, 4)
@@ -87,11 +92,15 @@ func _ready() -> void:
 		set_process(true)
 		Sfx.play("hover", randf_range(1.15, 1.3), -14.0)
 		create_tween().tween_property(self, "scale", Vector2.ONE * 1.06, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if rest_rotation != 0.0:
+			create_tween().tween_property(self, "rotation_degrees", 0.0, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		create_tween().tween_property(self, "_glow", 1.0, 0.15)
 		z_index = 2)
 	mouse_exited.connect(func():
 		_hover = false
 		create_tween().tween_property(self, "scale", Vector2.ONE, 0.14)
+		if rest_rotation != 0.0:
+			create_tween().tween_property(self, "rotation_degrees", rest_rotation, 0.3).set_trans(Tween.TRANS_SINE)
 		var t := create_tween()
 		t.tween_property(self, "_glow", 0.0, 0.2)
 		t.tween_callback(func(): z_index = 0))
@@ -146,6 +155,11 @@ func _perimeter_point(d: float) -> Vector2:
 	return Vector2(0, h - (d - w))
 
 
+func set_rest_rotation(v: float) -> void:
+	rest_rotation = v
+	rotation_degrees = v
+
+
 func set_dimmed(v: bool) -> void:
 	dimmed = v
 	modulate = Color(0.45, 0.45, 0.5) if v else Color.WHITE
@@ -198,7 +212,11 @@ func _draw() -> void:
 
 func _draw_overlay() -> void:
 	var f := UI.font()
-	UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
+	var k := size.x / 150.0
+	if badge != "":   # (between the Authority at the top left and the badge at the top right)
+		UI.draw_level_stars(_overlay, Vector2((34.0 * k + size.x - 64.0) / 2.0, 3.0), CardDB.striver_stage(card), 5.5 * k)
+	else:
+		UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
 	if badge != "":
 		var br := Rect2(size.x - 64, 6, 58, 28)
 		_overlay.draw_style_box(_pill(UI.GOLD), br)

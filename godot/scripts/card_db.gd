@@ -69,6 +69,30 @@ static func next_form(id: String) -> String:
 	return ""
 
 
+## A Striver's whole line, first level to last (ids), or [] for any other card.
+static func striver_line(id: String) -> Array:
+	var card := get_card(id)
+	if str(card.get("subtype", "")) != "striver":
+		return []
+	var first := id
+	for i in 6:   # back to its first level (whoever promotes into it)
+		var prev := ""
+		for other in all():
+			if next_form(other) == first:
+				prev = other
+				break
+		if prev == "":
+			break
+		first = prev
+	var line := [first]
+	for i in 6:
+		var nxt := next_form(line[-1])
+		if nxt == "" or line.has(nxt):
+			break
+		line.append(nxt)
+	return line if line.size() > 1 else []
+
+
 ## A Striver's place in its line: Vector2i(its level, how many levels the line has). (0, 0): not a Striver.
 static func striver_stage(card: Dictionary) -> Vector2i:
 	if str(card.get("subtype", "")) != "striver" or str(card.get("cardType", "gang_member")) != "gang_member":

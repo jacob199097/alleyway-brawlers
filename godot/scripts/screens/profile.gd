@@ -31,26 +31,45 @@ func _ready() -> void:
 
 
 func _render(p: Dictionary) -> void:
+	# The player card: a glass card edged in their clan's colour, the picture framed at the top
+	var clan_col: Color = CardDB.clan(str(p.get("chosen_clan", ""))).get("color", UI.GOLD)
+	var card := UI.glass(UI.panel(Color(clan_col, 0.9), Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.6))
+	card.position = Vector2(110, 50)
+	card.custom_minimum_size = Vector2(680, 0)
+	add_child(card)
 	var left := VBoxContainer.new()
-	left.position = Vector2(150, 80)
 	left.custom_minimum_size = Vector2(620, 0)
-	left.add_theme_constant_override("separation", 14)
-	add_child(left)
-	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(260, 260), true)
+	left.add_theme_constant_override("separation", 12)
+	card.add_child(left)
+	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(240, 240), true)
+	var frame := PanelContainer.new()
+	var fb := UI.box(Color(0, 0, 0, 0.5), clan_col, 4, 12)
+	for m in ["content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"]:
+		fb.set(m, 6)
+	frame.add_theme_stylebox_override("panel", UI._glow(fb, clan_col, 0.9))
+	frame.add_child(av)
 	var av_box := CenterContainer.new()
-	av_box.add_child(av)
+	av_box.add_child(frame)
 	left.add_child(av_box)
 	if not Game.offline and not _friend:
 		var look_box := CenterContainer.new()
 		look_box.add_child(UI.button("CHANGE LOOK  ·  ACHIEVEMENTS", func(): Game.go("achievements"), Vector2(420, 54), UI.GOLD))
 		left.add_child(look_box)
-	for spec in [[str(p.get("username", "")), 52, UI.GOLD], [UI.shown_title(p), 28, UI.RED],
-			[str(p.get("rank", "rookie")).replace("_", " ").to_upper(), 26, UI.BLUE]]:
+	for spec in [[str(p.get("username", "")), 52, UI.GOLD], [UI.shown_title(p), 28, UI.RED]]:
 		var l := UI.label(spec[0], spec[1], spec[2], true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		left.add_child(l)
+	# The rank: its badge beside its name
+	var rank := str(p.get("rank", "rookie"))
+	var rank_row := HBoxContainer.new()
+	rank_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	rank_row.add_theme_constant_override("separation", 10)
+	if UI.tex("ranks/%s.png" % rank):
+		rank_row.add_child(UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(46, 46)))
+	rank_row.add_child(UI.label(rank.replace("_", " ").to_upper(), 26, UI.BLUE, true))
+	left.add_child(rank_row)
 	var lv_box := CenterContainer.new()
-	lv_box.add_child(UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(150, 150)))
+	lv_box.add_child(UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(120, 120)))
 	left.add_child(lv_box)
 	var xp := UI.xp_progress(p)
 	var lvl := UI.label("Level %d  —  %d / %d XP" % [int(p.get("level", 1)), xp.current, xp.needed], 24)
@@ -118,7 +137,7 @@ func _render(p: Dictionary) -> void:
 	grid.add_theme_constant_override("v_separation", 24)
 	stats_view.add_child(grid)
 	for s in stats:
-		var cell := UI.panel(UI.BLUE)
+		var cell := UI.glass(UI.panel(UI.BLUE))
 		cell.custom_minimum_size = Vector2(280, 130)
 		var v := VBoxContainer.new()
 		v.alignment = BoxContainer.ALIGNMENT_CENTER

@@ -20,6 +20,7 @@ const TITLES := [[1, "Street Prospect"], [5, "Alley Runner"], [10, "Corner Hustl
 const TYPE_NAMES := {"gang_member": "CHARACTER", "hustle": "HUSTLE", "ambush": "AMBUSH", "leader": "LEADER"}
 
 const LivingBackground := preload("res://scripts/ui/living_bg.gd")
+const Keywords := preload("res://scripts/keywords.gd")
 
 static var _font: SystemFont
 static var _theme: Theme
@@ -312,7 +313,40 @@ static func background(parent: Control, path := "menu_background.png", dim := 0.
 	var own: Texture2D = null
 	if path == "menu_background.png" and parent.scene_file_path != "":
 		own = tex("bg_%s.png" % parent.scene_file_path.get_file().get_basename())
+	if own:   # (its own scene stays in view: the panels over it are glass, see glass())
+		dim = minf(dim, 0.3)
 	parent.add_child(LivingBackground.new().setup(own if own else tex(path), dim))
+
+
+## Turns a panel into frosted glass: the art behind it shows through, blurred and tinted
+## (shaders/glass.gdshader), so a screen's background scene stays part of the screen. Its border and
+## corners stay; its own fill and drop shadow go (the glass is the fill).
+static func glass(p: Control, tint := Color(0.03, 0.03, 0.08, 0.58), blur := 9.0) -> Control:
+	var radius := 12.0
+	var sb := p.get_theme_stylebox("panel")
+	if sb is StyleBoxFlat:
+		var g: StyleBoxFlat = sb.duplicate()
+		g.draw_center = false   # (the glass is the fill; a glow then draws only round the edge)
+		if g.shadow_color.v < 0.2:   # (a plain drop shadow isn't wanted under glass)
+			g.shadow_size = 0
+		radius = float(g.corner_radius_top_left)
+		p.add_theme_stylebox_override("panel", g)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/glass.gdshader")
+	m.set_shader_parameter("tint", tint)
+	m.set_shader_parameter("blur", blur)
+	m.set_shader_parameter("radius", radius)
+	var frost := Node2D.new()
+	frost.show_behind_parent = true
+	frost.material = m
+	frost.draw.connect(func(): frost.draw_rect(Rect2(Vector2.ZERO, p.size), Color.WHITE))
+	var fit := func():
+		m.set_shader_parameter("rect_size", p.size)
+		frost.queue_redraw()
+	p.resized.connect(fit)
+	p.add_child(frost)
+	fit.call()
+	return p
 
 
 ## A clan's emblem (assets/emblems/<clan>.png), or its rarest character's picture until it has one.
@@ -659,13 +693,54 @@ static func card_zoom(parent: Control, c: Dictionary) -> void:
 	body.custom_minimum_size = Vector2(560, 0)
 	body.add_theme_font_size_override("normal_font_size", 22)
 	body.add_theme_font_size_override("italics_font_size", 20)
-	var text := str(c.get("effectText", c.get("effect_text", "")))
+	var raw := str(c.get("effectText", c.get("effect_text", "")))
+	var text := Keywords.markup(raw)   # (keywords in their colours)
 	var flavour = c.get("flavourText", c.get("flavour_text"))
 	if flavour is String and flavour != "":
-		text += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % flavour
+		text += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % Keywords._escape(flavour)
 	body.text = text
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(body)
+	# What its keywords mean, under the text
+	var seen := []
+	for m in RegEx.create_from_string("[A-Za-z']+").search_all(raw):
+		var w := m.get_string()
+		var kw := Keywords.find(w) if w == w.to_upper() and w.length() > 1 else ""
+		if kw != "" and not seen.has(kw):
+			seen.append(kw)
+	if not seen.is_empty():
+		var gl := RichTextLabel.new()
+		gl.bbcode_enabled = true
+		gl.fit_content = true
+		gl.custom_minimum_size = Vector2(560, 0)
+		gl.add_theme_font_size_override("normal_font_size", 17)
+		gl.add_theme_font_size_override("bold_font_size", 17)
+		gl.add_theme_color_override("default_color", Color(0.72, 0.74, 0.86))
+		gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gl.text = "\n".join(seen.slice(0, 5).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
+		info.add_child(gl)
+	# A Striver: its whole line, this level lit up
+	var levels := CardDB.striver_line(str(c.get("id", c.get("cardId", ""))))
+	if not levels.is_empty():
+		info.add_child(label("LEVELS  ·  PROMOTES AS IT FIGHTS", 18, GOLD, true))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		info.add_child(row)
+		for i in levels.size():
+			if i > 0:
+				var arrow := label("▶", 26, GOLD)
+				arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(arrow)
+			var here: bool = levels[i] == str(c.get("id", c.get("cardId", "")))
+			var thumb := texture_rect(CardDB.art(levels[i]), Vector2(104, 147))
+			thumb.modulate = Color.WHITE if here else Color(0.6, 0.6, 0.7)
+			var frame := PanelContainer.new()
+			var fb := box(Color(0, 0, 0, 0), GOLD if here else Color(1, 1, 1, 0.15), 3 if here else 1, 6)
+			for k in ["content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"]:
+				fb.set(k, 2)
+			frame.add_theme_stylebox_override("panel", _glow(fb, GOLD, 0.7) if here else fb)
+			frame.add_child(thumb)
+			row.add_child(frame)
 	var hint := label("Click anywhere to close", 18, MUTED)
 	hint.position = Vector2(860, 1010)
 	veil.add_child(hint)

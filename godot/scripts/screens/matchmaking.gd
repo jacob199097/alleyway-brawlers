@@ -14,7 +14,7 @@ func _ready() -> void:
 	UI.background(self, "arena_lobby.png" if UI.tex("arena_lobby.png") else "duel_background.png", 0.62)   # (the crowd waiting for a fight)
 	Game.sound.ambience("crowd")
 	UI.title(self, "CASUAL BRAWL")
-	var p := UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.94))
+	var p := UI.glass(UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.94)), Color(0.02, 0.03, 0.1, 0.62))
 	p.position = Vector2(560, 300)
 	p.custom_minimum_size = Vector2(800, 420)
 	add_child(p)

@@ -58,6 +58,13 @@ func _ready() -> void:
 		blurb.position = Vector2(8, art_h + (92 if two else 116))
 		blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(blurb)
+		# In its clan's colour: edged on hover, glowing once chosen
+		var col: Color = c.color
+		tile.add_theme_stylebox_override("normal", UI.box(Color(0.04, 0.04, 0.1, 0.82), Color(col, 0.35), 2, 14))
+		tile.add_theme_stylebox_override("hover", UI._glow(UI.box(Color(col.darkened(0.8), 0.88), col, 3, 14), col, 0.9))
+		tile.add_theme_stylebox_override("pressed", UI._glow(UI.box(Color(col.darkened(0.7), 0.92), col, 4, 14), col, 1.6))
+		tile.add_theme_stylebox_override("hover_pressed", tile.get_theme_stylebox("pressed"))
+		UI.juice(tile)
 		tile.pressed.connect(_select.bind(c.id))
 		_tiles[c.id] = tile
 	_confirm = UI.button("CONFIRM", _do_confirm, Vector2(360, 70), UI.GREEN)
@@ -83,8 +90,16 @@ func _clan_info(c: Dictionary) -> Dictionary:
 
 func _select(id: String) -> void:
 	_selected = id
+	Sfx.play("promote", 1.2, -6.0)
 	for k in _tiles:
-		_tiles[k].set_pressed_no_signal(k == id)
+		var t: Button = _tiles[k]
+		t.set_pressed_no_signal(k == id)
+		# The others step back; the chosen one pops
+		t.create_tween().tween_property(t, "modulate", Color.WHITE if k == id else Color(0.55, 0.55, 0.62), 0.25)
+		if k == id:
+			var pop := t.create_tween()
+			pop.tween_property(t, "scale", Vector2.ONE * 1.06, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			pop.tween_property(t, "scale", Vector2.ONE * 1.03, 0.2)
 	_confirm.disabled = false
 
 

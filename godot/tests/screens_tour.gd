@@ -98,6 +98,13 @@ func _run() -> void:
 	await _shot("02_card_library_craft", 0.8)
 	Net.show_achievements([{"name": "Untouchable", "reward": {"dust": 300, "title": "Untouchable"}}])
 	await _shot("02_achievement_banner", 1.0)
+	# The zoomed card: a Striver (its whole line) with keywords (and what they mean)
+	for id in CardDB.all():
+		var sc: Dictionary = CardDB.get_card(id)
+		if CardDB.striver_stage(sc).x == 2:
+			UI.card_zoom(lib, sc)
+			break
+	await _shot("02_card_zoom", 0.9)
 	# Pack opening
 	Game.go("shop")
 	await get_tree().create_timer(1.2).timeout

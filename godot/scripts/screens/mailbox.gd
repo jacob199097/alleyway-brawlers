@@ -15,7 +15,7 @@ func _ready() -> void:
 	UI.back_button(self, func(): Game.go("main_menu"))
 	if not needs_server("The mailbox"):
 		return
-	var lp := UI.panel(Color(UI.BLUE, 0.6), Color(0.06, 0.06, 0.18, 0.95))
+	var lp := UI.glass(UI.panel(Color(UI.BLUE, 0.6), Color(0.06, 0.06, 0.18, 0.95)), Color(0.03, 0.04, 0.12, 0.6))
 	lp.position = Vector2(40, 130)
 	lp.size = Vector2(700, 820)
 	add_child(lp)
@@ -26,7 +26,7 @@ func _ready() -> void:
 	_list.add_theme_constant_override("separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
-	var bp := UI.panel(Color(UI.BLUE, 0.6), Color(0.06, 0.06, 0.18, 0.95))
+	var bp := UI.glass(UI.panel(Color(UI.BLUE, 0.6), Color(0.06, 0.06, 0.18, 0.95)), Color(0.03, 0.04, 0.12, 0.6))
 	bp.position = Vector2(760, 130)
 	bp.size = Vector2(1120, 820)
 	add_child(bp)

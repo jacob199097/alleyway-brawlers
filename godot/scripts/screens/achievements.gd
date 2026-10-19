@@ -38,7 +38,7 @@ func _ready() -> void:
 			_render_list())
 		_chips[key] = b
 		bar.add_child(b)
-	var p := UI.panel(Color(1, 1, 1, 0.1), Color(0, 0, 0, 0.45))
+	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0.45)), Color(0.02, 0.02, 0.06, 0.42))
 	p.position = Vector2(30, 180)
 	p.size = Vector2(1220, 800)
 	add_child(p)
@@ -48,7 +48,7 @@ func _ready() -> void:
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 10)
 	scroll.add_child(_list)
-	var lp := UI.panel(UI.GOLD)
+	var lp := UI.glass(UI.panel(UI.GOLD), Color(0.06, 0.04, 0.02, 0.6))
 	lp.position = Vector2(1270, 112)
 	lp.size = Vector2(620, 938)
 	add_child(lp)
@@ -101,7 +101,7 @@ static func _pct(a: Dictionary) -> float:
 func _row(a: Dictionary) -> Control:
 	var got: bool = a.get("unlocked", false)
 	var clan_col := _clan_color(a.get("clan"))
-	var p := UI.panel(UI.GOLD if got else Color(1, 1, 1, 0.14), Color(0.07, 0.06, 0.03, 0.92) if got else UI.INK)
+	var p := UI.panel(UI.GOLD if got else Color(1, 1, 1, 0.14), Color(0.09, 0.07, 0.02, 0.62) if got else Color(0.03, 0.03, 0.08, 0.5))
 	p.custom_minimum_size = ROW
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)

@@ -25,7 +25,7 @@ func _ready() -> void:
 	_search.text_submitted.connect(func(_t): _add_friend())
 	add.add_child(_search)
 	add.add_child(UI.button("+ ADD FRIEND", _add_friend, Vector2(230, 56), UI.GREEN))
-	var p := UI.panel(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0.5))
+	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.14), Color(0, 0, 0, 0.5)))
 	p.position = Vector2(260, 200)
 	p.size = Vector2(1400, 760)
 	add_child(p)
@@ -59,7 +59,7 @@ func _row(f: Dictionary) -> Control:
 	var pending: bool = f.get("status") == "pending"
 	var incoming: bool = pending and f.get("incoming", true)
 	var in_match: bool = f.get("in_match", false)
-	var p := UI.panel(UI.GOLD if pending else Color("333355"), Color("1a1a2e"))
+	var p := UI.panel(UI.GOLD if pending else Color("333355"), Color(0.1, 0.1, 0.18, 0.62))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	p.add_child(row)

@@ -186,7 +186,8 @@ func _sync_chips() -> void:
 
 
 func _build_collection() -> void:
-	var p := UI.panel(Color(1, 1, 1, 0.1), Color(0, 0, 0, 0.45))
+	# No panel: the collection lies on the workbench in the background art
+	var p := UI.panel(Color(0, 0, 0, 0), Color(0, 0, 0, 0))
 	p.position = Vector2(20, 166)
 	p.size = Vector2(1170, 894)
 	add_child(p)
@@ -204,14 +205,14 @@ func _build_collection() -> void:
 
 
 func _build_deck_panel() -> void:
-	var p := UI.panel(Color(1, 1, 1, 0.1), Color(0, 0, 0, 0.45))
+	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.14), Color(0, 0, 0, 0.45)))
 	p.position = Vector2(1206, 166)
 	p.size = Vector2(694, 894)
 	add_child(p)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	p.add_child(col)
-	var lp := UI.panel(UI.GOLD, Color(0.08, 0.06, 0.12, 0.95))
+	var lp := UI.glass(UI.panel(UI.GOLD, Color(0.08, 0.06, 0.12, 0.95)), Color(0.1, 0.07, 0.02, 0.6))
 	col.add_child(lp)
 	_leader_box = HBoxContainer.new()
 	_leader_box.add_theme_constant_override("separation", 16)
@@ -648,6 +649,7 @@ func _render_collection() -> void:
 		ids += str(item.id) + ","
 		var used := _copies(item.id)
 		var tile := CardTile.make(item, TILE)
+		tile.rest_rotation = (absi(hash(str(item.id))) % 1000) / 1000.0 * 3.6 - 1.8   # (laid by hand on the bench)
 		tile.badge = "%d/%d" % [used, mini(3, int(item.get("quantity", 0)))]
 		tile.count_badge = "×%d" % int(item.get("quantity", 0))
 		tile.dimmed = used >= mini(3, int(item.get("quantity", 0)))
