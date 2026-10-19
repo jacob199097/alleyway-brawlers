@@ -13,7 +13,7 @@ router.get('/me', requireAuth, async (req, res) => {
             `SELECT p.id, p.username, p.email, p.karat, p.contraband, p.level, p.xp,
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.last_played_at,
-                    p.dust, p.title AS title_id, p.card_back, p.free_packs,
+                    p.dust, p.title AS title_id, p.card_back, p.free_packs, p.first_win_date,
                     -- Collection completion %
                     (
                         SELECT COUNT(DISTINCT pi.card_id)::float /
@@ -25,7 +25,10 @@ router.get('/me', requireAuth, async (req, res) => {
             [req.playerId]
         );
         if (!rows.length) return res.status(404).json({ error: 'Player not found.' });
-        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id) });
+        // Whether today's first-win bonus is still there (decided as economy/postMatch.js does)
+        const { first_win_date: fw, ...me } = rows[0];
+        const firstWinReady = (fw ? fw.toISOString().slice(0, 10) : null) !== new Date().toISOString().slice(0, 10);
+        res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

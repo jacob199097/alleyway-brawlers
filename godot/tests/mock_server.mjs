@@ -61,7 +61,7 @@ function loginAs(email) {
         players.set(token, {
             id: randomUUID(), username: name.charAt(0).toUpperCase() + name.slice(1), email, karat: 1200,
             contraband: 300, level: 6, xp: 3300, rank: 'enforcer', rank_points: 240, last_played_at: new Date(Date.now() - 3 * 3600e3).toISOString(), wins: 12, losses: 7, draws: 0,
-            avatar_url: null, profile_bio: 'Running these streets.', chosen_clan: pickableClans()[0]?.id ?? null,
+            avatar_url: null, profile_bio: 'Running these streets.', first_win_ready: true, chosen_clan: pickableClans()[0]?.id ?? null,
             created_at: new Date().toISOString(), collection_pct: 100, token, dust: 1850, title: null, title_id: null, card_back: null, free_packs: 2,
         });
     }

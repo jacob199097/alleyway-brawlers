@@ -17,6 +17,17 @@ func _ready() -> void:
 	UI.background(self, "arena_rooftop.png" if UI.tex("arena_rooftop.png") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.png") else 0.62)
 	Game.sound.ambience("rooftop")   # (the rooftop over the city)
 	UI.title(self, "SELECT BATTLE MODE")
+	if Game.player.get("first_win_ready", false) and not Game.offline:
+		var chip := UI.label("★  FIRST WIN OF THE DAY: +%d XP BONUS WAITING  ★" % int(Game.player.get("first_win_xp", 75)), 22, UI.GOLD, true)
+		chip.size = Vector2(1920, 30)
+		chip.position = Vector2(0, 104)
+		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chip.label_settings.outline_color = Color(0, 0, 0, 0.8)
+		chip.label_settings.outline_size = 6
+		add_child(chip)
+		var glow := chip.create_tween().set_loops()
+		glow.tween_property(chip, "modulate", Color(1.3, 1.25, 1.0), 0.9).set_trans(Tween.TRANS_SINE)
+		glow.tween_property(chip, "modulate", Color.WHITE, 0.9).set_trans(Tween.TRANS_SINE)
 	var level := int(Game.player.get("level", 1))
 	var modes := [
 		{"id": "casual", "title": "CASUAL BRAWL", "color": UI.BLUE,

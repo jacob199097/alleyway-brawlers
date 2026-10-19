@@ -339,4 +339,4 @@ async function resolveFfaMatch({ playerId, place, humans }) {
     return { ...await resolveSoloMatch({ playerId, outcome, matchMeta: meta }), place };
 }
 
-module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, resolveFfaMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY };
+module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, resolveFfaMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY, FIRST_WIN_BONUS_XP };
