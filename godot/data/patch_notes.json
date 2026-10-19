@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.22",
+        "notes": [
+            "Striver cards show their level as stars: LV1 of a 3-level Striver has one gold star and two to earn.",
+            "New card effects: JAM (no Ambushes until the end of their next turn), REWIND (undoes ATK / DEF changes), BARRICADE (blocks Morale damage), and effects that hit only characters with a status or in DEF / ATK position.",
+            "Fixed: Sprintz never stood back up at the end of your turn; Star Cartographer discarded 3 cards instead of 2.",
+            "Fixed rare freezes when an attack's own effect removed its target, or when one KO set off another.",
+            "Cards feel heavier: a lifted card's shadow falls further away, lost Morale lingers on the bar before it drains, and the menu XP bar fills with what you just earned."
+        ]
+    },
+    {
         "version": "0.9.21",
         "notes": [
             "New art: the Shop, Card Library, Deck Builder and Achievements screens each have their own background, filled with real cards, packs and clan crests.",

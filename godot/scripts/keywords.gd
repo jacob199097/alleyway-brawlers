@@ -21,6 +21,9 @@ const LIST := {
 	"BOUNTY": [Color("f2c14e"), "BOUNTY X: when it is KO'd, whoever put the bounty on it draws X cards."],
 	"LIFESTEAL": [Color("ff5d8f"), "LIFESTEAL: the Morale it takes from your opponent in a brawl, you gain."],
 	"CLEANSE": [Color("bff6ff"), "CLEANSE: its statuses are gone: STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY."],
+	"JAM": [Color("c6ff7a"), "JAM: your opponent can't spring Ambushes until the end of their next turn."],
+	"REWIND": [Color("d6c2ff"), "REWIND: its ATK and DEF changes are undone, back to the printed numbers."],
+	"BARRICADE": [Color("bfe3ff"), "BARRICADE X: the next X Morale damage you would take before your next turn is prevented."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]

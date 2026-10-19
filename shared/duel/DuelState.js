@@ -468,10 +468,12 @@ export class DuelState {
                 return s.leader_state === 'dormant' && l != null && toInt(l.influence) < toInt(l.influence_max ?? l.influence);
             }
             case 'ramp': return s.authority_max < MAX_AUTHORITY;
+            case 'jam': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].cardType === 'ambush'));
+            case 'barricade': return true;
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
         }
         if (!('target' in e)) return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused' }[String(e.do ?? '')] ?? 'any';
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -654,7 +656,7 @@ export class DuelState {
                 break;
             case 'morale':
                 this._effect(side, c, `${c.name}: pays ${n} Morale to activate`, slot);
-                this._damage(side, n);
+                this._damage(side, n, true);
                 if (this.winner === '') go();
                 break;
             case 'discard':
@@ -955,8 +957,20 @@ export class DuelState {
         return true;
     }
 
+    // An attack whose own trigger removed its target or the attacker ends there
+    _atkGone(ctx) {
+        if (this.winner !== '') return true;
+        if (this.cardAt(ctx.side, ctx.from) !== ctx.att) return true;
+        if (ctx.target >= 0 && this.cardAt(ctx.foe, ctx.target) == null) {
+            this._effect(ctx.side, ctx.att, `${ctx.att.name}'s target is gone: the attack ends`, ctx.from);
+            return true;
+        }
+        return false;
+    }
+
     _atkRedirect(ctx) {
         const foe = ctx.foe;
+        if (this._atkGone(ctx)) return;
         if (ctx.target >= 0) {
             const def = this.cardAt(foe, ctx.target);
             const be = this._readyEnforcer(foe, ctx.target);
@@ -982,6 +996,7 @@ export class DuelState {
 
     _atkAmbush(ctx) {
         const foe = ctx.foe;
+        if (this._atkGone(ctx)) return;
         if (ctx.target < 0) {
             this._atkResolve(ctx);
             return;
@@ -1003,10 +1018,11 @@ export class DuelState {
             }
         }
         // Card Forge Ambushes can be sprung when any of your characters is attacked
-        // (ambushClan: only when the attacked character is of that clan)
+        // (ambushClan: only when the attacked character is of that clan; not while JAMMED)
+        const jammed = toInt(this.sides[foe].jam_until ?? -1) >= this.turn;
         for (const slot of BACK) {
             const a = this.cardAt(foe, slot);
-            if (a != null && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
+            if (a != null && !jammed && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
                 && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))
                 && (DuelState.isLasting(a) || this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att }, ctx.att))) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
@@ -1025,6 +1041,10 @@ export class DuelState {
                 }
                 const slot = toInt(choice);
                 const a = this.cardAt(foe, slot);
+                if (a == null) {   // (destroyed while the choice was waiting)
+                    this._atkResolve(ctx);
+                    return;
+                }
                 this._spring(foe, slot);
                 if (!HAND_AMBUSHES.includes(String(a.effectKey ?? ''))) {
                     this._springFx(ctx, foe, a);
@@ -1190,6 +1210,7 @@ export class DuelState {
 
     _ko(side, slot) {
         const c = this.cardAt(side, slot);
+        if (c == null) return;
         this.sides[side].field[slot] = null;
         const bounty = c.bounty;
         c.downed = false;
@@ -1253,9 +1274,17 @@ export class DuelState {
         this._heal(side, c, amount, slot);
     }
 
-    _damage(side, amount) {
+    _damage(side, amount, paid = false) {
         if (amount <= 0) return;
         const s = this.sides[side];
+        const wall = paid ? 0 : toInt(s.barricade ?? 0);
+        if (wall > 0) {
+            const held = Math.min(wall, amount);
+            s.barricade = wall - held;
+            amount -= held;
+            this._emit('barricade', { side, amount: s.barricade, held });
+            if (amount <= 0) return;
+        }
         s.morale = Math.max(0, s.morale - amount);
         this._emit('damage', { side, amount, morale: s.morale });
         if (s.morale <= 0 && this.winner === '') this._lose(side, 'morale');
@@ -1668,12 +1697,12 @@ export class DuelState {
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
         if (toInt(c.silence_until ?? 0) >= this.turn) return [];   // SILENCED: its effects don't work
-        // A Downed character's effects don't work, except as it goes Down or is KO'd, and an
-        // Activate that stands it back up
+        // A Downed character's effects don't work, except as it goes Down or is KO'd, and the ones
+        // that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
         const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
         // "*": all of them (Hustles, Ambushes)
         return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
-            && !(downed && !(when === 'activate' && String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
+            && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
     }
 
     /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */
@@ -1947,6 +1976,26 @@ export class DuelState {
                     this._emit('cleanse', { side: x.side, slot: x.slot, card: clone(x.card) });
                     return `${x.card.name} is cleansed`;
                 }, `${c.name} cleanses %s`);
+                break;
+            case 'rewind':   // REWIND: its ATK / DEF changes are undone (back to its printed stats)
+                this._fxApply(side, slot, c, e, vs, 'changed', 'rewind', (x) => {
+                    x.card.mods = [];
+                    this._recalc();
+                    this._emit('rewind', { side: x.side, slot: x.slot, card: clone(x.card) });
+                    return `${x.card.name} is rewound to its printed ATK and DEF`;
+                }, `${c.name} rewinds %s`);
+                break;
+            case 'jam':   // JAM: the opponent can't spring Ambushes until the end of their next turn
+                for (const foe of this.foesOf(side)) {
+                    this.sides[foe].jam_until = this._ownerNextTurn(foe);
+                    this._emit('jam', { side: foe, until: this.sides[foe].jam_until });
+                }
+                this._effect(side, c, `${c.name} JAMS your opponent's Ambushes`, slot);
+                break;
+            case 'barricade':   // BARRICADE N: the next N Morale damage before your next turn is prevented
+                s.barricade = toInt(s.barricade ?? 0) + n;
+                this._emit('barricade', { side, amount: s.barricade });
+                this._effect(side, c, `${c.name} raises a BARRICADE of ${n}`, slot);
                 break;
             case 'bounty':   // BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
                 this._fxApply(side, slot, c, e, vs, 'any', 'put a BOUNTY on', (x) => {
@@ -2272,8 +2321,12 @@ export class DuelState {
             this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
                 entries, on, (x) => this._effect(side, c, fn(x), slot), true);
         } else if (target === 'allies' || target === 'enemies' || target === 'all') {
-            const count = entries.length;
-            for (const x of entries) fn(x);
+            let count = 0;
+            for (const x of entries) {   // (one a chained trigger already removed is skipped)
+                if (this.winner !== '' || this.cardAt(x.side, x.slot) !== x.card) continue;
+                fn(x);
+                count += 1;
+            }
             if (count > 0) {
                 const who = target === 'allies' ? `${count} of your characters`
                     : target === 'all' ? `${count} character${count === 1 ? '' : 's'}` : `${count} enem${count === 1 ? 'y' : 'ies'}`;
@@ -2285,9 +2338,24 @@ export class DuelState {
     }
 
     // The characters effect e of card c would affect, before choosing one (same as _fx_targets)
+    /** An effect's "only ones ..." limit: statused, def, atk, downed, standing */
+    _onlyFits(c, only) {
+        switch (only) {
+            case 'statused': return this._afflicted(c);
+            case 'def': return c.position === 'def' && !c.downed;
+            case 'atk': return c.position === 'atk' && !c.downed;
+            case 'downed': return !!c.downed;
+            case 'standing': return !c.downed;
+        }
+        return true;
+    }
+
     _fxTargets(side, slot, c, e, vs, poolKind) {
         const target = String(e.target ?? 'self');
+        const only = String(e.only ?? '');
         const pick = (x) => {
+            // "only ones with a status / in DEF position / ...": the card's own limit, on top of the action's
+            if (only !== '' && !this._onlyFits(x.card, only)) return false;
             switch (poolKind) {
                 case 'standing': return !x.card.downed;
                 case 'downed': return !!x.card.downed;
@@ -2295,6 +2363,10 @@ export class DuelState {
                 case 'defenders': return x.card.position === 'def' && !x.card.downed && !x.card.face_down && !this.frozen(x.card);
                 case 'spent': return !!x.card.has_attacked && !x.card.downed && (x.card.again_turn ?? 0) !== this.turn;
                 case 'statused': return this._afflicted(x.card);
+                case 'changed': {   // REWIND helps: an enemy's net gains, your character's net losses
+                    const net = (x.card.mods || []).reduce((t, m) => t + toInt(m.atk) + toInt(m.def), 0);
+                    return x.side === side ? net < 0 : net > 0;
+                }
             }
             return true;
         };
@@ -2487,6 +2559,10 @@ export class DuelState {
         s.promoted = {};
         s.mentor_used = false;
         s.turns = toInt(s.turns) + 1;
+        if (toInt(s.barricade ?? 0) > 0) {   // (it lasts until your next turn)
+            s.barricade = 0;
+            this._emit('barricade', { side: this.active, amount: 0 });
+        }
         this._setPhase('upkeep');
         this._emit('turn', { side: this.active, turn: this.turn });
         if (s.turns > 1) {   // (every turn but your first)

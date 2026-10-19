@@ -114,4 +114,61 @@ assert.ok(st._attack('player', 0, 0), 'attacks the DEF card');
 assert.equal(st.sides.player.morale, 6000 - 500, 'lost 1500 - 1000 = 500 Morale');
 assert.ok(st.cardAt('opponent', 0) && !st.cardAt('opponent', 0).downed, 'and the defender is fine');
 
+// "Only ones ...": KO one enemy with a status passes over the healthy one; bounce all in DEF leaves ATK ones
+st = board([], [{}, {}]);
+st.cardAt('opponent', 1).poison = { amt: 100, left: 2 };
+st._doFx('player', -1, src, all('ko', { only: 'statused' }));
+assert.ok(st.cardAt('opponent', 0) && !st.cardAt('opponent', 1), 'only the POISONED one is KO\'d');
+st = board([], [{}, {}]);
+st.cardAt('opponent', 0).position = 'def';
+st._doFx('player', -1, src, all('bounce', { only: 'def' }));
+assert.ok(!st.cardAt('opponent', 0) && st.cardAt('opponent', 1), 'only the DEF one went back to the hand');
+assert.ok(!st.fxCan('player', -1, src, all('bounce', { only: 'def' })), 'none left in DEF: it would do nothing');
+
+// REWIND: an enemy's gains are undone; one already weakened isn't picked (that would help it)
+st = board([], [{}, {}]);
+st.cardAt('opponent', 0).mods.push({ atk: 500, def: 0, until_turn: 99 });
+st.cardAt('opponent', 1).mods.push({ atk: -500, def: 0, until_turn: 99 });
+st._recalc();
+st._doFx('player', -1, src, all('rewind'));
+assert.equal(st.cardAt('opponent', 0).attack, 1000, 'back to its printed 1000 ATK');
+assert.equal(st.cardAt('opponent', 1).attack, 500, 'the weakened one keeps its -500');
+
+// BARRICADE: soaks Morale damage until its owner's next turn; Morale paid as a cost goes past it
+st = board();
+st._doFx('player', -1, src, { do: 'barricade', amount: 800 });
+st._damage('player', 1000);
+assert.equal(st.sides.player.morale, 6000 - 200, '800 of the 1000 held back');
+assert.equal(st.sides.player.barricade, 0, 'and it is spent');
+st._doFx('player', -1, src, { do: 'barricade', amount: 500 });
+st._damage('player', 300, true);
+assert.equal(st.sides.player.morale, 5800 - 300, 'a paid cost is not blocked');
+
+// JAM: the opponent can't spring an Ambush until the end of their next turn
+const trap = { id: 'trap', name: 'Trap', cardType: 'ambush', clanTag: 'test', effects: [{ when: 'defend', do: 'down', target: 'attacker' }] };
+for (const jam of [false, true]) {
+    st = board([{ attack: 2000 }], [{}]);
+    st.sides.opponent.field[5] = st.makeCard({ ...trap, face_down: true });
+    if (jam) st._doFx('player', -1, src, { do: 'jam' });
+    st._attack('player', 0, 0);
+    const asked = [st.pending, ...st._asks].some(a => a && a.key === 'ambush');
+    assert.equal(asked, !jam, jam ? 'jammed: no Ambush to spring' : 'not jammed: the Ambush can spring');
+}
+
+// A KO that sets off another "KO all enemies" doesn't trip over the ones already gone
+st = board([{ effects: [{ when: 'foe_ko', do: 'ko', target: 'enemies' }] }], [{}, {}, {}]);
+st._doFx('player', -1, src, all('ko'));
+assert.ok([0, 1, 2].every(s => st.cardAt('opponent', s) == null), 'all three KO\'d, no error');
+
+// An attack whose own trigger removes its target ends there
+st = board([{ effects: [{ when: 'attack', do: 'bounce', target: 'enemies' }] }], [{}]);
+assert.ok(st._attack('player', 0, 0));
+assert.equal(st.cardAt('opponent', 0), null, 'the target went back to the hand');
+assert.ok(st.takeEvents().some(e => e.type === 'effect' && /target is gone/.test(e.text)), 'and the attack ended');
+
+// "At the end of your turn: if this card is Downed, it stands back up" (Sprintz) works while it's Downed
+st = board([{ downed: true, position: 'def', effects: [{ when: 'turn_end', do: 'stand', target: 'self' }] }]);
+st._runFx('player', 0, st.cardAt('player', 0), 'turn_end');
+assert.ok(!st.cardAt('player', 0).downed, 'it stood back up');
+
 console.log('blocks: ok');

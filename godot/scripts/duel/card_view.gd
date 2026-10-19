@@ -68,6 +68,7 @@ var _last_pos := Vector2.INF
 var _holo := 0.0                 # hover shimmer on Epic/Legendary cards
 var _status_fx := {}             # status -> particle emitter (embers, drips)
 var _sparkle: CPUParticles2D     # golden sparkles around a hovered Legendary
+var _lift := 0.0                 # 0..1: how far above its resting place (scale over home): the shadow falls away
 
 
 func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
@@ -293,6 +294,10 @@ func _badge_wanted() -> bool:
 
 func _process(delta: float) -> void:
 	_update_tilt(delta)
+	var lift := clampf(scale.x / maxf(home_scale, 0.01) - 1.0, 0.0, 1.0)
+	if absf(lift - _lift) > 0.01:
+		_lift = lift
+		queue_redraw()
 	if pulse_color.a > 0.0 and glow > 0.01:
 		queue_redraw()
 	if not statuses.is_empty() or downed:
@@ -367,7 +372,11 @@ func _update_tilt(delta: float) -> void:
 
 func _draw() -> void:
 	var r := Rect2(-SIZE / 2, SIZE)
-	draw_rect(Rect2(r.position + Vector2(6, 8), r.size), Color(0, 0, 0, 0.45))
+	# Its shadow: tight under a card at rest, further off and softer the higher it's lifted
+	var off := Vector2(6, 8) * (1.0 + _lift * 2.6)
+	for i in 3:
+		var a := (0.3 if i == 0 else 0.1) * (1.0 - _lift * 0.35)
+		draw_rect(Rect2(r.position + off, r.size).grow(i * (1.5 + _lift * 5.0)), Color(0, 0, 0, a))
 	if glow > 0.01:
 		var col := glow_color
 		var a := glow
@@ -496,6 +505,8 @@ func _draw_statuses() -> void:
 		_status_layer.draw_string(ThemeDB.fallback_font, at + Vector2(-13, 6), str(cost_now), HORIZONTAL_ALIGNMENT_CENTER, 26, 17, Color.WHITE)
 	if downed and face_up:
 		_draw_downed(r)
+	if face_up:   # a Striver's level stars, across the top edge
+		UI.draw_level_stars(_status_layer, Vector2(0, r.position.y + 1.0), CardDB.striver_stage(card), 6.0)
 	if glow > 0.01 and bool(Game.settings.get("glow_symbols", false)):
 		_draw_glow_symbol(r)
 	if statuses.is_empty():

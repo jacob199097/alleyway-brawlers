@@ -562,6 +562,35 @@ static func ago(iso) -> String:
 	return "%d %s%s ago" % [n, unit, "" if n == 1 else "s"]
 
 
+## A Striver's level stars, centred on at: gold for each level reached, dim for the ones still to come
+## (stage: CardDB.striver_stage). s: a star's radius. A dark pill sits behind them so they read on any art.
+static func draw_level_stars(ci: CanvasItem, at: Vector2, stage: Vector2i, s := 7.0) -> void:
+	if stage.y <= 1:
+		return
+	var gap := s * 2.3
+	var w := gap * stage.y + s * 0.8
+	var pill := Rect2(at - Vector2(w / 2, s * 1.35), Vector2(w, s * 2.7))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.03, 0.025, 0.07, 0.86)
+	sb.border_color = Color(GOLD, 0.55)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(int(s * 1.35))
+	ci.draw_style_box(sb, pill)
+	for i in stage.y:
+		var c := at + Vector2((i - (stage.y - 1) / 2.0) * gap, 0)
+		var pts := PackedVector2Array()
+		for k in 10:
+			pts.append(c + Vector2.from_angle(k * PI / 5.0 - PI / 2) * (s if k % 2 == 0 else s * 0.45))
+		if i < stage.x:
+			ci.draw_colored_polygon(pts, GOLD)
+			pts.append(pts[0])
+			ci.draw_polyline(pts, Color("fff3b0"), 1.0, true)
+		else:
+			ci.draw_colored_polygon(pts, Color(0.35, 0.32, 0.45, 0.7))
+			pts.append(pts[0])
+			ci.draw_polyline(pts, Color(0.75, 0.72, 0.9, 0.6), 1.0, true)
+
+
 static func rarity_color(r) -> Color:
 	return RARITY_COLOR.get(int(r) if r != null else 1, RARITY_COLOR[1])
 

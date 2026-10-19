@@ -198,6 +198,7 @@ func _draw() -> void:
 
 func _draw_overlay() -> void:
 	var f := UI.font()
+	UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
 	if badge != "":
 		var br := Rect2(size.x - 64, 6, 58, 28)
 		_overlay.draw_style_box(_pill(UI.GOLD), br)

@@ -520,12 +520,16 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return s.leader_state == "dormant" and l != null and int(l.influence) < int(l.get("influence_max", l.influence))
 		"ramp":
 			return s.authority_max < MAX_AUTHORITY
+		"jam":
+			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("cardType") == "ambush"))
+		"barricade":
+			return true
 		"attack_again":
 			return card_at(side, slot) == c and c.has_attacked and int(c.get("again_turn", 0)) != turn
 	if not e.has("target"):
 		return true
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -766,7 +770,7 @@ func _activate(side: String, slot: int, k: int) -> bool:
 			go.call()
 		"morale":
 			_effect(side, c, "%s: pays %d Morale to activate" % [c.name, n], slot)
-			_damage(side, n)
+			_damage(side, n, true)
 			if winner == "":
 				go.call()
 		"discard":
@@ -1090,8 +1094,22 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 
 
 ## Block Enforcer: may take the hit for an allied LIONS character, once per turn.
+## An attack whose own trigger removed its target or the attacker ends there
+func _atk_gone(ctx: Dictionary) -> bool:
+	if winner != "":
+		return true
+	if not is_same(card_at(ctx.side, ctx.from), ctx.att):
+		return true
+	if ctx.target >= 0 and card_at(ctx.foe, ctx.target) == null:
+		_effect(ctx.side, ctx.att, "%s's target is gone: the attack ends" % ctx.att.name, ctx.from)
+		return true
+	return false
+
+
 func _atk_redirect(ctx: Dictionary) -> void:
 	var foe: String = ctx.foe
+	if _atk_gone(ctx):
+		return
 	if ctx.target >= 0:
 		var def: Dictionary = card_at(foe, ctx.target)
 		var be := _ready_enforcer(foe, ctx.target)
@@ -1114,6 +1132,8 @@ func _atk_redirect(ctx: Dictionary) -> void:
 ## The defender may spring a face-down Ambush on an attack against a LIONS character.
 func _atk_ambush(ctx: Dictionary) -> void:
 	var foe: String = ctx.foe
+	if _atk_gone(ctx):
+		return
 	if ctx.target < 0:
 		_atk_resolve(ctx)
 		return
@@ -1129,10 +1149,11 @@ func _atk_ambush(ctx: Dictionary) -> void:
 				if a != null and a.get("effectKey") == key:
 					options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	# Card Forge Ambushes can be sprung when any of your characters is attacked
-	# (ambushClan: only when the attacked character is of that clan)
+	# (ambushClan: only when the attacked character is of that clan; not while JAMMED)
+	var jammed := int(sides[foe].get("jam_until", -1)) >= turn
 	for slot in BACK:
 		var a = card_at(foe, slot)
-		if a != null and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
+		if a != null and not jammed and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
 				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
 				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))) \
 				and (is_lasting(a) or card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att}, ctx.att)):
@@ -1147,6 +1168,9 @@ func _atk_ambush(ctx: Dictionary) -> void:
 				_atk_resolve(ctx)
 				return
 			var slot := int(choice)
+			if card_at(foe, slot) == null:   # (destroyed while the choice was waiting)
+				_atk_resolve(ctx)
+				return
 			var a: Dictionary = card_at(foe, slot)
 			_spring(foe, slot)
 			if not str(a.get("effectKey", "")) in HAND_AMBUSHES:
@@ -1344,6 +1368,8 @@ func _defeat(side: String, slot: int) -> String:
 
 
 func _ko(side: String, slot: int) -> void:
+	if card_at(side, slot) == null:
+		return
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
 	var bounty = c.get("bounty")
@@ -1412,10 +1438,18 @@ func _lifesteal(side: String, slot: int, c, amount: int) -> void:
 	_heal(side, c, amount, slot)
 
 
-func _damage(side: String, amount: int) -> void:
+func _damage(side: String, amount: int, paid := false) -> void:
 	if amount <= 0:
 		return
 	var s: Dictionary = sides[side]
+	var wall := 0 if paid else int(s.get("barricade", 0))
+	if wall > 0:
+		var held := mini(wall, amount)
+		s.barricade = wall - held
+		amount -= held
+		_emit("barricade", {"side": side, "amount": s.barricade, "held": held})
+		if amount <= 0:
+			return
 	s.morale = maxi(0, s.morale - amount)
 	_emit("damage", {"side": side, "amount": amount, "morale": s.morale})
 	if s.morale <= 0 and winner == "":
@@ -1882,12 +1916,12 @@ func _fx(c, when: String) -> Array:
 		return out
 	if int(c.get("silence_until", 0)) >= turn:   # SILENCED: its effects don't work
 		return out
-	# A Downed character's effects don't work, except as it goes Down or is KO'd, and an
-	# Activate that stands it back up
+	# A Downed character's effects don't work, except as it goes Down or is KO'd, and the ones
+	# that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
 	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
 	for e in _fold_if_done(c.get("effects", [])):
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
-			if downed and not (when == "activate" and str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
+			if downed and not (str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
 				continue
 			out.append(e)
 	return out
@@ -2218,6 +2252,22 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("cleanse", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s is cleansed" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "statused", "cleanse", fn, "%s cleanses %%s" % c.name)
+		"rewind":   # REWIND: its ATK / DEF changes are undone (back to its printed stats)
+			var fn := func(x: Dictionary) -> String:
+				x.card.mods = []
+				_recalc()
+				_emit("rewind", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
+				return "%s is rewound to its printed ATK and DEF" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "changed", "rewind", fn, "%s rewinds %%s" % c.name)
+		"jam":   # JAM: the opponent can't spring Ambushes until the end of their next turn
+			for foe in foes_of(side):
+				sides[foe].jam_until = _owner_next_turn(foe)
+				_emit("jam", {"side": foe, "until": sides[foe].jam_until})
+			_effect(side, c, "%s JAMS your opponent's Ambushes" % c.name, slot)
+		"barricade":   # BARRICADE N: the next N Morale damage before your next turn is prevented
+			s.barricade = int(s.get("barricade", 0)) + n
+			_emit("barricade", {"side": side, "amount": s.barricade})
+			_effect(side, c, "%s raises a BARRICADE of %d" % [c.name, n], slot)
 		"bounty":   # BOUNTY X: when it's KO'd, whoever put the bounty on it draws X
 			var fn := func(x: Dictionary) -> String:
 				x.card.bounty = {"by": side, "n": n}
@@ -2539,9 +2589,12 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
 			entries, on, cb, true)
 	elif target == "allies" or target == "enemies" or target == "all":
-		var count := entries.size()
-		for x in entries:
+		var count := 0
+		for x in entries:   # (one a chained trigger already removed is skipped)
+			if winner != "" or not is_same(card_at(x.side, x.slot), x.card):
+				continue
 			fn.call(x)
+			count += 1
 		if count > 0:
 			var who := ("%d of your characters" % count) if target == "allies" \
 				else ("%d character%s" % [count, "" if count == 1 else "s"]) if target == "all" \
@@ -2554,9 +2607,29 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 
 ## The characters effect `e` of card `c` would affect ({side, slot, card}), before choosing one.
 ## pool_kind: any | standing | downed | attackers (in ATK, standing) | spent (attacked this turn)
+## An effect's "only ones ..." limit: statused, def, atk, downed, standing
+func _only_fits(c: Dictionary, only: String) -> bool:
+	match only:
+		"statused":
+			return _afflicted(c)
+		"def":
+			return c.position == "def" and not c.downed
+		"atk":
+			return c.position == "atk" and not c.downed
+		"downed":
+			return c.downed
+		"standing":
+			return not c.downed
+	return true
+
+
 func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String) -> Array:
 	var target := str(e.get("target", "self"))
+	var only := str(e.get("only", ""))
 	var pick := func(x) -> bool:
+		# "only ones with a status / in DEF position / ...": the card's own limit, on top of the action's
+		if only != "" and not _only_fits(x.card, only):
+			return false
 		match pool_kind:
 			"standing":
 				return not x.card.downed
@@ -2570,6 +2643,11 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				return x.card.has_attacked and not x.card.downed and int(x.card.get("again_turn", 0)) != turn
 			"statused":
 				return _afflicted(x.card)
+			"changed":   # REWIND helps: an enemy's net gains, your character's net losses
+				var net := 0
+				for m in x.card.get("mods", []):
+					net += int(m.get("atk", 0)) + int(m.get("def", 0))
+				return net < 0 if x.side == side else net > 0
 		return true
 	var entries: Array = []
 	match target:
@@ -2822,6 +2900,9 @@ func _begin_turn() -> void:
 	s.promoted = {}
 	s.mentor_used = false
 	s.turns = int(s.get("turns", 0)) + 1
+	if int(s.get("barricade", 0)) > 0:   # (it lasts until your next turn)
+		s.barricade = 0
+		_emit("barricade", {"side": active, "amount": 0})
 	_set_phase("upkeep")
 	_emit("turn", {"side": active, "turn": turn})
 	# Authority grows every turn but your first

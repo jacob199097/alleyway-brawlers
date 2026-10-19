@@ -595,6 +595,15 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s went back on top of the deck" % _cname(ev.card), side)
 		"cleanse":
 			_log("%s was cleansed" % _cname(ev.card), side)
+		"rewind":
+			_log("%s was rewound to its printed stats" % _cname(ev.card), side)
+		"jam":
+			_log("%s Ambushes are JAMMED" % _whose(side), side)
+		"barricade":
+			if int(ev.get("held", 0)) > 0:
+				_log("%s BARRICADE held off %d Morale damage" % [_whose(side), int(ev.held)], side)
+			elif int(ev.amount) > 0:
+				_log("%s BARRICADE: %d" % [_whose(side), int(ev.amount)], side)
 		"damage":
 			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side)
 		"heal":
@@ -1418,6 +1427,12 @@ func _play(ev: Dictionary) -> void:
 			await _ev_topdeck(ev)
 		"cleanse":
 			await _ev_cleanse(ev)
+		"rewind":
+			await _ev_rewind(ev)
+		"jam":
+			await _ev_jam(ev)
+		"barricade":
+			await _ev_barricade(ev)
 		"mill":
 			await _ev_mill(ev)
 		"recover":
@@ -2644,6 +2659,70 @@ func _ev_cleanse(ev: Dictionary) -> void:
 	await _wait(0.45)
 
 
+## REWIND: a character's ATK / DEF changes unwind (a clock spins back over it).
+func _ev_rewind(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(ev.slot)
+	if v == null:
+		return
+	Sfx.play("cleanse", 0.7)
+	var violet := Color(0.72, 0.55, 1.0)
+	for i in 3:
+		_ring(v.position, violet.lerp(Color.WHITE, i * 0.3), 1.0 + i * 0.35)
+	var spin := create_tween()
+	spin.tween_property(v, "rotation", -TAU * 0.06, 0.18).set_trans(Tween.TRANS_SINE)
+	spin.tween_property(v, "rotation", 0.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	v.set_card(ev.card)
+	v.flash()
+	_float_text(v.position + Vector2(0, -110 if ev.side == "player" else 110), "REWOUND", violet.lightened(0.3), 30)
+	await _wait(0.5)
+
+
+## JAM: the side's face-down cards are locked (static crackles over its back row).
+func _ev_jam(ev: Dictionary) -> void:
+	var p: Dictionary = _panels.get(ev.side, {})
+	Sfx.play("slam", 1.3, -4.0)
+	var lime := Color(0.7, 1.0, 0.3)
+	for v in field.get(ev.side, {}).values():
+		if v is CardView and v.card.get("face_down", false):
+			_sparks(v.position, Vector2.UP, lime, 14, 180.0)
+			_ring(v.position, lime, 0.8)
+	if p.has("root"):
+		var root: Control = p.root
+		_float_text(root.position + root.size / 2 + Vector2(0, 40 if ev.side != "player" else -40), "AMBUSHES JAMMED", lime, 34)
+	await _wait(0.45)
+
+
+## BARRICADE: raised (a badge on the Morale panel), holding damage back, or falling at its owner's turn.
+func _ev_barricade(ev: Dictionary) -> void:
+	var p: Dictionary = _panels.get(ev.side, {})
+	if not p.has("root"):
+		return
+	var root: Control = p.root
+	var steel := Color(0.62, 0.85, 1.0)
+	var badge: Label = p.get("barricade")
+	if badge == null:
+		badge = UI.label("", 20, steel)
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		badge.add_theme_constant_override("outline_size", 6)
+		badge.position = Vector2(root.size.x - 150, -26 if ev.side == "player" else root.size.y + 2)
+		root.add_child(badge)
+		p["barricade"] = badge
+	var amount := int(ev.amount)
+	badge.text = "BARRICADE %d" % amount if amount > 0 else ""
+	var mid := root.position + root.size / 2
+	if int(ev.get("held", 0)) > 0:
+		Sfx.play("slam", 0.8)
+		shake(6.0)
+		_ring(mid, steel, 1.6)
+		_float_text(mid + Vector2(0, 40 if ev.side != "player" else -40), "BLOCKED %d" % int(ev.held), steel, 54)
+		await _wait(0.45)
+	elif amount > 0:
+		Sfx.play("promote", 0.8, -4.0)
+		_ring(mid, steel, 1.3)
+		_float_text(mid + Vector2(0, 40 if ev.side != "player" else -40), "BARRICADE", steel, 40)
+		await _wait(0.4)
+
+
 ## The top card of a deck goes straight to the Gutter.
 func _ev_mill(ev: Dictionary) -> void:
 	var side: String = ev.side
@@ -3830,7 +3909,26 @@ func _set_morale(side: String, value: int) -> void:
 	t.tween_method(func(x: float): label.text = str(int(x)), from, float(value), 0.7)
 	var bar: ColorRect = p.bar
 	var full: float = bar.get_parent().size.x
-	t.tween_property(bar, "size:x", full * clampf(float(value) / DuelState.START_MORALE, 0.0, 1.0), 0.7)
+	var to_w := full * clampf(float(value) / DuelState.START_MORALE, 0.0, 1.0)
+	# The ghost: a pale chunk where the lost Morale was, which drains after a beat
+	var ghost: ColorRect = p.get("ghost")
+	if ghost == null:
+		ghost = ColorRect.new()
+		ghost.size = bar.size
+		ghost.color = Color(1.0, 0.92, 0.8, 0.8)
+		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.get_parent().add_child(ghost)
+		bar.get_parent().move_child(ghost, bar.get_index())
+		p["ghost"] = ghost
+	if value < from:
+		ghost.size.x = maxf(ghost.size.x, bar.size.x)
+		t.tween_property(bar, "size:x", to_w, 0.14)
+		var g := create_tween()
+		g.tween_interval(0.4)
+		g.tween_property(ghost, "size:x", to_w, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	else:
+		ghost.size.x = to_w
+		t.tween_property(bar, "size:x", to_w, 0.7)
 	if value < from:
 		var flash: ColorRect = p.flash
 		flash.color.a = 0.5

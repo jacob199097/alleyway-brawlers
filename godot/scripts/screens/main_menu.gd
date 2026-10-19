@@ -157,7 +157,7 @@ func _build_bar(p: Dictionary) -> void:
 	fill.color = UI.BLUE
 	fill.size = Vector2(0, 7)
 	track.add_child(fill)
-	fill.create_tween().tween_property(fill, "size:x", track.size.x * xp.pct, 0.9).set_delay(0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_fill_xp(p, track, fill)
 	_contraband = _text("0", _bar(1960, 100), 26, UI.PURPLE)
 	_karat = _text("0", _bar(2110, 104), 26, UI.GOLD)
 	# (currencies count up as the menu opens: from a bit below, so it's quick)
@@ -172,6 +172,48 @@ func _build_bar(p: Dictionary) -> void:
 	_hotspot(_bar(1975, 112), func(): Game.go("contraband"))
 	if not Game.offline:
 		_mail_badge(mail)
+
+
+## The XP bar fills from where it last stood: from empty the first time, else from the XP before this
+## visit, with "+N XP" over it (and a flash through a new level).
+func _fill_xp(p: Dictionary, track: ColorRect, fill: ColorRect) -> void:
+	var total := int(p.get("xp", 0))
+	var xp := UI.xp_progress(p)
+	var seen := Game.xp_seen
+	Game.xp_seen = total
+	var gained := total - seen if seen >= 0 else 0
+	var tw := fill.create_tween()
+	tw.tween_interval(0.3)
+	if gained <= 0:
+		tw.tween_property(fill, "size:x", track.size.x * xp.pct, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		return
+	var before := UI.xp_progress({"level": int(p.get("level", 1)), "xp": seen})
+	var levelled: bool = xp.current < gained   # (the bar wrapped round: this visit crossed a level)
+	fill.size.x = 0.0 if levelled else track.size.x * before.pct
+	var pop := UI.label("+%d XP" % gained, 22, UI.BLUE, true)
+	pop.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	pop.add_theme_constant_override("outline_size", 6)
+	pop.position = track.position + Vector2(track.size.x - 90, -40)
+	pop.modulate.a = 0.0
+	add_child(pop)
+	var pt := pop.create_tween()
+	pt.tween_interval(0.45)
+	pt.tween_property(pop, "modulate:a", 1.0, 0.15)
+	pt.parallel().tween_property(pop, "position:y", pop.position.y - 14, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pt.tween_interval(1.2)
+	pt.tween_property(pop, "modulate:a", 0.0, 0.4)
+	pt.tween_callback(pop.queue_free)
+	if levelled:
+		var glow := ColorRect.new()
+		glow.color = Color(1, 1, 1, 0)
+		glow.size = track.size
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		track.add_child(glow)
+		tw.tween_callback(func(): Sfx.play("level_up", 1.0, -6.0))
+		tw.tween_property(glow, "color:a", 0.9, 0.12)
+		tw.tween_property(glow, "color:a", 0.0, 0.5)
+	tw.tween_property(fill, "size:x", track.size.x * xp.pct, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): Sfx.play("karat", 1.4, -12.0))
 
 
 func _text(t: String, at: Vector2, font_size: int, color: Color) -> Label:

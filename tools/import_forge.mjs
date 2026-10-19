@@ -154,8 +154,10 @@ function cleanEffect(e) {
     const out = {};
     // (cost: an Activate ability's cost; per: "for each"; token: the token card's id; label: a
     // "choose one" option's text)
-    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name', 'cost', 'per', 'per_clan', 'token', 'label']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
-    for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level', 'cost_n', 'per_max']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
+    // (luck: coin / die; if_luck: follows the last flip or roll)
+    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name', 'cost', 'per', 'per_clan', 'token', 'label', 'luck', 'if_luck', 'only']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
+    // (luck_on: the die roll needed; discard_n: what Loot discards, 0 = none)
+    for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level', 'cost_n', 'per_max', 'luck_on', 'discard_n']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
     if (e.once) out.once = true;
     if (e.or) out.or = true;   // "choose one": this effect or the next
     if (e.if_done) out.if_done = true;   // "If you do, ...": only if the effect before did something

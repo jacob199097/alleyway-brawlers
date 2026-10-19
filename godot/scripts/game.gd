@@ -57,6 +57,7 @@ var server_override := ""
 var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
+var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet): it fills on from there
 
 ## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
 var sound: Node

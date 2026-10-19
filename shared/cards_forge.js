@@ -2514,7 +2514,8 @@ export const FORGE_CARDS = {
             {
                 "when": "deploy",
                 "do": "loot",
-                "amount": 3
+                "amount": 3,
+                "discard_n": 2
             }
         ],
         "clanName": "Nebula",

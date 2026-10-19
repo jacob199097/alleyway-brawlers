@@ -11,6 +11,14 @@ const MAX_ACTIONS := 1500
 const TWIST_RULES := [{"start_authority": 3}, {"start_morale": 3000}, {"opening_hand": 7}, {"pierce": true}]
 
 const FX_SAMPLES := [
+	# Only ones with a status / in DEF; REWIND, JAM, BARRICADE; chains that remove what they aim at
+	[{"when": "attack", "do": "ko", "target": "enemy", "only": "statused"}, {"when": "deploy", "do": "poison", "target": "enemy", "amount": 100}],
+	[{"when": "deploy", "do": "bounce", "target": "enemies", "only": "def"}, {"when": "turn_start", "do": "force_def", "target": "enemy"}],
+	[{"when": "turn_start", "do": "rewind", "target": "enemies"}, {"when": "deploy", "do": "buff", "target": "allies", "atk": 400, "until": "forever"}],
+	[{"when": "deploy", "do": "buff", "target": "allies", "atk": 500, "until": "forever"}, {"when": "attack", "do": "rewind", "target": "enemy"}],
+	[{"when": "turn_start", "do": "buff", "target": "self", "atk": 200, "def": 200, "until": "forever"}, {"when": "defend", "do": "rewind", "target": "attacker"}],
+	[{"when": "deploy", "do": "jam"}, {"when": "turn_end", "do": "barricade", "amount": 600}],
+	[{"when": "foe_ko", "do": "ko", "target": "enemies", "once": true}, {"when": "attack", "do": "bounce", "target": "enemies"}],
 	# Cleanse (allies at the start of the turn; itself when attacked)
 	[{"when": "turn_start", "do": "cleanse", "target": "allies"}, {"when": "deploy", "do": "stasis", "target": "enemy"}],
 	[{"when": "defend", "do": "cleanse", "target": "self"}, {"when": "deploy", "do": "poison", "target": "enemies", "amount": 200}],

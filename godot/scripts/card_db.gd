@@ -69,6 +69,21 @@ static func next_form(id: String) -> String:
 	return ""
 
 
+## A Striver's place in its line: Vector2i(its level, how many levels the line has). (0, 0): not a Striver.
+static func striver_stage(card: Dictionary) -> Vector2i:
+	if str(card.get("subtype", "")) != "striver" or str(card.get("cardType", "gang_member")) != "gang_member":
+		return Vector2i.ZERO
+	var level := maxi(1, int(card.get("level", 1)))
+	var total := level
+	var id := str(card.get("id", ""))
+	for i in 6:   # (lines are 3 long; a guard against a loop)
+		id = next_form(id)
+		if id == "":
+			break
+		total += 1
+	return Vector2i(level, total) if total > 1 else Vector2i.ZERO
+
+
 ## Card art texture, or null when the art isn't synced (see tools/sync_assets).
 static func art(id: String) -> Texture2D:
 	if _art.has(id):

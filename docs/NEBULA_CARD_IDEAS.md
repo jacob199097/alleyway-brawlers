@@ -189,9 +189,8 @@ rewards a small board (Orbital Strike) and punishes a big one (Hull Breach). The
 that: **a few strong characters**, payoffs for enemies already locked down, and answers to wide
 boards (Militia's whole plan).
 
-Everything here builds in the Card Forge today except **Void Reaper** and **Solar Wind**. They need
-one new Forge option: choosing which enemies an effect can hit (with a status, or in DEF position).
-That is a small change to both engines.
+Everything here builds in the Card Forge today. Void Reaper and Solar Wind use the **Only** option
+(under Who): only ones with a status, only ones in DEF position.
 
 | # | Card | Type | Auth | Rarity | ATK / DEF | Role |
 |---|---|---|---|---|---|---|
@@ -225,7 +224,7 @@ Trading card illustration for "Alleyway Brawlers", Nebula clan. A lone fighter s
 
 > When this card attacks: KO one enemy character that has a status (STASIS, FREEZE, STUN and so on).
 
-Forge (needs the new target option): When it attacks → KO, One enemy, only ones with a status. The payoff for Dr. Orion Krell,
+Forge: When it attacks → KO, One enemy, Only: ones with a status. The payoff for Dr. Orion Krell,
 Alysse, Dark Matter and the Archon: whatever they lock down, the Reaper takes.
 
 ```
@@ -307,7 +306,7 @@ Trading card illustration for "Alleyway Brawlers", Nebula clan. A fighter mid-pu
 
 > Return all enemy characters in DEF position to their owner's hand.
 
-Forge (needs the new target option): Bounce, All enemies, only ones in DEF position. The Archon, Lyra Quell and Clay force enemies into
+Forge: Return to hand, All enemies, Only: ones in DEF position. The Archon, Lyra Quell and Clay force enemies into
 DEF; this sweeps every one of them back to the hand. It's brutal against a wide Militia line, and
 Conscript tokens vanish when bounced.
 
