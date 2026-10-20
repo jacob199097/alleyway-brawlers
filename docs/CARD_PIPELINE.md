@@ -3,6 +3,12 @@
 Cards are designed in the Card Forge (https://claude.ai/artifact/4DxkURVx8VNZJDMVWMTzCY):
 art, stats, text and **effects** (the game rules). Getting them into the game takes three steps.
 
+**Artwork that matches.** Each card's **Art prompt** panel writes the image prompt: the character's
+look (written once, kept word for word on every Striver level above it), this card's scene, and its
+clan's art style (Settings → the clan's "Art style"). **Download reference image** gives the picture to
+attach with it: the level below's art for a Striver (the prompt then asks for an *edit* of it, which keeps
+the same face and outfit), else a style board of the clan's artwork.
+
 ## 1. Export from the Forge
 Press **Export all**. You get `alleyway-cards.zip` with `card_catalog.json` and `cards/<game id>.png`.
 
