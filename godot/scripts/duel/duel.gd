@@ -3817,7 +3817,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_title.text = ""
 		_ui.detail_kind.text = ""
 		_ui.detail_stats.text = ""
-		_ui.detail_text.text = "[color=#8a8aa0]Hover a card to see it here.[/color]"
+		_ui.detail_text.text = "[color=#8a8aa0]Hover a card to see it here. Right-click it to zoom in.[/color]"
 		return
 	var tex := CardDB.art(str(c.get("art_url", c.get("id", ""))))
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
@@ -4470,6 +4470,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _spectating and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_toggle_menu()
 		return
+	# Right-click a card you can see (when not in the middle of a play): zoom in, with a Striver's levels
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed 			and not _dragging and not _mode in ["menu", "place", "target", "choose", "discard"] and _zoom_hovered():
+		return
 	if _watching() and not event is InputEventMouseMotion:
 		return   # watching a replay or a friend's match: hovering shows cards, nothing else
 	if event is InputEventMouseMotion:
@@ -4500,6 +4503,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F11:
 				var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+## Opens the big view of the card under the mouse (face-up ones, and your own face-down ones).
+func _zoom_hovered() -> bool:
+	var v := _view_at(get_global_mouse_position())
+	if v == null or v.card.is_empty() or not (v.face_up or v.side == "player"):
+		return false
+	var base := CardDB.get_card(str(v.card.get("id", "")))
+	UI.card_zoom($HUD/UI, base if not base.is_empty() else v.card)
+	return true
 
 
 func _view_at(p: Vector2) -> CardView:

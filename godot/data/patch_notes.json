@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.33",
+        "notes": [
+            "Zooming into a Striver shows its evolution: click any level (or press the arrow keys) to zoom into that card.",
+            "In a match, right-click a card to zoom in on it, Striver levels included. Right-click still cancels when you're placing or aiming a card."
+        ]
+    },
+    {
         "version": "0.9.32",
         "notes": [
             "The Card Library and Deck Builder run about four times smoother (the light running round Rare and better cards was slowing them down).",

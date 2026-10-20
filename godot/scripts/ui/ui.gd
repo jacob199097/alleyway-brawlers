@@ -659,10 +659,11 @@ static func card_art(c: Dictionary) -> Texture2D:
 
 
 ## Large card view over everything: art, name, type line, stats and effect text.
-static func card_zoom(parent: Control, c: Dictionary) -> void:
+static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	var veil := ColorRect.new()
-	veil.color = Color(0, 0, 0, 0.78)
+	veil.color = Color(0, 0, 0, 0.88)
 	veil.size = Vector2(1920, 1080)
+	veil.z_index = 100   # (over a screen's own overlays, and the duel's HUD)
 	parent.add_child(veil)
 	veil.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
@@ -737,10 +738,18 @@ static func card_zoom(parent: Control, c: Dictionary) -> void:
 		gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		gl.text = "\n".join(seen.slice(0, 5).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
 		info.add_child(gl)
-	# A Striver: its whole line, this level lit up
-	var levels := CardDB.striver_line(str(c.get("id", c.get("cardId", ""))))
+	# A Striver: its evolution, this level lit up; click a level (or press ◀ ▶) to zoom into it
+	var my_id := str(c.get("id", c.get("cardId", "")))
+	var levels := CardDB.striver_line(my_id)
+	var at := levels.find(my_id)
+	var go_level := func(i: int):
+		if i < 0 or i >= levels.size() or i == at:
+			return
+		Sfx.play("whoosh", 1.3, -10.0)
+		veil.queue_free()
+		card_zoom(parent, CardDB.get_card(levels[i]), true)
 	if not levels.is_empty():
-		info.add_child(label("LEVELS  ·  PROMOTES AS IT FIGHTS", 18, GOLD, true))
+		info.add_child(label("EVOLUTION  ·  PROMOTES AS IT FIGHTS", 18, GOLD, true))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		info.add_child(row)
@@ -749,7 +758,11 @@ static func card_zoom(parent: Control, c: Dictionary) -> void:
 				var arrow := label("▶", 26, GOLD)
 				arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				row.add_child(arrow)
-			var here: bool = levels[i] == str(c.get("id", c.get("cardId", "")))
+			var here: bool = i == at
+			var lc := CardDB.get_card(levels[i])
+			var step := VBoxContainer.new()
+			step.add_theme_constant_override("separation", 2)
+			row.add_child(step)
 			var thumb := texture_rect(CardDB.art(levels[i]), Vector2(104, 147))
 			thumb.modulate = Color.WHITE if here else Color(0.6, 0.6, 0.7)
 			var frame := PanelContainer.new()
@@ -758,9 +771,44 @@ static func card_zoom(parent: Control, c: Dictionary) -> void:
 				fb.set(k, 2)
 			frame.add_theme_stylebox_override("panel", _glow(fb, GOLD, 0.7) if here else fb)
 			frame.add_child(thumb)
-			row.add_child(frame)
-	var hint := label("Click anywhere to close", 18, MUTED)
-	hint.position = Vector2(860, 1010)
+			frame.pivot_offset = Vector2(54, 75)
+			step.add_child(frame)
+			var tag := label("LV%d  ·  %d / %d" % [i + 1, int(lc.get("attack", 0)), int(lc.get("defense", 0))], 14,
+				GOLD if here else MUTED, true)
+			tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tag.custom_minimum_size = Vector2(108, 0)
+			step.add_child(tag)
+			if not here:   # the other levels: lift and light up on hover, open on a click
+				frame.mouse_filter = Control.MOUSE_FILTER_STOP
+				frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				frame.tooltip_text = "See %s (level %d)" % [str(lc.get("name", "")), i + 1]
+				frame.mouse_entered.connect(func():
+					thumb.modulate = Color.WHITE
+					frame.create_tween().tween_property(frame, "scale", Vector2.ONE * 1.07, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+				frame.mouse_exited.connect(func():
+					thumb.modulate = Color(0.6, 0.6, 0.7)
+					frame.create_tween().tween_property(frame, "scale", Vector2.ONE, 0.12))
+				frame.gui_input.connect(func(e):
+					if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+						go_level.call(i))
+	# Keys: ◀ ▶ step through a Striver's levels; Esc (or Space / Enter) closes
+	veil.focus_mode = Control.FOCUS_ALL
+	veil.gui_input.connect(func(e):
+		if e is InputEventKey and e.pressed and not e.echo:
+			match e.keycode:
+				KEY_LEFT, KEY_A:
+					go_level.call(at - 1)
+				KEY_RIGHT, KEY_D:
+					go_level.call(at + 1)
+				KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
+					veil.queue_free()
+			veil.accept_event())
+	veil.grab_focus.call_deferred()
+	var hint := label("Click anywhere to close" + ("  ·  ◀ ▶ or click a level to see it" if levels.size() > 1 else ""), 18, MUTED)
+	hint.size = Vector2(1920, 26)
+	hint.position = Vector2(0, 1010)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	veil.add_child(hint)
-	veil.modulate.a = 0.0
-	veil.create_tween().tween_property(veil, "modulate:a", 1.0, 0.12)
+	if not instant:
+		veil.modulate.a = 0.0
+		veil.create_tween().tween_property(veil, "modulate:a", 1.0, 0.12)
