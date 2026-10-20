@@ -518,6 +518,8 @@ func _build_log() -> void:
 
 func _toggle_log() -> void:
 	_ui.log.visible = not _ui.log.visible
+	# (the log covers the card panel; hidden, its frosted glass can't show through the log)
+	$HUD/UI/Detail.visible = not _ui.log.visible
 	Sfx.play("click")
 
 
@@ -645,7 +647,8 @@ func _log_event(ev: Dictionary) -> void:
 		"game_over":
 			_log("%s won!" % ("You" if ev.winner == "player" else "Your opponent"), str(ev.winner))
 		"notice":
-			_log(str(ev.text).capitalize(), "")
+			var note := str(ev.text).to_lower()   # (in sentence case: "No attacks on turn 1")
+			_log(note.left(1).to_upper() + note.substr(1), "")
 
 
 # ── Emotes ───────────────────────────────────────────────────────────────────
@@ -4016,6 +4019,8 @@ func _update_next_btn() -> void:
 		return
 	var mine := duel.active == "player" and not "player" in ai_sides
 	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
+	if b.disabled:
+		_nudge_next(false)
 	if _out.has("player"):
 		b.text = "YOU'RE OUT · %s" % _place_text(int(_out.player))
 	elif not mine:
@@ -4163,6 +4168,7 @@ func _player_ready() -> void:
 	if duel.active != "player":
 		return
 	_mode = "idle"
+	var moves := 0   # (none left: the next-phase button breathes, see _nudge_next)
 	for v in hand.player:   # cards a passive makes cheaper show their new cost
 		var cost: int = duel.cost_of("player", v.card)
 		v.cost_now = cost if cost < int(v.card.get("authority", 0)) else -1
@@ -4171,6 +4177,7 @@ func _player_ready() -> void:
 			if _playable(v.card):
 				v.glow_color = GREEN
 				v.glow = 0.75
+				moves += 1
 	for slot in field.player:
 		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
 			or duel.can_use_ability("player", slot)
@@ -4181,6 +4188,27 @@ func _player_ready() -> void:
 			field.player[slot].glow = 0.9
 			if can_activate:
 				field.player[slot].pulse_color = TEAL
+			moves += 1
+	_nudge_next(moves == 0)
+
+
+var _next_pulse: Tween = null
+
+
+## Nothing left to do this phase: the next-phase / End Turn button breathes gold; anything to do: it's still.
+func _nudge_next(on: bool) -> void:
+	if not _ui.has("next"):
+		return
+	var b: Button = _ui.next
+	if _next_pulse and _next_pulse.is_valid():
+		_next_pulse.kill()
+	_next_pulse = null
+	b.modulate = Color.WHITE
+	if not on or b.disabled:
+		return
+	_next_pulse = b.create_tween().set_loops()
+	_next_pulse.tween_property(b, "modulate", Color(1.35, 1.2, 0.75), 0.7).set_trans(Tween.TRANS_SINE)
+	_next_pulse.tween_property(b, "modulate", Color.WHITE, 0.7).set_trans(Tween.TRANS_SINE)
 
 
 

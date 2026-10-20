@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.32",
+        "notes": [
+            "The Card Library and Deck Builder run about four times smoother (the light running round Rare and better cards was slowing them down).",
+            "When you've nothing left to play, the next-phase / END TURN button glows gold.",
+            "The battle log is solid: the card panel no longer shows through it, and its notes read normally (\"No attacks on turn 1\").",
+            "In the Deck Builder, how many copies are in your deck sits under the card's name instead of over it.",
+            "The Card Library's card count is no longer hidden behind the type list."
+        ]
+    },
+    {
         "version": "0.9.31",
         "notes": [
             "Choosing a clan tells you how it plays.",

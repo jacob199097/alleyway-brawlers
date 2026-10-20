@@ -2,6 +2,8 @@ extends Node
 ## Visits every menu screen against the mock server (tests/mock_server.mjs) and saves a
 ## screenshot of each. Nothing is written to the player's saved settings or session.
 ## Run (windowed):  godot --path godot res://tests/screens_tour.tscn -- <out_dir> [server_url] [--ffa-only]
+## Other modes: --fps (frames per second on each screen), --perf-library (what the Card Library's
+## frame time goes on), --craft-only (the card zoom and craft reveal in quick shots), --clans.
 
 var _out := "user://tour"
 
@@ -39,6 +41,56 @@ func _clan_shots() -> void:
 	await _shot("10_shop_scrolled", 0.8)
 
 
+## Frames drawn per second on each screen (V-Sync and the FPS cap off), after it has settled.
+func _fps_run() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "profile", "achievements", "leaderboard", "social"]:
+		Game.go(s)
+		await get_tree().create_timer(2.5).timeout
+		await _fps(s)
+	var deck := await Game.load_duel_deck()
+	Game.duel_setup = deck
+	Game.duel_setup.first = "player"
+	Game.go("duel")
+	await get_tree().create_timer(4.0).timeout
+	await _fps("duel")
+
+
+func _fps(s: String) -> void:
+	var f0 := Engine.get_frames_drawn()
+	var t0 := Time.get_ticks_msec()
+	await get_tree().create_timer(2.0).timeout
+	print("fps %-14s %.0f" % [s, (Engine.get_frames_drawn() - f0) * 1000.0 / (Time.get_ticks_msec() - t0)])
+
+
+## The Card Library's zoom and craft reveal in many quick shots, then the shop, to see each frame change.
+func _craft_shots() -> void:
+	Game.go("card_library")
+	await get_tree().create_timer(2.0).timeout
+	var lib = _screen()
+	await _shot("c00_library", 0.1)
+	Net.show_achievements([{"name": "Untouchable", "reward": {"dust": 300, "title": "Untouchable"}}])
+	for i in 4:
+		await _shot("c1%d_banner" % i, 0.3)
+	for id in CardDB.all():
+		var sc: Dictionary = CardDB.get_card(id)
+		if CardDB.striver_stage(sc).x == 2:
+			UI.card_zoom(lib, sc)
+			break
+	for i in 6:
+		await _shot("c2%d_zoom" % i, 0.3)
+	for t in lib._tiles.values():
+		if int(t.card.get("rarity", 1)) >= 5:
+			lib._reveal(t.card, t)
+			break
+	for i in 10:
+		await _shot("c3%d_reveal" % i, 0.3)
+	Game.go("shop")
+	for i in 10:
+		await _shot("c4%d_shop" % i, 0.5)
+
+
 func _screen() -> Node:
 	return get_tree().current_scene
 
@@ -64,6 +116,37 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--fps" in OS.get_cmdline_user_args():   # (frames per second on each screen, no shots)
+		await _fps_run()
+		get_tree().quit()
+		return
+	if "--perf-library" in OS.get_cmdline_user_args():   # (what the Card Library's frame time goes on)
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = 0
+		Game.go("card_library")
+		await get_tree().create_timer(3.0).timeout
+		await _fps("library")
+		var tiles: Array = _screen()._tiles.values()
+		for t in tiles:
+			if t._sweep:
+				t._sweep.visible = false
+		await _fps("no sweeps")
+		for t in tiles:
+			t._art.material = null
+		await _fps("+ no shader")
+		for n in _screen().find_children("*", "Node2D", true, false):
+			if n.material is ShaderMaterial:
+				n.visible = false
+		await _fps("+ no glass")
+		for t in tiles:
+			t.visible = false
+		await _fps("+ no tiles")
+		get_tree().quit()
+		return
+	if "--craft-only" in OS.get_cmdline_user_args():   # (the card zoom and craft reveal, a shot every 0.3 s)
+		await _craft_shots()
 		get_tree().quit()
 		return
 	if "--ffa-only" in OS.get_cmdline_user_args():   # (just the free-for-all screens)

@@ -118,6 +118,7 @@ func _build_filters() -> void:
 	for i in SUBS.size():
 		sub.add_item(SUBS[i][1], i)
 	sub.custom_minimum_size = Vector2(300, 50)
+	sub.fit_to_longest_item = false   # (it stays 300 wide, clear of the card count beside it)
 	sub.position = Vector2(1180, 36)
 	sub.add_theme_font_size_override("font_size", 17)
 	sub.item_selected.connect(func(i):

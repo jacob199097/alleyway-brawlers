@@ -25,6 +25,27 @@ var _tilt := Vector2.ZERO
 var _glow := 0.0          # 0..1: the hover glow
 var _sweep: Control       # Rare+: the light running round the border
 
+## A soft round dot (white, fading out): the sweep's streak is drawn with it, since textured rects
+## batch into one draw call where circles each cost one (a grid of tiles redraws them every frame).
+static var _dot: Texture2D = null
+
+
+static func _soft_dot() -> Texture2D:
+	if _dot == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.45, Color(1, 1, 1, 0.85))
+		var t := GradientTexture2D.new()
+		t.gradient = g
+		t.width = 32
+		t.height = 32
+		t.fill = GradientTexture2D.FILL_RADIAL
+		t.fill_from = Vector2(0.5, 0.5)
+		t.fill_to = Vector2(1.0, 0.5)
+		_dot = t
+	return _dot
+
 
 ## Deals tiles in one after another (a grid just filled or refiltered): each rises and fades in.
 static func cascade(tiles: Array, delay := 0.0) -> void:
@@ -135,9 +156,12 @@ func _draw_sweep() -> void:
 	var speed := 0.16 if r >= 5 else 0.12 if r == 4 else 0.08
 	var head := fmod(Time.get_ticks_msec() / 1000.0 * speed + float(hash(str(card.get("id", "")))) / 4294967296.0, 1.0) * per
 	var tail := 70.0 if r >= 4 else 50.0
+	var dot := _soft_dot()
 	for k in 10:
 		var p := _perimeter_point(fposmod(head - k * tail / 10.0, per))
-		_sweep.draw_circle(p, 3.2 - k * 0.22, Color(col.lightened(0.5), 0.9 * (1.0 - k / 10.0)))
+		var rad := (3.2 - k * 0.22) * 1.6   # (the dot fades out towards its edge, so it's drawn a little larger)
+		_sweep.draw_texture_rect(dot, Rect2(p - Vector2(rad, rad), Vector2(rad, rad) * 2.0), false,
+			Color(col.lightened(0.5), 0.9 * (1.0 - k / 10.0)))
 
 
 ## A point at distance d along the border, clockwise from the top-left corner.
@@ -212,13 +236,9 @@ func _draw() -> void:
 
 func _draw_overlay() -> void:
 	var f := UI.font()
-	var k := size.x / 150.0
-	if badge != "":   # (between the Authority at the top left and the badge at the top right)
-		UI.draw_level_stars(_overlay, Vector2((34.0 * k + size.x - 64.0) / 2.0, 3.0), CardDB.striver_stage(card), 5.5 * k)
-	else:
-		UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
-	if badge != "":
-		var br := Rect2(size.x - 64, 6, 58, 28)
+	UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
+	if badge != "":   # (on the art's top right corner, just under the name strip, so the name stays readable)
+		var br := Rect2(size.x - 64, size.y * 0.135, 58, 28)
 		_overlay.draw_style_box(_pill(UI.GOLD), br)
 		_overlay.draw_string(f, br.position + Vector2(0, 22), badge, HORIZONTAL_ALIGNMENT_CENTER, br.size.x, 20, UI.GOLD)
 	if count_badge != "":
