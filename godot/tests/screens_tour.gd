@@ -145,6 +145,26 @@ func _run() -> void:
 		await _fps("+ no tiles")
 		get_tree().quit()
 		return
+	if "--evolve-only" in OS.get_cmdline_user_args():   # (a Striver evolving, a shot every 0.25 s)
+		var deck := await Game.load_duel_deck()
+		Game.duel_setup = deck
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await get_tree().create_timer(4.0).timeout
+		var ds = _screen()
+		if ds._menu:
+			ds._menu.visible = false   # (the opening-hand prompt: out of the way of the shots)
+		for id in CardDB.all():
+			var lv1: Dictionary = CardDB.get_card(id)
+			if CardDB.striver_stage(lv1).x == 1 and CardDB.next_form(id) != "":
+				var lv2: Dictionary = CardDB.get_card(CardDB.next_form(id)).duplicate()
+				lv2.position = "atk"
+				ds._ev_promote({"side": "player", "slot": 4, "card": lv2, "from": lv1})
+				break
+		for i in 22:
+			await _shot("e%02d" % i, 0.25)
+		get_tree().quit()
+		return
 	if "--craft-only" in OS.get_cmdline_user_args():   # (the card zoom and craft reveal, a shot every 0.3 s)
 		await _craft_shots()
 		get_tree().quit()
@@ -317,7 +337,7 @@ func _run() -> void:
 			lv2.position = "atk"
 			duel_screen._ev_promote({"side": "player", "slot": 4, "card": lv2, "from": lv1})
 			break
-	for at in [["charge", 0.7], ["flicker", 0.75], ["burst", 0.4], ["reveal", 0.75]]:
+	for at in [["charge", 0.8], ["cocoon", 1.0], ["burst", 1.25], ["reveal", 1.0]]:
 		await _shot("07_evolve_" + at[0], at[1])
 	await get_tree().create_timer(2.0).timeout
 	# Let the CPU play both sides for a while, then open the battle log

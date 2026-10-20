@@ -66,6 +66,7 @@ var _flip_deg := 0.0             # extra turn while flipping over
 var _flash := 0.0
 var _last_pos := Vector2.INF
 var _holo := 0.0                 # hover shimmer on Epic/Legendary cards
+var holo_boost := 0.0            # 0..1: a holographic sweep set from outside (an evolving card's reveal)
 var _status_fx := {}             # status -> particle emitter (embers, drips)
 var _sparkle: CPUParticles2D     # golden sparkles around a hovered Legendary
 var _lift := 0.0                 # 0..1: how far above its resting place (scale over home): the shadow falls away
@@ -308,7 +309,7 @@ func _process(delta: float) -> void:
 	var rare := int(card.get("rarity", 1))
 	var shine := hovered and face_up and rare >= 4
 	_holo = lerpf(_holo, 1.0 if shine else 0.0, 1.0 - exp(-8.0 * delta))
-	_mat.set_shader_parameter("holo", _holo)
+	_mat.set_shader_parameter("holo", maxf(_holo, holo_boost))
 	if shine and rare >= 5 and _sparkle == null:
 		_sparkle = CPUParticles2D.new()
 		_sparkle.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE

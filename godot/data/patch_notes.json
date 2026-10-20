@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.38",
+        "notes": [
+            "A new Striver evolution: the card rises into a pillar of light with energy rings orbiting it, becomes a cocoon of light that morphs between its forms on a quickening heartbeat, then bursts apart in shards as the new form spins in. Its level stars fill and its ATK / DEF count up to their new values."
+        ]
+    },
+    {
         "version": "0.9.37",
         "notes": [
             "Coin flips show the stakes: HEADS · DOUBLE! with a burst of gold, or TAILS · NOTHING. A LOADED DICE re-roll announces itself.",
