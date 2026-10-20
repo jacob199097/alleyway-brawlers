@@ -157,6 +157,7 @@ func _render(p: Dictionary) -> void:
 	UI.stagger(grid.get_children(), 0.15, 0.06)
 	if not Game.offline and not _friend:
 		_recent_matches(stats_view)
+		_showcase(stats_view)
 
 
 ## A stat's number counting up to what it says ("1200", "63.2%"; anything else is left as it is).
@@ -286,6 +287,39 @@ static func _record(d: Dictionary) -> String:
 
 
 ## Your last matches, each with a replay (routes/replays.js on the server).
+## Your best cards, beside the last row of stats: the rarest you own (then the strongest), one of each.
+func _showcase(parent: Control) -> void:
+	var r := await Api.request("GET", "/api/profile/inventory")
+	if not r.ok or not (r.data is Array) or not is_instance_valid(parent):
+		return
+	var best: Array = []
+	var names := {}
+	var items: Array = r.data.duplicate()
+	items.sort_custom(func(a, b):
+		var ra := int(a.get("rarity", 1))
+		var rb := int(b.get("rarity", 1))
+		return ra > rb if ra != rb else int(a.get("attack") if a.get("attack") != null else 0) > int(b.get("attack") if b.get("attack") != null else 0))
+	for it in items:
+		var n := str(it.get("name", ""))
+		if names.has(n) or best.size() >= 5:
+			continue
+		names[n] = true
+		best.append(it)
+	if best.is_empty():
+		return
+	var head := UI.label("YOUR BEST CARDS", 18, UI.GOLD, true)
+	head.position = Vector2(1214, 548)
+	parent.add_child(head)
+	var row: Array = []
+	for i in best.size():
+		var t := CardTile.make(best[i], Vector2(100, 141))
+		t.position = Vector2(1214 + i * 114, 574)
+		t.zoomed.connect(func(tt): UI.card_zoom(self, tt.card))
+		parent.add_child(t)
+		row.append(t)
+	CardTile.cascade(row, 0.5)
+
+
 func _recent_matches(parent: Control) -> void:
 	var head := UI.label("RECENT MATCHES", 26, UI.GOLD, true)
 	head.position = Vector2(900, 700)
