@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.31",
+        "notes": [
+            "Choosing a clan tells you how it plays.",
+            "The login screen fans out the leaders and Legendaries behind a floating logo.",
+            "AUTO-FILL in the Deck Builder picks your leader's clan first."
+        ]
+    },
+    {
         "version": "0.9.30",
         "notes": [
             "The CPU plays smarter: it values walls for their DEF (and Guard), counts what a card does when deployed, sets clear walls down in DEF, and is readier to sacrifice for a Heavy. Militia CPUs in particular put their Heavies and Sergeant Ironwall to work.",

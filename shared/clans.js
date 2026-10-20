@@ -7,6 +7,7 @@
  *   starterRecipe(clan)   its starter: {clan, leader, deck: [[id, copies]], hideout: [[id, copies]]}
  *                         or null when the clan doesn't have enough cards for a 40-card deck yet
  *   pickableClans()       the clans new players can start with (they have a starter)
+ *   clanBlurb(clan)       how a clan plays in a line ('' when it has none)
  *   expand(pairs)         [[id, 2]] → [id, id]
  *
  * Used by backend/routes/onboarding.js, backend/scripts/retire_cards.js and shared/duel/DuelAI.js.
@@ -23,6 +24,8 @@ const CURATED = {
     // Every Nebula base card: 30 characters, 10 Hustles/Ambushes. Rouke is strong, so he's in once,
     // for a Kade and a Lyra Quell, with a third Sprintz: still even with the Militia starter.
     nebula: {
+        // (how it plays, shown when new players choose a clan)
+        blurb: 'Control the board: freeze enemies in STASIS, force them into DEF and win with a few strong fighters.',
         leader: 'card_nebu_009',   // Archon of Nebula
         deck: [
             // Strivers: Kade, Lyra Quell, Marty, Skully, Rouke
@@ -45,6 +48,7 @@ const CURATED = {
     // Every Militia base card: 31 characters, 9 Hustles/Ambushes. Even with the Nebula starter
     // (node tools/balance.mjs --vs nebula,militia --starters); the built one only had cheap commons.
     militia: {
+        blurb: 'Go wide: fill the board, call in reinforcements, and grind the enemy down with Ambushes and Heavies.',
         leader: 'card_mili_011',   // General Graves
         deck: [
             // Strivers: Thomas, Mary, Rook, Bastion, Lance, Deadwood
@@ -137,6 +141,10 @@ export function freeAvatars(catalog = CARD_CATALOG) {
         for (const c of cards.filter(c => c.cardType === 'gang_member' && level(c) === 1).sort(byCommon).slice(0, 3)) out.push(`card:${c.id}`);
     }
     return out;
+}
+
+export function clanBlurb(clan) {
+    return CURATED[clan]?.blurb || '';
 }
 
 export function pickableClans(catalog = CARD_CATALOG) {

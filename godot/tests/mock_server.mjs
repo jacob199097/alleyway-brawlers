@@ -7,7 +7,7 @@ import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
-import { pickableClans, starterRecipe, freeAvatars } from '../../shared/clans.js';
+import { pickableClans, starterRecipe, freeAvatars, clanBlurb } from '../../shared/clans.js';
 
 /** EXTRA_CLANS=8: that many made-up clans too (to see the screens with 10 clans). */
 function extraClans() {
@@ -266,7 +266,7 @@ const routes = {
     'PATCH /api/social/friends/:id/accept': (_b, id) => { const f = friends.find(x => x.friendship_id === id); if (f) f.status = 'accepted'; return [200, { success: true }]; },
     'GET /api/social/messages/:id': (_b, id) => [200, [
         { sender_id: id, body: 'You up for a brawl later?' }, { sender_id: player.id, body: 'Always. Bring your best deck.' }]],
-    'GET /api/onboarding/clans': () => [200, [...pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader })), ...extraClans()]],
+    'GET /api/onboarding/clans': () => [200, [...pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })), ...extraClans()]],
     'POST /api/onboarding/start-clan': (b) => { player.chosen_clan = b.clan; return [200, { success: true, clan: b.clan }]; },
     'POST /api/match/start': () => { const id = randomUUID(); matches.set(id, Date.now()); return [200, { matchId: id }]; },
     'POST /api/match/complete': (b) => {

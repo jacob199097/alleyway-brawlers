@@ -54,8 +54,8 @@ func _ready() -> void:
 		tile.add_child(name)
 		var blurb := UI.label(c.blurb, 17 if two else 22, Color(0.85, 0.85, 0.9))
 		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
-		blurb.size = Vector2(w - 16, 70)
-		blurb.position = Vector2(8, art_h + (92 if two else 116))
+		blurb.size = Vector2(w - 40, 120)
+		blurb.position = Vector2(20, art_h + (92 if two else 112))
 		blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(blurb)
 		# In its clan's colour: edged on hover, glowing once chosen
@@ -85,7 +85,8 @@ func _clan_info(c: Dictionary) -> Dictionary:
 	if image == null:
 		image = CardDB.back(str(c.get("tag", "")))
 	return {"id": id, "label": str(c.get("name", id)).to_upper(), "color": Color(str(c.get("color", "#b388ff"))),
-		"image": image, "blurb": "%s%d cards · 40-card starter deck included" % [str(known.blurb) + "\n" if known.has("blurb") else "", int(c.get("cards", 0))]}
+		"image": image, "blurb": "%s%d cards · 40-card starter deck included" % [
+			str(c.blurb) + "\n\n" if str(c.get("blurb", "")) != "" else str(known.blurb) + "\n" if known.has("blurb") else "", int(c.get("cards", 0))]}
 
 
 func _select(id: String) -> void:

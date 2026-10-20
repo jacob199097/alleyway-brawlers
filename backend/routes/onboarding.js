@@ -18,8 +18,8 @@ const clans = import('../../shared/clans.js');
 
 router.get('/clans', requireAuth, async (_req, res) => {
     try {
-        const { pickableClans, starterRecipe } = await clans;
-        res.json(pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader })));
+        const { pickableClans, starterRecipe, clanBlurb } = await clans;
+        res.json(pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })));
     } catch (err) {
         console.error('[Onboarding] clans:', err.message);
         res.status(500).json({ error: 'Could not list the clans.' });
