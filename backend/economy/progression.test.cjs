@@ -243,8 +243,8 @@ async function rejects(promise, pattern) {
     dc = await daily.claim(dp.id);
     assert.equal(dc.day, 7);
     assert.equal(dc.free_packs, 1, 'day 7 brings a free pack');
-    const fresh = await achievements.check(dp.id);
-    assert.ok(fresh.some(a => a.id === 'daily_7'), 'and the Dedicated achievement');
+    const dailyFresh = await achievements.check(dp.id);
+    assert.ok(dailyFresh.some(a => a.id === 'daily_7'), 'and the Dedicated achievement');
 
     // CPU seats never record anything
     assert.deepEqual(await achievements.recordMatch({ playerId: 'cpu:x', outcome: 'win' }), []);

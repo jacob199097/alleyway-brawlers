@@ -49,6 +49,7 @@ router.get('/packs', requireAuth, async (req, res) => {
                 name:  p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 cost:  200,
                 cards: 3,
+                odds:  require('../economy/packOpener').packOdds(),   // {rarity: chance of one or better}
             })),
         });
     } catch (err) {

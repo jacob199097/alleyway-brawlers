@@ -287,4 +287,20 @@ async function buyPack(playerId, packType) {
     }
 }
 
-module.exports = { openPack, buyPack, gameCardIds };
+/** The chance a pack holds at least one card of each rarity or better, from the slot tables:
+ *  { 3: 1, 4: 0.504, 5: 0.134 } (Rare is guaranteed by slot 1). Shown in the shop. */
+function packOdds() {
+    const out = {};
+    for (const r of [3, 4, 5]) {
+        let none = 1;
+        for (const t of SLOT_TABLES) {
+            const table = WEIGHT_TABLES[t];
+            const total = table.reduce((s, e) => s + e.weight, 0);
+            none *= 1 - table.filter(e => e.rarity >= r).reduce((s, e) => s + e.weight, 0) / total;
+        }
+        out[r] = Math.round((1 - none) * 1000) / 1000;
+    }
+    return out;
+}
+
+module.exports = { openPack, buyPack, gameCardIds, packOdds };

@@ -56,8 +56,10 @@ func _ready() -> void:
 		for sp in r.data.packs:
 			var id := str(sp.get("id", ""))
 			var info := CardDB.clan(id)
-			packs.append(known.get(id, {"id": id, "label": str(info.get("name", sp.get("name", id))), "image": "%s_booster.png" % id,
-				"color": info.get("color", Color("b388ff"))}))
+			var entry: Dictionary = known.get(id, {"id": id, "label": str(info.get("name", sp.get("name", id))), "image": "%s_booster.png" % id,
+				"color": info.get("color", Color("b388ff"))}).duplicate()
+			entry.odds = sp.get("odds", {})
+			packs.append(entry)
 	_count = packs.size()
 	var shown := mini(SHOWN, _count)
 	var clip := Control.new()   # (packs scrolled out of view are cut off at its edges)
@@ -164,20 +166,24 @@ func _pack(p: Dictionary) -> Control:
 	name.position = at + Vector2(0, 555)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(name)
-	var sub := UI.label("3 cards per pack", 18, UI.MUTED)
-	sub.size = Vector2(400, 24)
-	sub.position = at + Vector2(0, 596)
+	var sub := UI.label("3 cards per pack", 16, UI.MUTED)
+	var odds = p.get("odds")
+	if odds is Dictionary and not odds.is_empty():   # (the server's own chances, so they're always true)
+		sub.text = "3 cards  ·  a Rare or better in every pack\nEpic+ in %d%% of packs  ·  Legendary in %d%%" % [
+			roundi(100.0 * float(odds.get("4", 0))), roundi(100.0 * float(odds.get("5", 0)))]
+	sub.size = Vector2(400, 44)
+	sub.position = at + Vector2(0, 588)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(sub)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	row.position = at + Vector2(8, 640)
+	row.position = at + Vector2(8, 646)
 	row.add_child(UI.button("200 KARAT", _buy.bind(p, "karat"), Vector2(184, 60), UI.GOLD))
 	row.add_child(UI.button("100 CB", _buy.bind(p, "contraband"), Vector2(184, 60), UI.PURPLE))
 	holder.add_child(row)
 	# A free pack from levelling up: any pack the player picks
 	var free := UI.button("", _buy.bind(p, "free"), Vector2(384, 60), UI.GREEN)
-	free.position = at + Vector2(8, 712)
+	free.position = at + Vector2(8, 716)
 	holder.add_child(free)
 	_free_buttons.append(free)
 	_refresh_balance()
