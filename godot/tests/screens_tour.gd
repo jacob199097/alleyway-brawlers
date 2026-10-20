@@ -297,6 +297,12 @@ func _run() -> void:
 	duel_screen._ev_luck({"side": "player", "slot": -1, "kind": "coin", "value": 0, "need": 1, "won": false})
 	await _shot("07_luck_coin", 0.75)
 	await get_tree().create_timer(0.6).timeout
+	duel_screen._ev_luck({"side": "player", "slot": -1, "kind": "coin", "value": 1, "need": 1, "won": true, "double": true})
+	await _shot("07_luck_double", 0.75)
+	await get_tree().create_timer(0.6).timeout
+	duel_screen._ev_luck({"side": "player", "slot": -1, "kind": "die", "value": 5, "need": 4, "won": true, "again": true})
+	await _shot("07_luck_loaded", 0.75)
+	await get_tree().create_timer(0.6).timeout
 	var legend = duel_screen._new_view(CardDB.get_card("card_mili_040"), "player", true)
 	legend.position = Vector2(1080, 900)
 	duel_screen._legendary_entrance(legend, legend.card)

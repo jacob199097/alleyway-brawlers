@@ -898,7 +898,7 @@ func _rank_up(rank: String) -> void:
 	veil.color = Color(0, 0, 0, 0)
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(veil)
-	veil.create_tween().tween_property(veil, "color:a", 0.75, 0.3)
+	veil.create_tween().tween_property(veil, "color:a", 0.9, 0.3)   # (dark enough that the rank is all you see)
 	var centre := Vector2(960, 470)
 	var rays := _spin_rays(centre, 900.0, col, 22)
 	layer.add_child(rays)

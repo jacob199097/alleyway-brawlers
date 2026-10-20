@@ -3187,27 +3187,32 @@ func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
 	if kind != "coin" and kind != "die" and kind != "double" and str(e.get("per", "")) != "roll":
 		return true
 	var coin := kind == "coin" or kind == "double"
-	var won := _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6))
+	var won := _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6), kind == "double")
 	var s = sides.get(side)
 	if not won and s != null and int(s.get("loaded_turn", -1)) != turn and winner == "":   # LOADED DICE: once a turn, try again
 		for x in characters(side):
 			if not _passive(side, x.slot, x.card, "loaded").is_empty():
 				s.loaded_turn = turn
 				_effect(side, x.card, "%s: LOADED DICE, %s again" % [x.card.name, "flip" if coin else "roll"], x.slot)
-				won = _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6))
+				won = _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6), kind == "double", true)
 				break
 	return won
 
 
 ## One flip or roll for _luck_gate (with its luck event and its line in the log).
-func _luck_toss(side: String, slot: int, c: Dictionary, coin: bool, need: int) -> bool:
+func _luck_toss(side: String, slot: int, c: Dictionary, coin: bool, need: int, double := false, again := false) -> bool:
 	var r := _luck_next()
 	var value: int = (1 if r < 0.5 else 0) if coin else 1 + int(floor(r * 6.0))   # coin: 1 heads, 0 tails
 	var won := value >= need
 	_luck_last = {"won": won, "value": value}
 	_roll = value
-	_emit("luck", {"side": side, "slot": slot, "card": c.duplicate(true), "kind": "coin" if coin else "die",
-		"value": value, "need": need, "won": won})
+	var ev := {"side": side, "slot": slot, "card": c.duplicate(true), "kind": "coin" if coin else "die",
+		"value": value, "need": need, "won": won}
+	if double:
+		ev["double"] = true   # (the game shows the stakes: DOUBLE! or nothing)
+	if again:
+		ev["again"] = true    # (a LOADED DICE re-roll)
+	_emit("luck", ev)
 	var text := ""
 	if coin:
 		text = "%s flips a coin: %s" % [c.name, "HEADS" if value == 1 else "TAILS"]

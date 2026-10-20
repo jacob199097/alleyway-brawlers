@@ -2813,13 +2813,16 @@ export class DuelState {
         if (kind !== 'coin' && kind !== 'die' && kind !== 'double' && String(e.per ?? '') !== 'roll') return true;
         const coin = kind === 'coin' || kind === 'double';
         const need = coin ? 1 : Math.max(1, Math.min(6, toInt(e.luck_on ?? 1)));
-        const toss = () => {
+        const toss = (again = false) => {
             const r = this._luck();
             const value = coin ? (r < 0.5 ? 1 : 0) : 1 + Math.floor(r * 6);   // coin: 1 heads, 0 tails
             const won = value >= need;
             this._luckLast = { won, value };
             this._roll = value;
-            this._emit('luck', { side, slot, card: clone(c), kind: coin ? 'coin' : 'die', value, need, won });
+            const ev = { side, slot, card: clone(c), kind: coin ? 'coin' : 'die', value, need, won };
+            if (kind === 'double') ev.double = true;   // (the game shows the stakes: DOUBLE! or nothing)
+            if (again) ev.again = true;                // (a LOADED DICE re-roll)
+            this._emit('luck', ev);
             this._effect(side, c, coin ? `${c.name} flips a coin: ${value ? 'HEADS' : 'TAILS'}`
                 : `${c.name} rolls a ${value}${need > 1 ? (won ? ` (${need}+ needed)` : ` (needed ${need}+)`) : ''}`, slot);
             return won;
@@ -2831,7 +2834,7 @@ export class DuelState {
             if (by) {
                 s.loaded_turn = this.turn;
                 this._effect(side, by.card, `${by.card.name}: LOADED DICE, ${coin ? 'flip' : 'roll'} again`, by.slot);
-                won = toss();
+                won = toss(true);
             }
         }
         return won;

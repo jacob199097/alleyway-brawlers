@@ -2178,6 +2178,10 @@ func _ev_luck(ev: Dictionary) -> void:
 	tok.position = at
 	tok.scale = Vector2.ONE * 0.4
 	cards_layer.add_child(tok)
+	if ev.get("again", false):   # LOADED DICE: the lost one is tried again
+		_float_text(at + Vector2(0, -230), "LOADED DICE!", GOLD, 34)
+		_burst(at + Vector2(0, -150), GOLD, 16, 240, 0.5, 0.0)
+		Sfx.play("promote", 1.4, -8.0)
 	var up := create_tween().set_parallel()
 	up.tween_property(tok, "position", at + Vector2(0, -150), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	up.tween_property(tok, "scale", Vector2.ONE * 1.3, 0.28)
@@ -2202,6 +2206,12 @@ func _ev_luck(ev: Dictionary) -> void:
 	_burst(tok.position, tok.edge, 18, 260, 0.6, 0.0)
 	var need := int(ev.get("need", 1))
 	var text := ("HEADS!" if value == 1 else "TAILS") if coin else ("ROLLED %d" % value + ((" · SUCCESS" if won else " · FAILED") if need > 1 else ""))
+	if ev.get("double", false):   # DOUBLE OR NOTHING: the stakes, and a bigger win
+		text = "HEADS · DOUBLE!" if won else "TAILS · NOTHING"
+		if won:
+			_burst(tok.position, GOLD, 34, 420, 0.8, 0.0)
+			_ring(tok.position, GOLD, 1.6)
+			Sfx.play("legendary", 1.5, -10.0)
 	_float_text(tok.position + Vector2(0, -80), text, tok.edge, 30)
 	await _wait(0.55)
 	var out := create_tween()
