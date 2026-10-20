@@ -129,10 +129,10 @@ function deploy(d, side, level) {
                 return { kind: 'position', slot: e.slot };
             }
         }
-        // A Heavy is worth a sacrifice when it clearly out-muscles the character we'd give up
+        // A Heavy is worth a sacrifice when it's clearly worth more than the characters we'd give up
         let heavy = null;
         for (const c of s.hand) {
-            if (DuelState.needsTribute(c) && d.canSummonSomewhere(side, c) && (heavy == null || c.base_attack > heavy.base_attack)) heavy = c;
+            if (DuelState.needsTribute(c) && d.canSummonSomewhere(side, c) && (heavy == null || deployValue(c) > deployValue(heavy))) heavy = c;
         }
         if (heavy != null) {
             // Its sacrifices: the characters least worth keeping (ties: the leftmost lane)
@@ -141,10 +141,10 @@ function deploy(d, side, level) {
                 .map(e => ({ slot: e.slot, v: keepValue(e.card) }))
                 .sort((x, y) => x.v - y.v || x.slot - y.slot).slice(0, n);
             const given = fodder.reduce((sum, f) => sum + f.v, 0);
-            const margin = level === 'hard' ? 400 : 800;
-            if (fodder.length === n && heavy.base_attack >= given + margin) {
+            const margin = level === 'hard' ? 300 : 600;
+            if (fodder.length === n && deployValue(heavy) >= given + margin) {
                 return { kind: 'summon', uid: heavy.uid, slot: fodder[0].slot, tributes: fodder.map(f => f.slot),
-                    position: heavy.base_attack >= t ? 'atk' : 'def' };
+                    position: deployPosition(heavy, t) };
             }
         }
     }
@@ -157,10 +157,10 @@ function deploy(d, side, level) {
                 best = c;
                 break;
             }
-            if (best == null || c.base_attack > best.base_attack) best = c;
+            if (best == null || deployValue(c) > deployValue(best)) best = c;
         }
         if (best != null) {
-            return { kind: 'summon', uid: best.uid, slot: free[0], position: best.base_attack >= t ? 'atk' : 'def' };
+            return { kind: 'summon', uid: best.uid, slot: free[0], position: deployPosition(best, t) };
         }
     } else if (level !== 'easy') {
         // Front row full: deploy over the character least worth keeping, for a clearly stronger one
@@ -171,10 +171,10 @@ function deploy(d, side, level) {
         if (weakest != null) {
             let best = null;
             for (const c of s.hand) {
-                if (d.canSummon(side, c, weakest.slot, weakest.slot) && (best == null || c.base_attack > best.base_attack)) best = c;
+                if (d.canSummon(side, c, weakest.slot, weakest.slot) && (best == null || deployValue(c) > deployValue(best))) best = c;
             }
-            if (best != null && best.base_attack >= weakest.v + (level === 'hard' ? 400 : 800)) {
-                return { kind: 'summon', uid: best.uid, slot: weakest.slot, tributes: [weakest.slot], position: best.base_attack >= t ? 'atk' : 'def' };
+            if (best != null && deployValue(best) >= weakest.v + (level === 'hard' ? 400 : 800)) {
+                return { kind: 'summon', uid: best.uid, slot: weakest.slot, tributes: [weakest.slot], position: deployPosition(best, t) };
             }
         }
     }
@@ -319,6 +319,23 @@ function keepValue(c) {
     let v = c.attack;
     if (c.poison !== undefined || c.bleed !== undefined) v -= 500;
     return v;
+}
+
+/** What a card from the hand is worth on the field (same as _deploy_value in duel_ai.gd): its ATK, or
+ *  most of its DEF for a wall, plus a little for a Guard and for what it does when deployed. */
+function deployValue(c) {
+    let v = Math.max(Math.trunc(Number(c.base_attack) || 0), Math.trunc((Number(c.base_defense) || 0) * 4 / 5));
+    const fx = c.effects || [];
+    if (fx.some(e => String(e.when ?? '') === 'passive' && String(e.do ?? '') === 'guard')) v += 300;
+    if (fx.some(e => String(e.when ?? '') === 'deploy')) v += 300;
+    return v;
+}
+
+/** ATK unless it can't stand up to the biggest threat; a clear wall (DEF at least twice ATK) always DEF. */
+function deployPosition(c, t) {
+    const atk = Math.trunc(Number(c.base_attack) || 0);
+    if ((Number(c.base_defense) || 0) >= atk * 2) return 'def';
+    return atk >= t ? 'atk' : 'def';
 }
 
 /** A repeatable 0-99 "dice roll" (must match duel_ai.gd). */

@@ -623,8 +623,11 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s got %s back from the Gutter" % [_who(side), _cname(ev.card)], side)
 		"promote":
 			_log("%s promoted to %s" % [_cname(ev.get("from")), _cname(ev.card)], side)
-		"effect":
-			_log("%s: %s" % [_cname(ev.card), str(ev.get("text", ""))], side)
+		"effect":   # ("Megan Downs Kade", not "Megan: Megan Downs Kade")
+			var said := str(ev.get("text", ""))
+			var who := _cname(ev.card)
+			var body := said.trim_prefix(who + ": ").trim_prefix(who + " ") if said.begins_with(who) else ""
+			_log(said if body != "" else "%s: %s" % [who, said], side)
 		"stand":
 			_log("%s stood back up" % _cname(ev.card), side)
 		"discard":

@@ -109,10 +109,10 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
 				return {"kind": "position", "slot": e.slot}
 
-		# A Heavy is worth a sacrifice when it clearly out-muscles the character we'd give up
+		# A Heavy is worth a sacrifice when it's clearly worth more than the characters we'd give up
 		var heavy = null
 		for c in s.hand:
-			if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or c.base_attack > heavy.base_attack):
+			if DuelState.needs_tribute(c) and d.can_summon_somewhere(side, c) and (heavy == null or _deploy_value(c) > _deploy_value(heavy)):
 				heavy = c
 		if heavy != null:
 			# Its sacrifices: the characters least worth keeping (ties: the leftmost lane)
@@ -123,10 +123,10 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			var given := 0
 			for f in fodder:
 				given += int(f.v)
-			var margin := 400 if level == "hard" else 800
-			if fodder.size() == n and heavy.base_attack >= given + margin:
+			var margin := 300 if level == "hard" else 600
+			if fodder.size() == n and _deploy_value(heavy) >= given + margin:
 				return {"kind": "summon", "uid": heavy.uid, "slot": fodder[0].slot, "tributes": fodder.map(func(f): return f.slot),
-					"position": "atk" if heavy.base_attack >= threat else "def"}
+					"position": _deploy_position(heavy, threat)}
 
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
 	if not free.is_empty():
@@ -136,11 +136,10 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 				if level == "easy":
 					best = c
 					break
-				if best == null or c.base_attack > best.base_attack:
+				if best == null or _deploy_value(c) > _deploy_value(best):
 					best = c
 		if best != null:
-			var pos := "atk" if best.base_attack >= threat else "def"
-			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": pos}
+			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": _deploy_position(best, threat)}
 	elif level != "easy":
 		# Front row full: deploy over the character least worth keeping, for a clearly stronger one
 		# (a Downed one counts half: it stands back up, if it isn't finished off first)
@@ -151,11 +150,11 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			var weakest: Dictionary = mine[0]
 			var best = null
 			for c in s.hand:
-				if d.can_summon(side, c, weakest.slot, weakest.slot) and (best == null or c.base_attack > best.base_attack):
+				if d.can_summon(side, c, weakest.slot, weakest.slot) and (best == null or _deploy_value(c) > _deploy_value(best)):
 					best = c
-			if best != null and best.base_attack >= int(weakest.v) + (400 if level == "hard" else 800):
+			if best != null and _deploy_value(best) >= int(weakest.v) + (400 if level == "hard" else 800):
 				return {"kind": "summon", "uid": best.uid, "slot": weakest.slot, "tributes": [weakest.slot],
-					"position": "atk" if best.base_attack >= threat else "def"}
+					"position": _deploy_position(best, threat)}
 
 	for slot in DuelState.BACK:
 		if s.field[slot] == null:
@@ -295,6 +294,26 @@ static func _target_score(att: Dictionary, df: Dictionary, level: String) -> flo
 
 
 ## How much a character is worth keeping (lowest = the first to sacrifice for a Heavy).
+## What a card from the hand is worth on the field (same as deployValue in DuelAI.js): its ATK, or
+## most of its DEF for a wall, plus a little for a Guard and for what it does when deployed.
+static func _deploy_value(c: Dictionary) -> int:
+	var v: int = maxi(int(c.get("base_attack", 0)), int(c.get("base_defense", 0)) * 4 / 5)
+	var fx: Array = c.get("effects", []) if c.get("effects") is Array else []
+	if fx.any(func(e): return e is Dictionary and str(e.get("when", "")) == "passive" and str(e.get("do", "")) == "guard"):
+		v += 300
+	if fx.any(func(e): return e is Dictionary and str(e.get("when", "")) == "deploy"):
+		v += 300
+	return v
+
+
+## ATK unless it can't stand up to the biggest threat; a clear wall (DEF at least twice ATK) always DEF.
+static func _deploy_position(c: Dictionary, threat: int) -> String:
+	var atk := int(c.get("base_attack", 0))
+	if int(c.get("base_defense", 0)) >= atk * 2:
+		return "def"
+	return "atk" if atk >= threat else "def"
+
+
 static func _keep_value(c: Dictionary) -> int:
 	if c.downed:
 		return -1

@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.30",
+        "notes": [
+            "The CPU plays smarter: it values walls for their DEF (and Guard), counts what a card does when deployed, sets clear walls down in DEF, and is readier to sacrifice for a Heavy. Militia CPUs in particular put their Heavies and Sergeant Ironwall to work.",
+            "The battle log no longer repeats a card's name (\"Megan Downs Kade\", not \"Megan: Megan Downs Kade\")."
+        ]
+    },
+    {
         "version": "0.9.29",
         "notes": [
             "New achievements: Archivist (own 60 different cards), Master Forger (craft a Legendary) and Dedicated (claim day 7 of the daily reward).",
