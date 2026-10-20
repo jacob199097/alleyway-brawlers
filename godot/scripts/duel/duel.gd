@@ -25,23 +25,17 @@ const HAND_LIFT_Y := 872.0
 const HAND_CX := 1080.0
 const HAND_SPAN := 900.0
 const OPP_HAND_Y := -22.0
-## Free-for-all: four boards on the crossroads mat (arena_ffa.png), one on each corner lot's painted
-## bays. The two on top are the 1v1 opponent's layout (centred on OPP_C); yours and the one beside
-## it (below) are your layout (centred on PLAYER_C), facing up. Plates (name, Morale) sit on the side
-## toward the middle of the crossroads.
+## Free-for-all: the crossroads (arena_ffa.png) fills the screen with its manhole at FFA_MID, and the
+## four boards sit close round it (their slots painted by the game, like the 1v1 mat's). The two on top
+## are the 1v1 opponent's layout (centred on OPP_C); yours and the one beside it (below) are your
+## layout (centred on PLAYER_C), facing up. Plates (name, Morale) face each other across the middle.
 const OPP_C := Vector2(1080, 216)
 const PLAYER_C := Vector2(1080, 632)
-const MAT_FFA := Rect2(424, -141, 1216, 1216)   # where the crossroads is drawn (left of the phase panel)
-const MAT_FFA_PX := 1254.0                      # its size in the image
-## Each corner lot's 5x2 bays in the image's pixels: their middle, and the step between bays
-const FFA_LOTS := {
-	"tl": [Vector2(313.8, 328.3), Vector2(84.1, 148.5)],
-	"tr": [Vector2(940.4, 327.0), Vector2(84.25, 149.0)],
-	"bl": [Vector2(312.9, 926.3), Vector2(84.0, 145.5)],
-	"br": [Vector2(943.5, 925.8), Vector2(83.75, 144.5)],
-}
-const FFA_CARD_K := 0.54   # a card's size on a bay
-const FFA_MANHOLE := Vector2(630, 610)   # the steaming manhole in the middle of the crossroads (image pixels)
+const FFA_MID := Vector2(1028, 440)      # between the four boards (and between the side panels: x 403-1651)
+const FFA_MANHOLE := Vector2(768, 508)   # the steaming manhole in the middle of the crossroads (image pixels)
+const FFA_CARD_K := 0.6                  # a card's size on an FFA board
+const FFA_STEP := Vector2(83, 117)       # lane to lane, row to row
+const FFA_GAP := Vector2(24, 60)         # between boards side by side; between the plates across the middle
 const PLATE_H := 90.0
 const PAINT_K := 0.65      # the painted slot outline (arena_paint.png) against a full-size slot
 const FOE_COLORS := [Color("e63946"), Color("ff9f43"), Color("b388ff")]
@@ -175,8 +169,12 @@ func _ready() -> void:
 	_font.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"])
 	_make_resources()
 	ui.theme = _make_theme()
-	# The floor: the alley mat (the slots are painted on it in _draw), or the old backdrop
+	# The floor: a 1v1 arena (the back alley or the rooftop, a coin flip each match; the slots are
+	# painted on it in _draw), or the old backdrop
 	var bg := "res://assets/arena_1v1.png" if not _paint.is_empty() else "res://assets/duel_background.png"
+	var roof = Game.duel_setup.get("rooftop")   # (tests can pick: true / false)
+	if not _paint.is_empty() and (roof if roof is bool else randi() % 2 == 0) and ResourceLoader.exists("res://assets/arena_1v1_rooftop.png"):
+		bg = "res://assets/arena_1v1_rooftop.png"
 	if ResourceLoader.exists(bg):
 		$BackLayer/Background.texture = load(bg)
 		if not _paint.is_empty():
@@ -188,19 +186,23 @@ func _ready() -> void:
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
 	if str(online_start.get("mode", "")) == "ffa":
 		_setup_ffa_sides(online_start)
-		if ResourceLoader.exists("res://assets/arena_ffa.png"):   # the crossroads, on the alley floor (dimmer)
-			$BackLayer/Background.modulate = Color(0.4, 0.4, 0.46)
+		if ResourceLoader.exists("res://assets/arena_ffa.png"):   # the crossroads, covering the screen
 			var mat := TextureRect.new()
 			mat.texture = load("res://assets/arena_ffa.png")
+			var px := mat.texture.get_size()
+			# Scaled so it covers the screen with its manhole at FFA_MID
+			var k := maxf(maxf(FFA_MID.x / FFA_MANHOLE.x, (1920.0 - FFA_MID.x) / (px.x - FFA_MANHOLE.x)),
+				maxf(FFA_MID.y / FFA_MANHOLE.y, (1080.0 - FFA_MID.y) / (px.y - FFA_MANHOLE.y)))
 			mat.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			mat.position = MAT_FFA.position
-			mat.size = MAT_FFA.size
+			mat.position = FFA_MID - FFA_MANHOLE * k
+			mat.size = px * k
 			mat.modulate = Color(0.9, 0.9, 0.95)
 			mat.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			mat.material = _alive(mat.texture.get_size())
+			mat.material = _alive(px)
 			$BackLayer.add_child(mat)
-			_neon = {"mat": mat.material, "zones": _find_neon(mat.texture, func(p: Vector2) -> Vector2: return MAT_FFA.position + p * MAT_FFA.size.x / MAT_FFA_PX)}
-			$BackLayer.add_child(_steam(MAT_FFA.position + FFA_MANHOLE * MAT_FFA.size.x / MAT_FFA_PX))
+			var at := mat.position
+			_neon = {"mat": mat.material, "zones": _find_neon(mat.texture, func(p: Vector2) -> Vector2: return at + p * k)}
+			$BackLayer.add_child(_steam(FFA_MID))
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
 	if _ffa:
@@ -993,7 +995,7 @@ func _draw() -> void:
 			var r := Rect2(slot_pos(side, slot) - size / 2, size)
 			if _paint.is_empty():
 				draw_style_box(_slot_box if slot < 5 else _slot_box_back, r)
-			elif not _ffa:   # (the crossroads has its bays painted on already)
+			else:
 				_draw_paint(r, "front" if slot < 5 else "back", _sc(side))
 			var key := "%s:%d" % [side, slot]
 			if _valid.has(key):
@@ -5223,18 +5225,18 @@ func _setup_ffa_sides(start: Dictionary) -> void:
 	for side in _sides:
 		hand[side] = []
 		field[side] = {}
-	# Each board on a corner lot of the crossroads (its lanes on the painted bays): the first two
-	# opponents (in turn order, clockwise from you) on top, you bottom-left, the third bottom-right.
-	# Lanes are a bay apart, rows a bay row apart; plates sit on the side toward the middle.
-	var px := MAT_FFA.size.x / MAT_FFA_PX
+	# Four boards close round the middle of the crossroads: the first two opponents (in turn order,
+	# clockwise from you) on top, you bottom-left, the third bottom-right. Plates sit on the side toward
+	# the middle, facing each other across it.
 	var k := FFA_CARD_K
+	var p := Vector2(FFA_STEP.x / (COLS[1] - COLS[0]), FFA_STEP.y / absf(ROWS.player[1] - ROWS.player[0]))
+	var half_w := (RIGHT_X - LEFT_X) * p.x / 2.0 + CARD.x * k / 2.0
+	var half_h := FFA_STEP.y / 2.0 + CARD.y * k / 2.0
 	var place := func(side: String, lot: String) -> void:
-		var c: Vector2 = MAT_FFA.position + (FFA_LOTS[lot][0] as Vector2) * px
-		var step: Vector2 = (FFA_LOTS[lot][1] as Vector2) * px
 		var top := lot.begins_with("t")
-		var half_h := step.y / 2.0 + CARD.y * k / 2.0
-		_boards[side] = {"c": c, "s": k, "p": Vector2(step.x / 150.0, step.y / 192.0),
-			"rows": "opponent" if top else "player",
+		var c := FFA_MID + Vector2((half_w + FFA_GAP.x / 2.0) * (-1.0 if lot.ends_with("l") else 1.0),
+			(FFA_GAP.y / 2.0 + PLATE_H + 8.0 + half_h) * (-1.0 if top else 1.0))
+		_boards[side] = {"c": c, "s": k, "p": p, "rows": "opponent" if top else "player",
 			"plate": c.y + half_h + 8.0 if top else c.y - half_h - 8.0 - PLATE_H}
 	var lots := ["tl", "tr", "br"]
 	for i in _foes.size():

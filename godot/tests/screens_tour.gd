@@ -281,6 +281,12 @@ func _run() -> void:
 	var deck := await Game.load_duel_deck()
 	Game.duel_setup = deck
 	Game.duel_setup.first = "player"
+	Game.duel_setup.rooftop = true   # (the rooftop arena first, then the back alley for the rest)
+	Game.go("duel")
+	await _shot("07_duel_rooftop", 4.0)
+	Game.duel_setup = await Game.load_duel_deck()
+	Game.duel_setup.first = "player"
+	Game.duel_setup.rooftop = false
 	Game.go("duel")
 	await _shot("07_duel", 4.0)
 	# Luck: a die rolled for a 4+ effect, then a coin flip; then a Legendary's entrance

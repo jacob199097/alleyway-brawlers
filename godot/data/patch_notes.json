@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.34",
+        "notes": [
+            "A new arena: the Rooftop. Each 1v1 match is fought on the rooftop or in the back alley, a coin flip.",
+            "Free-for-all has a new crossroads, with the Militia and Nebula crests glowing on its corner signs.",
+            "The four free-for-all boards sit close together round the middle, with bigger cards, so every board is easy to see."
+        ]
+    },
+    {
         "version": "0.9.33",
         "notes": [
             "Zooming into a Striver shows its evolution: click any level (or press the arrow keys) to zoom into that card.",
