@@ -411,9 +411,12 @@ func _auto_fill() -> void:
 			and int(i.get("level", 1)) <= 1)
 	var units := pool.filter(func(i): return i.get("card_type") == "gang_member")
 	var effects := pool.filter(func(i): return i.get("card_type") != "gang_member")
-	var value := func(i): return float(int(i.get("attack", 0)) + int(i.get("defense", 0))) / maxf(1.0, float(i.get("authority", 1))) + 300.0 * int(i.get("rarity", 1))
+	# The leader's clan first (its cards work together), then the best value for their Authority
+	var clan := str(_leader.get("clan", "")) if _leader is Dictionary else ""
+	var home := func(i) -> float: return 100000.0 if clan != "" and str(i.get("clan", "")) == clan else 0.0
+	var value := func(i): return home.call(i) + float(int(i.get("attack", 0)) + int(i.get("defense", 0))) / maxf(1.0, float(i.get("authority", 1))) + 300.0 * int(i.get("rarity", 1))
 	units.sort_custom(func(a, b): return value.call(a) > value.call(b))
-	effects.sort_custom(func(a, b): return int(a.get("rarity", 1)) > int(b.get("rarity", 1)))
+	effects.sort_custom(func(a, b): return home.call(a) + int(a.get("rarity", 1)) > home.call(b) + int(b.get("rarity", 1)))
 	var before := _deck.size()
 	var unit_count := _deck.filter(func(c): return _item_for(c.cardId).get("card_type") == "gang_member").size()
 	for item in units:
