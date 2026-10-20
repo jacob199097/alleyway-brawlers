@@ -36,6 +36,8 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check(await until(() => last(a, 'mp:rps') && last(b, 'mp:rps')), 'both players get mp:rps');
     let id = last(a, 'mp:rps').rpsId;
     check(last(a, 'mp:rps').opponent.username === 'bob', 'alice sees bob as the opponent');
+    const arena = last(a, 'mp:rps').arena;
+    check(typeof arena === 'string' && arena !== '' && last(b, 'mp:rps').arena === arena, 'both see the same arena');
     a.handlers['mp:rps_pick']({ rpsId: id, pick: 'rock' });
     b.handlers['mp:rps_pick']({ rpsId: id, pick: 'rock' });
     check(last(a, 'mp:rps_result')?.outcome === 'draw', 'same throw is a draw');
@@ -49,6 +51,7 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check(last(a, 'mp:rps_decided')?.first === 'opponent' && last(b, 'mp:rps_decided')?.first === 'you', 'alice went second, bob first');
     check(await until(() => last(a, 'mp:start') && last(b, 'mp:start')), 'the match starts');
     const viewA = last(a, 'mp:start').view;
+    check(last(a, 'mp:start').arena === arena && last(b, 'mp:start').arena === arena, 'the match is played in that arena');
     check(viewA.active === 'opponent', 'in the match bob (alice\'s opponent) is first');
 
     // 2. Friend challenge, then one leaves during Scissors Paper Rock

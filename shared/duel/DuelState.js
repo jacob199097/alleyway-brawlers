@@ -1475,18 +1475,22 @@ export class DuelState {
 
     // ── Effects ────────────────────────────────────────────────────────────
 
-    _onDeploy(side, slot, c) {
+    /** evolved: a Striver's new form arriving by promotion. Its own "when deployed" effects run, but
+     *  it doesn't count as a deploy for other cards ("when you / your opponent deploy a character"). */
+    _onDeploy(side, slot, c, evolved = false) {
         delete c.fx_count;   // "times" counts start fresh each time a card enters the field
         this._runFx(side, slot, c, 'deploy');
-        for (const x of this.characters(side)) {
-            if (x.slot !== slot) this._runFx(side, x.slot, x.card, 'ally_deployed', c);
-        }
         const foes = this.foesOf(side);
-        for (const foe of foes) for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
-        this._runLasting(side, 'ally_deployed', c);
-        for (const foe of foes) this._runLasting(foe, 'foe_deployed', c);
-        this._leaderFx(side, 'dormant_ally_deployed', c);
-        for (const foe of foes) this._leaderFx(foe, 'dormant_foe_deployed', c);
+        if (!evolved) {
+            for (const x of this.characters(side)) {
+                if (x.slot !== slot) this._runFx(side, x.slot, x.card, 'ally_deployed', c);
+            }
+            for (const foe of foes) for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_deployed', c);
+            this._runLasting(side, 'ally_deployed', c);
+            for (const foe of foes) this._runLasting(foe, 'foe_deployed', c);
+            this._leaderFx(side, 'dormant_ally_deployed', c);
+            for (const foe of foes) this._leaderFx(foe, 'dormant_foe_deployed', c);
+        }
         switch (c.effectKey || '') {
             case 'pride_lieutenant_deploy': {
                 const allies = this.characters(side).filter(e => e.slot !== slot && isLion(e.card));
@@ -1559,7 +1563,7 @@ export class DuelState {
             this._clearStatus(old);
             s.gutter.push(old);
             this._emit('promote', { side, slot, from: clone(old), card: clone(promoted), reason });
-            this._onDeploy(side, slot, promoted);
+            this._onDeploy(side, slot, promoted, true);
             if (promoted.subtype === 'striver' && isLion(promoted) && !s.mentor_used) {
                 for (const e of this.characters(side)) {
                     if (e.card.effectKey === 'pride_mentor_draw') {

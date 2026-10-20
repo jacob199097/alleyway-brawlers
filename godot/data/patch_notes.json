@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.39",
+        "notes": [
+            "The arena is picked like a slot machine: when both players are in (on Scissors Paper Rock), or as a CPU match starts, a box flicks through the arenas and lands on the one you'll fight in. Both players get the same arena.",
+            "A Striver's promotion no longer counts as deploying a character for other cards, so it can't set off \"when you deploy\" effects (or other promotions). Its own \"when deployed\" effects still happen."
+        ]
+    },
+    {
         "version": "0.9.38",
         "notes": [
             "A new Striver evolution: the card rises into a pillar of light with energy rings orbiting it, becomes a cocoon of light that morphs between its forms on a quickening heartbeat, then bursts apart in shards as the new form spins in. Its level stars fill and its ATK / DEF count up to their new values."

@@ -52,6 +52,7 @@ const INK := Color(0.03, 0.03, 0.08, 0.92)
 const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
 const Keywords := preload("res://scripts/keywords.gd")
+const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 ## Emotes in online matches against players (keys match EMOTES in backend/socket/onlineMatch.js)
 const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"], ["thinking", "Hmm…"],
@@ -169,12 +170,20 @@ func _ready() -> void:
 	_font.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"])
 	_make_resources()
 	ui.theme = _make_theme()
-	# The floor: a 1v1 arena (the back alley or the rooftop, a coin flip each match; the slots are
-	# painted on it in _draw), or the old backdrop
+	# The floor: the match's 1v1 arena (data/arenas.json; the server's pick online, the roulette's
+	# offline; the slots are painted on it in _draw), or the old backdrop
 	var bg := "res://assets/arena_1v1.png" if not _paint.is_empty() else "res://assets/duel_background.png"
-	var roof = Game.duel_setup.get("rooftop")   # (tests can pick: true / false)
-	if not _paint.is_empty() and (roof if roof is bool else randi() % 2 == 0) and ResourceLoader.exists("res://assets/arena_1v1_rooftop.png"):
-		bg = "res://assets/arena_1v1_rooftop.png"
+	if not _paint.is_empty():
+		var start_arena = Game.duel_setup.get("start", {}).get("arena") if Game.duel_setup.get("start") is Dictionary else null
+		var roof = Game.duel_setup.get("rooftop")   # (tests can pick: true / false)
+		var arena_id := str(start_arena) if start_arena is String else str(Game.duel_setup.get("arena", ""))
+		if roof is bool:
+			arena_id = "rooftop" if roof else "alley"
+		elif arena_id == "" and str(Game.duel_setup.get("mode", "")) != "tutorial":
+			arena_id = ArenaRoulette.random_id()
+		var arena := ArenaRoulette.find(arena_id)
+		if not arena.is_empty():
+			bg = "res://assets/" + str(arena.image)
 	if ResourceLoader.exists(bg):
 		$BackLayer/Background.texture = load(bg)
 		if not _paint.is_empty():

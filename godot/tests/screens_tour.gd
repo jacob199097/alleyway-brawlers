@@ -145,6 +145,13 @@ func _run() -> void:
 		await _fps("+ no tiles")
 		get_tree().quit()
 		return
+	if "--arena-only" in OS.get_cmdline_user_args():   # (the arena roulette on Scissors Paper Rock: spinning, then landed)
+		Game.duel_setup = {"mode": "cpu", "difficulty": "normal"}
+		Game.go("rps")
+		await _shot("a1_spinning", 1.2)
+		await _shot("a2_landed", 3.6)
+		get_tree().quit()
+		return
 	if "--evolve-only" in OS.get_cmdline_user_args():   # (a Striver evolving, a shot every 0.25 s)
 		var deck := await Game.load_duel_deck()
 		Game.duel_setup = deck

@@ -18,6 +18,9 @@ var _deadline := 0        # ms: when an unanswered pick or choice is made for yo
 var _countdown: Label
 var _mine := ""
 var _foe_box: Control
+var _arena: Control = null   # the arena roulette (bottom right)
+const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
+const ARENA_AT := Vector2(1460, 784)
 
 
 func _ready() -> void:
@@ -29,6 +32,8 @@ func _ready() -> void:
 	_online = Game.duel_setup.get("online_rps", false)
 	if not _online:
 		back_to = "fight_mode"
+		Game.duel_setup.arena = ArenaRoulette.random_id()
+		_arena = ArenaRoulette.spin(self, str(Game.duel_setup.arena), ARENA_AT)
 		_choose()
 		return
 	_text("SCISSORS · PAPER · ROCK", Vector2(0, 60), 56, UI.GOLD)
@@ -59,6 +64,8 @@ func _on_rps_event(name: String, d: Dictionary) -> void:
 			if opp is Dictionary:
 				_rival = str(opp.get("username", "RIVAL")).to_upper()
 			_deadline = Time.get_ticks_msec() + int(d.get("secs", 15)) * 1000
+			if _arena == null and d.get("arena") is String:   # (both players are in: the server's arena lands)
+				_arena = ArenaRoulette.spin(self, str(d.arena), ARENA_AT)
 			_choose()
 		"mp:rps_result":
 			if str(d.get("rpsId", "")) == _rps_id:
@@ -239,4 +246,6 @@ func _reveal(choice: String, at: Vector2, who: String, accent: Color, show: bool
 
 func _launch(first: String) -> void:
 	Game.duel_setup.first = first
+	if _arena and is_instance_valid(_arena) and not _arena.done:
+		await _arena.landed
 	Game.go("duel")

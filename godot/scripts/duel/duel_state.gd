@@ -1631,22 +1631,25 @@ func _spring(side: String, slot: int) -> void:
 
 # ── Effects ──────────────────────────────────────────────────────────────────
 
-func _on_deploy(side: String, slot: int, c: Dictionary) -> void:
+## evolved: a Striver's new form arriving by promotion. Its own "when deployed" effects run, but it
+## doesn't count as a deploy for other cards ("when you / your opponent deploy a character").
+func _on_deploy(side: String, slot: int, c: Dictionary, evolved := false) -> void:
 	c.erase("fx_count")   # "times" counts start fresh each time a card enters the field
 	_run_fx(side, slot, c, "deploy")
-	for x in characters(side):
-		if x.slot != slot:
-			_run_fx(side, x.slot, x.card, "ally_deployed", c)
 	var foes := foes_of(side)
-	for foe in foes:
-		for x in characters(foe):
-			_run_fx(foe, x.slot, x.card, "foe_deployed", c)
-	_run_lasting(side, "ally_deployed", c)
-	for foe in foes:
-		_run_lasting(foe, "foe_deployed", c)
-	_leader_fx(side, "dormant_ally_deployed", c)
-	for foe in foes:
-		_leader_fx(foe, "dormant_foe_deployed", c)
+	if not evolved:
+		for x in characters(side):
+			if x.slot != slot:
+				_run_fx(side, x.slot, x.card, "ally_deployed", c)
+		for foe in foes:
+			for x in characters(foe):
+				_run_fx(foe, x.slot, x.card, "foe_deployed", c)
+		_run_lasting(side, "ally_deployed", c)
+		for foe in foes:
+			_run_lasting(foe, "foe_deployed", c)
+		_leader_fx(side, "dormant_ally_deployed", c)
+		for foe in foes:
+			_leader_fx(foe, "dormant_foe_deployed", c)
 	match c.get("effectKey", ""):
 		"pride_lieutenant_deploy":
 			var allies := characters(side).filter(func(e): return e.slot != slot and is_lion(e.card))
@@ -1719,7 +1722,7 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		s.gutter.append(old)
 		_emit("promote", {"side": side, "slot": slot, "from": old.duplicate(true),
 			"card": promoted.duplicate(true), "reason": reason})
-		_on_deploy(side, slot, promoted)
+		_on_deploy(side, slot, promoted, true)
 		if promoted.get("subtype") == "striver" and is_lion(promoted) and not s.mentor_used:
 			for e in characters(side):
 				if e.card.get("effectKey") == "pride_mentor_draw":

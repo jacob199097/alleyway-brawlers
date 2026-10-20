@@ -10,6 +10,8 @@ const CARD := Vector2(150, 212)   # a card in a mode's picture (the card art's s
 
 var _starting := false
 var _spin: Label = null
+var _arena: Control = null   # the arena roulette while a CPU match starts
+const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
 
 
 func _ready() -> void:
@@ -323,7 +325,9 @@ func _start(mode: String) -> void:
 	# The server runs the match (and decides who goes first)
 	_starting = true
 	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
-	var why := await Game.request_cpu_match(mode == "ranked", difficulty, mode == "challenge")
+	var arena := ArenaRoulette.random_id()
+	_arena = ArenaRoulette.spin(self, arena, Vector2(1460, 784))
+	var why := await Game.request_cpu_match(mode == "ranked", difficulty, mode == "challenge", arena)
 	if why != "":
 		on_online_error(why)
 		return
@@ -350,10 +354,20 @@ Hard: sacrifices cleverly and trades up." + rewards,
 	return "" if choice[0] == "cancel" else choice[0]
 
 
+## mp:start for the CPU match: the duel opens once the arena has landed.
+func on_online_start(_data) -> void:
+	if _arena and is_instance_valid(_arena) and not _arena.done:
+		await _arena.landed
+	Game.go("duel")
+
+
 ## mp:error while starting a CPU match (net.gd calls this on the current screen).
 func on_online_error(message: String) -> void:
 	if _spin and is_instance_valid(_spin):
 		_spin.queue_free()
 	_spin = null
+	if _arena and is_instance_valid(_arena):
+		_arena.queue_free()
+	_arena = null
 	_starting = false
 	UI.dialog(self, "CAN'T START DUEL", message, [["CLOSE", func(): pass]], UI.RED)

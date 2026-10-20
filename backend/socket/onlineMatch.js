@@ -77,6 +77,15 @@ function swapSides(v) {
     return v;
 }
 
+/** The 1v1 arenas (godot/data/arenas.json, the game's own list): a wanted one if it's real, else a random one. */
+const ARENAS = (() => {
+    try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../godot/data/arenas.json'), 'utf8')).map(a => String(a.id)); }
+    catch { return ['alley']; }
+})();
+function pickArena(want = null) {
+    return typeof want === 'string' && ARENAS.includes(want) ? want : ARENAS[Math.floor(Math.random() * ARENAS.length)];
+}
+
 function redact(c) {
     return { uid: c.uid, face_down: true, position: c.position, downed: c.downed,
         has_attacked: c.has_attacked, deployed_turn: c.deployed_turn, cardType: c.cardType, mods: [] };
@@ -194,7 +203,7 @@ function createOnlineService(io, deps) {
 
     // ── Scissors Paper Rock (who goes first) ──
     function startRps(a, b, mode) {
-        const rps = { id: randomUUID(), a, b, mode, round: 0, picks: {}, timer: null, over: false };
+        const rps = { id: randomUUID(), a, b, mode, round: 0, picks: {}, timer: null, over: false, arena: pickArena() };
         rpsByPlayer.set(a.playerId, rps);
         rpsByPlayer.set(b.playerId, rps);
         rpsRound(rps);
@@ -204,7 +213,7 @@ function createOnlineService(io, deps) {
         rps.round += 1;
         rps.picks = {};
         for (const [me, foe] of [[rps.a, rps.b], [rps.b, rps.a]]) {
-            emitTo(me.playerId, 'mp:rps', { rpsId: rps.id, round: rps.round, secs: RPS_PICK_SECS, mode: rps.mode, opponent: foe.profile });
+            emitTo(me.playerId, 'mp:rps', { rpsId: rps.id, round: rps.round, secs: RPS_PICK_SECS, mode: rps.mode, opponent: foe.profile, arena: rps.arena });
         }
         clearTimeout(rps.timer);
         rps.timer = setTimeout(() => rpsResolve(rps), RPS_PICK_SECS * 1000 + 500);
@@ -252,7 +261,7 @@ function createOnlineService(io, deps) {
             rpsByPlayer.delete(rps.a.playerId);
             rpsByPlayer.delete(rps.b.playerId);
             // Seat "player" is a, so the first player's seat follows from who that is
-            startMatch(rps.a, rps.b, rps.mode, firstPlayer === rps.a ? 'player' : 'opponent')
+            startMatch(rps.a, rps.b, rps.mode, firstPlayer === rps.a ? 'player' : 'opponent', null, rps.arena)
                 .catch(err => console.error('[Online] Start failed:', err));
         }, 1800);
     }
@@ -274,7 +283,7 @@ function createOnlineService(io, deps) {
         }
     }
 
-    async function startMatch(a, b, mode, firstSeat = null, challenge = null) {
+    async function startMatch(a, b, mode, firstSeat = null, challenge = null, arena = null) {
         const { DuelState } = await engine;
         const rules = challenge ? challenge.rules : {};
         const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
@@ -284,7 +293,7 @@ function createOnlineService(io, deps) {
         const leaders = { player: a.setup.leader, opponent: b.setup.leader };
         const state = new DuelState(decks, hideouts, leaders, first, seed, rules);
         const match = {
-            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge,
+            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena),
             seats: {
                 player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
                 opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
@@ -292,7 +301,7 @@ function createOnlineService(io, deps) {
         };
         // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
         match.record = {
-            id: match.id, version: GAME_VERSION, mode, seed, first, rules,
+            id: match.id, version: GAME_VERSION, mode, seed, first, rules, arena: match.arena,
             decks: structuredClone(decks), hideouts: structuredClone(hideouts), leaders: structuredClone(leaders),
             playerIds: { player: a.playerId, opponent: b.playerId },
             profiles: { player: profileOf(match.seats.player), opponent: profileOf(match.seats.opponent) },
@@ -329,7 +338,7 @@ function createOnlineService(io, deps) {
     function sendStart(match, seat, resync) {
         const s = match.seats[seat];
         emitTo(s.playerId, 'mp:start', {
-            matchId: match.id, mode: match.mode, resync,
+            matchId: match.id, mode: match.mode, resync, arena: match.arena,
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
@@ -563,7 +572,7 @@ function createOnlineService(io, deps) {
     // ── Spectators ──
     function spectatorStart(match, id, seat) {
         emitTo(id, 'mp:start', {
-            matchId: match.id, mode: match.mode, resync: true, spectate: true,
+            matchId: match.id, mode: match.mode, resync: true, spectate: true, arena: match.arena,
             you: profileOf(match.seats[seat]), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, 'spectator'), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
@@ -625,18 +634,18 @@ function createOnlineService(io, deps) {
 
         // A match against the server CPU (VS CPU, or Ranked when ranked is true)
         // challenge: this week's challenge (shared/challenges.js): its rules twist, against a Hard CPU
-        socket.on('mp:cpu', async ({ ranked, difficulty, challenge } = {}) => {
+        socket.on('mp:cpu', async ({ ranked, difficulty, challenge, arena } = {}) => {
             if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             leaveQueue(me);
             try {
                 const entry = await prepare(me);
                 if (challenge === true) {
                     const { weeklyChallenge } = await import('../../shared/challenges.js');
-                    await startMatch(entry, await cpuSeat(false, 'hard'), 'cpu_challenge', null, weeklyChallenge());
+                    await startMatch(entry, await cpuSeat(false, 'hard'), 'cpu_challenge', null, weeklyChallenge(), arena);
                     return;
                 }
                 const level = ranked === true ? 'hard' : ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
-                await startMatch(entry, await cpuSeat(ranked === true, level), ranked === true ? 'cpu_ranked' : 'cpu');
+                await startMatch(entry, await cpuSeat(ranked === true, level), ranked === true ? 'cpu_ranked' : 'cpu', null, null, arena);
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }

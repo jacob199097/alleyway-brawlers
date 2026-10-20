@@ -1,0 +1,4 @@
+[
+    {"id": "alley", "name": "Back Alley", "image": "arena_1v1.png"},
+    {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png"}
+]

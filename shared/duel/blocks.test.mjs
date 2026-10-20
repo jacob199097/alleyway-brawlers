@@ -209,4 +209,20 @@ assert.equal(evo.attack, 1000 + 700, 'ATK still +700');
 assert.equal(evo.defense, 400 - 100, 'DEF still -100');
 assert.ok(evo.poison === undefined, 'the poison is gone');
 
+// Evolving isn't a deploy for other cards: an ally's "when you deploy" stays quiet, the new form's own "when deployed" runs
+CARD_CATALOG.block_evo2_lv1 = { ...CARD_CATALOG.block_grunt, id: 'block_evo2_lv1', name: 'Evo2', subtype: 'striver', promotesTo: 'block_evo2_lv2' };
+CARD_CATALOG.block_evo2_lv2 = { ...CARD_CATALOG.block_grunt, id: 'block_evo2_lv2', name: 'Evo2', subtype: 'striver', level: 2,
+    effects: [{ when: 'deploy', do: 'heal', amount: 100 }] };
+st = board([{ id: 'block_evo2_lv1', subtype: 'striver', promotesTo: 'block_evo2_lv2' }, { effects: [{ when: 'ally_deployed', do: 'draw', amount: 1 }] }],
+    [{ effects: [{ when: 'foe_deployed', do: 'draw', amount: 1 }] }]);
+st.sides.player.morale = 3000;
+const handP = st.sides.player.hand.length, handO = st.sides.opponent.hand.length;
+st._promote('player', 0, 'test');
+st._flushAsks();
+st._answer('player', 'atk');
+assert.equal(st.cardAt('player', 0).id, 'block_evo2_lv2', 'it evolved');
+assert.equal(st.sides.player.morale, 3100, 'its own when-deployed ran');
+assert.equal(st.sides.player.hand.length, handP, "the ally's when-you-deploy didn't");
+assert.equal(st.sides.opponent.hand.length, handO, "nor the opponent's when-your-opponent-deploys");
+
 console.log('blocks: ok');
