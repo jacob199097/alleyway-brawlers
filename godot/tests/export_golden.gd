@@ -35,6 +35,9 @@ const FX_SAMPLES := [
 	[{"when": "turn_start", "do": "damage", "amount": 400, "luck": "die", "luck_on": 4}],
 	[{"when": "defend", "do": "buff", "target": "self", "def": 600, "luck": "coin"}],
 	[{"when": "ko", "do": "heal", "amount": 100, "luck": "die", "per": "roll"}],
+	# Wildcard: DOUBLE OR NOTHING, and LOADED DICE (a lost flip or roll tried again, once a turn)
+	[{"when": "deploy", "do": "damage", "amount": 300, "luck": "double"}, {"when": "deploy", "do": "draw", "amount": 1, "if_luck": "lost"}],
+	[{"when": "passive", "do": "loaded"}, {"when": "turn_start", "do": "buff", "target": "self", "atk": 300, "until": "turn", "luck": "die", "luck_on": 5}],
 	[{"when": "deploy", "do": "buff", "target": "ally", "atk": 500}],
 	[{"when": "deploy", "do": "down", "target": "enemy"}],
 	[{"when": "deploy", "do": "buff", "target": "enemies", "atk": -300, "until": "next_turn"}],

@@ -67,4 +67,37 @@ const seq = (seed) => { const s = fresh(seed); return Array.from({ length: 12 },
 assert.deepEqual(seq(42), seq(42));
 assert.notDeepEqual(seq(42), seq(43));
 
+// DOUBLE OR NOTHING: a coin; heads, the effect happens twice; tails, not at all
+st = fresh();
+let doubled = 0, none = 0;
+for (let i = 0; i < 100; i++) {
+    const before = st.sides.player.morale;
+    st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'double' });
+    const [ev] = lucks(st);
+    assert.equal(ev.kind, 'coin');
+    assert.equal(st.sides.player.morale - before, ev.won ? 200 : 0, 'heads twice, tails nothing');
+    if (ev.won) doubled++; else none++;
+    st.sides.player.morale = 3000;
+}
+assert.ok(doubled > 25 && none > 25, `both happen (${doubled} doubled, ${none} nothing)`);
+
+// LOADED DICE: with a loaded character on the field, a lost flip is flipped again, once a turn
+st = fresh();
+st.sides.player.field[0] = st.makeCard({ id: 'luck_grunt', name: 'Shark', cardType: 'gang_member', clanTag: 'test', attack: 500, defense: 500,
+    effects: [{ when: 'passive', do: 'loaded' }] });
+let rerolls = 0, seenLost = false;
+for (let t = 0; t < 60; t++) {
+    st.turn = 10 + t * 2;
+    st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'coin' });
+    const ev = lucks(st);
+    if (ev.length === 2) { rerolls++; assert.ok(!ev[0].won, 'only a lost flip is tried again'); }
+    else assert.ok(ev.length === 1 && ev[0].won, 'a won flip stands');
+    st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'coin' });   // the same turn again
+    const ev2 = lucks(st);
+    if (ev.length === 2) assert.equal(ev2.length, 1, 'once a turn');
+    if (ev2.length === 1 && !ev2[0].won) seenLost = true;
+}
+assert.ok(rerolls > 10, `it re-flips (${rerolls} times)`);
+assert.ok(seenLost, 'and a second loss in a turn stands');
+
 console.log('luck: ok');

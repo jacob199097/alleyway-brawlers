@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.36",
+        "notes": [
+            "New card rules, ready for the next clan: DOUBLE OR NOTHING (flip a coin: heads, the effect happens twice; tails, not at all) and LOADED DICE (once per turn, a flip or roll of yours that fails is tried again).",
+            "How to Play explains both."
+        ]
+    },
+    {
         "version": "0.9.35",
         "notes": [
             "Strivers evolve in style: the card rises to centre stage as energy spirals in, flickers between its forms, bursts into its new one and shows its new level and stats.",

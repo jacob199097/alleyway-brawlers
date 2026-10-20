@@ -2156,6 +2156,12 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
 	if not _luck_gate(side, slot, c, e):
 		return
+	_do_fx_run(side, slot, c, e, vs)
+	if str(e.get("luck", "")) == "double" and winner == "":   # DOUBLE OR NOTHING: heads, twice
+		_do_fx_run(side, _slot_of(side, c, slot), c, e, vs)
+
+
+func _do_fx_run(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
 	var then = e.get("then")
 	if not (then is Dictionary):
 		_do_fx_one(side, slot, c, e, vs)
@@ -3178,12 +3184,25 @@ func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
 		_roll = int(_luck_last.value)
 		return (not _luck_last.won) if follow == "lost" else bool(_luck_last.won)
 	var kind := str(e.get("luck", ""))
-	if kind != "coin" and kind != "die" and str(e.get("per", "")) != "roll":
+	if kind != "coin" and kind != "die" and kind != "double" and str(e.get("per", "")) != "roll":
 		return true
-	var coin := kind == "coin"
+	var coin := kind == "coin" or kind == "double"
+	var won := _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6))
+	var s = sides.get(side)
+	if not won and s != null and int(s.get("loaded_turn", -1)) != turn and winner == "":   # LOADED DICE: once a turn, try again
+		for x in characters(side):
+			if not _passive(side, x.slot, x.card, "loaded").is_empty():
+				s.loaded_turn = turn
+				_effect(side, x.card, "%s: LOADED DICE, %s again" % [x.card.name, "flip" if coin else "roll"], x.slot)
+				won = _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6))
+				break
+	return won
+
+
+## One flip or roll for _luck_gate (with its luck event and its line in the log).
+func _luck_toss(side: String, slot: int, c: Dictionary, coin: bool, need: int) -> bool:
 	var r := _luck_next()
 	var value: int = (1 if r < 0.5 else 0) if coin else 1 + int(floor(r * 6.0))   # coin: 1 heads, 0 tails
-	var need: int = 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6)
 	var won := value >= need
 	_luck_last = {"won": won, "value": value}
 	_roll = value
