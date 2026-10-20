@@ -145,6 +145,20 @@ func _run() -> void:
 		await _fps("+ no tiles")
 		get_tree().quit()
 		return
+	if "--arenas" in OS.get_cmdline_user_args():   # (every 1v1 arena in a duel: its board and its life)
+		for arena in load("res://scripts/ui/arena_roulette.gd").arenas():
+			var deck := await Game.load_duel_deck()
+			Game.duel_setup = deck
+			Game.duel_setup.first = "player"
+			Game.duel_setup.arena = str(arena.id)
+			Game.go("duel")
+			await get_tree().create_timer(3.5).timeout
+			if _screen()._menu:
+				_screen()._menu.visible = false
+			await _shot("ar_%s" % arena.id, 1.5)
+			await _shot("ar_%s_b" % arena.id, 0.9)
+		get_tree().quit()
+		return
 	if "--arena-only" in OS.get_cmdline_user_args():   # (the arena roulette on Scissors Paper Rock: spinning, then landed)
 		Game.duel_setup = {"mode": "cpu", "difficulty": "normal"}
 		Game.go("rps")

@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.40",
+        "notes": [
+            "Four new arenas, each with its own board and its own life: THE PIT (chalk lines on concrete, spotlights breathing, dust in the light, camera flashes in the crowd), THE OBSERVATORY (starlight outlines over a glass floor of twinkling stars and shooting stars), THE JUNKYARD (rust-orange paint, a flickering floodlight, welding sparks and embers) and THE HIGH-ROLLER TABLE (gold-rimmed spots on the felt, a spinning roulette wheel, cigar smoke and glints on the chips)."
+        ]
+    },
+    {
         "version": "0.9.39",
         "notes": [
             "The arena is picked like a slot machine: when both players are in (on Scissors Paper Rock), or as a CPU match starts, a box flicks through the arenas and lands on the one you'll fight in. Both players get the same arena.",

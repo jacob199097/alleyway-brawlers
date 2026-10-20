@@ -173,7 +173,9 @@ func _ready() -> void:
 	# The floor: the match's 1v1 arena (data/arenas.json; the server's pick online, the roulette's
 	# offline; the slots are painted on it in _draw), or the old backdrop
 	var bg := "res://assets/arena_1v1.png" if not _paint.is_empty() else "res://assets/duel_background.png"
-	if not _paint.is_empty():
+	var arena := {}
+	var ffa_start: bool = Game.duel_setup.get("start") is Dictionary and str(Game.duel_setup.start.get("mode", "")) == "ffa"
+	if not _paint.is_empty() and not ffa_start:
 		var start_arena = Game.duel_setup.get("start", {}).get("arena") if Game.duel_setup.get("start") is Dictionary else null
 		var roof = Game.duel_setup.get("rooftop")   # (tests can pick: true / false)
 		var arena_id := str(start_arena) if start_arena is String else str(Game.duel_setup.get("arena", ""))
@@ -181,7 +183,7 @@ func _ready() -> void:
 			arena_id = "rooftop" if roof else "alley"
 		elif arena_id == "" and str(Game.duel_setup.get("mode", "")) != "tutorial":
 			arena_id = ArenaRoulette.random_id()
-		var arena := ArenaRoulette.find(arena_id)
+		arena = ArenaRoulette.find(arena_id)
 		if not arena.is_empty():
 			bg = "res://assets/" + str(arena.image)
 	if ResourceLoader.exists(bg):
@@ -190,6 +192,11 @@ func _ready() -> void:
 			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
 			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
 			_neon = {"mat": $BackLayer/Background.material, "zones": _find_neon($BackLayer/Background.texture, _cover_point.bind($BackLayer/Background.texture.get_size()))}
+			if not arena.is_empty():   # the arena's own slots and life
+				for k in arena.get("alive", {}):
+					$BackLayer/Background.material.set_shader_parameter(k, float(arena.alive[k]))
+				_style_board(arena.get("board", {}))
+				_arena_fx(arena, $BackLayer/Background.texture)
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
@@ -1058,6 +1065,313 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 
 ## A mat's living layer (shaders/mat_alive.gdshader): its neon pulses and flickers, a wet sheen
 ## drifts, rain rings spread and a haze rolls across.
+## An arena's own slots (data/arenas.json "board"): its spray paint in a colour ("paint", "tint"),
+## glowing outlines ("neon") or darker spots rimmed in gold on the felt ("felt"), each in "color".
+func _style_board(board: Dictionary) -> void:
+	var style := str(board.get("style", "paint"))
+	if style == "paint":
+		var tint := Color(str(board.get("tint", "#ffffff")))
+		for kind in _paint:
+			if _paint[kind] is StyleBoxTexture:
+				_paint[kind].modulate_color = _paint[kind].modulate_color * Color(tint, 1.0)
+		return
+	var col := Color(str(board.get("color", "#ffffff")))
+	for kind in ["front", "back", "pile"]:
+		var a: float = {"front": 1.0, "back": 0.7, "pile": 0.5}[kind]
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(14)
+		if style == "neon":
+			sb.bg_color = Color(col, 0.03 * a)
+			sb.border_color = Color(col.lightened(0.35), 0.95 * a)
+			sb.set_border_width_all(4)
+			sb.shadow_color = Color(col, 0.16 * a)   # (a soft halo: the stars still show through the slot)
+			sb.shadow_size = 10
+		else:   # felt
+			sb.bg_color = Color(0, 0, 0, 0.17 * a)
+			sb.border_color = Color(col, 0.92 * a)
+			sb.set_border_width_all(5)
+			sb.shadow_color = Color(0, 0, 0, 0.35 * a)
+			sb.shadow_size = 8
+		_paint[kind] = sb
+
+
+## An arena coming alive (data/arenas.json "fx", positions in the picture's pixels): light pools that
+## breathe (or flicker), drifting dust or embers, twinkling stars and shooting stars, camera flashes in
+## the crowd, welding sparks, a turning roulette wheel, cigar smoke and glints on chips and glass.
+func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
+	var ts := tex.get_size()
+	var k := maxf(1920.0 / ts.x, 1080.0 / ts.y)
+	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
+	var to_rect := func(r) -> Rect2:
+		var a: Vector2 = to_screen.call([r[0], r[1]])
+		return Rect2(a, Vector2(float(r[2]), float(r[3])) * k)
+	for e in arena.get("fx", []):
+		if not e is Dictionary:
+			continue
+		var col := Color(str(e.get("color", "#ffffff")))
+		match str(e.get("kind", "")):
+			"pool":
+				_fx_pool(to_screen.call(e.at), float(e.get("r", 200)) * k, col, bool(e.get("flicker", false)))
+			"dust", "embers":
+				_fx_drift(to_rect.call(e.rect), col, str(e.kind) == "embers")
+			"twinkle":
+				_fx_twinkle(to_rect.call(e.rect), col)
+			"shooting":
+				_fx_shooting(to_rect.call(e.rect))
+			"flashes":
+				_fx_flashes(e.points.map(func(p): return to_screen.call(p)))
+			"sparks":
+				_fx_sparks(to_screen.call(e.at), float(e.get("every", 3.0)))
+			"spin":
+				_fx_spin(tex, Vector2(float(e.at[0]), float(e.at[1])), float(e.get("r", 100)), float(e.get("speed", 0.5)), to_screen.call(e.at), k)
+			"smoke":
+				var sm := _steam(to_screen.call(e.at))
+				sm.modulate = Color(0.75, 0.72, 0.7, 0.55)
+				sm.scale_amount_min *= 0.6
+				sm.scale_amount_max *= 0.6
+				$BackLayer.add_child(sm)
+			"glints":
+				_fx_glints(e.points.map(func(p): return to_screen.call(p)))
+
+
+static var _dot_tex: GradientTexture2D = null
+
+
+## A soft round dot (white, fading to nothing), for light and particles.
+static func _soft_dot() -> GradientTexture2D:
+	if _dot_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		_dot_tex = GradientTexture2D.new()
+		_dot_tex.width = 64
+		_dot_tex.height = 64
+		_dot_tex.fill = GradientTexture2D.FILL_RADIAL
+		_dot_tex.fill_from = Vector2(0.5, 0.5)
+		_dot_tex.fill_to = Vector2(1.0, 0.5)
+		_dot_tex.gradient = g
+	return _dot_tex
+
+
+## A pool of light that breathes and drifts a little (or flickers like a failing floodlight).
+func _fx_pool(at: Vector2, radius: float, col: Color, flicker: bool) -> void:
+	var s := Sprite2D.new()
+	s.texture = _soft_dot()
+	s.position = at
+	s.scale = Vector2.ONE * radius / 32.0
+	s.material = _add_mat
+	s.modulate = Color(col, 0.2)
+	$BackLayer.add_child(s)
+	var t := s.create_tween().set_loops()
+	var dur := randf_range(2.2, 3.4)
+	t.tween_property(s, "modulate:a", 0.32, dur).set_trans(Tween.TRANS_SINE)
+	t.parallel().tween_property(s, "position", at + Vector2(randf_range(-14, 14), randf_range(-10, 10)), dur).set_trans(Tween.TRANS_SINE)
+	t.tween_property(s, "modulate:a", 0.18, dur).set_trans(Tween.TRANS_SINE)
+	t.parallel().tween_property(s, "position", at, dur).set_trans(Tween.TRANS_SINE)
+	if flicker:
+		_fx_flicker(s)
+
+
+func _fx_flicker(s: Sprite2D) -> void:
+	while is_instance_valid(s) and s.is_inside_tree():
+		await get_tree().create_timer(randf_range(2.5, 7.0)).timeout
+		if not is_instance_valid(s):
+			return
+		for i in randi_range(2, 4):   # a stutter: dark, on, dark...
+			s.visible = false
+			await get_tree().create_timer(randf_range(0.04, 0.1)).timeout
+			if not is_instance_valid(s):
+				return
+			s.visible = true
+			await get_tree().create_timer(randf_range(0.05, 0.14)).timeout
+			if not is_instance_valid(s):
+				return
+
+
+## Motes drifting in the light: dust (slow, any way) or embers (rising, glowing).
+func _fx_drift(area: Rect2, col: Color, embers: bool) -> void:
+	var p := CPUParticles2D.new()
+	p.texture = _soft_dot()
+	p.position = area.get_center()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = area.size / 2
+	p.amount = 18 if embers else 46
+	p.lifetime = 2.6 if embers else 7.0
+	p.preprocess = p.lifetime
+	p.direction = Vector2(0, -1)
+	p.spread = 35.0 if embers else 180.0
+	p.gravity = Vector2(0, -26) if embers else Vector2.ZERO
+	p.initial_velocity_min = 14.0 if embers else 3.0
+	p.initial_velocity_max = 40.0 if embers else 12.0
+	p.scale_amount_min = 0.05 if embers else 0.04
+	p.scale_amount_max = 0.1 if embers else 0.08
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(col, 0.0))
+	ramp.add_point(0.25, Color(col, 0.9 if embers else 0.45))
+	ramp.set_color(1, Color(col, 0.0))
+	p.color_ramp = ramp
+	p.material = _add_mat
+	$BackLayer.add_child(p)
+
+
+## Stars twinkling under a glass floor.
+func _fx_twinkle(area: Rect2, col: Color) -> void:
+	var p := CPUParticles2D.new()
+	p.texture = _soft_dot()
+	p.position = area.get_center()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = area.size / 2
+	p.amount = 70
+	p.lifetime = 3.0
+	p.preprocess = 3.0
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = 0.0
+	p.initial_velocity_max = 0.0
+	p.scale_amount_min = 0.05
+	p.scale_amount_max = 0.16
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0))
+	curve.add_point(Vector2(0.5, 1))
+	curve.add_point(Vector2(1, 0))
+	p.scale_amount_curve = curve
+	p.color = col
+	p.material = _add_mat
+	$BackLayer.add_child(p)
+
+
+## Now and then a shooting star streaks across.
+func _fx_shooting(area: Rect2) -> void:
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(5.0, 11.0)).timeout
+		if not is_inside_tree():
+			return
+		var from := area.position + Vector2(randf() * area.size.x, randf() * area.size.y * 0.5)
+		var dir := Vector2.from_angle(randf_range(0.25, 0.75) * (1.0 if randf() < 0.5 else -1.0) + (0.0 if randf() < 0.5 else PI)).normalized()
+		dir.y = absf(dir.y)
+		var star := Node2D.new()
+		star.position = from
+		star.rotation = dir.angle()
+		star.material = _add_mat
+		star.draw.connect(func():
+			for i in 14:
+				star.draw_circle(Vector2(-i * 9.0, 0), maxf(0.6, 3.2 - i * 0.2), Color(0.95, 0.92, 1.0, 1.0 - i / 14.0)))
+		$BackLayer.add_child(star)
+		var t := star.create_tween().set_parallel()
+		t.tween_property(star, "position", from + dir * randf_range(320.0, 520.0), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(star, "modulate:a", 0.0, 0.7).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		t.chain().tween_callback(star.queue_free)
+
+
+## Camera flashes popping in the crowd.
+func _fx_flashes(points: Array) -> void:
+	if points.is_empty():
+		return
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(0.5, 2.2)).timeout
+		if not is_inside_tree():
+			return
+		var at: Vector2 = points.pick_random() + Vector2(randf_range(-30, 30), randf_range(-20, 20))
+		for i in (2 if randf() < 0.3 else 1):   # (sometimes a double flash)
+			var f := Sprite2D.new()
+			f.texture = _soft_dot()
+			f.position = at
+			f.scale = Vector2.ONE * randf_range(0.9, 1.5)
+			f.material = _add_mat
+			f.modulate = Color(1, 1, 1, 0.9 * _fx_level())
+			$BackLayer.add_child(f)
+			var t := f.create_tween()
+			t.tween_property(f, "modulate:a", 0.0, 0.18)
+			t.tween_callback(f.queue_free)
+			await get_tree().create_timer(0.12).timeout
+			if not is_inside_tree():
+				return
+
+
+## Welding sparks bursting from a spot, every few seconds.
+func _fx_sparks(at: Vector2, every: float) -> void:
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(every * 0.6, every * 1.4)).timeout
+		if not is_inside_tree():
+			return
+		var p := CPUParticles2D.new()
+		p.texture = _soft_dot()
+		p.position = at
+		p.one_shot = true
+		p.explosiveness = 0.9
+		p.amount = 24
+		p.lifetime = 0.8
+		p.direction = Vector2(0, -1)
+		p.spread = 75.0
+		p.initial_velocity_min = 140.0
+		p.initial_velocity_max = 330.0
+		p.gravity = Vector2(0, 640)
+		p.scale_amount_min = 0.05
+		p.scale_amount_max = 0.09
+		var ramp := Gradient.new()
+		ramp.set_color(0, Color(1.0, 0.95, 0.7, 1.0))
+		ramp.set_color(1, Color(1.0, 0.45, 0.1, 0.0))
+		p.color_ramp = ramp
+		p.material = _add_mat
+		$BackLayer.add_child(p)
+		p.emitting = true
+		var glow := Sprite2D.new()   # (the weld's own flash)
+		glow.texture = _soft_dot()
+		glow.position = at
+		glow.scale = Vector2.ONE * 1.8
+		glow.material = _add_mat
+		glow.modulate = Color(1.0, 0.8, 0.45, 0.7)
+		$BackLayer.add_child(glow)
+		var t := glow.create_tween()
+		t.tween_property(glow, "modulate:a", 0.0, 0.5)
+		t.tween_callback(glow.queue_free)
+		get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+
+
+## A round part of the picture turning in place (the roulette wheel).
+func _fx_spin(tex: Texture2D, centre: Vector2, radius: float, speed: float, at: Vector2, k: float) -> void:
+	var disc := ColorRect.new()
+	disc.size = Vector2.ONE * radius * 2.0 * k
+	disc.position = at - disc.size / 2
+	disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/spin_disc.gdshader")
+	m.set_shader_parameter("picture", tex)
+	m.set_shader_parameter("tex_size", tex.get_size())
+	m.set_shader_parameter("centre", centre)
+	m.set_shader_parameter("radius", radius)
+	m.set_shader_parameter("tint", $BackLayer/Background.modulate)
+	disc.material = m
+	$BackLayer.add_child(disc)
+	var t := disc.create_tween().set_loops()
+	t.tween_method(func(a: float): m.set_shader_parameter("angle", a), 0.0, TAU, TAU / maxf(0.05, speed))
+
+
+## Glints catching the light on chips and glass: a little four-point star, now here, now there.
+func _fx_glints(points: Array) -> void:
+	if points.is_empty():
+		return
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(0.6, 1.8)).timeout
+		if not is_inside_tree():
+			return
+		var g := Node2D.new()
+		g.position = points.pick_random() + Vector2(randf_range(-12, 12), randf_range(-12, 12))
+		g.material = _add_mat
+		g.scale = Vector2.ZERO
+		g.draw.connect(func():
+			for a in [0.0, PI / 2]:
+				var d := Vector2.from_angle(a)
+				var n := d.orthogonal()
+				g.draw_colored_polygon(PackedVector2Array([d * 16, n * 2.2, -d * 16, -n * 2.2]), Color(1, 0.95, 0.8, 0.95))
+			g.draw_circle(Vector2.ZERO, 3.0, Color(1, 1, 1, 0.9)))
+		$BackLayer.add_child(g)
+		var t := g.create_tween()
+		t.tween_property(g, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(g, "rotation", 0.6, 0.5)
+		t.tween_property(g, "scale", Vector2.ZERO, 0.3)
+		t.tween_callback(g.queue_free)
+
+
 func _alive(tex_size: Vector2) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/mat_alive.gdshader")

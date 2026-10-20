@@ -1,4 +1,40 @@
 [
     {"id": "alley", "name": "Back Alley", "image": "arena_1v1.png"},
-    {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png"}
+    {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png"},
+    {"id": "pit", "name": "The Pit", "image": "arena_1v1_pit.png",
+        "board": {"style": "paint", "tint": "#efe6cf"},
+        "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.3},
+        "fx": [
+            {"kind": "pool", "at": [430, 170], "r": 230, "color": "#ffd28a"},
+            {"kind": "pool", "at": [1060, 160], "r": 230, "color": "#ffd28a"},
+            {"kind": "pool", "at": [250, 780], "r": 210, "color": "#ffd28a"},
+            {"kind": "pool", "at": [1270, 790], "r": 210, "color": "#ffd28a"},
+            {"kind": "dust", "rect": [220, 110, 1100, 780], "color": "#ffe2b0"},
+            {"kind": "flashes", "points": [[60, 300], [90, 520], [70, 700], [1440, 420], [1460, 640], [1420, 250], [700, 30], [900, 25], [500, 40], [1100, 990], [400, 990]]}
+        ]},
+    {"id": "observatory", "name": "The Observatory", "image": "arena_1v1_observatory.png",
+        "board": {"style": "neon", "color": "#b388ff"},
+        "alive": {"rain": 0.0, "sheen": 0.08, "haze": 0.03, "neon": 0.5},
+        "fx": [
+            {"kind": "twinkle", "rect": [160, 150, 1220, 740], "color": "#efe8ff"},
+            {"kind": "shooting", "rect": [180, 170, 1180, 680]}
+        ]},
+    {"id": "junkyard", "name": "The Junkyard", "image": "arena_1v1_junkyard.png",
+        "board": {"style": "paint", "tint": "#e8873e"},
+        "alive": {"rain": 0.1, "sheen": 0.12, "haze": 0.06, "neon": 0.4},
+        "fx": [
+            {"kind": "pool", "at": [220, 150], "r": 260, "color": "#fff1c4", "flicker": true},
+            {"kind": "sparks", "at": [118, 815], "every": 2.6},
+            {"kind": "sparks", "at": [1440, 300], "every": 3.4},
+            {"kind": "embers", "rect": [60, 700, 320, 220], "color": "#ff9a3c"},
+            {"kind": "embers", "rect": [1370, 230, 160, 160], "color": "#ff9a3c"}
+        ]},
+    {"id": "casino", "name": "The High-Roller Table", "image": "arena_1v1_casino.png",
+        "board": {"style": "felt", "color": "#d9a944"},
+        "alive": {"rain": 0.0, "sheen": 0.05, "haze": 0.04, "neon": 0.3},
+        "fx": [
+            {"kind": "spin", "at": [1465, 70], "r": 128, "speed": 0.5},
+            {"kind": "smoke", "at": [268, 82]},
+            {"kind": "glints", "points": [[380, 40], [1150, 140], [625, 915], [1500, 640], [150, 150], [1090, 40], [1440, 600], [1410, 540], [175, 760]]}
+        ]}
 ]
