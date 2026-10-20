@@ -14,11 +14,16 @@ var _busy := false
 func _ready() -> void:
 	UI.background(self, "menu_background.png", 0.35)
 	Game.play_menu_music()
+	_card_fan()
 	var logo := UI.texture_rect(UI.tex("title_alleyway.png"), Vector2(840, 458))
 	logo.position = Vector2(60, 300)
+	logo.pivot_offset = logo.size / 2
 	add_child(logo)
+	var bob := logo.create_tween().set_loops()   # (it floats)
+	bob.tween_property(logo, "position:y", 286.0, 2.4).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(logo, "position:y", 300.0, 2.4).set_trans(Tween.TRANS_SINE)
 
-	var p := UI.panel(UI.BLUE, Color(0.04, 0.04, 0.1, 0.9))
+	var p := UI.glass(UI.panel(UI.BLUE, Color(0.04, 0.04, 0.1, 0.9)), Color(0.03, 0.03, 0.09, 0.62))
 	p.position = Vector2(1080, 150)
 	p.custom_minimum_size = Vector2(700, 780)
 	add_child(p)
@@ -64,6 +69,39 @@ func _ready() -> void:
 	for e in [_email, _password, _username]:
 		e.text_submitted.connect(func(_t): _do_submit())
 	(_password if _email.text != "" else _email).grab_focus()
+
+
+## The leaders and Legendaries, fanned out behind the logo, swaying slowly.
+func _card_fan() -> void:
+	var picks: Array = []
+	for id in CardDB.all():
+		var c: Dictionary = CardDB.get_card(id)
+		if not c.get("token", false) and (c.get("cardType") == "leader" or int(c.get("rarity", 1)) >= 5):
+			picks.append(id)
+	picks.sort()
+	picks = picks.slice(0, 5)
+	var n := picks.size()
+	for i in n:
+		var tex := CardDB.art(str(picks[i]))
+		if tex == null:
+			continue
+		var holder := Control.new()
+		holder.size = Vector2(230, 325)
+		holder.pivot_offset = Vector2(115, 760)   # (a point far below: the cards fan out from it)
+		holder.position = Vector2(480 - 115, 210)
+		var k := (i - (n - 1) / 2.0)
+		holder.rotation_degrees = k * 11.0
+		holder.modulate = Color(0.75, 0.75, 0.85, 0.0)
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var art := UI.texture_rect(tex, holder.size)
+		art.stretch_mode = TextureRect.STRETCH_SCALE
+		holder.add_child(art)
+		add_child(holder)
+		var t := holder.create_tween()
+		t.tween_property(holder, "modulate:a", 0.8, 0.6).set_delay(0.2 + i * 0.08)
+		var sway := holder.create_tween().set_loops()
+		sway.tween_property(holder, "rotation_degrees", k * 11.0 + 1.5, 3.0 + i * 0.4).set_trans(Tween.TRANS_SINE)
+		sway.tween_property(holder, "rotation_degrees", k * 11.0 - 1.5, 3.0 + i * 0.4).set_trans(Tween.TRANS_SINE)
 
 
 func _field(placeholder: String) -> LineEdit:
