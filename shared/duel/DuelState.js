@@ -619,6 +619,7 @@ export class DuelState {
         if (!this.canAct(side) || !['deployment', 'brawl', 'regroup'].includes(this.phase) || !FRONT.includes(slot)) return out;
         const c = this.cardAt(side, slot);
         if (c == null || c.face_down) return out;
+        if ((c.evolved_turn ?? -1) === this.turn) return out;   // a Striver that evolved this turn waits a turn
         let k = 0;
         for (const e of this._fx(c, 'activate')) {
             k++;
@@ -1545,9 +1546,14 @@ export class DuelState {
             promoted.face_down = false;
             promoted.has_attacked = true;
             promoted.rest_turn = this.turn;   // shown as resting: it can't attack this turn
+            promoted.evolved_turn = this.turn;   // ...nor use its Activate abilities (see activations)
             promoted.deployed_turn = this.turn;
             s.field[slot] = promoted;
             if (this._attackCtx && this._attackCtx.att === old) this._attackCtx.att = promoted;   // promoted mid-attack: the attack goes on
+            // The same fighter, stronger: its ATK/DEF changes (buffs and debuffs) and its Equips carry
+            // over; its statuses (STASIS, FREEZE, ...) don't
+            promoted.mods = (old.mods ?? []).map(m => ({ ...m }));
+            for (const q of this._equipsOn(old)) q.card.equipped_to = promoted.uid;
             old.mods = [];
             old.downed = false;
             this._clearStatus(old);
@@ -2067,7 +2073,9 @@ export class DuelState {
             case 'search': {
                 const found = this._fxTake(side, c, e, s.deck, `${c.name}: choose a card to add to your hand`, (card) => {
                     s.hand.push(card);
-                    this._effect(side, c, `${c.name}: searches the deck for ${card.name}`, slot);
+                    // What it found stays hidden from the other players, unless the card says to reveal it
+                    this._effect(side, c, `${c.name}: searches the deck for ${card.name}`, slot,
+                        e.reveal === true ? '' : `${c.name}: searches the deck for a card`);
                     this._emit('draw', { side, card: clone(card), opening: false });
                     return true;
                 }, () => this._shuffleDeck(side));
@@ -2809,9 +2817,11 @@ export class DuelState {
         return won;
     }
 
-    _effect(side, c, text, slot = -1) {
+    /** publicText: what the other players see instead (text names a card they mustn't know). */
+    _effect(side, c, text, slot = -1, publicText = '') {
         this._did += 1;   // effects that did something (see then in _doFx)
-        this._emit('effect', { side, card: clone(c), text, slot });
+        if (publicText !== '') this._emit('effect', { side, card: clone(c), text, slot, public_text: publicText });
+        else this._emit('effect', { side, card: clone(c), text, slot });
     }
 
     _handIndex(side, uid) {

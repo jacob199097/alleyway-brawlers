@@ -303,6 +303,17 @@ func _run() -> void:
 	await _shot("07_legendary", 1.6)
 	await get_tree().create_timer(1.5).timeout
 	legend.queue_free()
+	# A Striver evolving (LV1 into LV2, in an empty lane), shot at each stage of it
+	for id in CardDB.all():
+		var lv1: Dictionary = CardDB.get_card(id)
+		if CardDB.striver_stage(lv1).x == 1 and CardDB.next_form(id) != "":
+			var lv2: Dictionary = CardDB.get_card(CardDB.next_form(id)).duplicate()
+			lv2.position = "atk"
+			duel_screen._ev_promote({"side": "player", "slot": 4, "card": lv2, "from": lv1})
+			break
+	for at in [["charge", 0.7], ["flicker", 0.75], ["burst", 0.4], ["reveal", 0.75]]:
+		await _shot("07_evolve_" + at[0], at[1])
+	await get_tree().create_timer(2.0).timeout
 	# Let the CPU play both sides for a while, then open the battle log
 	_screen().ai_sides = ["player", "opponent"]
 	_screen()._after_events()

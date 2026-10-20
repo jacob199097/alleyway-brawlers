@@ -90,6 +90,11 @@ function filterEvent(ev, viewer) {
         case 'summon': return ev.card.face_down ? { ...ev, card: redact(ev.card) } : ev;
         case 'set': return { ...ev, card: redact(ev.card) };
         case 'bounce': return { ...ev, card: { uid: ev.card.uid } };   // back into a hidden hand
+        case 'effect': {   // (a search: what it found stays the searcher's)
+            if (ev.public_text == null) return ev;
+            const { public_text, ...rest } = ev;
+            return { ...rest, text: public_text };
+        }
         case 'prompt': return { type: 'prompt', side: ev.side, kind: ev.kind, key: 'hidden', counts: ev.counts };
         case 'answered': return { type: 'answered', side: ev.side, key: ev.key, option: '', counts: ev.counts };
     }

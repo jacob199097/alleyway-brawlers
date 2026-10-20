@@ -171,4 +171,42 @@ st = board([{ downed: true, position: 'def', effects: [{ when: 'turn_end', do: '
 st._runFx('player', 0, st.cardAt('player', 0), 'turn_end');
 assert.ok(!st.cardAt('player', 0).downed, 'it stood back up');
 
+// A search: only its owner learns what it found (public_text for the others), unless it reveals
+st = board();
+st._doFx('player', -1, src, { do: 'search', amount: 1 });
+let said = st.takeEvents().find(e => e.type === 'effect' && /searches/.test(e.text));
+assert.match(said.text, /Grunt/, 'its owner sees the card');
+assert.equal(said.public_text, 'Source: searches the deck for a card', 'the others only see that it searched');
+st = board();
+st._doFx('player', -1, src, { do: 'search', amount: 1, reveal: true });
+said = st.takeEvents().find(e => e.type === 'effect' && /searches/.test(e.text));
+assert.ok(!('public_text' in said), 'reveal: everyone sees it');
+
+// A Striver that evolves this turn can't use its new form's Activate abilities until the next turn
+CARD_CATALOG.block_evo_lv1 = { ...CARD_CATALOG.block_grunt, id: 'block_evo_lv1', name: 'Evo', subtype: 'striver', promotesTo: 'block_evo_lv2' };
+CARD_CATALOG.block_evo_lv2 = { ...CARD_CATALOG.block_grunt, id: 'block_evo_lv2', name: 'Evo', subtype: 'striver', level: 2,
+    effects: [{ when: 'activate', do: 'draw', amount: 1 }] };
+st = board([{ id: 'block_evo_lv1', subtype: 'striver', promotesTo: 'block_evo_lv2' }]);
+st._promote('player', 0, 'test');
+st._flushAsks();
+assert.ok(st._answer('player', 'atk'), 'the position asked for');
+assert.equal(st.cardAt('player', 0).id, 'block_evo_lv2', 'it evolved');
+assert.deepEqual(st.activations('player', 0), [], 'its ability waits a turn');
+st.turn += 2;
+assert.deepEqual(st.activations('player', 0), [1], 'and works on the next turn');
+
+// Evolving keeps the card's buffs and debuffs, but not its statuses
+st = board([{ id: 'block_evo_lv1', subtype: 'striver', promotesTo: 'block_evo_lv2' }]);
+st.cardAt('player', 0).mods = [{ atk: 700, def: 0, until_turn: 99 }, { atk: 0, def: -100, until_turn: 99 }];
+st.cardAt('player', 0).poison = { amt: 100, left: 2 };
+st._promote('player', 0, 'test');
+st._flushAsks();
+st._answer('player', 'atk');
+st._recalc();
+const evo = st.cardAt('player', 0);
+assert.equal(evo.mods.length, 2, 'both changes carried over');
+assert.equal(evo.attack, 1000 + 700, 'ATK still +700');
+assert.equal(evo.defense, 400 - 100, 'DEF still -100');
+assert.ok(evo.poison === undefined, 'the poison is gone');
+
 console.log('blocks: ok');

@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.35",
+        "notes": [
+            "Strivers evolve in style: the card rises to centre stage as energy spirals in, flickers between its forms, bursts into its new one and shows its new level and stats.",
+            "A Striver keeps its buffs, debuffs and Equips when it evolves (its statuses still clear).",
+            "A Striver can't use its Activate abilities on the turn it evolves (like a fresh deploy, it waits a turn).",
+            "Deck searches are private: your opponent sees that you searched, not what you found (unless the card says to reveal it)."
+        ]
+    },
+    {
         "version": "0.9.34",
         "notes": [
             "A new arena: the Rooftop. Each 1v1 match is fought on the rooftop or in the back alley, a coin flip.",

@@ -727,6 +727,8 @@ func activations(side: String, slot: int) -> Array:
 	var c = card_at(side, slot)
 	if c == null or c.face_down:
 		return out
+	if int(c.get("evolved_turn", -1)) == turn:   # a Striver that evolved this turn waits a turn
+		return out
 	var k := 0
 	for e in _fx(c, "activate"):
 		k += 1
@@ -1701,10 +1703,16 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		promoted.face_down = false
 		promoted.has_attacked = true   # promotion sickness: sits out the rest of the turn
 		promoted.rest_turn = turn   # shown as resting: it can't attack this turn
+		promoted.evolved_turn = turn   # ...nor use its Activate abilities (see activations)
 		promoted.deployed_turn = turn
 		s.field[slot] = promoted
 		if not _attack_ctx.is_empty() and is_same(_attack_ctx.att, old):   # promoted mid-attack: the attack goes on
 			_attack_ctx.att = promoted
+		# The same fighter, stronger: its ATK/DEF changes (buffs and debuffs) and its Equips carry
+		# over; its statuses (STASIS, FREEZE, ...) don't
+		promoted.mods = old.get("mods", []).map(func(m): return m.duplicate())
+		for q in _equips_on(old):
+			q.card.equipped_to = promoted.uid
 		old.mods = []
 		old.downed = false
 		_clear_status(old)
@@ -2343,7 +2351,9 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 		"search":
 			var found := _fx_take(side, c, e, s.deck, "%s: choose a card to add to your hand" % c.name, func(card: Dictionary) -> bool:
 				s.hand.append(card)
-				_effect(side, c, "%s: searches the deck for %s" % [c.name, card.name], slot)
+				# What it found stays hidden from the other players, unless the card says to reveal it
+				_effect(side, c, "%s: searches the deck for %s" % [c.name, card.name], slot,
+					"" if e.get("reveal") == true else "%s: searches the deck for a card" % c.name)
 				_emit("draw", {"side": side, "card": card.duplicate(true), "opening": false})
 				return true, _shuffle_deck.bind(side))
 			if not found:
@@ -3209,9 +3219,13 @@ static func _imul(a: int, b: int) -> int:
 	return (lo + (hi << 16)) & M32
 
 
-func _effect(side: String, c: Dictionary, text: String, slot := -1) -> void:
+## public_text: what the other players see instead (text names a card they mustn't know).
+func _effect(side: String, c: Dictionary, text: String, slot := -1, public_text := "") -> void:
 	_did += 1   # effects that did something (see then in _do_fx)
-	_emit("effect", {"side": side, "card": c.duplicate(true), "text": text, "slot": slot})
+	if public_text != "":
+		_emit("effect", {"side": side, "card": c.duplicate(true), "text": text, "slot": slot, "public_text": public_text})
+	else:
+		_emit("effect", {"side": side, "card": c.duplicate(true), "text": text, "slot": slot})
 
 
 func _hand_index(side: String, uid: int) -> int:

@@ -20,6 +20,8 @@ The Forge is the source of truth: a card deleted in the Forge is removed on the 
 Character roles follow the class rules, and the importer enforces them:
 
 - **Striver**: the only role with levels (Lv.1 to Lv.3). It promotes into the card set in "Promotes to".
+  Its buffs, debuffs and Equips carry over to the new form; its statuses (STASIS, FREEZE, ...) clear. A lane
+  promotes at most once a turn, and the new form can't attack or use its Activate abilities until the next turn.
 - **Brawler**: standalone, always level 1, never promotes. Usually cheap, low-Authority cards.
 - **Heavy**: standalone, always level 1, high Authority. Playing one sacrifices 1-3 of your characters on
   the field (the Forge's **Sacrifices**, next to Role; `tributeCost` in the game), and the Heavy takes one
@@ -194,7 +196,7 @@ all be called "Kade" (cards are matched by game ID).
 | **Choose one** | "Or the next effect": the player picks one of the two (same trigger). The game shows each option's text (`label`, written by the Forge) |
 | **If you do** | "If you do" on an effect (`if_done`): it happens only if the effect above did something, e.g. "Destroy one of your opponent's face-down cards. If you do, PROMOTE this card." Not if there was nothing to hit or the player skipped the target. Same trigger as the effect above; the engines attach it to that effect as its `then` |
 | **Kind** (Hustle, Ambush) | Normal (used once) · **Continuous** (stays face-up in the back row; an Ambush once sprung: its "always" effects reach all your characters or all enemies, its triggers fire, until destroyed) · **Equip** (a Hustle attached to one of your characters, or an enemy: its "while equipped" effects are that character's; it goes to the Gutter when the character leaves). "Destroy back-row cards" removes them |
-| **Targets** | A card effect that picks one character always asks (even from one) and can be skipped; Hustles can't be played, Ambushes sprung or abilities activated when none of their effects would do anything. A Downed character's effects don't work, and Downed characters are in DEF. A search or call that looks through your deck shows the player the cards to pick from, and shuffles the deck afterwards |
+| **Targets** | A card effect that picks one character always asks (even from one) and can be skipped; Hustles can't be played, Ambushes sprung or abilities activated when none of their effects would do anything. A Downed character's effects don't work, and Downed characters are in DEF. A search or call that looks through your deck shows the player the cards to pick from, and shuffles the deck afterwards. What a search finds is private (the other players see only that it searched) unless the effect has **Reveal it** ticked |
 
 **What the Forge won't offer.** Every When × Do × Who and every Only if was played in CPU games with the real
 rules (an audit, 7,700 combinations); the ones that can never happen are hidden: a direct hit Downing or

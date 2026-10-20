@@ -1383,6 +1383,9 @@ func _track(ev: Dictionary) -> void:
 
 
 func _play(ev: Dictionary) -> void:
+	if ev.type == "effect" and ev.has("public_text") and ev.side != "player":
+		ev = ev.duplicate()   # (another player's search, in a game run here: what it found stays hidden)
+		ev.text = ev.public_text
 	_track(ev)
 	_log_event(ev)
 	match ev.type:
@@ -2771,48 +2774,197 @@ func _ev_heal(ev: Dictionary) -> void:
 	await _wait(0.5)
 
 
+## A Striver evolves: the board darkens and the card rises to centre stage while energy spirals
+## into it; it flickers between its old and new forms as a white silhouette, faster and faster, bursts
+## into its new form under turning rays with "EVOLVED!", its level stars filling and its stats rising,
+## then drops back into its lane.
 func _ev_promote(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var slot: int = ev.slot
 	var c: Dictionary = ev.card
+	var old: Dictionary = ev.get("from", {})
 	var pos := slot_pos(side, slot)
 	var v: CardView = field[side].get(slot)
 	if v == null:
-		v = _new_view(ev.from, side, true)
+		v = _new_view(old if not old.is_empty() else c, side, true)
 		v.position = pos
 		field[side][slot] = v
 	v.z_index = 440
 	v.show_badge = false
 	v.busy = true
-	var col := _clan_color(c)
-	Sfx.play("promote")
-	_light_column(pos, col)
-	_burst(pos + Vector2(0, 60), col.lightened(0.2), 40, 300, 1.1, -500.0)
-	await v.move_to(pos + Vector2(0, -30 if side == "player" else 30), 1.4, 0.0, 0.3, Tween.TRANS_BACK).finished
 	v.downed = false
-	# Level-up: chevrons stream upward through the card while it turns into its next form
-	_level_chevrons(pos, col)
-	await v.swap_to(c, 0.36)
-	_ring(pos, col.lightened(0.3), 1.8)
-	_ring(pos, Color.WHITE, 1.2)
-	_sparks(pos, Vector2.UP, col.lightened(0.4), 34, 70.0)
-	_shockwave(pos, 0.7)
-	Sfx.play("boom", 1.2, -4.0)
-	shake(12)
+	var col := _clan_color(c)
+	var bright := col.lerp(Color.WHITE, 0.45)
+	var fxk := _fx_level()
+	var stage := FFA_MID if _ffa else Vector2(1080, DIVIDER_Y)
+	var big := 2.3 / maxf(v.board_scale, 0.01)
+	# 1. Charge: up to centre stage, energy spiralling in, trembling as it brightens
+	_dim(0.8, 0.35)
+	_cam_focus(stage, 1.06, 0.6)
+	Sfx.play("riser", 0.75)
+	_light_column(pos, col)
+	v.move_to(stage, big, 0.0, 0.45, Tween.TRANS_BACK)
+	_converge(stage, col, 46, 1.05)
+	create_tween().tween_property(v, "_flash", 0.55, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	for i in 10:
+		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 4.0 + i * 1.6)
+		if i % 3 == 0:
+			_sparks(stage, Vector2.UP, bright, 5, 160.0)
+		await _wait(0.1)
+	# 2. Metamorphosis: a white silhouette flickering between the two forms, faster and faster
+	v._flash = 1.0
+	var gaps := [0.15, 0.12, 0.1, 0.085, 0.07, 0.06, 0.05, 0.045, 0.04, 0.04]
+	for i in gaps.size():
+		if not old.is_empty():
+			v.set_card(c if i % 2 == 0 else old)
+			v.set_face(true)
+		v.scale = Vector2.ONE * big * v.board_scale * (1.06 if i % 2 == 0 else 1.0)
+		Sfx.play("hover", 0.8 + i * 0.09, -6.0)
+		if fxk > 0.0:
+			shake(1.0 + i * 0.5 * fxk)
+		await _wait(gaps[i])
+	v.set_card(c)
+	v.set_face(true)
+	# 3. The burst: a white flash, and the new form shines out of it
+	if fxk > 0.0:
+		var flash := ColorRect.new()
+		flash.color = Color(1, 1, 1, 0.85 * fxk)
+		flash.position = Vector2(-100, -100)
+		flash.size = Vector2(2120, 1280)
+		flash.z_index = 455
+		flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cards_layer.add_child(flash)
+		var ft := flash.create_tween()
+		ft.tween_property(flash, "color:a", 0.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		ft.tween_callback(flash.queue_free)
+	v.scale = Vector2.ONE * big * v.board_scale * 1.18
+	v.move_to(stage, big, 0.0, 0.4, Tween.TRANS_BACK)
+	create_tween().tween_property(v, "_flash", 0.0, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	v.kick(Vector2(1, -0.5), 20.0)
+	Sfx.play("boom", 1.15, -3.0)
+	Sfx.play("promote")
+	Sfx.play("legendary", 1.25, -8.0)
+	_shockwave(stage, 0.9)
+	_ring(stage, bright, 2.6)
+	_ring(stage, Color.WHITE, 1.7)
+	_burst(stage, bright, 60, 720, 1.1, -120.0)
+	_sparks(stage, Vector2.UP, bright, 40, 80.0)
+	if fxk > 0.0:
+		shake(16 * fxk)
+		_post_pulse("aberration", 9.0 * fxk, 0.5)
 	_show_detail(c)
-	_float_text(pos + Vector2(0, -175 if side == "player" else 175), "PROMOTED!", col.lightened(0.25), 58)
-	var lv := int(c.get("level", 0))
-	if lv > 1:
-		_float_text(pos + Vector2(0, -120 if side == "player" else 120), "LEVEL %d" % lv, Color.WHITE, 34)
+	# 4. The reveal: rays, EVOLVED!, the level stars filling and the stats rising
+	var rays := Node2D.new()
+	rays.position = stage
+	rays.z_index = 415
+	rays.material = _add_mat
+	rays.modulate.a = 0.0
+	rays.draw.connect(func():
+		for k in 18:
+			var a := k * TAU / 18.0
+			var w := 0.065 if k % 2 == 0 else 0.035
+			rays.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2.from_angle(a - w) * 1100.0, Vector2.from_angle(a + w) * 1100.0]),
+				PackedColorArray([Color(bright, 0.5), Color(col, 0.0), Color(col, 0.0)])))
+	cards_layer.add_child(rays)
+	var rt := create_tween().set_parallel()
+	rt.tween_property(rays, "modulate:a", 1.0, 0.25)
+	rt.tween_property(rays, "rotation", 0.5, 1.6)
+	_splash_name("EVOLVED!", bright, stage.y - 250.0)
+	var lv_old := CardDB.striver_stage(old)
+	var lv_new := CardDB.striver_stage(c)
+	var card_h := CARD.y * big * v.board_scale
+	var stars := _evo_stars(stage + Vector2(0, card_h / 2 + 30), lv_old if lv_old.y > 0 else Vector2i(maxi(1, lv_new.x - 1), lv_new.y))
+	var lines: Array = []
+	if lv_new.x > 0:
+		lines.append("LEVEL %d  ▶  LEVEL %d" % [maxi(1, lv_new.x - 1), lv_new.x])
+	var a0 := int(old.get("attack", old.get("base_attack", 0)))
+	var d0 := int(old.get("defense", old.get("base_defense", 0)))
+	var a1 := int(c.get("attack", c.get("base_attack", 0)))
+	var d1 := int(c.get("defense", c.get("base_defense", 0)))
+	if not old.is_empty() and (a1 != a0 or d1 != d0):
+		lines.append("ATK %d ▶ %d     DEF %d ▶ %d" % [a0, a1, d0, d1])
+	await _wait(0.35)
+	if lv_new.y > 0:   # the new star pops in
+		stars.level = lv_new
+		stars.pop = 1.0
+		stars.queue_redraw()
+		stars.create_tween().tween_property(stars, "pop", 0.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_ring(stars.position, GOLD, 0.8)
+		_burst(stars.position, GOLD, 18, 260, 0.6, 0.0)
+		Sfx.play("coin_land", 1.4, -6.0)
+	for i in lines.size():
+		_float_text(stage + Vector2(0, card_h / 2 + 135 + i * 46), lines[i], Color.WHITE if i == 0 else GOLD, 32 if i == 0 else 28)
+	await _wait(1.05)
+	# 5. Back into its lane
+	var out := create_tween().set_parallel()
+	out.tween_property(rays, "modulate:a", 0.0, 0.3)
+	out.tween_property(stars, "modulate:a", 0.0, 0.3)
+	out.chain().tween_callback(func():
+		rays.queue_free()
+		stars.queue_free())
+	_dim(0.0, 0.35)
+	_cam_reset(0.45)
 	v.home = pos
 	v.home_rot = PI / 2 if c.position == "def" else 0.0
 	v.home_scale = 1.0
-	await _wait(0.5)
-	await v.move_to(pos, 1.0, v.home_rot, 0.16, Tween.TRANS_QUAD, Tween.EASE_IN).finished
+	await v.move_to(pos, 1.0, v.home_rot, 0.3, Tween.TRANS_QUAD, Tween.EASE_IN).finished
 	await _impact(pos, false)
 	v.busy = false
 	v.z_index = 10
 	v.show_badge = true
+
+
+## Motes of energy spiralling in from all round to a point, over seconds.
+func _converge(at: Vector2, col: Color, amount: int, seconds: float) -> void:
+	for i in amount:
+		var mote := Node2D.new()
+		mote.z_index = 450
+		mote.material = _add_mat
+		var r0 := randf_range(300.0, 620.0)
+		var a0 := randf() * TAU
+		var spin := randf_range(1.6, 2.8) * (1.0 if i % 2 == 0 else -1.0)
+		var size := randf_range(2.5, 6.0)
+		var tint := col.lerp(Color.WHITE, randf_range(0.2, 0.7))
+		mote.draw.connect(func():
+			mote.draw_circle(Vector2.ZERO, size * 2.4, Color(tint, 0.18))
+			mote.draw_circle(Vector2.ZERO, size, tint))
+		mote.position = at + Vector2.from_angle(a0) * r0
+		mote.modulate.a = 0.0
+		fx.add_child(mote)
+		var delay := randf() * seconds * 0.45
+		var t := create_tween()
+		t.tween_interval(delay)
+		t.tween_property(mote, "modulate:a", 1.0, 0.12)
+		t.parallel().tween_method(func(k: float):
+			mote.position = at + Vector2.from_angle(a0 + spin * k) * r0 * pow(1.0 - k, 1.6)
+			mote.scale = Vector2.ONE * (1.0 - 0.6 * k), 0.0, 1.0, seconds - delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.tween_callback(mote.queue_free)
+
+
+## The level stars under an evolving card (UI.draw_level_stars, large); pop swells them for a moment.
+func _evo_stars(at: Vector2, level: Vector2i) -> EvoStars:
+	var n := EvoStars.new()
+	n.position = at
+	n.level = level
+	n.z_index = 452
+	cards_layer.add_child(n)
+	n.modulate.a = 0.0
+	n.create_tween().tween_property(n, "modulate:a", 1.0, 0.2)
+	return n
+
+
+class EvoStars extends Node2D:
+	var level := Vector2i.ZERO
+	var pop := 0.0
+
+	func _draw() -> void:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * (1.0 + 0.35 * pop))
+		UI.draw_level_stars(self, Vector2.ZERO, level, 22.0)
+		draw_set_transform(Vector2.ZERO)
+
+	func _process(_delta: float) -> void:
+		if pop > 0.0:
+			queue_redraw()
 
 
 func _ev_effect(ev: Dictionary) -> void:
