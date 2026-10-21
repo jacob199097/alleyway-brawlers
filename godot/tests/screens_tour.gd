@@ -159,6 +159,30 @@ func _run() -> void:
 			await _shot("ar_%s_b" % arena.id, 0.9)
 		get_tree().quit()
 		return
+	if "--wild-attack" in OS.get_cmdline_user_args():   # (Wildcard's card-throwing attack, a shot every 0.08 s)
+		var deck := await Game.load_duel_deck()
+		Game.duel_setup = deck
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var d = _screen()
+		if d._menu:
+			d._menu.visible = false
+		var ids: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		var ac: Dictionary = CardDB.get_card(ids[0]).duplicate()
+		ac.clanTag = "wildcard"
+		var a = d._new_view(ac, "player", true)
+		a.position = d.slot_pos("player", 2)
+		a.home = a.position
+		var dv = d._new_view(CardDB.get_card(ids[1]).duplicate(), "opponent", true)
+		dv.position = d.slot_pos("opponent", 2)
+		dv.home = dv.position
+		var tpos: Vector2 = dv.home
+		d._card_strike(a, dv, tpos, (tpos - a.home).normalized(), true, false)
+		for i in 20:
+			await _shot("w%02d" % i, 0.08)
+		get_tree().quit()
+		return
 	if "--arena-only" in OS.get_cmdline_user_args():   # (the arena roulette on Scissors Paper Rock: spinning, then landed)
 		Game.duel_setup = {"mode": "cpu", "difficulty": "normal"}
 		Game.go("rps")

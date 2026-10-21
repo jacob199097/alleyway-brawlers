@@ -62,7 +62,9 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
 ## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
 ## attack "guns": rapid gunfire, with muzzle flashes, tracers and bullet hits (Militia).
-const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"}}
+## attack "cards": a volley of spinning playing cards thrown at the target, a gold ace to finish (Wildcard).
+const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"},
+	"wildcard": {"attack": "cards"}}
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
@@ -2175,6 +2177,8 @@ func _ev_clash(ev: Dictionary) -> void:
 		await _laser_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "guns":
 		await _gun_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "cards":
+		await _card_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
 		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
@@ -2797,6 +2801,153 @@ class LaserOrb extends Node2D:
 		draw_circle(Vector2.ZERO, radius, glow.lightened(0.25))
 		draw_circle(Vector2.ZERO, radius * 0.66, core)
 		draw_arc(Vector2.ZERO, radius * 0.66, 0.0, TAU, 24, glow.lightened(0.55), 1.5, true)
+
+
+## Wildcard's attack: the card rears back and fans its hand, then throws a volley of spinning playing
+## cards in arcs at the target, each slicing in with sparks and sticking for a moment; a big hit ends
+## with a gold ace thrown hard, and the full impact.
+func _card_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var side_v := dir.orthogonal()
+	var hand_at := a.home + dir * 118.0
+	# Wind-up: lean back, a quick fan of cards appears over the attacker
+	Sfx.play("shuffle", 1.2, -4.0)
+	_cam_focus(a.home.lerp(tpos, 0.35), 1.05 if big else 1.03, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 34.0, 0.22)
+	t.tween_property(a, "scale", Vector2.ONE * 1.2 * a.board_scale, 0.22)
+	t.tween_property(a, "rotation", a.home_rot - 0.12, 0.22)
+	var fan: Array = []
+	for i in 5:
+		var c := ThrownCard.new()
+		c.suit = i % 4
+		c.font = _font
+		c.position = hand_at
+		c.rotation = dir.angle() + PI / 2 + (i - 2) * 0.32
+		c.scale = Vector2.ZERO
+		c.z_index = 72
+		fx.add_child(c)
+		c.create_tween().tween_property(c, "scale", Vector2.ONE * 0.9, 0.16).set_delay(i * 0.03).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		fan.append(c)
+	await t.finished
+	_clear_attack_line()
+	# The volley
+	var n := fan.size()
+	for i in n:
+		var c: ThrownCard = fan[i]
+		var to := tpos + side_v * randf_range(-34.0, 34.0) + dir * randf_range(-16.0, 10.0)
+		var from := c.position
+		var bend := side_v * (60.0 if i % 2 == 0 else -60.0) * randf_range(0.6, 1.2)
+		var spin := randf_range(3.0, 5.0) * TAU * (1.0 if i % 2 == 0 else -1.0)
+		var r0 := c.rotation
+		var dur := 0.2
+		var fly := c.create_tween()
+		fly.tween_method(func(k: float):
+			var m := from.lerp(to, k) + bend * 4.0 * k * (1.0 - k)   # (an arc, curving out and back)
+			c.trail.push_front(m)
+			if c.trail.size() > 7:
+				c.trail.pop_back()
+			c.position = m
+			c.rotation = r0 + spin * k
+			c.queue_redraw(), 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		fly.tween_callback(func():   # it slices in and sticks, then falls away
+			c.trail.clear()
+			c.rotation = (to - from).angle() + PI / 2 + randf_range(-0.5, 0.5)
+			_sparks(to, dir, Color(1, 0.95, 0.85), 10, 45.0)
+			_burst(to, Color(1, 0.84, 0.4), 6, 240, 0.3, 0.0)
+			Sfx.play("hit", randf_range(1.3, 1.5), -9.0)
+			shake(4.0)
+			if d:
+				d.kick(dir, 9.0)
+				d.flash()
+			var drop := c.create_tween()
+			drop.tween_interval(0.18)
+			drop.tween_property(c, "position", to + Vector2(0, 26), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			drop.parallel().tween_property(c, "modulate:a", 0.0, 0.32)
+			drop.tween_callback(c.queue_free))
+		Sfx.play("whoosh", randf_range(1.4, 1.7), -8.0)
+		a.kick(-dir, 6.0)
+		await _wait(0.07)
+	await _wait(0.2)
+	# A big hit: one gold ace, thrown hard
+	if big:
+		var ace := ThrownCard.new()
+		ace.suit = 0
+		ace.gold = true
+		ace.font = _font
+		ace.position = hand_at
+		ace.z_index = 73
+		ace.scale = Vector2.ONE * 1.35
+		fx.add_child(ace)
+		Sfx.play("whoosh", 1.05, -2.0)
+		a.kick(-dir, 14.0)
+		var from2 := hand_at
+		var fly2 := ace.create_tween()
+		fly2.tween_method(func(k: float):
+			var m := from2.lerp(tpos, k)
+			ace.trail.push_front(m)
+			if ace.trail.size() > 10:
+				ace.trail.pop_back()
+			ace.position = m
+			ace.rotation = dir.angle() + PI / 2 + k * TAU * 3.0
+			ace.queue_redraw(), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		await fly2.finished
+		ace.trail.clear()
+		var gone := ace.create_tween()
+		gone.tween_interval(0.12)
+		gone.tween_property(ace, "modulate:a", 0.0, 0.3)
+		gone.tween_callback(ace.queue_free)
+	# Impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("hit", 0.85 if direct else 1.0)
+	Sfx.play("boom", 1.0 if big else 1.2, 0.0 if big else -5.0)
+	shake(22.0 if big else 12.0)
+	_shockwave(tpos, 0.9 if big else 0.5)
+	_post_pulse("aberration", 12.0 if big else 5.0, 0.4)
+	_sparks(tpos, dir, Color(1, 0.88, 0.5), 40 if big else 22)
+	_burst(tpos, Color(1, 0.8, 0.35), 26, 520)
+	_ring(tpos, Color(1, 0.86, 0.45), 1.5 if big else 1.2)
+	if d:
+		d.flash()
+		d.kick(dir, 30.0 if big else 22.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (30.0 if big else 18.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
+
+
+## A thrown playing card (Wildcard's attack): white with a red or black suit, edged in gold; the gold
+## ace is all gold. A short fading trail follows it while it flies.
+class ThrownCard extends Node2D:
+	const SIZE := Vector2(34, 48)
+	const SUITS := ["♠", "♥", "♣", "♦"]
+	var suit := 0
+	var gold := false
+	var font: Font
+	var trail: Array = []   # recent positions (in the parent's space)
+
+	func _draw() -> void:
+		# the trail, in this card's own space
+		for i in trail.size():
+			var p: Vector2 = (trail[i] - position).rotated(-rotation) / scale.x
+			var k := 1.0 - float(i + 1) / (trail.size() + 1)
+			draw_circle(p, 9.0 * k, Color(1, 0.86, 0.5, 0.22 * k))
+		var r := Rect2(-SIZE / 2, SIZE)
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(4)
+		sb.bg_color = Color(0.98, 0.84, 0.42) if gold else Color(0.97, 0.95, 0.9)
+		sb.border_color = Color(0.72, 0.5, 0.12) if gold else Color(0.85, 0.66, 0.24)
+		sb.set_border_width_all(2)
+		sb.shadow_color = Color(0, 0, 0, 0.35)
+		sb.shadow_size = 3
+		draw_style_box(sb, r)
+		if font:
+			var red := suit == 1 or suit == 3
+			var ink := Color(0.35, 0.18, 0.02) if gold else (Color(0.82, 0.08, 0.1) if red else Color(0.08, 0.06, 0.06))
+			draw_string(font, Vector2(-SIZE.x / 2, 9), SUITS[suit], HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 24, ink)
+			draw_string(font, Vector2(-SIZE.x / 2 + 3, -SIZE.y / 2 + 12), "A", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, ink)
 
 
 func _ev_blocked(ev: Dictionary) -> void:

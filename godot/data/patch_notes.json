@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.46",
+        "notes": [
+            "Wildcard characters get their own attack: they fan out a hand and throw a volley of spinning playing cards at the target, with a gold ace thrown hard on a big hit."
+        ]
+    },
+    {
         "version": "0.9.45",
         "notes": [
             "Equips: once you've chosen who to equip, the Equip's effects go straight to that character, instead of asking you to choose again."
