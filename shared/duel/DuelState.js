@@ -142,6 +142,7 @@ export class DuelState {
         // match's seed (replays repeat), fixed for seed -1 (tests compare engines), else random
         this._luck = seededRandom(seed > 0 ? (seed ^ LUCK_SALT) >>> 0 : seed === -1 ? LUCK_TEST_SEED : Math.floor(Math.random() * 4294967296));
         this._luckLast = null;   // the last flip or roll: {won, value} (if_luck follows it)
+        this._luckWait = null;   // a DOUBLE OR NOTHING not yet decided: {uid, ask} (its "If tails" waits for it)
         this._roll = 1;          // the last die's value ("for each pip")
         this.turn = 1;
         this.active = first;
@@ -1892,9 +1893,42 @@ export class DuelState {
     /** then: a follow-up effect that happens only if this one did something ("If you do, ...").
      *  Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP. */
     _doFx(side, slot, c, e, vs = {}) {
+        const w = this._luckWait;
+        if (w && w.uid === c.uid && String(e.if_luck ?? '') !== '') {   // ("If tails, ..." waits for the bet it follows)
+            const cb = w.ask.cb;
+            w.ask.cb = (...answer) => { if (cb) cb(...answer); if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, e, vs); };
+            return;
+        }
+        if (String(e.luck ?? '') === 'double') { this._askDouble(side, slot, c, e, vs); return; }
         if (!this._luckGate(side, slot, c, e)) return;
         this._doFxRun(side, slot, c, e, vs);
-        if (String(e.luck ?? '') === 'double' && this.winner === '') this._doFxRun(side, this._slotOf(side, c, slot), c, e, vs);   // DOUBLE OR NOTHING: heads, twice
+    }
+
+    /** DOUBLE OR NOTHING (same as _ask_double in duel_state.gd): the player chooses to bet (a coin;
+     *  heads, the effect happens twice; tails, not at all) or to take it once, with no flip. The CPU
+     *  bets when it has LOADED DICE to fall back on. */
+    _askDouble(side, slot, c, e, vs) {
+        const s = this.sides[side];
+        const loaded = s && toInt(s.loaded_turn ?? -1) !== this.turn
+            && this.characters(side).some(x => !isEmpty(this._passive(side, x.slot, x.card, 'loaded')));
+        const bet = { id: 'double', label: 'DOUBLE OR NOTHING' }, once = { id: 'once', label: 'JUST ONCE' };
+        const w = { uid: c.uid, ask: null };
+        w.ask = this._ask(side, 'double', `${c.name}: double or nothing? Flip a coin: heads, it happens twice; tails, not at all. Or take it once.`,
+            c, loaded ? [bet, once] : [once, bet], (choice) => {
+                if (this._luckWait === w) this._luckWait = null;
+                if (this.winner !== '') return;
+                const at = this._slotOf(side, c, slot);
+                if (choice !== 'double') {
+                    this._luckLast = null;   // (no flip: no "If heads" or "If tails")
+                    this._effect(side, c, `${c.name}: no bet, it happens once`, at);
+                    this._doFxRun(side, at, c, e, vs);
+                    return;
+                }
+                if (!this._luckGate(side, at, c, e)) return;
+                this._doFxRun(side, at, c, e, vs);
+                if (this.winner === '') this._doFxRun(side, this._slotOf(side, c, slot), c, e, vs);   // heads: twice
+            });
+        this._luckWait = w;
     }
 
     _doFxRun(side, slot, c, e, vs) {

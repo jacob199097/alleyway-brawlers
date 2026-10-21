@@ -67,12 +67,28 @@ const seq = (seed) => { const s = fresh(seed); return Array.from({ length: 12 },
 assert.deepEqual(seq(42), seq(42));
 assert.notDeepEqual(seq(42), seq(43));
 
-// DOUBLE OR NOTHING: a coin; heads, the effect happens twice; tails, not at all
+// DOUBLE OR NOTHING is the player's choice: bet (a coin; heads, the effect happens twice; tails, not
+// at all) or take it once, with no flip
+const bet = (st, option) => {
+    const a = st._asks.shift();
+    assert.equal(a.key, 'double');
+    st._runAnswer(() => a.cb(option));
+    return a;
+};
 st = fresh();
+st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'double' });
+assert.equal(st.sides.player.morale, 3000, 'nothing happens before the player decides');
+assert.equal(lucks(st).length, 0, 'and no coin yet');
+let a = bet(st, 'once');
+assert.deepEqual(a.options.map(o => o.id), ['once', 'double'], 'the CPU takes it once (no LOADED DICE to fall back on)');
+assert.equal(st.sides.player.morale, 3100, 'once: it happens once');
+assert.equal(lucks(st).length, 0, 'with no flip');
+st.sides.player.morale = 3000;
 let doubled = 0, none = 0;
 for (let i = 0; i < 100; i++) {
     const before = st.sides.player.morale;
     st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'double' });
+    bet(st, 'double');
     const [ev] = lucks(st);
     assert.equal(ev.kind, 'coin');
     assert.equal(st.sides.player.morale - before, ev.won ? 200 : 0, 'heads twice, tails nothing');
@@ -80,6 +96,27 @@ for (let i = 0; i < 100; i++) {
     st.sides.player.morale = 3000;
 }
 assert.ok(doubled > 25 && none > 25, `both happen (${doubled} doubled, ${none} nothing)`);
+
+// "If tails, ..." after a bet waits for it: after a lost bet it happens, after no bet it doesn't
+const tailsFx = (st, option) => {
+    st.sides.player.morale = 3000;
+    st.sides.opponent.morale = 3000;
+    st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'double' });
+    st._doFx('player', -1, grunt, { do: 'drain', amount: 50, if_luck: 'lost' });
+    assert.equal(st.sides.opponent.morale, 3000, '"If tails" waits for the bet');
+    bet(st, option);
+    const [ev] = lucks(st);
+    return { ev, drained: st.sides.opponent.morale < 3000 };
+};
+st = fresh();
+let sawTails = false;
+for (let i = 0; i < 20; i++) {
+    const { ev, drained } = tailsFx(st, 'double');
+    assert.equal(drained, !ev.won, '"If tails" follows the bet');
+    if (!ev.won) sawTails = true;
+}
+assert.ok(sawTails);
+assert.equal(tailsFx(st, 'once').drained, false, 'no bet, no tails');
 
 // LOADED DICE: with a loaded character on the field, a lost flip is flipped again, once a turn
 st = fresh();
@@ -99,6 +136,9 @@ for (let t = 0; t < 60; t++) {
 }
 assert.ok(rerolls > 10, `it re-flips (${rerolls} times)`);
 assert.ok(seenLost, 'and a second loss in a turn stands');
+st.turn += 2;
+st._doFx('player', -1, grunt, { do: 'heal', amount: 100, luck: 'double' });
+assert.deepEqual(bet(st, 'double').options.map(o => o.id), ['double', 'once'], 'with LOADED DICE ready the CPU bets');
 
 // A leader that Awakens on luck: { luck: 5 } is five won coin flips or die rolls (this game, this side's)
 st = fresh();

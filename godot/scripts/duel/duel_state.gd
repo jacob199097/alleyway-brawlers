@@ -64,6 +64,7 @@ const LUCK_TEST_SEED := 0x2545F491
 const M32 := 0xFFFFFFFF
 var _luck_t := 0
 var _luck_last := {}         # the last flip or roll: {won, value} (if_luck follows it)
+var _luck_wait := {}         # a DOUBLE OR NOTHING not yet decided: {uid, ask} (its "If tails" waits for it)
 var _roll := 1               # the last die's value ("for each pip")
 var _attack_ctx := {}        # the attack being resolved
 var rules := {}              # a challenge's twist (see _init)
@@ -2163,11 +2164,54 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 ## then: a follow-up effect that happens only if this one did something ("If you do, ...").
 ## Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP.
 func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
+	var w := _luck_wait
+	if not w.is_empty() and w.uid == c.get("uid") and str(e.get("if_luck", "")) != "":   # ("If tails, ..." waits for the bet it follows)
+		var ask: Dictionary = w.ask
+		var cb: Callable = ask.cb
+		ask.cb = func(answer) -> void:
+			cb.call(answer)
+			if winner == "":
+				_do_fx(side, _slot_of(side, c, slot), c, e, vs)
+		return
+	if str(e.get("luck", "")) == "double":
+		_ask_double(side, slot, c, e, vs)
+		return
 	if not _luck_gate(side, slot, c, e):
 		return
 	_do_fx_run(side, slot, c, e, vs)
-	if str(e.get("luck", "")) == "double" and winner == "":   # DOUBLE OR NOTHING: heads, twice
-		_do_fx_run(side, _slot_of(side, c, slot), c, e, vs)
+
+
+## DOUBLE OR NOTHING (same as _askDouble in DuelState.js): the player chooses to bet (a coin; heads,
+## the effect happens twice; tails, not at all) or to take it once, with no flip. The CPU bets when
+## it has LOADED DICE to fall back on.
+func _ask_double(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
+	var s = sides.get(side)
+	var loaded := false
+	if s != null and int(s.get("loaded_turn", -1)) != turn:
+		for x in characters(side):
+			if not _passive(side, x.slot, x.card, "loaded").is_empty():
+				loaded = true
+	var bet := {"id": "double", "label": "DOUBLE OR NOTHING"}
+	var once := {"id": "once", "label": "JUST ONCE"}
+	var w := {"uid": c.get("uid")}
+	w.ask = _ask(side, "double", "%s: double or nothing? Flip a coin: heads, it happens twice; tails, not at all. Or take it once." % c.name,
+		c, [bet, once] if loaded else [once, bet], func(choice: String) -> void:
+			if is_same(_luck_wait, w):
+				_luck_wait = {}
+			if winner != "":
+				return
+			var at := _slot_of(side, c, slot)
+			if choice != "double":
+				_luck_last = {}   # (no flip: no "If heads" or "If tails")
+				_effect(side, c, "%s: no bet, it happens once" % c.name, at)
+				_do_fx_run(side, at, c, e, vs)
+				return
+			if not _luck_gate(side, at, c, e):
+				return
+			_do_fx_run(side, at, c, e, vs)
+			if winner == "":
+				_do_fx_run(side, _slot_of(side, c, slot), c, e, vs))   # heads: twice
+	_luck_wait = w
 
 
 func _do_fx_run(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:

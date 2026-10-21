@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.51",
+        "notes": [
+            "DOUBLE OR NOTHING is now your choice: bet on a coin (heads, it happens twice; tails, not at all) or take the effect once."
+        ]
+    },
+    {
         "version": "0.9.50",
         "notes": [
             "LOADED DICE is highlighted as one keyword (both words) on cards, in tooltips and in How to Play."
