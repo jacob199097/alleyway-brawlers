@@ -43,7 +43,10 @@ void fragment() {
 	if (stutter_k >= 0.0 && distance(zone, stutter_zone) < 0.5) {
 		stutter = step(0.45, fract(stutter_k * 7.0 + 0.3)) * (1.0 - smoothstep(0.75, 1.0, stutter_k));
 	}
-	col *= 1.0 + lit * (neon * pulse - stutter * 0.85);
+	// (only real tubes stutter, the brightest and most saturated, and they dim to their unlit glass,
+	// never to black: other bright colour in the patch, felt, gold, sparks, stays as it is)
+	float tube = smoothstep(0.6, 0.92, hi) * smoothstep(0.5, 0.8, sat);
+	col *= 1.0 + lit * neon * pulse - tube * stutter * 0.5;
 
 	// The wet sheen: soft highlights drifting over the ground the light reaches
 	float n = noise(px / 90.0 + vec2(TIME * 0.12, TIME * 0.05)) * noise(px / 37.0 - vec2(TIME * 0.07, 0.0));

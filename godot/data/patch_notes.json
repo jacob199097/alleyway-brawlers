@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.44",
+        "notes": [
+            "Fixed dark patches flickering on the arenas: a neon light that stutters now dims instead of going black, only real neon tubes do it, and the arenas without neon signs (The Pit, The Observatory, The Junkyard, The High-Roller Table) don't stutter at all.",
+            "A Striver's evolution is a little quicker."
+        ]
+    },
+    {
         "version": "0.9.43",
         "notes": [
             "A new way for leaders to Awaken: after winning a number of coin flips or die rolls in a game. A leader waiting on its luck shows LUCK 3 / 5 each time one comes up, and READY TO AWAKEN when it's there."

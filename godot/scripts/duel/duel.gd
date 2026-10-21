@@ -194,6 +194,8 @@ func _ready() -> void:
 			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
 			_neon = {"mat": $BackLayer/Background.material, "zones": _find_neon($BackLayer/Background.texture, _cover_point.bind($BackLayer/Background.texture.get_size()))}
 			if not arena.is_empty():   # the arena's own slots and life
+				if arena.get("stutter", true) == false:   # (no neon signs to stutter)
+					_neon = {}
 				for k in arena.get("alive", {}):
 					$BackLayer/Background.material.set_shader_parameter(k, float(arena.alive[k]))
 				_style_board(arena.get("board", {}))
@@ -3177,15 +3179,15 @@ func _ev_promote(ev: Dictionary) -> void:
 			cards_layer.add_child(r)
 			r.create_tween().tween_property(r, "modulate:a", 1.0, 0.5).set_delay(0.15 * i)
 			rings.append(r)
-	_converge(stage, col, 60, 1.2)
-	create_tween().tween_property(v, "_flash", 0.7, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	for i in 10:
-		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 3.0 + i * 1.4)
+	_converge(stage, col, 60, 0.85)
+	create_tween().tween_property(v, "_flash", 0.7, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	for i in 8:
+		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 3.0 + i * 1.7)
 		if i % 3 == 0:
 			_sparks(stage, Vector2.UP, bright, 6, 170.0)
-		await _wait(0.1)
+		await _wait(0.09)
 	# 2. The cocoon: light, the art glowing through it, morphing between the forms on a quickening heartbeat, swelling
-	var beats := [0.3, 0.25, 0.2, 0.165, 0.135, 0.11, 0.09, 0.075, 0.062, 0.052, 0.045, 0.04, 0.036]
+	var beats := [0.24, 0.2, 0.16, 0.13, 0.105, 0.085, 0.07, 0.058, 0.048, 0.04, 0.036]
 	for i in beats.size():
 		var t := float(i) / (beats.size() - 1)
 		if not old.is_empty():
@@ -3267,7 +3269,7 @@ func _ev_promote(ev: Dictionary) -> void:
 	var lv_old := CardDB.striver_stage(old)
 	var lv_new := CardDB.striver_stage(c)
 	var stars := _evo_stars(stage + Vector2(0, card_size.y / 2 + 30), lv_old if lv_old.y > 0 else Vector2i(maxi(1, lv_new.x - 1), lv_new.y))
-	await _wait(0.45)
+	await _wait(0.35)
 	if lv_new.y > 0:   # the new star pops in
 		stars.level = lv_new
 		stars.pop = 1.0
@@ -3294,13 +3296,13 @@ func _ev_promote(ev: Dictionary) -> void:
 	show_tally.call(0.0)
 	var tt := create_tween()
 	tt.tween_property(tally, "modulate:a", 1.0, 0.2)
-	tt.tween_method(show_tally, 0.0, 1.0, 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tt.tween_method(show_tally, 0.0, 1.0, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tt.tween_callback(func():
 		Sfx.play("click", 1.6, -6.0)
 		tally.pivot_offset = tally.size / 2
 		tally.scale = Vector2.ONE * 1.15
 		tally.create_tween().tween_property(tally, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
-	await _wait(1.35)
+	await _wait(1.0)
 	# 5. The landing
 	var out := create_tween().set_parallel()
 	for n in [rays, stars, tally]:
