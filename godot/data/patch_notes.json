@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.50",
+        "notes": [
+            "LOADED DICE is highlighted as one keyword (both words) on cards, in tooltips and in How to Play."
+        ]
+    },
+    {
         "version": "0.9.49",
         "notes": [
             "New effect: destroy your opponent's Hustle or Ambush cards, face-up or face-down."

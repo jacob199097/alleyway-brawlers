@@ -118,7 +118,7 @@ func _build_header() -> void:
 	bar.add_child(_dropdown(KINDS, func(v): _kind = v, 172.0))
 	var kws := [["all", "ANY KEYWORD"]]
 	for k in Keywords.LIST:
-		kws.append([k, k])
+		kws.append([k, Keywords.full_name(k)])
 	bar.add_child(_dropdown(kws, func(v): _keyword = v, 172.0))
 	bar.add_child(_dropdown(COSTS, func(v): _cost = v, 196.0))
 	bar.size = Vector2(1166, 52)

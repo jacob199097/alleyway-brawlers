@@ -98,7 +98,8 @@ func _show(tab: String) -> void:
 		var lines: Array = []
 		for kw in Keywords.LIST:
 			var d: String = Keywords.LIST[kw][1]
-			lines.append("[color=#%s][b]%s[/b][/color]%s" % [Keywords.LIST[kw][0].to_html(false), kw, d.substr(kw.length()) if d.begins_with(kw) else ": " + d])   # ("POISON X: ...")
+			var full: String = Keywords.full_name(kw)
+			lines.append("[color=#%s][b]%s[/b][/color]%s" % [Keywords.LIST[kw][0].to_html(false), full, d.substr(full.length()) if d.begins_with(full) else ": " + d])   # ("POISON X: ...")
 		lines.append("[b]ZZZ[/b]: just promoted or Awakened: it can't attack until your next turn.")
 		lines.append("[b]DOWNED[/b]: in DEF, its effects stop; it stands back up after a round unless it is attacked again (KO).")
 		body = "\n\n".join(lines)

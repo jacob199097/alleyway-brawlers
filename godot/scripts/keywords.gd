@@ -26,6 +26,8 @@ const LIST := {
 	"BARRICADE": [Color("bfe3ff"), "BARRICADE X: the next X Morale damage you would take before your next turn is prevented."],
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
 }
+## Two-word keywords: the word that follows, highlighted as part of the same keyword.
+const SECOND_WORD := {"LOADED": "DICE"}
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]
 
@@ -54,10 +56,15 @@ static func markup(text: String) -> String:
 	var re := RegEx.create_from_string("[A-Za-z']+")
 	var out := ""
 	var at := 0
+	var last_kw := ""
 	for m in re.search_all(text):
 		var word := m.get_string()
+		var gap := text.substr(at, m.get_start() - at)
 		var kw := find(word) if word[0] == word[0].to_upper() else ""
-		out += _escape(text.substr(at, m.get_start() - at))
+		if kw == "" and last_kw != "" and gap.strip_edges() == "" and SECOND_WORD.get(last_kw, "") == word.to_upper():
+			kw = last_kw   # the second word of a two-word keyword (LOADED DICE)
+		last_kw = kw
+		out += _escape(gap)
 		if kw != "":
 			out += "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, LIST[kw][0].to_html(false), word]
 		elif word == word.to_upper() and clans.has(word):
@@ -72,7 +79,12 @@ static func markup(text: String) -> String:
 static func describe(kw: String) -> String:
 	if not LIST.has(kw):
 		return ""
-	return "[b][color=#%s]%s[/color][/b]\n%s" % [LIST[kw][0].to_html(false), kw, LIST[kw][1]]
+	return "[b][color=#%s]%s[/color][/b]\n%s" % [LIST[kw][0].to_html(false), full_name(kw), LIST[kw][1]]
+
+
+## A keyword's whole name ("LOADED" -> "LOADED DICE").
+static func full_name(kw: String) -> String:
+	return kw + (" " + SECOND_WORD[kw] if SECOND_WORD.has(kw) else "")
 
 
 static func _escape(s: String) -> String:
