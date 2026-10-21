@@ -195,6 +195,11 @@ const LEADER_SAMPLES := [
 		{"when": "dormant", "do": "untargetable"}, {"when": "dormant", "do": "buff", "target": "enemies", "def": -300},
 		{"when": "dormant_turn_end", "do": "stand", "target": "allies"}, {"when": "awaken", "do": "revive"},
 		{"when": "attack", "do": "buff", "target": "self", "atk": 500}]},
+	# Wildcard: Awakens after 3 won flips / rolls; flips a coin every turn while it waits
+	{"effectKey": "", "awakenCondition": {"luck": 3}, "effects": [
+		{"when": "dormant_turn_start", "do": "draw", "amount": 1, "luck": "coin"},
+		{"when": "dormant_turn_start", "do": "heal", "amount": 200, "if_luck": "lost"},
+		{"when": "awaken", "do": "damage", "amount": 300, "luck": "double"}]},
 ]
 
 

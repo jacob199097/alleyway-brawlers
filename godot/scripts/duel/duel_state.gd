@@ -1755,7 +1755,7 @@ func _check_awaken(side: String) -> void:
 			or (cond.get("morale") != null and s.morale <= int(cond.morale)) \
 			or (cond.get("gutter") != null and s.gutter.size() >= int(cond.gutter)) \
 			or (cond.get("foe_morale") != null and foes_of(side).any(func(f): return sides[f].morale <= int(cond.foe_morale))) \
-			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence))
+			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence)) 			or (cond.get("luck") != null and int(s.get("luck_won", 0)) >= int(cond.luck))   # N won coin flips / die rolls
 	if not ready:
 		return
 	var options: Array = []
@@ -3207,6 +3207,8 @@ func _luck_toss(side: String, slot: int, c: Dictionary, coin: bool, need: int, d
 	var r := _luck_next()
 	var value: int = (1 if r < 0.5 else 0) if coin else 1 + int(floor(r * 6.0))   # coin: 1 heads, 0 tails
 	var won := value >= need
+	if won and sides.has(side):   # (a leader can Awaken on it)
+		sides[side].luck_won = int(sides[side].get("luck_won", 0)) + 1
 	_luck_last = {"won": won, "value": value}
 	_roll = value
 	var ev := {"side": side, "slot": slot, "card": c.duplicate(true), "kind": "coin" if coin else "die",

@@ -83,6 +83,7 @@ var duel: DuelState
 var hand := {"player": [], "opponent": []}     # CardViews, in hand order
 var field := {"player": {}, "opponent": {}}    # slot -> CardView
 var leaders := {}                              # side -> CardView
+var _luck_wins := {}                           # side -> coin flips / die rolls won (a luck leader's Awaken)
 var counts := {}                               # pile sizes from the last event
 var _detail_spin := ""                         # the large preview's moving card back style ("" = none)
 var _detail_angle := 0.0
@@ -2536,6 +2537,15 @@ func _ev_luck(ev: Dictionary) -> void:
 			_ring(tok.position, GOLD, 1.6)
 			Sfx.play("legendary", 1.5, -10.0)
 	_float_text(tok.position + Vector2(0, -80), text, tok.edge, 30)
+	# A leader that Awakens on luck counts its wins: LUCK 3 / 5 over it
+	if won:
+		_luck_wins[side] = int(_luck_wins.get(side, 0)) + 1
+		var lv = leaders.get(side)
+		var goal := int(lv.card.get("awakenCondition", {}).get("luck", 0)) if lv is CardView and is_instance_valid(lv) else 0
+		if goal > 0:
+			var have := maxi(int(_luck_wins[side]), int(duel.sides.get(side, {}).get("luck_won", 0)))
+			_float_text(lv.position + Vector2(0, -110 if side == "player" else 110), "READY TO AWAKEN" if have >= goal else "LUCK %d / %d" % [mini(have, goal), goal], GOLD, 26)
+			_burst(lv.position, GOLD, 12, 200, 0.5, 0.0)
 	await _wait(0.55)
 	var out := create_tween()
 	out.tween_property(tok, "modulate:a", 0.0, 0.25)

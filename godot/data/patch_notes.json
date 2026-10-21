@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.43",
+        "notes": [
+            "A new way for leaders to Awaken: after winning a number of coin flips or die rolls in a game. A leader waiting on its luck shows LUCK 3 / 5 each time one comes up, and READY TO AWAKEN when it's there."
+        ]
+    },
+    {
         "version": "0.9.42",
         "notes": [
             "The Wildcard booster pack gets its BOOSTER PACK plaque, like the other clans' packs."

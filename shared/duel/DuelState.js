@@ -1594,7 +1594,8 @@ export class DuelState {
             || (cond.morale != null && s.morale <= toInt(cond.morale))
             || (cond.gutter != null && s.gutter.length >= toInt(cond.gutter))
             || (cond.foe_morale != null && this.foesOf(side).some(f => this.sides[f].morale <= toInt(cond.foe_morale)))
-            || (cond.influence != null && toInt(s.leader.influence) <= toInt(cond.influence));
+            || (cond.influence != null && toInt(s.leader.influence) <= toInt(cond.influence))
+            || (cond.luck != null && toInt(s.luck_won ?? 0) >= toInt(cond.luck));   // N won coin flips / die rolls
         if (!ready) return;
         const empties = [];
         const taken = [];
@@ -2821,6 +2822,7 @@ export class DuelState {
             const r = this._luck();
             const value = coin ? (r < 0.5 ? 1 : 0) : 1 + Math.floor(r * 6);   // coin: 1 heads, 0 tails
             const won = value >= need;
+            if (won && this.sides[side]) this.sides[side].luck_won = toInt(this.sides[side].luck_won ?? 0) + 1;   // (a leader can Awaken on it)
             this._luckLast = { won, value };
             this._roll = value;
             const ev = { side, slot, card: clone(c), kind: coin ? 'coin' : 'die', value, need, won };

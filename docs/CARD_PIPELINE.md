@@ -222,7 +222,7 @@ change, rebuild it and publish the Forge again with it.
 A card can have several effects. Tick **Write the card's effect text from these effects** and
 the Forge writes the rules text for you, so it always matches what the card does.
 
-A leader's **passive** effects apply while it's Dormant.
+A leader's **passive** effects apply while it's Dormant. Its **Awaken** condition is any one of: N+ (clan) characters, Authority N, Morale N or less, the opponent's Morale N or less, N+ cards in the Gutter, Influence N or less, or N won coin flips / die rolls this game (`luck`: every flip or roll your cards win counts, LOADED DICE re-rolls included; the game shows LUCK n / N over the leader).
 
 Something that can't be built from these blocks needs code: add a new block in both engines, or
 a hand-written effect key (the way the placeholder Lions cards work).

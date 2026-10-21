@@ -100,4 +100,21 @@ for (let t = 0; t < 60; t++) {
 assert.ok(rerolls > 10, `it re-flips (${rerolls} times)`);
 assert.ok(seenLost, 'and a second loss in a turn stands');
 
+// A leader that Awakens on luck: { luck: 5 } is five won coin flips or die rolls (this game, this side's)
+st = fresh();
+st.sides.player.leader = st.makeCard({ id: 'luck_grunt', name: 'The House', cardType: 'leader', clanTag: 'test', attack: 3000, defense: 3000,
+    awakenCondition: { luck: 5 } });
+st.sides.player.leader_state = 'dormant';
+let asked = null;
+st._ask = (side, kind) => { asked = kind; };
+let wins = 0;
+while (wins < 5) {
+    st._doFx('player', -1, grunt, { do: 'heal', amount: 1, luck: 'coin' });
+    if (lucks(st)[0].won) wins++;
+    st._checkAwaken('player');
+    if (wins < 5) assert.equal(asked, null, );
+}
+assert.equal(st.sides.player.luck_won, 5, 'five wins counted');
+assert.equal(asked, 'awaken', 'five wins: it Awakens');
+
 console.log('luck: ok');
