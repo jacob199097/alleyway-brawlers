@@ -102,6 +102,25 @@ if (st.pending.key) st.doAction('player', { kind: 'choose', option: st.pending.o
 assert.equal(st.sides.player.field[7], card, 'Improvised Armor stays in slot 7');
 assert.ok(!card.face_down && card.equipped_to === st.sides.player.field[1].uid, 'face-up, equipped');
 
+// An Equip's effects go to the character it's equipped to: no second choice
+CARD_CATALOG.test_brass = { id: 'test_brass', name: 'Brass Knuckles', clan: 'test', cardType: 'hustle', subtype: 'equip', lasting: 'equip',
+    authority: 1, rarity: 1, clanTag: 'test', effectKey: '', effects: [{ when: 'deploy', do: 'buff', target: 'ally', atk: 500, until: 'turn' }] };
+st = duel(['card_mili_006'], ['test_brass'], 0);
+st.sides.player.field[0] = st.makeCard('card_mili_006');
+st.sides.player.field[1] = st.makeCard('card_mili_006');
+st.turn = 5;
+st.sides.player.authority = 3;
+const weak = st.sides.player.field[1], other = st.sides.player.field[0];
+const atk0 = weak.attack, other0 = other.attack;
+assert.ok(st.doAction('player', { kind: 'hustle', uid: inHand(st, 'test_brass').uid }));
+assert.equal(st.pending.key, 'equip', 'asked who to equip');
+st.doAction('player', { kind: 'choose', option: st.pending.options.find(o => Number(o.slot ?? o.id) === 1 || o.id === '1')?.id ?? st.pending.options[st.pending.options.length > 1 ? 1 : 0].id });
+const worn = [0, 1].find(i => st.sides.player.field[i].uid === st.sides.player.field.find(c => c && c.cardType === 'hustle').equipped_to);
+assert.ok(!st.pending.key, 'no second question');
+st._recalc();
+assert.equal(st.sides.player.field[worn].attack, (worn === 1 ? atk0 : other0) + 500, 'the equipped character gets +500');
+assert.equal(st.sides.player.field[1 - worn].attack, worn === 1 ? other0 : atk0, 'the other does not');
+
 // The CPU sets a Hustle it can't use yet, and activates it once it can
 st = duel(['card_nebu_011', 'card_nebu_011'], [SUPERNOVA], 0);
 assert.deepEqual(choose(st, 'player'), { kind: 'set', uid: inHand(st, SUPERNOVA).uid, slot: BACK[0] });

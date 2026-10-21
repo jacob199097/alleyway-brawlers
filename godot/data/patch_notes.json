@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.45",
+        "notes": [
+            "Equips: once you've chosen who to equip, the Equip's effects go straight to that character, instead of asking you to choose again."
+        ]
+    },
+    {
         "version": "0.9.44",
         "notes": [
             "Fixed dark patches flickering on the arenas: a neon light that stutters now dims instead of going black, only real neon tubes do it, and the arenas without neon signs (The Pit, The Observatory, The Junkyard, The High-Roller Table) don't stutter at all.",

@@ -970,8 +970,10 @@ func _hustle(side: String, uid: int) -> bool:
 				c.equipped_to = x.card.uid
 				_emit("equip", {"side": side, "slot": b, "target_side": x.get("side", on), "target_slot": x.slot, "card": c.duplicate(true)})
 				_effect(side, c, "%s is equipped to %s" % [c.name, x.card.name], b)
-				_recalc())
-		_run_fx(side, b, c, "deploy")
+				_recalc()
+				_run_fx(side, b, c, "deploy"))   # (an Equip's effects come once it's on its character)
+		else:
+			_run_fx(side, b, c, "deploy")
 	else:
 		c.face_down = false
 		s.gutter.append(c)
@@ -2591,7 +2593,10 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		what: String, fn: Callable, all_text: String) -> void:
 	var target := str(e.get("target", "self"))
 	var entries := _fx_targets(side, slot, c, e, vs, pool_kind)
-	if target == "ally" or target == "enemy":
+	if (target == "ally" or target == "enemy") and not _equipped_entry(c).is_empty():   # an Equip: its own character, no choice
+		for x in entries:
+			_effect(side, c, fn.call(x), slot)
+	elif target == "ally" or target == "enemy":
 		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
 			var va := _target_value(side, e, a)
 			var vb := _target_value(side, e, b)
@@ -2642,6 +2647,17 @@ func _only_fits(c: Dictionary, only: String) -> bool:
 	return true
 
 
+## The character an Equip is on, as {side, slot, card}; {} for anything else.
+func _equipped_entry(c) -> Dictionary:
+	if not c is Dictionary or str(c.get("subtype", "")) != "equip" or c.get("equipped_to") == null:
+		return {}
+	for s in sides:
+		for x in characters(s):
+			if int(x.card.get("uid", -1)) == int(c.equipped_to):
+				return {"side": s, "slot": x.slot, "card": x.card}
+	return {}
+
+
 func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String) -> Array:
 	var target := str(e.get("target", "self"))
 	var only := str(e.get("only", ""))
@@ -2669,22 +2685,26 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				return net < 0 if x.side == side else net > 0
 		return true
 	var entries: Array = []
-	match target:
-		"self":
-			if card_at(side, slot) == c:
-				entries = [{"side": side, "slot": slot, "card": c}]
-		"attacker":
-			if not vs.is_empty() and card_at(vs.side, vs.slot) == vs.card:
-				entries = [{"side": vs.side, "slot": vs.slot, "card": vs.card}]
-		"ally", "allies":
-			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
-		"enemy", "enemies":
-			for foe in foes_of(side):
-				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
-		"all":   # every character: yours (not this card) and every opponent's
-			entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
-			for foe in foes_of(side):
-				entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
+	var worn := _equipped_entry(c) if target in ["self", "ally", "enemy"] else {}
+	if not worn.is_empty():   # an Equip's "this card" / "one ally" / "one enemy" is the character it's on
+		entries = [worn]
+	else:
+		match target:
+			"self":
+				if card_at(side, slot) == c:
+					entries = [{"side": side, "slot": slot, "card": c}]
+			"attacker":
+				if not vs.is_empty() and card_at(vs.side, vs.slot) == vs.card:
+					entries = [{"side": vs.side, "slot": vs.slot, "card": vs.card}]
+			"ally", "allies":
+				entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
+			"enemy", "enemies":
+				for foe in foes_of(side):
+					entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
+			"all":   # every character: yours (not this card) and every opponent's
+				entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
+				for foe in foes_of(side):
+					entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
 	var what_ := str(e.get("do", ""))
 	# (a leader on the field can be affected like any character, but has no hand to go back to)
 	# (STASIS can't be targeted, except to be cleansed of it)

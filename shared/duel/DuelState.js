@@ -827,9 +827,9 @@ export class DuelState {
                     this._emit('equip', { side, slot: b, target_side: x.side ?? on, target_slot: x.slot, card: clone(c) });
                     this._effect(side, c, `${c.name} is equipped to ${x.card.name}`, b);
                     this._recalc();
+                    this._runFx(side, b, c, 'deploy');   // (an Equip's effects come once it's on its character)
                 });
-            }
-            this._runFx(side, b, c, 'deploy');
+            } else this._runFx(side, b, c, 'deploy');
         } else {
             c.face_down = false;
             s.gutter.push(c);
@@ -2330,7 +2330,9 @@ export class DuelState {
     _fxApply(side, slot, c, e, vs, poolKind, what, fn, allText) {
         const target = String(e.target ?? 'self');
         const entries = this._fxTargets(side, slot, c, e, vs, poolKind);
-        if (target === 'ally' || target === 'enemy') {
+        if ((target === 'ally' || target === 'enemy') && this._equippedEntry(c)) {   // an Equip: its own character, no choice
+            for (const x of entries) this._effect(side, c, fn(x), slot);
+        } else if (target === 'ally' || target === 'enemy') {
             entries.sort((a, b) => {
                 const va = this._targetValue(side, e, a), vb = this._targetValue(side, e, b);
                 return va !== vb ? vb - va : (this.seats.indexOf(a.side) - this.seats.indexOf(b.side)) || a.slot - b.slot;
@@ -2368,6 +2370,15 @@ export class DuelState {
         return true;
     }
 
+    /** The character an Equip is on, as {side, slot, card}; null for anything else. */
+    _equippedEntry(c) {
+        if (!c || String(c.subtype ?? '') !== 'equip' || c.equipped_to == null) return null;
+        for (const s of Object.keys(this.sides)) for (const x of this.characters(s)) {
+            if (toInt(x.card.uid) === toInt(c.equipped_to)) return { side: s, slot: x.slot, card: x.card };
+        }
+        return null;
+    }
+
     _fxTargets(side, slot, c, e, vs, poolKind) {
         const target = String(e.target ?? 'self');
         const only = String(e.only ?? '');
@@ -2389,7 +2400,9 @@ export class DuelState {
             return true;
         };
         let entries = [];
-        switch (target) {
+        const worn = ['self', 'ally', 'enemy'].includes(target) ? this._equippedEntry(c) : null;
+        if (worn) entries = [worn];   // an Equip's "this card" / "one ally" / "one enemy" is the character it's on
+        else switch (target) {
             case 'self':
                 if (this.cardAt(side, slot) === c) entries = [{ side, slot, card: c }];
                 break;
