@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.47",
+        "notes": [
+            "Wildcard's card-throwing attack is smoother: any card from a normal deck, tumbling through the air on a trail of light, thudding into the target with a wobble, and a gold court card or ace to finish a big hit."
+        ]
+    },
+    {
         "version": "0.9.46",
         "notes": [
             "Wildcard characters get their own attack: they fan out a hand and throw a volley of spinning playing cards at the target, with a gold ace thrown hard on a big hit."

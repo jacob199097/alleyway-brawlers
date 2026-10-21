@@ -179,8 +179,8 @@ func _run() -> void:
 		dv.home = dv.position
 		var tpos: Vector2 = dv.home
 		d._card_strike(a, dv, tpos, (tpos - a.home).normalized(), true, false)
-		for i in 20:
-			await _shot("w%02d" % i, 0.08)
+		for i in 28:
+			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
 	if "--arena-only" in OS.get_cmdline_user_args():   # (the arena roulette on Scissors Paper Rock: spinning, then landed)
