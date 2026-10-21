@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.48",
+        "notes": [
+            "New effect: destroy your opponent's face-up Hustle or Ambush cards (Continuous and Equip), and everything they were giving goes with them.",
+            "\"Destroy face-down cards\" now only hits face-down cards, as it says.",
+            "LOADED DICE is a keyword: hover it to see what it does."
+        ]
+    },
+    {
         "version": "0.9.47",
         "notes": [
             "Wildcard's card-throwing attack is smoother: any card from a normal deck, tumbling through the air on a trail of light, thudding into the target with a wobble, and a gold court card or ace to finish a big hit."

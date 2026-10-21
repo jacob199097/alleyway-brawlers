@@ -156,6 +156,7 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     assert.ok(!b.cardAt('player', 1).downed && b.sides.player.gutter.length === 0);
     b.sides.opponent.field[6] = b.makeCard({ id: 'test_grunt', cardType: 'ambush' });
     b.sides.opponent.field[8] = b.makeCard({ id: 'test_grunt', cardType: 'ambush' });
+    b.sides.opponent.field[6].face_down = b.sides.opponent.field[8].face_down = true;   // (set, as Ambushes are)
     b._doFx('player', 0, b.cardAt('player', 0), { do: 'break_ambush', amount: 1 });
     assert.equal(b.cardAt('opponent', 6), null, 'leftmost face-down card destroyed');
     assert.ok(b.cardAt('opponent', 8), 'only one');

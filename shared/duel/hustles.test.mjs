@@ -121,6 +121,23 @@ st._recalc();
 assert.equal(st.sides.player.field[worn].attack, (worn === 1 ? atk0 : other0) + 500, 'the equipped character gets +500');
 assert.equal(st.sides.player.field[1 - worn].attack, worn === 1 ? other0 : atk0, 'the other does not');
 
+// Destroying back-row cards: face-down ones (break_ambush) or face-up Continuous / Equip ones (shatter)
+st = duel(['card_mili_006'], ['test_brass'], 0);
+st.sides.opponent.field[0] = st.makeCard('card_mili_006');
+const ench = st.makeCard('test_brass'); ench.face_down = false; ench.equipped_to = st.sides.opponent.field[0].uid;
+ench.effects = [{ when: 'passive', do: 'buff', target: 'self', atk: 700 }];
+const hidden = st.makeCard('test_brass'); hidden.face_down = true;
+st.sides.opponent.field[5] = ench; st.sides.opponent.field[6] = hidden;
+st._recalc();
+const worn0 = st.sides.opponent.field[0].attack;
+const src2 = { id: 'src', name: 'Bust', cardType: 'hustle', clanTag: 'test' };
+st._doFx('player', -1, src2, { do: 'break_ambush', amount: 3 });
+assert.ok(st.sides.opponent.field[5] === ench && st.sides.opponent.field[6] == null, 'face-down only: the Equip stays');
+st.sides.opponent.field[6] = hidden;
+st._doFx('player', -1, src2, { do: 'shatter', amount: 3 });
+assert.ok(st.sides.opponent.field[5] == null && st.sides.opponent.field[6] === hidden, 'face-up only: the Equip goes, the face-down card stays');
+assert.equal(st.sides.opponent.field[0].attack, worn0 - 700, 'and what it gave goes with it');
+
 // The CPU sets a Hustle it can't use yet, and activates it once it can
 st = duel(['card_nebu_011', 'card_nebu_011'], [SUPERNOVA], 0);
 assert.deepEqual(choose(st, 'player'), { kind: 'set', uid: inHand(st, SUPERNOVA).uid, slot: BACK[0] });

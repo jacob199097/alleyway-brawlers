@@ -462,7 +462,8 @@ export class DuelState {
             case 'discard': return foes.some(x => x.hand.length > 0);
             case 'mill': return foes.some(x => x.deck.length > 0);
             case 'heal': return s.morale < START_MORALE;
-            case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null));
+            case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].face_down));
+            case 'shatter': return foes.some(x => BACK.some(b => x.field[b] != null && !x.field[b].face_down));
             case 'influence': {
                 const l = s.leader;
                 return s.leader_state === 'dormant' && l != null && toInt(l.influence) < toInt(l.influence_max ?? l.influence);
@@ -2144,20 +2145,27 @@ export class DuelState {
                 break;
             }
             case 'break_ambush':
-                // The opponent's face-down cards in the back row, left to right
-                this._withFoe(side, c, vs, (f) => BACK.some(b => this.sides[f].field[b] != null), (foe) => {
+            case 'shatter': {
+                // The opponent's face-down cards in the back row (break_ambush), or its face-up Continuous
+                // and Equip cards (shatter), left to right
+                const up = e.do === 'shatter';
+                const hit = (a) => a != null && !!a.face_down !== up;
+                this._withFoe(side, c, vs, (f) => BACK.some(b => hit(this.sides[f].field[b])), (foe) => {
                     let k = n;
                     for (const b of BACK) {
                         const a = this.sides[foe].field[b];
-                        if (k <= 0 || a == null) continue;
+                        if (k <= 0 || !hit(a)) continue;
                         this.sides[foe].field[b] = null;
                         this.sides[foe].gutter.push(a);
+                        if (up) delete a.equipped_to;
                         this._emit('ko', { side: foe, slot: b, card: clone(a) });
-                        this._effect(side, c, `${c.name}: destroys a face-down card`, slot);
+                        this._effect(side, c, up ? `${c.name}: destroys ${a.name}` : `${c.name}: destroys a face-down card`, slot);
                         k -= 1;
                     }
+                    if (up) this._recalc();   // (what it gave is gone)
                 });
                 break;
+            }
             case 'recover': {
                 const back = this._fxTake(side, c, e, s.gutter, `${c.name}: choose a card to return to your hand`, (card) => {
                     card.downed = false;
