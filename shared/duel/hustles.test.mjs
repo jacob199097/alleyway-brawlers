@@ -137,6 +137,9 @@ st.sides.opponent.field[6] = hidden;
 st._doFx('player', -1, src2, { do: 'shatter', amount: 3 });
 assert.ok(st.sides.opponent.field[5] == null && st.sides.opponent.field[6] === hidden, 'face-up only: the Equip goes, the face-down card stays');
 assert.equal(st.sides.opponent.field[0].attack, worn0 - 700, 'and what it gave goes with it');
+st.sides.opponent.field[5] = ench; st._recalc();
+st._doFx('player', -1, src2, { do: 'wreck', amount: 3 });
+assert.ok(st.sides.opponent.field[5] == null && st.sides.opponent.field[6] == null, 'wreck: face-up and face-down alike');
 
 // The CPU sets a Hustle it can't use yet, and activates it once it can
 st = duel(['card_nebu_011', 'card_nebu_011'], [SUPERNOVA], 0);

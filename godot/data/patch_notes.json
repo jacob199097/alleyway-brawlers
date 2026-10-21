@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.49",
+        "notes": [
+            "New effect: destroy your opponent's Hustle or Ambush cards, face-up or face-down."
+        ]
+    },
+    {
         "version": "0.9.48",
         "notes": [
             "New effect: destroy your opponent's face-up Hustle or Ambush cards (Continuous and Equip), and everything they were giving goes with them.",

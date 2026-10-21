@@ -464,6 +464,7 @@ export class DuelState {
             case 'heal': return s.morale < START_MORALE;
             case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].face_down));
             case 'shatter': return foes.some(x => BACK.some(b => x.field[b] != null && !x.field[b].face_down));
+            case 'wreck': return foes.some(x => BACK.some(b => x.field[b] != null));
             case 'influence': {
                 const l = s.leader;
                 return s.leader_state === 'dormant' && l != null && toInt(l.influence) < toInt(l.influence_max ?? l.influence);
@@ -2145,11 +2146,12 @@ export class DuelState {
                 break;
             }
             case 'break_ambush':
-            case 'shatter': {
-                // The opponent's face-down cards in the back row (break_ambush), or its face-up Continuous
-                // and Equip cards (shatter), left to right
-                const up = e.do === 'shatter';
-                const hit = (a) => a != null && !!a.face_down !== up;
+            case 'shatter':
+            case 'wreck': {
+                // The opponent's face-down cards in the back row (break_ambush), its face-up Continuous and
+                // Equip cards (shatter), or either (wreck), left to right
+                const kind = String(e.do);
+                const hit = (a) => a != null && (kind === 'wreck' || !!a.face_down === (kind === 'break_ambush'));
                 this._withFoe(side, c, vs, (f) => BACK.some(b => hit(this.sides[f].field[b])), (foe) => {
                     let k = n;
                     for (const b of BACK) {
@@ -2157,12 +2159,13 @@ export class DuelState {
                         if (k <= 0 || !hit(a)) continue;
                         this.sides[foe].field[b] = null;
                         this.sides[foe].gutter.push(a);
+                        const up = !a.face_down;
                         if (up) delete a.equipped_to;
                         this._emit('ko', { side: foe, slot: b, card: clone(a) });
                         this._effect(side, c, up ? `${c.name}: destroys ${a.name}` : `${c.name}: destroys a face-down card`, slot);
                         k -= 1;
                     }
-                    if (up) this._recalc();   // (what it gave is gone)
+                    this._recalc();   // (what a face-up one gave is gone)
                 });
                 break;
             }

@@ -37,6 +37,7 @@ const FX_SAMPLES := [
 	[{"when": "ko", "do": "heal", "amount": 100, "luck": "die", "per": "roll"}],
 	# Destroying face-up Continuous / Equip cards (shatter), and face-down ones (break_ambush)
 	[{"when": "deploy", "do": "shatter", "amount": 2}, {"when": "ko", "do": "break_ambush", "amount": 1}],
+	[{"when": "deploy", "do": "wreck", "amount": 1}],
 	# Wildcard: DOUBLE OR NOTHING, and LOADED DICE (a lost flip or roll tried again, once a turn)
 	[{"when": "deploy", "do": "damage", "amount": 300, "luck": "double"}, {"when": "deploy", "do": "draw", "amount": 1, "if_luck": "lost"}],
 	[{"when": "passive", "do": "loaded"}, {"when": "turn_start", "do": "buff", "target": "self", "atk": 300, "until": "turn", "luck": "die", "luck_on": 5}],

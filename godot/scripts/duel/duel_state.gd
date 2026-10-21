@@ -517,6 +517,8 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("face_down", false)))
 		"shatter":
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and not x.field[b].get("face_down", false)))
+		"wreck":
+			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null))
 		"influence":
 			var l = s.leader
 			return s.leader_state == "dormant" and l != null and int(l.influence) < int(l.get("influence_max", l.influence))
@@ -2422,11 +2424,11 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_effect(side, c, "%s: %d %s token%s join%s the fight" % [c.name, made, CardDB.get_card(spec).get("name", "token"),
 					"" if made == 1 else "s", "s" if made == 1 else ""], slot)
 				_recalc()
-		"break_ambush", "shatter":
-			# The opponent's face-down cards in the back row (break_ambush), or its face-up Continuous
-			# and Equip cards (shatter), left to right
-			var up: bool = str(e.get("do", "")) == "shatter"
-			var hit := func(a) -> bool: return a != null and bool(a.get("face_down", false)) != up
+		"break_ambush", "shatter", "wreck":
+			# The opponent's face-down cards in the back row (break_ambush), its face-up Continuous and
+			# Equip cards (shatter), or either (wreck), left to right
+			var kind := str(e.get("do", ""))
+			var hit := func(a) -> bool: return a != null and (kind == "wreck" or bool(a.get("face_down", false)) == (kind == "break_ambush"))
 			_with_foe(side, c, vs, func(f): return BACK.any(func(b): return hit.call(sides[f].field[b])), func(foe: String):
 				var k := n
 				for b in BACK:
@@ -2435,13 +2437,13 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 						continue
 					sides[foe].field[b] = null
 					sides[foe].gutter.append(a)
+					var up: bool = not a.get("face_down", false)
 					if up:
 						a.erase("equipped_to")
 					_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
 					_effect(side, c, ("%s: destroys %s" % [c.name, a.name]) if up else ("%s: destroys a face-down card" % c.name), slot)
 					k -= 1
-				if up:
-					_recalc())   # (what it gave is gone)
+				_recalc())   # (what a face-up one gave is gone)
 		"recover":
 			var back := _fx_take(side, c, e, s.gutter, "%s: choose a card to return to your hand" % c.name, func(card: Dictionary) -> bool:
 				card.downed = false
