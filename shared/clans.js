@@ -67,6 +67,28 @@ const CURATED = {
             ['card_mili_022', 3], ['card_mili_023', 3], ['card_mili_025', 3], ['card_mili_026', 3],
         ],
     },
+    // Every Wildcard base card but Rex (he's for packs): 30 characters, 10 Hustles/Ambushes.
+    wildcard: {
+        blurb: 'Play the odds: coin flips and dice for big payoffs, DOUBLE OR NOTHING bets, and LOADED DICE to tilt the odds your way.',
+        leader: 'card_wild_001',   // Vincent Vale
+        deck: [
+            // Strivers: Lucky Lou, Dice Delgado, Penny Harlow, Mickey Dukes, Ruby Reyes
+            ['card_wild_002', 2], ['card_wild_021', 2], ['card_wild_024', 2], ['card_wild_027', 2], ['card_wild_030', 2],
+            // Characters: Sally, Jennifer, Raymond, Trent, Jackie, Roberto, Catherine, Marchetti, Otis; Heavies Baxter, Garrison
+            ['card_wild_010', 2], ['card_wild_006', 2], ['card_wild_008', 2], ['card_wild_011', 2], ['card_wild_033', 2],
+            ['card_wild_005', 2], ['card_wild_009', 2], ['card_wild_034', 2], ['card_wild_035', 2],
+            ['card_wild_007', 1], ['card_wild_012', 1],
+            // Hustles: Double Down, Loaded Dice, Hot Streak, All In, The House Always Wins;
+            // Ambushes: Ace Up The Sleeve, Snake Eyes, Call the Bluff
+            ['card_wild_014', 1], ['card_wild_018', 2], ['card_wild_036', 1], ['card_wild_015', 1], ['card_wild_017', 1],
+            ['card_wild_016', 1], ['card_wild_019', 1], ['card_wild_037', 2],
+        ],
+        hideout: [
+            ['card_wild_003', 3], ['card_wild_004', 3], ['card_wild_022', 3], ['card_wild_023', 3],
+            ['card_wild_025', 3], ['card_wild_026', 3], ['card_wild_028', 3], ['card_wild_029', 3],
+            ['card_wild_031', 3], ['card_wild_032', 3],
+        ],
+    },
 };
 
 const level = (c) => Math.trunc(Number(c.level) || 1);

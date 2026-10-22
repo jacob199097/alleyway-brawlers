@@ -119,12 +119,13 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_007",
         "code": "NEBU-007",
         "flavourText": "You messed up big time!",
-        "effectText": "When an enemy attacks one of your characters: Return the attacker to its owner's hand.",
+        "effectText": "When an enemy attacks one of your characters: Return the attacker to its owner's hand and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "bounce",
-                "target": "attacker"
+                "target": "attacker",
+                "negate": true
             }
         ],
         "clanName": "Nebula",
@@ -531,12 +532,13 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_026",
         "code": "NEBU-026",
         "flavourText": "The dark between the stars isn't empty. It's hungry.",
-        "effectText": "When an enemy attacks one of your NEBULA characters: Put the attacker in STASIS.",
+        "effectText": "When an enemy attacks one of your NEBULA characters: Put the attacker in STASIS and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "stasis",
-                "target": "attacker"
+                "target": "attacker",
+                "negate": true
             }
         ],
         "clanName": "Nebula",
@@ -613,14 +615,15 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_029",
         "code": "NEBU-029",
         "flavourText": "Probably Shouldn't have hammered there",
-        "effectText": "When an enemy attacks one of your NEBULA characters: If your opponent controls 3 or more characters, put all enemy characters in STASIS.",
+        "effectText": "When an enemy attacks one of your NEBULA characters: If your opponent controls 3 or more characters, put all enemy characters in STASIS and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "stasis",
                 "target": "enemies",
                 "if": "enemies_ge",
-                "n": 3
+                "n": 3,
+                "negate": true
             }
         ],
         "clanName": "Nebula",
@@ -706,7 +709,7 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_nebu_022",
         "code": "NEBU-022",
-        "flavourText": "",
+        "flavourText": "Life’s fragile. Good thing I’m stubborn",
         "effectText": "Once per turn, when this card is Downed: It stands back up.\nAt the start of your turn: Your other Downed NEBULA characters stand back up.\nThis card can't be targeted by your opponent's effects.",
         "effects": [
             {
@@ -1182,12 +1185,13 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_005",
         "code": "MILI-005",
         "flavourText": "I Forgot that we put that there",
-        "effectText": "When an enemy attacks one of your characters: DOWN the attacker.",
+        "effectText": "When an enemy attacks one of your characters: DOWN the attacker and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "down",
-                "target": "attacker"
+                "target": "attacker",
+                "negate": true
             }
         ],
         "clanName": "Militia",
@@ -1448,7 +1452,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_013",
         "code": "MILI-013",
         "flavourText": "This'll do for now",
-        "effectText": "EQUIP: Attach this to one of your characters.\nWhen played: One of your MILITIA characters gains +700 DEF permanently.",
+        "effectText": "When played: The equipped character gains +700 DEF permanently.",
         "effects": [
             {
                 "when": "deploy",
@@ -2079,7 +2083,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_031",
         "code": "MILI-031",
         "flavourText": "The trick isn’t escaping. It’s choosing where they catch you.",
-        "effectText": "When an enemy attacks one of your MILITIA characters: Put a MILITIA Brawler with 4 or less Authority of your choice from your deck onto the field in ATK position.",
+        "effectText": "When an enemy attacks one of your MILITIA characters: Put a MILITIA Brawler with 4 or less Authority of your choice from your deck onto the field in ATK position and negate the attack.",
         "effects": [
             {
                 "when": "defend",
@@ -2088,7 +2092,8 @@ export const FORGE_CARDS = {
                 "role": "brawler",
                 "amount": 1,
                 "max_auth": 4,
-                "choose": true
+                "choose": true,
+                "negate": true
             }
         ],
         "clanName": "Militia",
@@ -2108,7 +2113,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_032",
         "code": "MILI-032",
         "flavourText": "The barricade isn't much. The people behind it are.",
-        "effectText": "CONTINUOUS\nAt the end of your opponent's turn: If you control 2 or more MILITIA characters, DOWN one enemy character.",
+        "effectText": "At the end of your opponent's turn: If you control 2 or more MILITIA characters, DOWN one enemy character.",
         "effects": [
             {
                 "when": "foe_turn_end",
@@ -2603,5 +2608,1360 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null
+    },
+    "card_nebu_004": {
+        "id": "card_nebu_004",
+        "name": "Nix ",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_004",
+        "code": "NEBU-004",
+        "flavourText": "I'm not hiding, it's an ambush",
+        "effectText": "When this card hits your opponent directly: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "direct",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 900,
+        "defense": 250,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_005"
+    },
+    "card_nebu_005": {
+        "id": "card_nebu_005",
+        "name": "Nix ",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_005",
+        "code": "NEBU-005",
+        "flavourText": "I'm not hiding, it's an ambush",
+        "effectText": "This card can't be attacked while you control another character that can be.\nWhen this card hits your opponent directly: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "elusive"
+            },
+            {
+                "when": "direct",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 1800,
+        "defense": 500,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_nebu_006"
+    },
+    "card_nebu_006": {
+        "id": "card_nebu_006",
+        "name": "Nix ",
+        "clan": "nebula",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_006",
+        "code": "NEBU-006",
+        "flavourText": "I'm not hiding, it's an ambush",
+        "effectText": "This card can't be attacked while you control another character that can be.\nOnce per turn, when your opponent deploys a character: Put one enemy character in STASIS.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "elusive"
+            },
+            {
+                "when": "foe_deployed",
+                "do": "stasis",
+                "target": "enemy",
+                "once": true
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "attack": 3200,
+        "defense": 1500,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_nebu_043": {
+        "id": "card_nebu_043",
+        "name": "Singularity",
+        "clan": "nebula",
+        "cardType": "hustle",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 5,
+        "clanTag": "nebula",
+        "effectKey": "",
+        "art_url": "card_nebu_043",
+        "code": "NEBU-043",
+        "flavourText": "Everything. Everywhere. All at once. Then, nothing.",
+        "effectText": "At the end of your turn: If your opponent controls 3 or more characters, return one enemy character to its owner's hand.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "bounce",
+                "target": "enemy",
+                "if": "enemies_ge",
+                "n": 3
+            }
+        ],
+        "clanName": "Nebula",
+        "clanColor": "#9b7bff",
+        "subtype": "continuous"
+    },
+    "card_wild_001": {
+        "id": "card_wild_001",
+        "name": "Vincent Vale",
+        "clan": "wildcard",
+        "cardType": "leader",
+        "authority": 10,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_001",
+        "code": "WILD-001",
+        "flavourText": "You can cheat fate, son. You can even cheat death. But you never cheat the house.",
+        "effectText": "While this leader is Dormant, at the start of your turn: Flip a coin. If heads, draw 1 card.\nWhile this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "dormant_turn_start",
+                "do": "draw",
+                "luck": "coin",
+                "amount": 1
+            },
+            {
+                "when": "dormant",
+                "do": "cost_down",
+                "clan": "wildcard",
+                "amount": 1
+            },
+            {
+                "when": "awaken",
+                "do": "bounce",
+                "target": "enemy",
+                "luck": "double"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 3200,
+        "defense": 2500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "awakenCondition": {
+            "luck": 10
+        },
+        "influence": 3500
+    },
+    "card_wild_002": {
+        "id": "card_wild_002",
+        "name": "Lucky Lou",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_002",
+        "code": "WILD-002",
+        "flavourText": "Probability is just a polite word for permission.",
+        "effectText": "When this card attacks: Flip a coin. If heads, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "promote",
+                "luck": "coin"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 600,
+        "defense": 400,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_wild_003"
+    },
+    "card_wild_003": {
+        "id": "card_wild_003",
+        "name": "Lucky Lou",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_003",
+        "code": "WILD-003",
+        "flavourText": "Probability is just a polite word for permission.",
+        "effectText": "When this card attacks: Flip a coin. If heads, PROMOTE this card.\nOnce per turn, when your opponent deploys a character: Flip a coin. If heads, return one enemy character to its owner's hand.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "promote",
+                "luck": "coin"
+            },
+            {
+                "when": "foe_deployed",
+                "do": "bounce",
+                "target": "enemy",
+                "luck": "coin",
+                "once": true
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1600,
+        "defense": 1200,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_wild_004"
+    },
+    "card_wild_004": {
+        "id": "card_wild_004",
+        "name": "Lucky Lou",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_004",
+        "code": "WILD-004",
+        "flavourText": "Probability is just a polite word for permission.",
+        "effectText": "This card has LOADED DICE.\nOnce per turn, when your opponent deploys a character: Flip a coin. If heads, return one enemy character to its owner's hand.\nOnce per turn, when this card is Downed: Roll a die. On a 4 or more, it stands back up.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "loaded"
+            },
+            {
+                "when": "foe_deployed",
+                "do": "bounce",
+                "target": "enemy",
+                "luck": "coin",
+                "once": true
+            },
+            {
+                "when": "self_downed",
+                "do": "stand",
+                "target": "self",
+                "luck": "die",
+                "luck_on": 4,
+                "once": true
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2600,
+        "defense": 1900,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_wild_005": {
+        "id": "card_wild_005",
+        "name": "Roberto",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_005",
+        "code": "WILD-005",
+        "flavourText": "Every roll is a math problem. Every loss is a bad equation.",
+        "effectText": "ACTIVATE (once per turn): Roll a die. On a 3 or more, destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "wreck",
+                "luck": "die",
+                "amount": 1,
+                "luck_on": 3
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1300,
+        "defense": 900,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_006": {
+        "id": "card_wild_006",
+        "name": "Jennifer, The Croupier",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_006",
+        "code": "WILD-006",
+        "flavourText": "Sit back, relax, and let me handle the details. You just worry about losing.",
+        "effectText": "At the end of your turn: Search your deck for a WILDCARD card and add it to your hand.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "search",
+                "clan": "wildcard",
+                "amount": 1,
+                "choose": true
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 300,
+        "defense": 1000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_007": {
+        "id": "card_wild_007",
+        "name": "Baxter",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 1,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_007",
+        "code": "WILD-007",
+        "flavourText": "The first loan is a lifeline. The second is a leash.",
+        "effectText": "When deployed: Put a BOUNTY 2 on one enemy character.\nWhen this card KOs a character: Your opponent loses 500 Morale. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "bounty",
+                "target": "enemy",
+                "amount": 2
+            },
+            {
+                "when": "ko",
+                "do": "damage",
+                "luck": "double",
+                "amount": 500
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2600,
+        "defense": 2000,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
+    },
+    "card_wild_008": {
+        "id": "card_wild_008",
+        "name": "Raymond",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_008",
+        "code": "WILD-008",
+        "flavourText": "The house says your credit is still good. Personally, I wouldn't have bet on you.",
+        "effectText": "When deployed: Roll a die. On a 4 or more, draw 2 cards, then discard 1 card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "loot",
+                "luck": "die",
+                "amount": 2,
+                "luck_on": 4,
+                "discard_n": 1
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 800,
+        "defense": 500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_009": {
+        "id": "card_wild_009",
+        "name": "Catherine",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_009",
+        "code": "WILD-009",
+        "flavourText": "Betting the maximum isn't a strategy, sweetie. It's my baseline.",
+        "effectText": "This card has LOADED DICE.\nWhen you deploy another WILDCARD character: Flip a coin. If heads, swap the ATK and DEF of one enemy character until the end of your turn.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "loaded"
+            },
+            {
+                "when": "ally_deployed",
+                "do": "swap",
+                "target": "enemy",
+                "until": "turn",
+                "luck": "coin",
+                "when_clan": "wildcard"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1500,
+        "defense": 1200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_010": {
+        "id": "card_wild_010",
+        "name": "Sally",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_010",
+        "code": "WILD-010",
+        "flavourText": "Look at the lights. Listen to the music. It’s talking to me. It’s telling me the next one is the jackpot.",
+        "effectText": "ACTIVATE (once per turn): Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "wreck",
+                "luck": "double",
+                "amount": 1
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 200,
+        "defense": 100,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_011": {
+        "id": "card_wild_011",
+        "name": "Trent",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_011",
+        "code": "WILD-011",
+        "flavourText": "A bad bettor blames the dice. A good bettor blames the bookie.",
+        "effectText": "When you play a Hustle: Roll a die. On a 4 or more, put a BOUNTY 1 on all enemy characters.",
+        "effects": [
+            {
+                "when": "hustle_played",
+                "do": "bounty",
+                "target": "enemies",
+                "luck": "die",
+                "amount": 1,
+                "luck_on": 4
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1000,
+        "defense": 1400,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_012": {
+        "id": "card_wild_012",
+        "name": "Garrison - The Pit Boss",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 1,
+        "rarity": 4,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_012",
+        "code": "WILD-012",
+        "flavourText": "You had a good run, pal. Now put the chips down and walk.",
+        "effectText": "At the end of your turn: Flip a coin. If heads, KO one enemy character. If tails, DOWN one enemy character.\nYour opponent must attack this card first if it is standing.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "ko",
+                "target": "enemy",
+                "luck": "coin"
+            },
+            {
+                "when": "turn_end",
+                "do": "down",
+                "target": "enemy",
+                "if_luck": "lost"
+            },
+            {
+                "when": "passive",
+                "do": "guard"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 3000,
+        "defense": 2800,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
+    },
+    "card_wild_013": {
+        "id": "card_wild_013",
+        "name": "Rex - The Sovereign of Sevens",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 5,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_013",
+        "code": "WILD-013",
+        "flavourText": "",
+        "effectText": "This card can't be attacked while you control another character that can be.\nAt the start of your turn: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "elusive"
+            },
+            {
+                "when": "turn_start",
+                "do": "bounce",
+                "target": "enemy",
+                "luck": "double"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2000,
+        "defense": 1500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_014": {
+        "id": "card_wild_014",
+        "name": "Double Down",
+        "clan": "wildcard",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_014",
+        "code": "WILD-014",
+        "flavourText": "Double or nothing. No exceptions.",
+        "effectText": "Draw 1 card. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "draw",
+                "luck": "double",
+                "amount": 1
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
+    },
+    "card_wild_015": {
+        "id": "card_wild_015",
+        "name": "All In",
+        "clan": "wildcard",
+        "cardType": "hustle",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_015",
+        "code": "WILD-015",
+        "flavourText": "No half-measures. Not anymore.",
+        "effectText": "Put the first 2 WILDCARD Brawlers from your deck onto the field in ATK position. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "call",
+                "clan": "wildcard",
+                "role": "brawler",
+                "luck": "double",
+                "amount": 2
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
+    },
+    "card_wild_016": {
+        "id": "card_wild_016",
+        "name": "Ace Up The Sleeve",
+        "clan": "wildcard",
+        "cardType": "ambush",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_016",
+        "code": "WILD-016",
+        "flavourText": "You thought you had me cornered. I love it when people think that.",
+        "effectText": "When an enemy attacks one of your characters: Flip a coin. If heads, KO the attacker. If tails, DOWN the attacker.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "ko",
+                "target": "attacker",
+                "luck": "coin"
+            },
+            {
+                "when": "defend",
+                "do": "down",
+                "target": "attacker",
+                "if_luck": "lost"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
+    },
+    "card_wild_017": {
+        "id": "card_wild_017",
+        "name": "The House Always Wins",
+        "clan": "wildcard",
+        "cardType": "hustle",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_017",
+        "code": "WILD-017",
+        "flavourText": "We don't need luck when we own the math.",
+        "effectText": "At the end of your turn: Roll a die: your opponent loses 100 Morale for each pip rolled.\nYour WILDCARD characters gain +100 ATK and +100 DEF for each card in your hand.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "damage",
+                "per": "roll",
+                "luck": "die",
+                "amount": 100,
+                "luck_on": 1
+            },
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "allies",
+                "clan": "wildcard",
+                "per": "hand",
+                "atk": 100,
+                "def": 100
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "subtype": "continuous"
+    },
+    "card_wild_018": {
+        "id": "card_wild_018",
+        "name": "Loaded Dice",
+        "clan": "wildcard",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_018",
+        "code": "WILD-018",
+        "flavourText": "Perfectly balanced, as all scams should be.",
+        "effectText": "The equipped character gains +150 ATK for each WILDCARD card in your hand.\nThe equipped character has LOADED DICE.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "self",
+                "per": "hand",
+                "per_clan": "wildcard",
+                "atk": 150
+            },
+            {
+                "when": "passive",
+                "do": "loaded"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "subtype": "equip"
+    },
+    "card_wild_019": {
+        "id": "card_wild_019",
+        "name": "Snake Eyes",
+        "clan": "wildcard",
+        "cardType": "ambush",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_019",
+        "code": "WILD-019",
+        "flavourText": "Two ones. Zero hope.",
+        "effectText": "When an enemy attacks one of your characters: Set the ATK and DEF of the attacker to 100 until the end of this turn.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "set_stats",
+                "target": "attacker",
+                "until": "turn",
+                "atk": 100,
+                "def": 100
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
+    },
+    "card_wild_021": {
+        "id": "card_wild_021",
+        "name": "Dice Delgado",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_021",
+        "code": "WILD-021",
+        "flavourText": "Seven's my lucky number. So is every other one.",
+        "effectText": "When this card Downs a character: Roll a die. On a 4 or more, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "down",
+                "do": "promote",
+                "luck": "die",
+                "luck_on": 4
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 800,
+        "defense": 300,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_wild_022"
+    },
+    "card_wild_022": {
+        "id": "card_wild_022",
+        "name": "Dice Delgado",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_022",
+        "code": "WILD-022",
+        "flavourText": "Seven's my lucky number. So is every other one.",
+        "effectText": "When this card attacks: Roll a die: it gains +100 ATK for each pip rolled for this Brawl.\nAfter this card KOs 2 characters: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "per": "roll",
+                "atk": 100
+            },
+            {
+                "when": "ko",
+                "do": "promote",
+                "times": 2
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1700,
+        "defense": 1000,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_wild_023"
+    },
+    "card_wild_023": {
+        "id": "card_wild_023",
+        "name": "Dice Delgado",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_023",
+        "code": "WILD-023",
+        "flavourText": "Seven's my lucky number. So is every other one.",
+        "effectText": "When this card attacks: Roll a die: it gains +200 ATK for each pip rolled for this Brawl.\nThis card has LOADED DICE.\nWhen this card KOs a character: Your opponent loses 300 Morale. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "per": "roll",
+                "atk": 200
+            },
+            {
+                "when": "passive",
+                "do": "loaded"
+            },
+            {
+                "when": "ko",
+                "do": "damage",
+                "luck": "double",
+                "amount": 300
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2900,
+        "defense": 1600,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_wild_024": {
+        "id": "card_wild_024",
+        "name": "Penny Harlow",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_024",
+        "code": "WILD-024",
+        "flavourText": "Fortune favours the prepared.",
+        "effectText": "At the start of your turn: Flip a coin. If heads, PROMOTE this card. If tails, draw 1 card.",
+        "effects": [
+            {
+                "when": "turn_start",
+                "do": "promote",
+                "luck": "coin"
+            },
+            {
+                "when": "turn_start",
+                "do": "draw",
+                "if_luck": "lost",
+                "amount": 1
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 500,
+        "defense": 900,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_wild_025"
+    },
+    "card_wild_025": {
+        "id": "card_wild_025",
+        "name": "Penny Harlow",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_025",
+        "code": "WILD-025",
+        "flavourText": "Fortune favours the prepared.",
+        "effectText": "At the start of your turn: Flip a coin. If heads, one of your other characters gains SHIELD.\nWhen another of your characters is attacked: Flip a coin. If heads, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "turn_start",
+                "do": "shield",
+                "target": "ally",
+                "luck": "coin"
+            },
+            {
+                "when": "ally_attacked",
+                "do": "promote",
+                "luck": "coin"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1300,
+        "defense": 1900,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_wild_026"
+    },
+    "card_wild_026": {
+        "id": "card_wild_026",
+        "name": "Penny Harlow",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_026",
+        "code": "WILD-026",
+        "flavourText": "Fortune favours the prepared.",
+        "effectText": "This card has LOADED DICE.\nWhen another of your characters is attacked: Flip a coin. If heads, the attacker loses 800 ATK until the end of this turn. If tails, this card gains SHIELD.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "loaded"
+            },
+            {
+                "when": "ally_attacked",
+                "do": "buff",
+                "target": "attacker",
+                "until": "turn",
+                "luck": "coin",
+                "atk": -800
+            },
+            {
+                "when": "ally_attacked",
+                "do": "shield",
+                "target": "self",
+                "if_luck": "lost"
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2100,
+        "defense": 3000,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_wild_027": {
+        "id": "card_wild_027",
+        "name": "Mickey Dukes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_027",
+        "code": "WILD-027",
+        "flavourText": "Double or nothing. Always double.",
+        "effectText": "When this card hits your opponent directly: Flip a coin. If heads, PROMOTE this card. If tails, your opponent loses 300 Morale.",
+        "effects": [
+            {
+                "when": "direct",
+                "do": "promote",
+                "luck": "coin"
+            },
+            {
+                "when": "direct",
+                "do": "damage",
+                "if_luck": "lost",
+                "amount": 300
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 700,
+        "defense": 400,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_wild_028"
+    },
+    "card_wild_028": {
+        "id": "card_wild_028",
+        "name": "Mickey Dukes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_028",
+        "code": "WILD-028",
+        "flavourText": "Double or nothing. Always double.",
+        "effectText": "When this card KOs a character: Your opponent loses 400 Morale. DOUBLE OR NOTHING.\nAfter this card KOs 2 characters: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "damage",
+                "luck": "double",
+                "amount": 400
+            },
+            {
+                "when": "ko",
+                "do": "promote",
+                "times": 2
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1800,
+        "defense": 1100,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_wild_029"
+    },
+    "card_wild_029": {
+        "id": "card_wild_029",
+        "name": "Mickey Dukes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_029",
+        "code": "WILD-029",
+        "flavourText": "Double or nothing. Always double.",
+        "effectText": "When this card KOs a character: Your opponent loses 600 Morale. DOUBLE OR NOTHING. If tails, draw 1 card.\nWhen this card hits your opponent directly: DRAIN 500.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "damage",
+                "luck": "double",
+                "amount": 600
+            },
+            {
+                "when": "ko",
+                "do": "draw",
+                "if_luck": "lost",
+                "amount": 1
+            },
+            {
+                "when": "direct",
+                "do": "drain",
+                "amount": 500
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 3100,
+        "defense": 1800,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_wild_030": {
+        "id": "card_wild_030",
+        "name": "Ruby Reyes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_030",
+        "code": "WILD-030",
+        "flavourText": "Red or black, darling. I own both.",
+        "effectText": "When you play a Hustle: Roll a die. On a 4 or more, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "hustle_played",
+                "do": "promote",
+                "luck": "die",
+                "luck_on": 4
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 900,
+        "defense": 700,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_wild_031"
+    },
+    "card_wild_031": {
+        "id": "card_wild_031",
+        "name": "Ruby Reyes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_031",
+        "code": "WILD-031",
+        "flavourText": "Red or black, darling. I own both.",
+        "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, draw 1 card.\nWhen you play a Hustle: If you have 4 or more cards in hand, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "draw",
+                "luck": "coin",
+                "amount": 1
+            },
+            {
+                "when": "hustle_played",
+                "do": "promote",
+                "if": "hand_ge",
+                "n": 4
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1700,
+        "defense": 1400,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_wild_032"
+    },
+    "card_wild_032": {
+        "id": "card_wild_032",
+        "name": "Ruby Reyes",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_032",
+        "code": "WILD-032",
+        "flavourText": "Red or black, darling. I own both.",
+        "effectText": "This card gains +100 ATK for each card in your hand.\nACTIVATE (once per turn): Roll a die. On a 3 or more, search your deck for a WILDCARD Hustle and add it to your hand.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "self",
+                "per": "hand",
+                "atk": 100
+            },
+            {
+                "when": "activate",
+                "do": "search",
+                "clan": "wildcard",
+                "kind": "hustle",
+                "luck": "die",
+                "amount": 1,
+                "luck_on": 3,
+                "choose": true
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 2800,
+        "defense": 2400,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_wild_033": {
+        "id": "card_wild_033",
+        "name": "Jackie",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_033",
+        "code": "WILD-033",
+        "flavourText": "Every machine pays out. Eventually.",
+        "effectText": "At the start of your turn: Roll a die: this card gains +100 ATK for each pip rolled until the end of your turn.",
+        "effects": [
+            {
+                "when": "turn_start",
+                "do": "buff",
+                "target": "self",
+                "until": "turn",
+                "per": "roll",
+                "atk": 100
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1200,
+        "defense": 1300,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_034": {
+        "id": "card_wild_034",
+        "name": "Marchetti",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_034",
+        "code": "WILD-034",
+        "flavourText": "Interest is due. Today.",
+        "effectText": "When this card KOs a character: Your opponent discards 1 card. DOUBLE OR NOTHING.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "discard",
+                "luck": "double",
+                "amount": 1
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1800,
+        "defense": 1100,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_035": {
+        "id": "card_wild_035",
+        "name": "Odds-On Otis",
+        "clan": "wildcard",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_035",
+        "code": "WILD-035",
+        "flavourText": "Everybody's got a price. I've got the odds.",
+        "effectText": "When your opponent deploys a character: Flip a coin. If heads, put a BOUNTY 2 on one enemy character. If tails, your opponent loses 400 Morale.",
+        "effects": [
+            {
+                "when": "foe_deployed",
+                "do": "bounty",
+                "target": "enemy",
+                "luck": "coin",
+                "amount": 2
+            },
+            {
+                "when": "foe_deployed",
+                "do": "damage",
+                "if_luck": "lost",
+                "amount": 400
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11",
+        "attack": 1900,
+        "defense": 1800,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_wild_036": {
+        "id": "card_wild_036",
+        "name": "Hot Streak",
+        "clan": "wildcard",
+        "cardType": "hustle",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_036",
+        "code": "WILD-036",
+        "flavourText": "You can't stop a man on fire.",
+        "effectText": "Flip a coin. If heads, your WILDCARD characters gain +600 ATK until the end of your turn. If tails, your WILDCARD characters gain +200 ATK until the end of your turn.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "buff",
+                "target": "allies",
+                "until": "turn",
+                "clan": "wildcard",
+                "luck": "coin",
+                "atk": 600
+            },
+            {
+                "when": "deploy",
+                "do": "buff",
+                "target": "allies",
+                "until": "turn",
+                "clan": "wildcard",
+                "if_luck": "lost",
+                "atk": 200
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
+    },
+    "card_wild_037": {
+        "id": "card_wild_037",
+        "name": "Call the Bluff",
+        "clan": "wildcard",
+        "cardType": "ambush",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "wildcard",
+        "effectKey": "",
+        "art_url": "card_wild_037",
+        "code": "WILD-037",
+        "flavourText": "Nice try. Show me your cards.",
+        "effectText": "When an enemy attacks one of your characters: Roll a die: the attacker loses 200 ATK for each pip rolled for this Brawl.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "buff",
+                "target": "attacker",
+                "per": "roll",
+                "atk": -200
+            }
+        ],
+        "clanName": "Wildcard",
+        "clanColor": "#e8ba11"
     }
 };
