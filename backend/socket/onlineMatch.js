@@ -316,7 +316,7 @@ function createOnlineService(io, deps) {
         const events = state.takeEvents();
         for (const seat of ['player', 'opponent']) sendStart(match, seat, false);
         broadcast(match, events);
-        console.log(`[Online] ${a.profile.username} vs ${b.profile.username} (${mode}) — ${match.id}`);
+        console.log(`[Online] ${a.profile.username} vs ${b.profile.username}${b.bot && b.setup?.clan ? ` [${b.setup.clan}]` : ''} (${mode}) — ${match.id}`);
     }
 
     function profileOf(seat) {
@@ -324,11 +324,22 @@ function createOnlineService(io, deps) {
             title: seat.profile.title || null, card_back: seat.profile.card_back || null };
     }
 
-    /** The server CPU's seat: a random clan's starter deck (shared/clans.js). */
-    async function cpuSeat(ranked, level) {
-        const { cpuSetup, randomCpuClan } = await cpu;
+    // Each player meets every clan's CPU, in a random order, before any comes round again
+    const cpuClanBags = new Map();   // playerId -> clans still to come
+    function nextCpuClan(playerId, clans) {
+        let bag = (cpuClanBags.get(playerId) || []).filter(c => clans.includes(c));
+        if (!bag.length) bag = [...clans];
+        const clan = bag.splice(Math.floor(Math.random() * bag.length), 1)[0];
+        cpuClanBags.set(playerId, bag);
+        return clan;
+    }
+
+    /** The server CPU's seat: a clan's starter deck (shared/clans.js), each clan in turn for this player. */
+    async function cpuSeat(ranked, level, playerId) {
+        const { cpuSetup } = await cpu;
+        const { pickableClans } = await import('../../shared/clans.js');
         return {
-            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(randomCpuClan()), level,
+            playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(nextCpuClan(playerId, pickableClans().map(c => c.id))), level,
             profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'cpu' },
         };
     }
@@ -641,11 +652,11 @@ function createOnlineService(io, deps) {
                 const entry = await prepare(me);
                 if (challenge === true) {
                     const { weeklyChallenge } = await import('../../shared/challenges.js');
-                    await startMatch(entry, await cpuSeat(false, 'hard'), 'cpu_challenge', null, weeklyChallenge(), arena);
+                    await startMatch(entry, await cpuSeat(false, 'hard', me), 'cpu_challenge', null, weeklyChallenge(), arena);
                     return;
                 }
                 const level = ranked === true ? 'hard' : ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
-                await startMatch(entry, await cpuSeat(ranked === true, level), ranked === true ? 'cpu_ranked' : 'cpu', null, null, arena);
+                await startMatch(entry, await cpuSeat(ranked === true, level, me), ranked === true ? 'cpu_ranked' : 'cpu', null, null, arena);
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }
