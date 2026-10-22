@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.56",
+        "notes": [
+            "When an effect puts cards onto a full field (e.g. All In, bringing a character back, tokens), you choose whether to replace one of your characters for each card that does not fit, and which one. The replaced character goes to the Gutter."
+        ]
+    },
+    {
         "version": "0.9.55",
         "notes": [
             "A card made cheaper now shows its new cost in a small, clean badge in the corner, and only while it is in your hand."

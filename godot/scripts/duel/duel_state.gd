@@ -503,11 +503,11 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"recover":
 			return s.gutter.any(mine)
 		"revive":
-			return _empty_lane(side) >= 0 and s.gutter.any(mine)
+			return _room_for(side) and s.gutter.any(mine)
 		"call":
-			return _empty_lane(side) >= 0 and s.deck.any(mine)
+			return _room_for(side) and s.deck.any(mine)
 		"token":
-			return _empty_lane(side) >= 0 and not CardDB.get_card(str(e.get("token", ""))).is_empty()
+			return _room_for(side) and not CardDB.get_card(str(e.get("token", ""))).is_empty()
 		"discard":
 			return foes.any(func(x): return not x.hand.is_empty())
 		"mill":
@@ -2069,6 +2069,59 @@ func _scaled(side: String, slot: int, e: Dictionary) -> Dictionary:
 	return out
 
 
+## Room for a card an effect puts onto the field: an empty lane, or a character to replace (_ask_replace).
+func _room_for(side: String) -> bool:
+	return _empty_lane(side) >= 0 or FRONT.any(func(l): return can_sacrifice(side, l))
+
+
+## A card an effect puts onto the field (call, revive, token): in the first empty lane (place(lane)),
+## or, the field full, the player may send one of their characters to the Gutter to make room (as
+## deploying over one does) or keep them all (keep()). The CPU replaces its weakest character only
+## for a stronger card. Same as _askReplace in DuelState.js.
+func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable, keep: Callable) -> void:
+	var lane := _empty_lane(side)
+	if lane >= 0:
+		place.call(lane)
+		return
+	var mine: Array = []
+	for l in FRONT:
+		if can_sacrifice(side, l):
+			mine.append({"slot": l, "card": card_at(side, l)})
+	if mine.is_empty():
+		keep.call()
+		return
+	mine.sort_custom(func(a, b): return _attack_value(a.card) < _attack_value(b.card) \
+		or (_attack_value(a.card) == _attack_value(b.card) and a.slot < b.slot))
+	var opts: Array = []
+	for x in mine:
+		opts.append({"id": str(x.slot), "label": "REPLACE %s  (%d / %d)" % [str(x.card.name).to_upper(), int(x.card.attack), int(x.card.defense)],
+			"side": side, "slot": x.slot})
+	var no := {"id": "keep", "label": "KEEP THEM ALL"}
+	var better := _attack_value(card) > _attack_value(mine[0].card)
+	_ask(side, "replace", "Your field is full. Replace one of your characters with %s?" % card.name, card,
+		opts + [no] if better else [no] + opts, func(choice: String) -> void:
+			if winner != "":
+				return
+			var free := _empty_lane(side)
+			if free >= 0:   # (a lane came free meanwhile)
+				place.call(free)
+				return
+			var l := int(choice)
+			if choice == "keep" or not (l in FRONT) or not can_sacrifice(side, l):
+				keep.call()
+				return
+			var t: Dictionary = card_at(side, l)
+			sides[side].field[l] = null
+			t.downed = false
+			t.mods = []
+			_clear_status(t)
+			if not t.get("token", false):   # (tokens vanish)
+				sides[side].gutter.append(t)
+			_emit("tribute", {"side": side, "slot": l, "card": t.duplicate(true), "for": card.duplicate(true), "replace": true})
+			_effect(side, c, "%s: %s makes room for %s" % [c.name, t.name, card.name], NO_SLOT)
+			place.call(l))
+
+
 func _empty_lane(side: String) -> int:
 	for l in FRONT:
 		if sides[side].field[l] == null:
@@ -2480,16 +2533,12 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: nothing to find in the deck" % c.name, "slot": slot})   # (not something done)
 		"revive", "call":
 			# A character from your Gutter (revive) or deck (call) onto the field, in the first
-			# empty lane, in ATK
-			if _empty_lane(side) < 0:
+			# empty lane, in ATK (the field full: the player may replace one of their characters)
+			if not _room_for(side):
 				return
 			var from_deck := str(e.get("do", "")) == "call"
 			var pile: Array = s.deck if from_deck else s.gutter
-			_fx_take(side, c, e, pile, "%s: choose a character to %s" % [c.name, "call in" if from_deck else "bring back"], func(card: Dictionary) -> bool:
-				var lane := _empty_lane(side)
-				if lane < 0:
-					pile.append(card)
-					return false
+			var place := func(card: Dictionary, lane: int) -> bool:
 				card.downed = false
 				card.mods = []
 				_clear_status(card)
@@ -2507,28 +2556,48 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("summon", ev)
 				_effect(side, c, ("%s: %s is called in" if from_deck else "%s: %s is back on the street") % [c.name, card.name], slot)
 				_recalc()
-				return true, _shuffle_deck.bind(side) if from_deck else Callable())
+				return true
+			_fx_take(side, c, e, pile, "%s: choose a character to %s" % [c.name, "call in" if from_deck else "bring back"], func(card: Dictionary, cont: Callable) -> Variant:
+				var free := _empty_lane(side)
+				if free >= 0:
+					return place.call(card, free)
+				_ask_replace(side, c, card, func(l: int) -> void: cont.call(place.call(card, l)), func() -> void:
+					pile.append(card)
+					cont.call(false))
+				return "wait", _shuffle_deck.bind(side) if from_deck else Callable())
 		"token":
 			# Copies of a token card (Card Forge: marked Token, never in packs or decks) in the
-			# first empty lanes, in ATK. They vanish when they leave the field.
+			# first empty lanes, in ATK (the field full: the player may replace characters for
+			# them). They vanish when they leave the field.
 			var spec := str(e.get("token", ""))
 			if spec == "" or CardDB.get_card(spec).is_empty():
 				return
-			var made := 0
-			for i in mini(n, FRONT.size()):
-				var lane := _empty_lane(side)
-				if lane < 0:
-					break
+			var made := [0]
+			var one := func(lane: int) -> void:
 				var t := make_card(spec)
 				t.token = true
 				t.deployed_turn = turn
 				s.field[lane] = t
 				_emit("summon", {"side": side, "slot": lane, "card": t.duplicate(true), "from": "token"})
-				made += 1
-			if made > 0:
-				_effect(side, c, "%s: %d %s token%s join%s the fight" % [c.name, made, CardDB.get_card(spec).get("name", "token"),
-					"" if made == 1 else "s", "s" if made == 1 else ""], slot)
-				_recalc()
+				made[0] += 1
+			var finish := func() -> void:
+				if made[0] > 0:
+					_effect(side, c, "%s: %d %s token%s join%s the fight" % [c.name, made[0], CardDB.get_card(spec).get("name", "token"),
+						"" if made[0] == 1 else "s", "s" if made[0] == 1 else ""], slot)
+					_recalc()
+			var more := func(k: int, again: Callable) -> void:
+				while k > 0 and _empty_lane(side) >= 0:
+					one.call(_empty_lane(side))
+					k -= 1
+				if k <= 0 or winner != "":
+					finish.call()
+					return
+				var spec_card: Dictionary = CardDB.get_card(spec).duplicate(true)
+				spec_card.token = true
+				_ask_replace(side, c, spec_card, func(l: int) -> void:
+					one.call(l)
+					again.call(k - 1, again), finish)
+			more.call(mini(n, FRONT.size()), more)
 		"break_ambush", "shatter", "wreck":
 			# The opponent's face-down cards in the back row (break_ambush), its face-up Continuous and
 			# Equip cards (shatter), or either (wreck), left to right
@@ -2918,13 +2987,21 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 			if pile[i].uid == card.uid:
 				at = i
 				break
-		if at < 0 or not take.call(pile.pop_at(at)):
+		if at < 0:
 			done.call()
 			return
-		if left > 1:
-			_fx_take(side, c, e, pile, prompt, take, after, left - 1)
-		else:
-			done.call()
+		# take(card, cont): true taken, false not (the rest stop); "wait": it asks first, then cont(taken)
+		var go := func(taken) -> void:
+			if not taken:
+				done.call()
+			elif left > 1:
+				_fx_take(side, c, e, pile, prompt, take, after, left - 1)
+			else:
+				done.call()
+		var got: Dictionary = pile.pop_at(at)
+		var r = take.call(got, go) if take.get_argument_count() >= 2 else take.call(got)
+		if not (r is String and r == "wait"):
+			go.call(r)
 	if not e.get("choose", false):
 		next.call(matches[0])
 		return true

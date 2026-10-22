@@ -465,9 +465,9 @@ export class DuelState {
             case 'draw': case 'loot': return s.deck.length > 0;
             case 'search': return s.deck.some(mine);
             case 'recover': return s.gutter.some(mine);
-            case 'revive': return this._emptyLane(side) >= 0 && s.gutter.some(mine);
-            case 'call': return this._emptyLane(side) >= 0 && s.deck.some(mine);
-            case 'token': return this._emptyLane(side) >= 0 && !!CARD_CATALOG[String(e.token ?? '')];
+            case 'revive': return this._roomFor(side) && s.gutter.some(mine);
+            case 'call': return this._roomFor(side) && s.deck.some(mine);
+            case 'token': return this._roomFor(side) && !!CARD_CATALOG[String(e.token ?? '')];
             case 'discard': return foes.some(x => x.hand.length > 0);
             case 'mill': return foes.some(x => x.deck.length > 0);
             case 'heal': return s.morale < START_MORALE;
@@ -1832,6 +1832,42 @@ export class DuelState {
         return out;
     }
 
+    /** Room for a card an effect puts onto the field: an empty lane, or a character to replace (_askReplace). */
+    _roomFor(side) {
+        return this._emptyLane(side) >= 0 || FRONT.some(l => this.canSacrifice(side, l));
+    }
+
+    /** A card an effect puts onto the field (call, revive, token): in the first empty lane (place(lane)),
+     *  or, the field full, the player may send one of their characters to the Gutter to make room (as
+     *  deploying over one does) or keep them all (keep()). The CPU replaces its weakest character only
+     *  for a stronger card. Same as _ask_replace in duel_state.gd. */
+    _askReplace(side, c, card, place, keep) {
+        const lane = this._emptyLane(side);
+        if (lane >= 0) { place(lane); return; }
+        const mine = FRONT.filter(l => this.canSacrifice(side, l)).map(l => ({ slot: l, card: this.cardAt(side, l) }));
+        if (!mine.length) { keep(); return; }
+        mine.sort((a, b) => attackValue(a.card) - attackValue(b.card) || a.slot - b.slot);
+        const opts = mine.map(x => ({ id: String(x.slot), label: `REPLACE ${String(x.card.name).toUpperCase()}  (${x.card.attack} / ${x.card.defense})`, side, slot: x.slot }));
+        const no = { id: 'keep', label: 'KEEP THEM ALL' };
+        const better = attackValue(card) > attackValue(mine[0].card);
+        this._ask(side, 'replace', `Your field is full. Replace one of your characters with ${card.name}?`, card, better ? [...opts, no] : [no, ...opts], (choice) => {
+            if (this.winner !== '') return;
+            const free = this._emptyLane(side);
+            if (free >= 0) { place(free); return; }   // (a lane came free meanwhile)
+            const l = toInt(choice);
+            if (choice === 'keep' || !FRONT.includes(l) || !this.canSacrifice(side, l)) { keep(); return; }
+            const t = this.cardAt(side, l);
+            this.sides[side].field[l] = null;
+            t.downed = false;
+            t.mods = [];
+            this._clearStatus(t);
+            if (!t.token) this.sides[side].gutter.push(t);   // (tokens vanish)
+            this._emit('tribute', { side, slot: l, card: clone(t), for: clone(card), replace: true });
+            this._effect(side, c, `${c.name}: ${t.name} makes room for ${card.name}`, NO_SLOT);
+            place(l);
+        });
+    }
+
     _emptyLane(side) {
         const lane = FRONT.find(l => this.sides[side].field[l] == null);
         return lane == null ? -1 : lane;
@@ -2181,13 +2217,11 @@ export class DuelState {
             case 'revive':
             case 'call': {
                 // A character from your Gutter (revive) or deck (call) onto the field, in the first
-                // empty lane, in ATK
-                if (this._emptyLane(side) < 0) break;
+                // empty lane, in ATK (the field full: the player may replace one of their characters)
+                if (!this._roomFor(side)) break;
                 const fromDeck = String(e.do ?? '') === 'call';
                 const pile = fromDeck ? s.deck : s.gutter;
-                this._fxTake(side, c, e, pile, `${c.name}: choose a character to ${fromDeck ? 'call in' : 'bring back'}`, (card) => {
-                    const lane = this._emptyLane(side);
-                    if (lane < 0) { pile.push(card); return false; }
+                const place = (card, lane) => {
                     card.downed = false;
                     card.mods = [];
                     this._clearStatus(card);
@@ -2204,29 +2238,42 @@ export class DuelState {
                     this._effect(side, c, fromDeck ? `${c.name}: ${card.name} is called in` : `${c.name}: ${card.name} is back on the street`, slot);
                     this._recalc();
                     return true;
+                };
+                this._fxTake(side, c, e, pile, `${c.name}: choose a character to ${fromDeck ? 'call in' : 'bring back'}`, (card, cont) => {
+                    const free = this._emptyLane(side);
+                    if (free >= 0) return place(card, free);
+                    this._askReplace(side, c, card, (l) => cont(place(card, l)), () => { pile.push(card); cont(false); });
+                    return 'wait';
                 }, fromDeck ? () => this._shuffleDeck(side) : null);
                 break;
             }
             case 'token': {
                 // Copies of a token card (Card Forge: marked Token, never in packs or decks) in the
-                // first empty lanes, in ATK. They vanish when they leave the field.
+                // first empty lanes, in ATK (the field full: the player may replace characters for
+                // them). They vanish when they leave the field.
                 const spec = String(e.token ?? '');
                 if (spec === '' || !CARD_CATALOG[spec]) break;
                 let made = 0;
-                for (let i = 0; i < Math.min(n, FRONT.length); i++) {
-                    const lane = this._emptyLane(side);
-                    if (lane < 0) break;
+                const one = (lane) => {
                     const t = this.makeCard(spec);
                     t.token = true;
                     t.deployed_turn = this.turn;
                     s.field[lane] = t;
                     this._emit('summon', { side, slot: lane, card: clone(t), from: 'token' });
                     made += 1;
-                }
-                if (made > 0) {
-                    this._effect(side, c, `${c.name}: ${made} ${CARD_CATALOG[spec].name ?? 'token'} token${made === 1 ? '' : 's'} join${made === 1 ? 's' : ''} the fight`, slot);
-                    this._recalc();
-                }
+                };
+                const finish = () => {
+                    if (made > 0) {
+                        this._effect(side, c, `${c.name}: ${made} ${CARD_CATALOG[spec].name ?? 'token'} token${made === 1 ? '' : 's'} join${made === 1 ? 's' : ''} the fight`, slot);
+                        this._recalc();
+                    }
+                };
+                const more = (k) => {
+                    for (; k > 0 && this._emptyLane(side) >= 0; k--) one(this._emptyLane(side));
+                    if (k <= 0 || this.winner !== '') { finish(); return; }
+                    this._askReplace(side, c, { ...CARD_CATALOG[spec], token: true }, (l) => { one(l); more(k - 1); }, finish);
+                };
+                more(Math.min(n, FRONT.length));
                 break;
             }
             case 'break_ambush':
@@ -2585,11 +2632,17 @@ export class DuelState {
             return false;
         }
         const done = () => { if (after) after(); };
-        const next = (card) => {
-            const i = pile.findIndex(x => x.uid === card.uid);
-            if (i < 0 || !take(pile.splice(i, 1)[0])) return done();
+        // take(card, cont): true taken, false not (the rest stop); 'wait': it asks first, then cont(taken)
+        const go = (taken) => {
+            if (!taken) return done();
             if (left > 1) this._fxTake(side, c, e, pile, prompt, take, after, left - 1);
             else done();
+        };
+        const next = (card) => {
+            const i = pile.findIndex(x => x.uid === card.uid);
+            if (i < 0) return done();
+            const r = take(pile.splice(i, 1)[0], go);
+            if (r !== 'wait') go(r);
         };
         if (!e.choose) {
             next(matches[0]);

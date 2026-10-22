@@ -222,4 +222,31 @@ assert.equal(ambushed([{ when: 'defend', do: 'buff', target: 'enemy', atk: -500,
     '"... and negate the attack" (an option on any effect)');
 assert.equal(ambushed([{ when: 'defend', do: 'buff', target: 'attacker', atk: -500, negate: true }]).length, 0);
 
+// A full field: an effect that puts cards onto it (call, revive, token) asks to replace a character
+// for each card that doesn't fit; the replaced one goes to the Gutter; "keep" leaves the card where it was
+const full = () => {
+    const s = duel([]);
+    for (const l of [0, 1, 2, 3]) s.sides.player.field[l] = s.makeCard({ id: 'full_' + l, name: 'Grunt ' + l, cardType: 'gang_member', clanTag: 'test', attack: 500 + l * 100, defense: 500 });
+    for (let i = 0; i < 3; i++) s.sides.player.deck.push(s.makeCard({ id: 'full_call', name: 'Bruiser', cardType: 'gang_member', clanTag: 'test', attack: 2000, defense: 1000 }));
+    s._recalc();
+    return s;
+};
+st = full();
+st._doFx('player', -1, { name: 'All In', uid: 'x' }, { do: 'call', amount: 2 });
+assert.equal(st.sides.player.field[4].name, 'Bruiser', 'the first goes in the empty lane');
+let ask = st._asks.shift();
+assert.equal(ask.key, 'replace', 'the second asks to replace');
+assert.equal(ask.options[0].id, '0', 'the weakest first (the CPU replaces it for a stronger card)');
+assert.equal(ask.options.at(-1).id, 'keep');
+st._runAnswer(() => ask.cb('2'));
+assert.equal(st.sides.player.field[2].name, 'Bruiser', 'it takes the replaced lane');
+assert.ok(st.sides.player.gutter.some(c => c.name === 'Grunt 2'), 'the replaced one is in the Gutter');
+assert.equal(st.sides.player.deck.length, 1);
+st = full();
+st._doFx('player', -1, { name: 'All In', uid: 'x' }, { do: 'call', amount: 2 });
+ask = st._asks.shift();
+st._runAnswer(() => ask.cb('keep'));
+assert.equal(st.sides.player.deck.length, 2, 'kept: the card stays in the deck');
+assert.equal(st.sides.player.gutter.length, 0);
+
 console.log('hustles: ok');
