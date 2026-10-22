@@ -2743,13 +2743,15 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_001",
         "code": "WILD-001",
         "flavourText": "You can cheat fate, son. You can even cheat death. But you never cheat the house.",
-        "effectText": "While this leader is Dormant, at the start of your turn: Flip a coin. If heads, draw 1 card.\nWhile this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+        "effectText": "While this leader is Dormant, at the start of your turn: If you have 3 or fewer cards in hand, flip a coin. If heads, draw 1 card.\nWhile this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
         "effects": [
             {
                 "when": "dormant_turn_start",
                 "do": "draw",
+                "if": "hand_le",
                 "luck": "coin",
-                "amount": 1
+                "amount": 1,
+                "n": 3
             },
             {
                 "when": "dormant",
