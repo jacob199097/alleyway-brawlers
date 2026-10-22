@@ -478,7 +478,7 @@ export const FORGE_CARDS = {
     },
     "card_nebu_025": {
         "id": "card_nebu_025",
-        "name": "Jax",
+        "name": "Jax, Space Bouncer",
         "clan": "nebula",
         "cardType": "gang_member",
         "authority": 6,
@@ -993,12 +993,12 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_037",
         "code": "NEBU-037",
         "flavourText": "Science isn’t about playing with forces. It’s about convincing them to play with you.",
-        "effectText": "At the end of your turn: Put one enemy character in STASIS.",
+        "effectText": "At the end of your turn: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.",
         "effects": [
             {
                 "when": "turn_end",
-                "do": "stasis",
-                "target": "enemy"
+                "do": "wreck",
+                "amount": 1
             }
         ],
         "clanName": "Nebula",
