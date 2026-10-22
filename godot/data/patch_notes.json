@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.58",
+        "notes": [
+            "A character with a BOUNTY on it now wears a little WANTED poster showing how many cards it pays.",
+            "The Wildcard card back comes alive: its roulette wheel turns, with a ball rolling round it."
+        ]
+    },
+    {
         "version": "0.9.57",
         "notes": [
             "An Equip's ATK / DEF bonuses now go away when the Equip is destroyed or leaves the field.",

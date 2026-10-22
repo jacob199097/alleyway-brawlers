@@ -30,6 +30,12 @@ uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered
 uniform float radar = 0.0;
 uniform float radar_center_y = -0.044;   // the emblem's centre, as uv.y (card centre = 0)
 uniform float radar_radius = 0.335;      // the outer ring, in card widths
+// roulette: the wheel behind the crest turns (the Wildcard back), with a ball rolling the other way.
+// roulette_tex: the wheel band as its own layer (RGB; A = how much of each pixel turns: the band, not
+// the chips lying on it or the crest), the size of the card. It turns by galaxy_angle.
+uniform float roulette = 0.0;
+uniform sampler2D roulette_tex : filter_linear;
+uniform vec2 roulette_center = vec2(0.0, -0.035);   // the wheel's centre, as uv (card centre = 0)
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
 
 varying vec2 s;
@@ -178,6 +184,27 @@ void fragment() {
 			col.rgb += lime * radar * exp(-bb * 2.6) * smoothstep(0.013, 0.0, length(p - bp)) * 0.95;
 		}
 		col.rgb += lime * radar * (0.06 + 0.06 * galaxy_glow) * (0.5 + 0.5 * sin(TIME * 2.2)) * smoothstep(0.006, 0.0, abs(r - radar_radius));
+	}
+
+	if (roulette > 0.0) {
+		// The wheel band turns around its centre (in card widths, so it stays round); the chips on it and
+		// the crest don't (the layer's alpha, read where the pixel is)
+		vec2 d = (uv - roulette_center) * vec2(1.0, aspect);
+		float ang = galaxy_angle;
+		vec2 rd = mat2(vec2(cos(ang), sin(ang)), vec2(-sin(ang), cos(ang))) * d;
+		vec3 wheel = texture(roulette_tex, roulette_center + rd / vec2(1.0, aspect) + 0.5).rgb;
+		float w = texture(roulette_tex, uv + 0.5).a * roulette;
+		col.rgb = mix(col.rgb, wheel * (1.0 + 0.3 * galaxy_glow), w);
+		// The ball runs round the track the other way, faster
+		float ba = -galaxy_angle * 2.7 + 1.3;
+		vec2 bp = vec2(cos(ba), sin(ba)) * 0.318;
+		float ball = smoothstep(0.016, 0.009, length(d - bp));
+		float glint = smoothstep(0.006, 0.0, length(d - bp - vec2(-0.004, -0.004)));
+		col.rgb = mix(col.rgb, vec3(0.95, 0.92, 0.85) + 0.3 * glint, ball * w);
+		// Lights round the rim chase the turn, brighter while hovered
+		float r = length(d);
+		float rim = smoothstep(0.012, 0.0, abs(r - 0.37)) * (0.5 + 0.5 * sin(atan(d.y, d.x) * 18.0 - galaxy_angle * 9.0));
+		col.rgb += vec3(1.0, 0.75, 0.3) * rim * w * (0.12 + 0.25 * galaxy_glow);
 	}
 
 	// A soft diagonal band of light that slides across as the card tilts

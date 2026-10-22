@@ -130,7 +130,7 @@ static func art(id: String) -> Texture2D:
 ## there is one, otherwise the first clan's (by name) that has one. There is no clan-less back.
 ## Clan backs that move (shaders/card.gdshader): "galaxy" turns the nebula around the crest;
 ## "radar" sweeps a beam around the emblem's radar rings.
-const BACK_STYLES := {"nebula": "galaxy", "militia": "radar"}
+const BACK_STYLES := {"nebula": "galaxy", "militia": "radar", "wildcard": "roulette"}
 
 
 ## How a clan's back moves ("" = it doesn't).

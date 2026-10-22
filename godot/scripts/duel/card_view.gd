@@ -59,7 +59,7 @@ var _spin_speed := 0.09
 var _spin_idle := 0.09                  # radians per second at rest...
 var _spin_hover := 1.6                  # ...and while a face-down card is hovered (it also glows)
 ## Speeds per moving back (CardDB.BACK_STYLES): [at rest, hovered]
-const BACK_SPEEDS := {"galaxy": [0.09, 1.6], "radar": [1.5, 4.8]}
+const BACK_SPEEDS := {"galaxy": [0.09, 1.6], "radar": [1.5, 4.8], "roulette": [0.5, 3.2]}
 var _tilt := Vector2.ZERO        # current (y_rot, x_rot) in the card's own frame
 var _kick := Vector2.ZERO        # recoil from hits, decays
 var _flip_deg := 0.0             # extra turn while flipping over
@@ -78,6 +78,7 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	_body.add_child(_back)
 	_body.add_child(_front)
 	_mat.shader = _shader
+	_mat.set_shader_parameter("roulette_tex", UI.ROULETTE_TEX)   # (the Wildcard back's turning wheel)
 	_front.material = _mat
 	_back.material = _mat
 	_back.texture = CardDB.back()
@@ -563,6 +564,8 @@ func _draw_statuses() -> void:
 			L.draw_line(Vector2(tx - 26.0, ty), Vector2(tx, ty), Color(0.71, 0.9, 0.33, 0.85 * (1.0 - ph)), 2.0, true)
 	if statuses.has("stasis"):
 		_draw_time_bubble(L, r, t)
+	if statuses.has("bounty"):
+		_draw_wanted(L, r, t)
 	if statuses.has("resting"):
 		for i in 3:   # "z"s drifting up off its top corner: it can't attack this turn
 			var ph := fmod(t * 0.45 + i / 3.0, 1.0)
@@ -584,6 +587,31 @@ func _draw_statuses() -> void:
 		_status_layer.draw_rect(pill, col, false, 1.5)
 		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
 		x += 38.0
+
+
+## BOUNTY: a little WANTED poster pinned to the card's right edge, swaying, with what it pays out
+## (the cards whoever put it there draws when it's KO'd).
+func _draw_wanted(L: Node2D, r: Rect2, t: float) -> void:
+	var font := ThemeDB.fallback_font
+	var pin := Vector2(r.end.x - 20.0, r.position.y + 40.0)
+	var sway := sin(t * 1.7) * 0.06 - 0.1
+	L.draw_set_transform(pin, sway, Vector2.ONE * 0.82)
+	var paper := Rect2(-15, 0, 30, 38)
+	L.draw_rect(Rect2(paper.position + Vector2(2, 2), paper.size), Color(0, 0, 0, 0.4))   # its shadow
+	L.draw_rect(paper, Color(0.92, 0.83, 0.62))
+	L.draw_rect(paper, Color(0.45, 0.3, 0.14), false, 1.2)
+	for i in 3:   # a little wear on the paper
+		L.draw_line(Vector2(-13 + i * 9, 1), Vector2(-11 + i * 9, 6), Color(0.6, 0.45, 0.25, 0.35), 0.8)
+	var ink := Color(0.25, 0.12, 0.05)
+	L.draw_string(font, Vector2(-15, 8), "WANTED", HORIZONTAL_ALIGNMENT_CENTER, 30, 7, ink)
+	L.draw_circle(Vector2(0, 16), 4.0, ink)   # the outlaw's silhouette
+	L.draw_colored_polygon(PackedVector2Array([Vector2(-8, 27), Vector2(-6, 21), Vector2(6, 21), Vector2(8, 27)]), ink)
+	var b = card.get("bounty")
+	var n := int(b.get("n", 1)) if b is Dictionary else 1
+	L.draw_string(font, Vector2(-15, 35), "%d CARD%s" % [n, "" if n == 1 else "S"], HORIZONTAL_ALIGNMENT_CENTER, 30, 6, Color(0.6, 0.08, 0.06))
+	L.draw_circle(Vector2(0, 0), 2.4, Color(0.85, 0.15, 0.12))   # the pin
+	L.draw_circle(Vector2(-0.7, -0.7), 0.8, Color(1, 0.7, 0.65))
+	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## STASIS: frozen in time inside a slowly turning purple bubble, with a clock face on it.
