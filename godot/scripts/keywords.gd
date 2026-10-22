@@ -25,15 +25,23 @@ const LIST := {
 	"REWIND": [Color("d6c2ff"), "REWIND: its ATK and DEF changes are undone, back to the printed numbers."],
 	"BARRICADE": [Color("bfe3ff"), "BARRICADE X: the next X Morale damage you would take before your next turn is prevented."],
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
+	"DOUBLE": [Color("ff8f6b"), "DOUBLE OR NOTHING: you may bet on a coin flip. Heads, the effect happens twice; tails, not at all. Don't bet, and it happens once."],
 }
-## Two-word keywords: the word that follows, highlighted as part of the same keyword.
-const SECOND_WORD := {"LOADED": "DICE"}
+## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
+## PHRASE_ONLY ones are keywords only as the whole phrase ("Double its ATK" isn't DOUBLE OR NOTHING).
+const PHRASES := {"LOADED": ["DICE"], "DOUBLE": ["OR", "NOTHING"]}
+const PHRASE_ONLY := ["DOUBLE"]
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]
 
 
 ## The keyword a word belongs to ("STUNNED" -> "STUN"), or "".
 static func find(word: String) -> String:
+	var k := _find(word)
+	return "" if k in PHRASE_ONLY else k
+
+
+static func _find(word: String) -> String:
 	var w := word.to_upper().trim_suffix("'S")
 	if LIST.has(w):
 		return w
@@ -47,24 +55,60 @@ static func find(word: String) -> String:
 	return ""
 
 
+## The words of a text ([A-Za-z']+ matches) and the keyword each belongs to ("" for none); a
+## keyword starts with a capital, and every word of a multi-word one is tagged with it.
+static func _tag(text: String) -> Array:
+	var ms: Array = RegEx.create_from_string("[A-Za-z']+").search_all(text)
+	var tags: Array = []
+	tags.resize(ms.size())
+	tags.fill("")
+	var i := 0
+	while i < ms.size():
+		var word: String = ms[i].get_string()
+		var up := word.to_upper()
+		if word[0] == up[0] and PHRASES.has(up):
+			var rest: Array = PHRASES[up]
+			var whole := true
+			for k in rest.size():
+				var j := i + 1 + k
+				if j >= ms.size() or ms[j].get_string().to_upper() != rest[k] \
+						or text.substr(ms[j - 1].get_end(), ms[j].get_start() - ms[j - 1].get_end()).strip_edges() != "":
+					whole = false
+					break
+			if whole:
+				for k in rest.size() + 1:
+					tags[i + k] = up
+				i += rest.size() + 1
+				continue
+		if word[0] == up[0]:
+			tags[i] = find(word)
+		i += 1
+	return [ms, tags]
+
+
+## The keywords in a text, each once, in order.
+static func found(text: String) -> Array:
+	var out: Array = []
+	for kw in _tag(text)[1]:
+		if kw != "" and not out.has(kw):
+			out.append(kw)
+	return out
+
+
 ## Card text as BBCode with every keyword coloured, bold and hoverable. Clan names in capitals
 ## (NEBULA) are bold in their clan's colour, as in the Card Forge.
 static func markup(text: String) -> String:
 	var clans := {}   # CLAN NAME -> its colour
 	for c in CardDB.clans():
 		clans[str(c.name).to_upper()] = c.color
-	var re := RegEx.create_from_string("[A-Za-z']+")
+	var tagged := _tag(text)
 	var out := ""
 	var at := 0
-	var last_kw := ""
-	for m in re.search_all(text):
+	for i in tagged[0].size():
+		var m: RegExMatch = tagged[0][i]
 		var word := m.get_string()
-		var gap := text.substr(at, m.get_start() - at)
-		var kw := find(word) if word[0] == word[0].to_upper() else ""
-		if kw == "" and last_kw != "" and gap.strip_edges() == "" and SECOND_WORD.get(last_kw, "") == word.to_upper():
-			kw = last_kw   # the second word of a two-word keyword (LOADED DICE)
-		last_kw = kw
-		out += _escape(gap)
+		var kw: String = tagged[1][i]
+		out += _escape(text.substr(at, m.get_start() - at))
 		if kw != "":
 			out += "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, LIST[kw][0].to_html(false), word]
 		elif word == word.to_upper() and clans.has(word):
@@ -84,7 +128,7 @@ static func describe(kw: String) -> String:
 
 ## A keyword's whole name ("LOADED" -> "LOADED DICE").
 static func full_name(kw: String) -> String:
-	return kw + (" " + SECOND_WORD[kw] if SECOND_WORD.has(kw) else "")
+	return kw + (" " + " ".join(PHRASES[kw]) if PHRASES.has(kw) else "")
 
 
 static func _escape(s: String) -> String:

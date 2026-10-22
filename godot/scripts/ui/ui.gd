@@ -721,12 +721,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(body)
 	# What its keywords mean, under the text
-	var seen := []
-	for m in RegEx.create_from_string("[A-Za-z']+").search_all(raw):
-		var w := m.get_string()
-		var kw := Keywords.find(w) if w == w.to_upper() and w.length() > 1 else ""
-		if kw != "" and not seen.has(kw):
-			seen.append(kw)
+	var seen := Keywords.found(raw)
 	if not seen.is_empty():
 		var gl := RichTextLabel.new()
 		gl.bbcode_enabled = true

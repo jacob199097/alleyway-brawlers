@@ -173,4 +173,25 @@ assert.notEqual(choose(st, 'player').kind, 'hustle', 'one each: not worth it');
 st.sides.opponent.field[3] = st.makeCard('card_nebu_011');
 assert.equal(choose(st, 'player').kind, 'hustle', 'two of theirs, one of ours: worth it');
 
+// Set stats: ATK / DEF become a number (earlier changes stop counting, later ones still do), until
+// the end of the turn or for good; a blank one is left alone
+st = duel([]);
+const brute = st.makeCard({ id: 'set_brute', name: 'Brute', cardType: 'gang_member', clanTag: 'test', attack: 2000, defense: 1500 });
+st.sides.opponent.field[0] = brute;
+brute.mods.push({ atk: 500, def: 0, until_turn: 1000000 });
+st._recalc();
+assert.equal(brute.attack, 2500);
+st._doFx('player', -1, { name: 'Snake Eyes', uid: 'x' }, { do: 'set_stats', target: 'enemy', atk: 100, def: 100, until: 'turn' });
+{ const q = st._asks.shift(); st._runAnswer(() => q.cb(q.options[0].id)); }
+assert.deepEqual([brute.attack, brute.defense], [100, 100], 'ATK and DEF become 100');
+brute.mods.push({ atk: 200, def: 0, until_turn: 1000000 });
+st._recalc();
+assert.equal(brute.attack, 300, 'a later gain still counts');
+brute.mods = brute.mods.filter(m => m.until_turn > st.turn);   // (the turn ends)
+st._recalc();
+assert.deepEqual([brute.attack, brute.defense], [2700, 1500], 'back after the turn');
+st._doFx('player', -1, { name: 'Snake Eyes', uid: 'x' }, { do: 'set_stats', target: 'enemy', def: 0, until: 'forever' });
+{ const q = st._asks.shift(); st._runAnswer(() => q.cb(q.options[0].id)); }
+assert.deepEqual([brute.attack, brute.defense], [2700, 0], 'only DEF, for good');
+
 console.log('hustles: ok');

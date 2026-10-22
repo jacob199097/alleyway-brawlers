@@ -88,6 +88,14 @@ function statText(mod) {
     return parts.length ? parts.join(' / ') : 'no change';
 }
 
+/** "ATK becomes 100 / DEF becomes 100" (a set_stats mod) */
+function setText(mod) {
+    const parts = [];
+    if (mod.set_atk != null) parts.push(`ATK becomes ${mod.set_atk}`);
+    if (mod.set_def != null) parts.push(`DEF becomes ${mod.set_def}`);
+    return parts.length ? parts.join(' / ') : 'no change';
+}
+
 function strongestFirst(a, b) {
     const va = attackValue(a.card);
     const vb = attackValue(b.card);
@@ -1655,10 +1663,12 @@ export class DuelState {
                 if (c == null) continue;
                 let atk = c.base_attack;
                 let df = c.base_defense;
+                let setAtk = false, setDef = false;   // (a set_stats: it is that number; only later changes count)
                 for (const m of c.mods) {
-                    atk += toInt(m.atk);
-                    df += toInt(m.def);
+                    if (m.set_atk != null) { atk = toInt(m.set_atk); setAtk = true; } else atk += toInt(m.atk);
+                    if (m.set_def != null) { df = toInt(m.set_def); setDef = true; } else df += toInt(m.def);
                 }
+                const atkSet = atk, defSet = df;
                 const otherLions = lions - (isLion(c) ? 1 : 0);
                 switch (c.effectKey || '') {
                     case 'lion_grunt_synergy': if (otherLions > 0) atk += 300; break;
@@ -1693,6 +1703,8 @@ export class DuelState {
                 for (const adj of [slot - 1, slot + 1]) {
                     if (FRONT.includes(adj) && s.field[adj] != null && s.field[adj].effectKey === 'bulwark') df += 400;
                 }
+                if (setAtk) atk = atkSet;   // (auras, Equips and the like don't change a set number)
+                if (setDef) df = defSet;
                 if (c.mods.filter(m => m.swap).length % 2 === 1) [atk, df] = [df, atk];   // (swapped: ATK and DEF trade places)
                 c.attack = Math.max(0, atk);
                 c.defense = Math.max(0, df);
@@ -2013,6 +2025,18 @@ export class DuelState {
                     return `${c.name} removes ${name} from the game`;
                 }, `${c.name} removes %s from the game`);
                 break;
+            case 'set_stats': {   // its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
+                const mod = { until_turn: this._until(e) };
+                if (e.atk != null && e.atk !== '') mod.set_atk = Math.max(0, toInt(e.atk));
+                if (e.def != null && e.def !== '') mod.set_def = Math.max(0, toInt(e.def));
+                const label = setText(mod);
+                this._fxApply(side, slot, c, e, vs, 'any', label, (x) => {
+                    x.card.mods.push({ ...mod });
+                    this._recalc();
+                    return `${x.card.name}: ${label}`;
+                }, `${c.name}: ${label} for %s`);
+                break;
+            }
             case 'swap': {   // ATK and DEF trade places (until the end of the turn, the next, or for good)
                 const until = this._until(e);
                 this._fxApply(side, slot, c, e, vs, 'any', 'swap ATK and DEF', (x) => {

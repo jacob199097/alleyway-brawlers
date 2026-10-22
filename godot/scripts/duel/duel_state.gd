@@ -1825,9 +1825,21 @@ func _recalc() -> void:
 				continue
 			var atk: int = c.base_attack
 			var df: int = c.base_defense
+			var set_atk := false   # (a set_stats: it is that number; only later changes count)
+			var set_def := false
 			for m in c.mods:
-				atk += int(m.get("atk", 0))
-				df += int(m.get("def", 0))
+				if m.get("set_atk") != null:
+					atk = int(m.set_atk)
+					set_atk = true
+				else:
+					atk += int(m.get("atk", 0))
+				if m.get("set_def") != null:
+					df = int(m.set_def)
+					set_def = true
+				else:
+					df += int(m.get("def", 0))
+			var atk_set := atk
+			var def_set := df
 			var other_lions := lions - (1 if is_lion(c) else 0)
 			match c.get("effectKey", ""):
 				"lion_grunt_synergy":
@@ -1864,6 +1876,10 @@ func _recalc() -> void:
 			for adj in [slot - 1, slot + 1]:
 				if adj in FRONT and s.field[adj] != null and s.field[adj].get("effectKey") == "bulwark":
 					df += 400
+			if set_atk:   # (auras, Equips and the like don't change a set number)
+				atk = atk_set
+			if set_def:
+				df = def_set
 			if c.mods.filter(func(m): return m.get("swap", false)).size() % 2 == 1:   # (swapped: ATK and DEF trade places)
 				var was := atk
 				atk = df
@@ -2306,6 +2322,18 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_exile(x.side, x.slot)
 				return "%s removes %s from the game" % [c.name, name]
 			_fx_apply(side, slot, c, e, vs, "any", "remove from the game", fn, "%s removes %%s from the game" % c.name)
+		"set_stats":   # its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
+			var mod := {"until_turn": _until(e)}
+			if e.get("atk") != null and str(e.atk) != "":
+				mod.set_atk = maxi(0, int(e.atk))
+			if e.get("def") != null and str(e.def) != "":
+				mod.set_def = maxi(0, int(e.def))
+			var label := _set_text(mod)
+			var fn := func(x: Dictionary) -> String:
+				x.card.mods.append(mod.duplicate())
+				_recalc()
+				return "%s: %s" % [x.card.name, label]
+			_fx_apply(side, slot, c, e, vs, "any", label, fn, "%s: %s for %%s" % [c.name, label])
 		"swap":   # ATK and DEF trade places (until the end of the turn, the next, or for good)
 			var until := _until(e)
 			var fn := func(x: Dictionary) -> String:
@@ -2984,6 +3012,16 @@ static func _stat_text(mod: Dictionary) -> String:
 		parts.append("%s ATK" % _signed(int(mod.atk)))
 	if int(mod.get("def", 0)) != 0:
 		parts.append("%s DEF" % _signed(int(mod.def)))
+	return " / ".join(parts) if not parts.is_empty() else "no change"
+
+
+## "ATK becomes 100 / DEF becomes 100" (a set_stats mod)
+static func _set_text(mod: Dictionary) -> String:
+	var parts: Array = []
+	if mod.has("set_atk"):
+		parts.append("ATK becomes %d" % int(mod.set_atk))
+	if mod.has("set_def"):
+		parts.append("DEF becomes %d" % int(mod.set_def))
 	return " / ".join(parts) if not parts.is_empty() else "no change"
 
 

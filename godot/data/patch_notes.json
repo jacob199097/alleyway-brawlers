@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.52",
+        "notes": [
+            "New effect: set a character's ATK and / or DEF to a number (e.g. an Ambush that makes the attacker 100 / 100), for the turn or for good.",
+            "DOUBLE OR NOTHING is a keyword now: hover it to see how the bet works."
+        ]
+    },
+    {
         "version": "0.9.51",
         "notes": [
             "DOUBLE OR NOTHING is now your choice: bet on a coin (heads, it happens twice; tails, not at all) or take the effect once."

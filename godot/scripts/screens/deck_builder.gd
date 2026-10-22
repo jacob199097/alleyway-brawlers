@@ -630,7 +630,7 @@ func _matches(item: Dictionary) -> bool:
 			return false
 	if _keyword != "all":
 		var text := str(item.get("effect_text", "")) + " " + str(CardDB.get_card(str(item.get("art_url", ""))).get("effectText", ""))
-		if not _keyword in text.to_upper():
+		if not Keywords.full_name(_keyword) in text.to_upper():
 			return false
 	if _filter_text != "":
 		var hay := "%s %s %s" % [item.get("name", ""), item.get("subtype", ""), item.get("card_type", "")]
