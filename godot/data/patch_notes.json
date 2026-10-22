@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.54",
+        "notes": [
+            "Ambushes: any of their effects can also negate the attack (e.g. put all enemies in STASIS and negate the attack)."
+        ]
+    },
+    {
         "version": "0.9.53",
         "notes": [
             "Ambushes: effects that ask you to pick a target now happen before the brawl, not after it, so an attacker that loses ATK can lose the brawl. The attack goes on unless the Ambush negates it (or Downs, removes or freezes the attacker in STASIS).",

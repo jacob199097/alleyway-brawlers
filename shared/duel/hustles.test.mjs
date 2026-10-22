@@ -218,5 +218,8 @@ assert.equal(ambushed([{ when: 'defend', do: 'set_stats', target: 'attacker', at
 assert.equal(ambushed([{ when: 'defend', do: 'negate' }]).length, 0, 'negated: no brawl');
 assert.equal(ambushed([{ when: 'defend', do: 'negate', luck: 'double' }], (p) => p.key === 'double' ? 'once' : p.options[0].id).length, 0,
     'negated after its DOUBLE OR NOTHING choice');
+assert.equal(ambushed([{ when: 'defend', do: 'buff', target: 'enemy', atk: -500, until: 'turn', negate: true }]).length, 0,
+    '"... and negate the attack" (an option on any effect)');
+assert.equal(ambushed([{ when: 'defend', do: 'buff', target: 'attacker', atk: -500, negate: true }]).length, 0);
 
 console.log('hustles: ok');

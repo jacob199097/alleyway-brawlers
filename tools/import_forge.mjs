@@ -162,7 +162,8 @@ function cleanEffect(e) {
     if (e.or) out.or = true;   // "choose one": this effect or the next
     if (e.if_done) out.if_done = true;   // "If you do, ...": only if the effect before did something
     if (e.choose) out.choose = true;   // search / recover / revive: the player picks the card
-    if (e.reveal) out.reveal = true;   // search: every player sees what it found (otherwise only its owner)
+    if (e.reveal) out.reveal = true;
+    if (e.negate) out.negate = true;   // an Ambush's effect: ... and negate the attack (the attack stops)   // search: every player sees what it found (otherwise only its owner)
     for (const k of ['if_clan', 'when_clan']) if (e[k] != null) out[k] = String(e[k]);   // ("" = any clan, so kept)
     if (Array.isArray(e.statuses) && e.statuses.length) out.statuses = e.statuses.map(String);   // immune: only these
     return out;

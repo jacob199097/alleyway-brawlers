@@ -1745,6 +1745,7 @@ export class DuelState {
                     ctx.bonus += atk;
                     this._effect(foe, a, `${a.name}: the attacker gets ${signed(atk)} ATK this brawl`, NO_SLOT);
                 }
+                if (e.negate) this._negate(foe, NO_SLOT, a, vs);
             } else {
                 this._doFx(foe, NO_SLOT, a, e, vs);
             }
@@ -1954,6 +1955,18 @@ export class DuelState {
     }
 
     _doFxRun(side, slot, c, e, vs) {
+        this._doFxThen(side, slot, c, e, vs);
+        if (e.negate) this._negate(side, slot, c, vs);   // ("... and negate the attack": an Ambush)
+    }
+
+    /** A sprung Ambush stops the attack (vs.ctx: the attack; nothing outside one). */
+    _negate(side, slot, c, vs) {
+        if (!vs || !vs.ctx || vs.ctx.negated) return;
+        vs.ctx.negated = true;
+        this._effect(side, c, `${c.name} negates the attack`, slot);
+    }
+
+    _doFxThen(side, slot, c, e, vs) {
         const then = e.then && typeof e.then === 'object' ? e.then : null;
         if (then == null) { this._doFxOne(side, slot, c, e, vs); return; }
         const did = this._did, asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
@@ -2071,11 +2084,8 @@ export class DuelState {
                     return `${x.card.name} is rewound to its printed ATK and DEF`;
                 }, `${c.name} rewinds %s`);
                 break;
-            case 'negate':   // an Ambush: the attack stops (nothing else happens to the attacker)
-                if (vs && vs.ctx && !vs.ctx.negated) {
-                    vs.ctx.negated = true;
-                    this._effect(side, c, `${c.name} negates the attack`, slot);
-                }
+            case 'negate':   // an Ambush: the attack stops (older cards; now an option on any effect: negate)
+                this._negate(side, slot, c, vs);
                 break;
             case 'jam':   // JAM: the opponent can't spring Ambushes until the end of their next turn
                 for (const foe of this.foesOf(side)) {

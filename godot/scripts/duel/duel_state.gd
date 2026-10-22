@@ -1218,6 +1218,8 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 			if atk != 0:
 				ctx.bonus += atk
 				_effect(foe, a, "%s: the attacker gets %s ATK this brawl" % [a.name, _signed(atk)], NO_SLOT)
+			if e.get("negate", false):
+				_negate(foe, NO_SLOT, a, vs)
 		else:
 			_do_fx(foe, NO_SLOT, a, e, vs)
 	if winner != "":
@@ -2245,6 +2247,21 @@ func _ask_double(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 
 
 func _do_fx_run(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
+	_do_fx_then(side, slot, c, e, vs)
+	if e.get("negate", false):   # ("... and negate the attack": an Ambush)
+		_negate(side, slot, c, vs)
+
+
+## A sprung Ambush stops the attack (vs.ctx: the attack; nothing outside one).
+func _negate(side: String, slot: int, c: Dictionary, vs: Dictionary) -> void:
+	var actx = vs.get("ctx")
+	if not (actx is Dictionary) or actx.get("negated", false):
+		return
+	actx.negated = true
+	_effect(side, c, "%s negates the attack" % c.name, slot)
+
+
+func _do_fx_then(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
 	var then = e.get("then")
 	if not (then is Dictionary):
 		_do_fx_one(side, slot, c, e, vs)
@@ -2368,11 +2385,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("rewind", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s is rewound to its printed ATK and DEF" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "changed", "rewind", fn, "%s rewinds %%s" % c.name)
-		"negate":   # an Ambush: the attack stops (nothing else happens to the attacker)
-			var actx = vs.get("ctx")
-			if actx is Dictionary and not actx.get("negated", false):
-				actx.negated = true
-				_effect(side, c, "%s negates the attack" % c.name, slot)
+		"negate":   # an Ambush: the attack stops (older cards; now an option on any effect: negate)
+			_negate(side, slot, c, vs)
 		"jam":   # JAM: the opponent can't spring Ambushes until the end of their next turn
 			for foe in foes_of(side):
 				sides[foe].jam_until = _owner_next_turn(foe)
