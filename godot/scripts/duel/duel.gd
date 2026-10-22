@@ -3970,6 +3970,7 @@ func _take_from_hand(side: String, uid: int, c: Dictionary) -> CardView:
 	v.stop_moving()
 	v.set_card(c)
 	v.glow = 0.0
+	v.cost_now = -1   # (a lowered cost is only shown in the hand)
 	v.board_scale = _sc(side)   # (FFA: your hand is full size, your board smaller)
 	_layout_hand(side)
 	return v

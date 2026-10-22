@@ -478,6 +478,27 @@ func _draw_glow_symbol(r: Rect2) -> void:
 		L.draw_circle(at + Vector2(0, 8), 2.0, ink)
 
 
+## A lowered Authority cost (in the hand): a small dark plate over the printed number in the
+## top-left corner, the new cost in mint green, with a little ▼ to say it's cheaper.
+func _draw_cost_now(r: Rect2) -> void:
+	var L := _status_layer
+	var font := ThemeDB.fallback_font
+	var at := r.position + Vector2(8.6, 8.4)   # (the printed number's centre)
+	var mint := Color(0.49, 1.0, 0.66)
+	L.draw_circle(at, 7.6, Color(0.0, 0.0, 0.0, 0.35))   # a soft shadow
+	L.draw_circle(at, 7.0, Color(0.04, 0.06, 0.06, 0.97))
+	L.draw_arc(at, 7.0, 0.0, TAU, 32, Color(mint, 0.85), 0.9, true)
+	L.draw_arc(at, 5.9, PI * 1.1, PI * 1.9, 12, Color(1, 1, 1, 0.12), 0.8, true)   # (a faint highlight on top)
+	var txt := str(cost_now)
+	var size := 10 if txt.length() < 2 else 8
+	var base := at + Vector2(-8.0, size * 0.36)
+	L.draw_string_outline(font, base, txt, HORIZONTAL_ALIGNMENT_CENTER, 16.0, size, 2, Color(0, 0, 0, 0.9))
+	L.draw_string(font, base, txt, HORIZONTAL_ALIGNMENT_CENTER, 16.0, size, mint)
+	var c := at + Vector2(6.2, 5.6)   # the ▼, tucked under the plate's lower right
+	L.draw_circle(c, 2.9, Color(0.04, 0.06, 0.06, 0.97))
+	L.draw_colored_polygon(PackedVector2Array([c + Vector2(-1.7, -0.9), c + Vector2(1.7, -0.9), c + Vector2(0, 1.4)]), mint)
+
+
 ## Downed: a bloodied wash, a pulsing red edge and a small DOWNED tag that reads level however the
 ## card lies.
 func _draw_downed(r: Rect2) -> void:
@@ -499,11 +520,7 @@ func _draw_statuses() -> void:
 		return
 	var r := Rect2(-SIZE / 2, SIZE)
 	if cost_now >= 0 and face_up:
-		# The lowered cost in a green coin over the printed Authority (top-left corner)
-		var at := r.position + Vector2(SIZE.x * 0.1, SIZE.y * 0.07)
-		_status_layer.draw_circle(at, 13.0, Color(0.06, 0.32, 0.12, 0.95))
-		_status_layer.draw_arc(at, 13.0, 0.0, TAU, 24, Color(0.45, 1.0, 0.5), 2.0, true)
-		_status_layer.draw_string(ThemeDB.fallback_font, at + Vector2(-13, 6), str(cost_now), HORIZONTAL_ALIGNMENT_CENTER, 26, 17, Color.WHITE)
+		_draw_cost_now(r)
 	if downed and face_up:
 		_draw_downed(r)
 	if face_up:   # a Striver's level stars, across the top edge
