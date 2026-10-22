@@ -22,17 +22,17 @@ const CHARACTER_TARGET = 28;   // a built starter fills up to this many characte
 // starter built from its cards.
 const CURATED = {
     // Every Nebula base card: 30 characters, 10 Hustles/Ambushes. Rouke is strong, so he's in once,
-    // for a Kade and a Lyra Quell, with a third Sprintz: still even with the Militia starter.
+    // for a Kade and a Lyra Quell; Nix came in for a Marty and a Sprintz: still even with the Militia starter.
     nebula: {
         // (how it plays, shown when new players choose a clan)
         blurb: 'Control the board: freeze enemies in STASIS, force them into DEF and win with a few strong fighters.',
         leader: 'card_nebu_009',   // Archon of Nebula
         deck: [
-            // Strivers: Kade, Lyra Quell, Marty, Skully, Rouke
-            ['card_nebu_001', 2], ['card_nebu_012', 2], ['card_nebu_030', 3], ['card_nebu_020', 2],
-            ['card_nebu_015', 1],
+            // Strivers: Kade, Lyra Quell, Marty, Skully, Rouke, Nix
+            ['card_nebu_001', 2], ['card_nebu_012', 2], ['card_nebu_030', 2], ['card_nebu_020', 2],
+            ['card_nebu_015', 1], ['card_nebu_004', 2],
             // Characters
-            ['card_nebu_011', 3], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
+            ['card_nebu_011', 2], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
             ['card_nebu_028', 2], ['card_nebu_034', 2], ['card_nebu_036', 2], ['card_nebu_037', 1],
             ['card_nebu_033', 1], ['card_nebu_025', 1], ['card_nebu_035', 1], ['card_nebu_024', 1],
             // Hustles and Ambushes
@@ -42,7 +42,7 @@ const CURATED = {
         hideout: [
             ['card_nebu_002', 3], ['card_nebu_003', 3], ['card_nebu_013', 3], ['card_nebu_014', 3],
             ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_021', 3], ['card_nebu_022', 3],
-            ['card_nebu_016', 3], ['card_nebu_017', 3],
+            ['card_nebu_016', 3], ['card_nebu_017', 3], ['card_nebu_005', 3], ['card_nebu_006', 3],
         ],
     },
     // Every Militia base card: 31 characters, 9 Hustles/Ambushes. Even with the Nebula starter
