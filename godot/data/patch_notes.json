@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.53",
+        "notes": [
+            "Ambushes: effects that ask you to pick a target now happen before the brawl, not after it, so an attacker that loses ATK can lose the brawl. The attack goes on unless the Ambush negates it (or Downs, removes or freezes the attacker in STASIS).",
+            "A coin flip or die roll on an Ambush's \"the attacker loses ATK\" now counts.",
+            "New Ambush effect: negate the attack."
+        ]
+    },
+    {
         "version": "0.9.52",
         "notes": [
             "New effect: set a character's ATK and / or DEF to a number (e.g. an Ambush that makes the attacker 100 / 100), for the turn or for good.",

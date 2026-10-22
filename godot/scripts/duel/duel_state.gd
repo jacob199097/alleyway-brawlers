@@ -1203,13 +1203,17 @@ func _atk_ambush(ctx: Dictionary) -> void:
 ## attacker's ATK counts in this brawl. The attack stops if the attacker no longer can make it
 ## (Downed, gone, in Stasis) or the defender is gone.
 func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
-	var vs := {"side": ctx.side, "slot": ctx.from, "card": ctx.att}
+	var vs := {"side": ctx.side, "slot": ctx.from, "card": ctx.att, "ctx": ctx}   # (ctx: "Negate the attack" marks it)
+	var asks: Array = _new_asks if _in_answer else _asks
+	var queued := asks.size()
 	for e in _fx(a, "defend" if is_lasting(a) else "*"):   # (a Continuous one's other effects last)
 		if winner != "":
 			return
 		if not _fx_cond(foe, NO_SLOT, e, ctx.att):
 			continue
-		if str(e.get("do", "")) == "buff" and str(e.get("target", "")) == "attacker":
+		if str(e.get("do", "")) == "buff" and str(e.get("target", "")) == "attacker" and str(e.get("luck", "")) != "double":
+			if not _luck_gate(foe, NO_SLOT, a, e):   # (a coin flip or die roll on it)
+				continue
 			var atk := int(_scaled(foe, NO_SLOT, e).get("atk", 0))
 			if atk != 0:
 				ctx.bonus += atk
@@ -1218,10 +1222,20 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 			_do_fx(foe, NO_SLOT, a, e, vs)
 	if winner != "":
 		return
-	if card_at(ctx.side, ctx.from) != ctx.att or ctx.att.downed or in_stasis(ctx.att) or card_at(foe, ctx.target) == null:
-		_effect(foe, a, "%s stops the attack" % a.name, NO_SLOT)
-		return
-	_atk_resolve(ctx)
+	# The attack goes on, with whatever the Ambush changed, unless it negated the attack or the
+	# attacker is Downed, gone or in STASIS
+	var go := func() -> void:
+		if winner != "" or ctx.get("negated", false):
+			return
+		if card_at(ctx.side, ctx.from) != ctx.att or ctx.att.downed or in_stasis(ctx.att) or card_at(foe, ctx.target) == null:
+			_effect(foe, a, "%s stops the attack" % a.name, NO_SLOT)
+			return
+		_atk_resolve(ctx)
+	# Effects waiting on a choice (a target, DOUBLE OR NOTHING) happen before the brawl: it waits for them
+	if asks.size() > queued:
+		asks.append({"kind": "then", "side": foe, "cb": go})
+	else:
+		go.call()
 
 
 func _atk_resolve(ctx: Dictionary) -> void:
@@ -2354,6 +2368,11 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("rewind", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s is rewound to its printed ATK and DEF" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "changed", "rewind", fn, "%s rewinds %%s" % c.name)
+		"negate":   # an Ambush: the attack stops (nothing else happens to the attacker)
+			var actx = vs.get("ctx")
+			if actx is Dictionary and not actx.get("negated", false):
+				actx.negated = true
+				_effect(side, c, "%s negates the attack" % c.name, slot)
 		"jam":   # JAM: the opponent can't spring Ambushes until the end of their next turn
 			for foe in foes_of(side):
 				sides[foe].jam_until = _owner_next_turn(foe)
@@ -3244,6 +3263,9 @@ func _flush_asks() -> void:
 	while pending.is_empty() and not _asks.is_empty() and winner == "":
 		var ask: Dictionary = _asks.pop_front()
 		if ask.has("still") and not ask.still.call():   # no longer applies (e.g. a promotion whose card went Down)
+			continue
+		if ask.kind == "then":   # (not a prompt: what waits for the prompts before it, e.g. a brawl after an Ambush's choices)
+			_run_answer(ask.cb)
 			continue
 		if ask.kind == "discard" and sides[ask.side].hand.is_empty():
 			if ask.cb.is_valid():

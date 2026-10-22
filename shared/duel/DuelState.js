@@ -1733,11 +1733,13 @@ export class DuelState {
 
     /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */
     _springFx(ctx, foe, a) {
-        const vs = { side: ctx.side, slot: ctx.from, card: ctx.att };
+        const vs = { side: ctx.side, slot: ctx.from, card: ctx.att, ctx };   // (ctx: "Negate the attack" marks it)
+        const asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
         for (const e of this._fx(a, DuelState.isLasting(a) ? 'defend' : '*')) {   // (a Continuous one's other effects last)
             if (this.winner !== '') return;
             if (!this._fxCond(foe, NO_SLOT, e, ctx.att)) continue;
-            if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker') {
+            if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker' && String(e.luck ?? '') !== 'double') {
+                if (!this._luckGate(foe, NO_SLOT, a, e)) continue;   // (a coin flip or die roll on it)
                 const atk = toInt(this._scaled(foe, NO_SLOT, e).atk ?? 0);
                 if (atk !== 0) {
                     ctx.bonus += atk;
@@ -1748,11 +1750,19 @@ export class DuelState {
             }
         }
         if (this.winner !== '') return;
-        if (this.cardAt(ctx.side, ctx.from) !== ctx.att || ctx.att.downed || this.inStasis(ctx.att) || this.cardAt(foe, ctx.target) == null) {
-            this._effect(foe, a, `${a.name} stops the attack`, NO_SLOT);
-            return;
-        }
-        this._atkResolve(ctx);
+        // The attack goes on, with whatever the Ambush changed, unless it negated the attack or the
+        // attacker is Downed, gone or in STASIS
+        const go = () => {
+            if (this.winner !== '' || ctx.negated) return;
+            if (this.cardAt(ctx.side, ctx.from) !== ctx.att || ctx.att.downed || this.inStasis(ctx.att) || this.cardAt(foe, ctx.target) == null) {
+                this._effect(foe, a, `${a.name} stops the attack`, NO_SLOT);
+                return;
+            }
+            this._atkResolve(ctx);
+        };
+        // Effects waiting on a choice (a target, DOUBLE OR NOTHING) happen before the brawl: it waits for them
+        if (asks.length > queued) asks.push({ kind: 'then', side: foe, cb: go });
+        else go();
     }
 
     /** times on attack / defend triggers: counts this one; true once it has happened enough (then counts again). */
@@ -2060,6 +2070,12 @@ export class DuelState {
                     this._emit('rewind', { side: x.side, slot: x.slot, card: clone(x.card) });
                     return `${x.card.name} is rewound to its printed ATK and DEF`;
                 }, `${c.name} rewinds %s`);
+                break;
+            case 'negate':   // an Ambush: the attack stops (nothing else happens to the attacker)
+                if (vs && vs.ctx && !vs.ctx.negated) {
+                    vs.ctx.negated = true;
+                    this._effect(side, c, `${c.name} negates the attack`, slot);
+                }
                 break;
             case 'jam':   // JAM: the opponent can't spring Ambushes until the end of their next turn
                 for (const foe of this.foesOf(side)) {
@@ -2845,6 +2861,10 @@ export class DuelState {
         while (isEmpty(this.pending) && this._asks.length && this.winner === '') {
             const ask = this._asks.shift();
             if (ask.still && !ask.still()) continue;   // no longer applies (e.g. a promotion whose card went Down)
+            if (ask.kind === 'then') {   // (not a prompt: what waits for the prompts before it, e.g. a brawl after an Ambush's choices)
+                this._runAnswer(ask.cb);
+                continue;
+            }
             if (ask.kind === 'discard' && !this.sides[ask.side].hand.length) {
                 if (ask.cb) this._runAnswer(ask.cb);
                 continue;

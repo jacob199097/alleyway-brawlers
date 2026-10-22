@@ -194,4 +194,29 @@ st._doFx('player', -1, { name: 'Snake Eyes', uid: 'x' }, { do: 'set_stats', targ
 { const q = st._asks.shift(); st._runAnswer(() => q.cb(q.options[0].id)); }
 assert.deepEqual([brute.attack, brute.defense], [2700, 0], 'only DEF, for good');
 
+// Ambushes: the attack goes on with what they changed (a choice they ask for comes first), unless one
+// negates the attack
+const ambushed = (effects, pick = (p) => p.options[0].id) => {
+    const s = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1);
+    s.turn = 5; s.phase = 'brawl'; s.active = 'player';
+    s.sides.player.field[0] = s.makeCard({ id: 'amb_att', name: 'Attacker', cardType: 'gang_member', clanTag: 'test', attack: 2000, defense: 1000 });
+    s.sides.opponent.field[0] = s.makeCard({ id: 'amb_def', name: 'Defender', cardType: 'gang_member', clanTag: 'test', attack: 1500, defense: 1500 });
+    const trap = s.makeCard({ id: 'amb_trap', name: 'Trap', cardType: 'ambush', clanTag: 'test', effects });
+    trap.face_down = true;
+    s.sides.opponent.field[5] = trap;
+    s._recalc(); s.takeEvents();
+    assert.ok(s.doAction('player', { kind: 'attack', from: 0, target: 0 }));
+    assert.equal(s.pending.key, 'ambush');
+    s.doAction('opponent', { kind: 'choose', option: '5' });
+    while (s.pending.key) s.doAction(s.pending.side, { kind: 'choose', option: pick(s.pending) });
+    return s.takeEvents().filter(e => e.type === 'clash');
+};
+let clash = ambushed([{ when: 'defend', do: 'buff', target: 'enemy', atk: -1000, until: 'turn' }]);
+assert.equal(clash.length, 1, 'the attack goes on');
+assert.equal(clash[0].att, 1000, 'with the ATK it lost first (its target was chosen before the brawl)');
+assert.equal(ambushed([{ when: 'defend', do: 'set_stats', target: 'attacker', atk: 100 }])[0].att, 100);
+assert.equal(ambushed([{ when: 'defend', do: 'negate' }]).length, 0, 'negated: no brawl');
+assert.equal(ambushed([{ when: 'defend', do: 'negate', luck: 'double' }], (p) => p.key === 'double' ? 'once' : p.options[0].id).length, 0,
+    'negated after its DOUBLE OR NOTHING choice');
+
 console.log('hustles: ok');

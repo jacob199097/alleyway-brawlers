@@ -157,6 +157,11 @@ const FX_CARD_SAMPLES := [
 	[{"do": "poison", "target": "enemies", "amount": 200}],
 	[{"do": "stasis", "target": "ally"}, {"do": "search", "kind": "gang_member"}],
 	[{"do": "buff", "target": "attacker", "atk": -1200}],
+	# An Ambush that negates the attack (on a Hustle it does nothing); one whose choice comes before the brawl;
+	# a coin on the attacker's ATK, and on tails the attack is negated instead
+	[{"do": "negate"}, {"do": "draw", "amount": 1}],
+	[{"do": "buff", "target": "enemy", "atk": -1500, "until": "turn"}],
+	[{"do": "buff", "target": "attacker", "atk": -800, "luck": "coin"}, {"do": "negate", "if_luck": "lost"}],
 	[{"do": "down", "target": "attacker"}],
 	[{"do": "bounce", "target": "attacker", "if": "vs_atk"}, {"do": "draw", "amount": 1}],
 	[{"do": "freeze", "target": "attacker"}, {"do": "shock", "target": "enemy", "amount": 700}],
