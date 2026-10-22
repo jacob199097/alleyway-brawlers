@@ -4138,7 +4138,7 @@
   "name": "Cash Out",
   "clan": "wildcard",
   "cardType": "hustle",
-  "authority": 2,
+  "authority": 1,
   "tributeCost": 0,
   "rarity": 1,
   "clanTag": "wildcard",
@@ -4171,16 +4171,211 @@
   "art_url": "card_wild_044",
   "code": "WILD-044",
   "flavourText": "Every wheel has a favourite number.",
-  "effectText": "Roll a die: your opponent loses 200 Morale for each pip rolled.",
+  "effectText": "Roll a die: your opponent loses 250 Morale for each pip rolled.",
   "effects": [
    {
     "when": "deploy",
     "do": "damage",
     "per": "roll",
-    "amount": 200
+    "amount": 250
    }
   ],
   "clanName": "Wildcard",
   "clanColor": "#e8ba11"
+ },
+ "card_mili_041": {
+  "id": "card_mili_041",
+  "name": "Radio Operator Pike",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_041",
+  "code": "MILI-041",
+  "flavourText": "Reinforcements inbound. Hold the line!",
+  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): Put the first MILITIA Brawler with 4 or less Authority from your deck onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "call",
+    "clan": "militia",
+    "role": "brawler",
+    "cost": "exhaust",
+    "amount": 1,
+    "max_auth": 4
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 700,
+  "defense": 900,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_042": {
+  "id": "card_mili_042",
+  "name": "Kessler",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_042",
+  "code": "MILI-042",
+  "flavourText": "You won't see me. That's the point.",
+  "effectText": "Once per turn, when your opponent deploys a character: If this card is next to another MILITIA character, SUPPRESS one enemy character for 400.\nThis card can't be attacked while you control another character that can be.",
+  "effects": [
+   {
+    "when": "foe_deployed",
+    "do": "suppress",
+    "target": "enemy",
+    "if": "adjacent",
+    "amount": 400,
+    "once": true,
+    "if_clan": "militia"
+   },
+   {
+    "when": "passive",
+    "do": "elusive"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2600,
+  "defense": 1600,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_043": {
+  "id": "card_mili_043",
+  "name": "Covering Fire",
+  "clan": "militia",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_043",
+  "code": "MILI-043",
+  "flavourText": "Keep their heads down!",
+  "effectText": "SUPPRESS one enemy character for 400.\nDraw 1 card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "suppress",
+    "target": "enemy",
+    "amount": 400
+   },
+   {
+    "when": "deploy",
+    "do": "draw",
+    "amount": 1
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635"
+ },
+ "card_nebu_044": {
+  "id": "card_nebu_044",
+  "name": "Vesper, Void Dancer",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_044",
+  "code": "NEBU-044",
+  "flavourText": "Dance with me. You'll lose your footing.",
+  "effectText": "When deployed: Switch one enemy character to DEF position.\nWhen this card attacks a character in DEF position: This card gains +500 ATK for this Brawl.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "force_def",
+    "target": "enemy"
+   },
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "if": "vs_def",
+    "atk": 500
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1300,
+  "defense": 900,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_045": {
+  "id": "card_nebu_045",
+  "name": "Tycho, Comet Rider",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_045",
+  "code": "NEBU-045",
+  "flavourText": "Blink and you'll miss me. Most do.",
+  "effectText": "When this card KOs a character: Put one enemy character in STASIS.\nThis card can't be targeted by your opponent's effects.",
+  "effects": [
+   {
+    "when": "ko",
+    "do": "stasis",
+    "target": "enemy"
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 2000,
+  "defense": 1400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_046": {
+  "id": "card_nebu_046",
+  "name": "Time Dilation",
+  "clan": "nebula",
+  "cardType": "ambush",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_046",
+  "code": "NEBU-046",
+  "flavourText": "Time moves differently out here.",
+  "effectText": "When one of your characters is KO'd: Put one enemy character in STASIS.",
+  "effects": [
+   {
+    "when": "ally_ko",
+    "do": "stasis",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "ambushClan": "nebula",
+  "subtype": "continuous"
  }
 }
