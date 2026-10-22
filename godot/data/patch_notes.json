@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.59",
+        "notes": [
+            "The Wildcard card back's roulette wheel turns more slowly."
+        ]
+    },
+    {
         "version": "0.9.58",
         "notes": [
             "A character with a BOUNTY on it now wears a little WANTED poster showing how many cards it pays.",

@@ -694,7 +694,7 @@ func _idle_cards(delta: float) -> void:
 		if not k.revealed:
 			root.rotation = k.rot + (sin(_time * 60.0 + k.seed) * 0.006 * (r - 3) if r >= 4 else 0.0)
 			if k.style != "":
-				mat.set_shader_parameter("galaxy_angle", _time * (0.4 if k.style == "galaxy" else 1.6) + k.seed)
+				mat.set_shader_parameter("galaxy_angle", _time * {"galaxy": 0.4, "roulette": 0.5}.get(k.style, 1.6) + k.seed)
 				mat.set_shader_parameter("galaxy_glow", 1.0 if hot else 0.0)
 
 
