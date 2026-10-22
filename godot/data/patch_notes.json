@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.57",
+        "notes": [
+            "An Equip's ATK / DEF bonuses now go away when the Equip is destroyed or leaves the field.",
+            "Characters put onto the field by an effect (called in from the deck, brought back from the Gutter, tokens) now count as deployed, so \"when deployed\" and \"when you deploy another character\" effects (like Rook promoting) go off."
+        ]
+    },
+    {
         "version": "0.9.56",
         "notes": [
             "When an effect puts cards onto a full field (e.g. All In, bringing a character back, tokens), you choose whether to replace one of your characters for each card that does not fit, and which one. The replaced character goes to the Gutter."

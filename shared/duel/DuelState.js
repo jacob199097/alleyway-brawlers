@@ -377,6 +377,11 @@ export class DuelState {
         }
     }
 
+    /** An Equip card (a Hustle that attaches to a character). */
+    static isEquip(c) {
+        return !!c && String(c.cardType ?? '') === 'hustle' && String(c.subtype ?? '') === 'equip';
+    }
+
     _equipsOn(c) {
         const out = [];
         if (!c || c.uid == null) return out;
@@ -1661,6 +1666,8 @@ export class DuelState {
             for (const slot of FRONT) {
                 const c = s.field[slot];
                 if (c == null) continue;
+                // (what an Equip changed goes when the Equip is gone)
+                if (c.mods.some(m => m.equip != null)) c.mods = c.mods.filter(m => m.equip == null || this._equipsOn(c).some(q => toInt(q.card.uid) === toInt(m.equip)));
                 let atk = c.base_attack;
                 let df = c.base_defense;
                 let setAtk = false, setDef = false;   // (a set_stats: it is that number; only later changes count)
@@ -2025,6 +2032,7 @@ export class DuelState {
         switch (String(e.do ?? '')) {
             case 'buff': {
                 const mod = { atk: toInt(e.atk), def: toInt(e.def), until_turn: this._until(e) };
+                if (DuelState.isEquip(c)) mod.equip = c.uid;   // (an Equip's changes leave with it: _recalc)
                 const label = statText(mod);
                 this._fxApply(side, slot, c, e, vs, 'any', label, (x) => {
                     x.card.mods.push({ ...mod });
@@ -2086,6 +2094,7 @@ export class DuelState {
                 break;
             case 'set_stats': {   // its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
                 const mod = { until_turn: this._until(e) };
+                if (DuelState.isEquip(c)) mod.equip = c.uid;
                 if (e.atk != null && e.atk !== '') mod.set_atk = Math.max(0, toInt(e.atk));
                 if (e.def != null && e.def !== '') mod.set_def = Math.max(0, toInt(e.def));
                 const label = setText(mod);
@@ -2099,7 +2108,7 @@ export class DuelState {
             case 'swap': {   // ATK and DEF trade places (until the end of the turn, the next, or for good)
                 const until = this._until(e);
                 this._fxApply(side, slot, c, e, vs, 'any', 'swap ATK and DEF', (x) => {
-                    x.card.mods.push({ swap: true, until_turn: until });
+                    x.card.mods.push(DuelState.isEquip(c) ? { swap: true, until_turn: until, equip: c.uid } : { swap: true, until_turn: until });
                     return `${x.card.name}: ATK and DEF swapped`;
                 }, `${c.name} swaps the ATK and DEF of %s`);
                 break;
@@ -2237,6 +2246,7 @@ export class DuelState {
                     this._emit('summon', ev);
                     this._effect(side, c, fromDeck ? `${c.name}: ${card.name} is called in` : `${c.name}: ${card.name} is back on the street`, slot);
                     this._recalc();
+                    if (this.cardAt(side, lane) === card) this._onDeploy(side, lane, card);   // (it counts as deployed)
                     return true;
                 };
                 this._fxTake(side, c, e, pile, `${c.name}: choose a character to ${fromDeck ? 'call in' : 'bring back'}`, (card, cont) => {
@@ -2261,6 +2271,8 @@ export class DuelState {
                     s.field[lane] = t;
                     this._emit('summon', { side, slot: lane, card: clone(t), from: 'token' });
                     made += 1;
+                    this._recalc();
+                    if (this.cardAt(side, lane) === t) this._onDeploy(side, lane, t);   // (it counts as deployed)
                 };
                 const finish = () => {
                     if (made > 0) {

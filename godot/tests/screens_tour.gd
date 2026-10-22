@@ -183,6 +183,28 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--discard-only" in OS.get_cmdline_user_args():   # (the CPU discards 2 cards to an effect of yours: a shot every 0.4 s)
+		var deck2 := await Game.load_duel_deck()
+		Game.duel_setup = deck2
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await get_tree().create_timer(4.0).timeout
+		var d2 = _screen()
+		if d2._menu:
+			d2._menu.visible = false
+		while not d2.duel.pending.is_empty() and d2.duel.pending.side == "player":   # (keep the opening hand)
+			d2._act("player", {"kind": "choose", "option": "keep"})
+			await get_tree().create_timer(1.5).timeout
+		await get_tree().create_timer(2.5).timeout
+		await _shot("d00_before", 0.2)
+		d2.duel._do_fx("player", -1, {"name": "Test", "uid": -77}, {"do": "discard", "amount": 2})
+		d2.duel._flush_asks()
+		d2._queue.append_array(d2.duel.take_events())
+		d2._pump()
+		for i in 14:
+			await _shot("d%02d" % (i + 1), 0.4)
+		get_tree().quit()
+		return
 	if "--arena-only" in OS.get_cmdline_user_args():   # (the arena roulette on Scissors Paper Rock: spinning, then landed)
 		Game.duel_setup = {"mode": "cpu", "difficulty": "normal"}
 		Game.go("rps")

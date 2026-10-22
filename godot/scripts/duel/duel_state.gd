@@ -396,6 +396,11 @@ func _run_lasting(side: String, when: String, def = null, vs := {}) -> void:
 
 
 ## The Equip cards on character c: [{side (their owner), slot, card}]
+## An Equip card (a Hustle that attaches to a character).
+static func is_equip(c) -> bool:
+	return c is Dictionary and str(c.get("cardType", "")) == "hustle" and str(c.get("subtype", "")) == "equip"
+
+
 func _equips_on(c) -> Array:
 	var out: Array = []
 	if not c is Dictionary or not c.has("uid"):
@@ -1839,6 +1844,10 @@ func _recalc() -> void:
 			var c = s.field[slot]
 			if c == null:
 				continue
+			# (what an Equip changed goes when the Equip is gone)
+			if c.mods.any(func(m): return m.get("equip") != null):
+				var on: Array = _equips_on(c).map(func(q): return int(q.card.uid))
+				c.mods = c.mods.filter(func(m): return m.get("equip") == null or on.has(int(m.equip)))
 			var atk: int = c.base_attack
 			var df: int = c.base_defense
 			var set_atk := false   # (a set_stats: it is that number; only later changes count)
@@ -2356,6 +2365,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 	match str(e.get("do", "")):
 		"buff":
 			var mod := {"atk": int(e.get("atk", 0)), "def": int(e.get("def", 0)), "until_turn": _until(e)}
+			if is_equip(c):   # (an Equip's changes leave with it: _recalc)
+				mod.equip = c.uid
 			var label := _stat_text(mod)
 			var fn := func(x: Dictionary) -> String:
 				x.card.mods.append(mod.duplicate())
@@ -2408,6 +2419,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_fx_apply(side, slot, c, e, vs, "any", "remove from the game", fn, "%s removes %%s from the game" % c.name)
 		"set_stats":   # its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
 			var mod := {"until_turn": _until(e)}
+			if is_equip(c):
+				mod.equip = c.uid
 			if e.get("atk") != null and str(e.atk) != "":
 				mod.set_atk = maxi(0, int(e.atk))
 			if e.get("def") != null and str(e.def) != "":
@@ -2421,7 +2434,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 		"swap":   # ATK and DEF trade places (until the end of the turn, the next, or for good)
 			var until := _until(e)
 			var fn := func(x: Dictionary) -> String:
-				x.card.mods.append({"swap": true, "until_turn": until})
+				x.card.mods.append({"swap": true, "until_turn": until, "equip": c.uid} if is_equip(c) else {"swap": true, "until_turn": until})
 				return "%s: ATK and DEF swapped" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "any", "swap ATK and DEF", fn, "%s swaps the ATK and DEF of %%s" % c.name)
 		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
@@ -2556,6 +2569,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_emit("summon", ev)
 				_effect(side, c, ("%s: %s is called in" if from_deck else "%s: %s is back on the street") % [c.name, card.name], slot)
 				_recalc()
+				if is_same(card_at(side, lane), card):
+					_on_deploy(side, lane, card)   # (it counts as deployed)
 				return true
 			_fx_take(side, c, e, pile, "%s: choose a character to %s" % [c.name, "call in" if from_deck else "bring back"], func(card: Dictionary, cont: Callable) -> Variant:
 				var free := _empty_lane(side)
@@ -2580,6 +2595,9 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				s.field[lane] = t
 				_emit("summon", {"side": side, "slot": lane, "card": t.duplicate(true), "from": "token"})
 				made[0] += 1
+				_recalc()
+				if is_same(card_at(side, lane), t):
+					_on_deploy(side, lane, t)   # (it counts as deployed)
 			var finish := func() -> void:
 				if made[0] > 0:
 					_effect(side, c, "%s: %d %s token%s join%s the fight" % [c.name, made[0], CardDB.get_card(spec).get("name", "token"),

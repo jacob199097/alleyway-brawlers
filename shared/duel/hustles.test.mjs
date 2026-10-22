@@ -249,4 +249,28 @@ st._runAnswer(() => ask.cb('keep'));
 assert.equal(st.sides.player.deck.length, 2, 'kept: the card stays in the deck');
 assert.equal(st.sides.player.gutter.length, 0);
 
+// A card an effect puts onto the field counts as deployed: "When you deploy another character" fires
+st = duel([]);
+st.sides.player.field[0] = st.makeCard({ id: 'dep_watch', name: 'Watcher', cardType: 'gang_member', clanTag: 'test', attack: 500, defense: 500,
+    effects: [{ when: 'ally_deployed', do: 'heal', amount: 300 }] });
+st.sides.player.morale = 3000;
+st.sides.player.deck.push(st.makeCard({ id: 'dep_new', name: 'Recruit', cardType: 'gang_member', clanTag: 'test', attack: 900, defense: 900 }));
+st._doFx('player', -1, { name: 'Radio', uid: 'x' }, { do: 'call', amount: 1 });
+assert.equal(st.sides.player.field[1]?.name, 'Recruit');
+assert.equal(st.sides.player.morale, 3300, 'called in: it was deployed');
+
+// An Equip's ATK / DEF changes go when the Equip does
+st = duel([]);
+const wearer = st.makeCard({ id: 'eq_wearer', name: 'Wearer', cardType: 'gang_member', clanTag: 'test', attack: 1000, defense: 1000 });
+st.sides.player.field[0] = wearer;
+const armor = st.makeCard({ id: 'eq_armor', name: 'Armor', cardType: 'hustle', subtype: 'equip', clanTag: 'test', effects: [] });
+armor.equipped_to = wearer.uid;
+st.sides.player.field[BACK[0]] = armor;
+st._doFx('player', BACK[0], armor, { do: 'buff', target: 'self', def: 700, until: 'forever' });
+st._recalc();
+assert.equal(wearer.defense, 1700, 'equipped: +700 DEF');
+st.sides.player.field[BACK[0]] = null;   // (the Equip is destroyed)
+st._recalc();
+assert.equal(wearer.defense, 1000, 'the Equip gone: its +700 DEF is gone');
+
 console.log('hustles: ok');
