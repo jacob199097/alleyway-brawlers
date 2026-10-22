@@ -23,3 +23,4 @@
   `docs/CARD_PIPELINE.md`); every push runs the tests (`.github/workflows/tests.yml`).
 - Game updates: small code updates ship as patches (`tools/make_patch.mjs`, `godot/scripts/patcher.gd`,
   which must stay the first autoload); see "Game versions and updates" in `docs/CARD_PIPELINE.md`.
+- `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).
