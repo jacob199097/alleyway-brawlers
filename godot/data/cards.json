@@ -2738,16 +2738,8 @@
   "art_url": "card_wild_001",
   "code": "WILD-001",
   "flavourText": "You can cheat fate, son. You can even cheat death. But you never cheat the house.",
-  "effectText": "While this leader is Dormant, at the start of your turn: If you have 3 or fewer cards in hand, flip a coin. If heads, draw 1 card.\nWhile this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+  "effectText": "While this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
   "effects": [
-   {
-    "when": "dormant_turn_start",
-    "do": "draw",
-    "if": "hand_le",
-    "luck": "coin",
-    "amount": 1,
-    "n": 3
-   },
    {
     "when": "dormant",
     "do": "cost_down",
@@ -3162,7 +3154,7 @@
   "art_url": "card_wild_013",
   "code": "WILD-013",
   "flavourText": "",
-  "effectText": "This card can't be attacked while you control another character that can be.\nAt the start of your turn: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+  "effectText": "This card can't be attacked while you control another character that can be.\nAt the start of your turn: Flip a coin. If heads, SILENCE one enemy character until the end of your opponent's next turn.",
   "effects": [
    {
     "when": "passive",
@@ -3170,9 +3162,10 @@
    },
    {
     "when": "turn_start",
-    "do": "bounce",
+    "do": "silence",
     "target": "enemy",
-    "luck": "double"
+    "until": "next_turn",
+    "luck": "coin"
    }
   ],
   "clanName": "Wildcard",
@@ -3844,18 +3837,18 @@
   "art_url": "card_wild_034",
   "code": "WILD-034",
   "flavourText": "Interest is due. Today.",
-  "effectText": "When this card KOs a character: Your opponent discards 1 card. DOUBLE OR NOTHING.",
+  "effectText": "When this card KOs a character: Flip a coin. If heads, your opponent discards 1 card.",
   "effects": [
    {
     "when": "ko",
     "do": "discard",
-    "luck": "double",
+    "luck": "coin",
     "amount": 1
    }
   ],
   "clanName": "Wildcard",
   "clanColor": "#e8ba11",
-  "attack": 1800,
+  "attack": 1700,
   "defense": 1100,
   "level": 1,
   "subtype": "brawler",
@@ -3956,6 +3949,235 @@
     "target": "attacker",
     "per": "roll",
     "atk": -200
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11"
+ },
+ "card_wild_038": {
+  "id": "card_wild_038",
+  "name": "Tommy Reed",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_038",
+  "code": "WILD-038",
+  "flavourText": "The house edge only works if you play fair.",
+  "effectText": "When an enemy character is KO'd: Flip a coin. If heads, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "foe_ko",
+    "do": "promote",
+    "luck": "coin"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 600,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_wild_039"
+ },
+ "card_wild_039": {
+  "id": "card_wild_039",
+  "name": "Tommy Reed",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_039",
+  "code": "WILD-039",
+  "flavourText": "The house edge only works if you play fair.",
+  "effectText": "When this card KOs a character: Draw 1 card. DOUBLE OR NOTHING.\nWhen an enemy character is KO'd: Roll a die. On a 4 or more, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ko",
+    "do": "draw",
+    "luck": "double",
+    "amount": 1
+   },
+   {
+    "when": "foe_ko",
+    "do": "promote",
+    "luck": "die",
+    "luck_on": 4
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1800,
+  "defense": 1300,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_wild_040"
+ },
+ "card_wild_040": {
+  "id": "card_wild_040",
+  "name": "Tommy Reed",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_040",
+  "code": "WILD-040",
+  "flavourText": "The house edge only works if you play fair.",
+  "effectText": "This card has PIERCE.\nWhen this card attacks: Flip a coin. If heads, it gains +800 ATK for this Brawl. If tails, it gains +200 ATK for this Brawl.\nWhen this card KOs a character: Draw 1 card. DOUBLE OR NOTHING.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "pierce"
+   },
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "luck": "coin",
+    "atk": 800
+   },
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "if_luck": "lost",
+    "atk": 200
+   },
+   {
+    "when": "ko",
+    "do": "draw",
+    "luck": "double",
+    "amount": 1
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 2700,
+  "defense": 2100,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_041": {
+  "id": "card_wild_041",
+  "name": "Hugo Brandt",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 1,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_041",
+  "code": "WILD-041",
+  "flavourText": "You're not on the list.",
+  "effectText": "When deployed: Flip a coin. If heads, return one enemy character to its owner's hand. If tails, this card gains SHIELD.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "bounce",
+    "target": "enemy",
+    "luck": "coin"
+   },
+   {
+    "when": "deploy",
+    "do": "shield",
+    "target": "self",
+    "if_luck": "lost"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 2500,
+  "defense": 2700,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_wild_042": {
+  "id": "card_wild_042",
+  "name": "Chip",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_042",
+  "code": "WILD-042",
+  "flavourText": "Finders keepers!",
+  "effectText": "When this card is KO'd: Flip a coin. If heads, draw 2 cards.",
+  "effects": [
+   {
+    "when": "self_ko",
+    "do": "draw",
+    "luck": "coin",
+    "amount": 2
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 500,
+  "defense": 200,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_wild_043": {
+  "id": "card_wild_043",
+  "name": "Cash Out",
+  "clan": "wildcard",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_043",
+  "code": "WILD-043",
+  "flavourText": "Quit while you're ahead. Or don't.",
+  "effectText": "HEAL 800. DOUBLE OR NOTHING.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "heal",
+    "luck": "double",
+    "amount": 800
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11"
+ },
+ "card_wild_044": {
+  "id": "card_wild_044",
+  "name": "Rigged Wheel",
+  "clan": "wildcard",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_044",
+  "code": "WILD-044",
+  "flavourText": "Every wheel has a favourite number.",
+  "effectText": "Roll a die: your opponent loses 200 Morale for each pip rolled.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "damage",
+    "per": "roll",
+    "amount": 200
    }
   ],
   "clanName": "Wildcard",
