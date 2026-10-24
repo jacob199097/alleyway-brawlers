@@ -57,7 +57,16 @@ func make_duel(duel_screen: Node) -> DuelState:
 		if CardDB.get_card(id).get("cardType") == "leader":
 			leader = id
 			break
-	d = DuelState.new({"player": pdeck, "opponent": odeck}, {}, {"player": leader, "opponent": leader}, "player", -1)
+	var hideout: Array = []   # (every higher level of the deck's Strivers: they can't promote without them)
+	var seen := {}
+	for id in pdeck + odeck:
+		var next := CardDB.next_form(str(id))
+		while next != "" and not seen.has(next):
+			seen[next] = true
+			hideout.append_array([next, next, next])
+			next = CardDB.next_form(next)
+	d = DuelState.new({"player": pdeck, "opponent": odeck}, {"player": hideout, "opponent": hideout.duplicate()},
+		{"player": leader, "opponent": leader}, "player", -1)
 	_strip_effects()
 	# Find the staged cards (hand order is fixed: opening draws alternate, player first)
 	var ph: Array = []

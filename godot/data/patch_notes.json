@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.64",
+        "notes": [
+            "Your Hideout is now yours to build: in the Deck Editor, click a Striver's level 2 or 3 card to put it in the deck's Hideout (up to 3 of each). Higher levels no longer go in by themselves.",
+            "A Striver can only promote to a level that is waiting in your Hideout. The Deck Editor warns you when one is missing; + ADD ALL puts in every level your deck's Strivers need.",
+            "Starter decks come with their Hideout filled. Decks you made before keep their old Hideout until you save them again.",
+            "Deck codes now include the Hideout."
+        ]
+    },
+    {
         "version": "0.9.63",
         "notes": [
             "Two new arenas: The Crypt (torches, rising embers and violet glowing slots) and Forward Base (floodlights and glow sticks).",

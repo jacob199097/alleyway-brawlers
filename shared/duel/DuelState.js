@@ -659,7 +659,7 @@ export class DuelState {
         if (!this.canDeployNow(side) || !FRONT.includes(slot)) return false;
         const c = this.cardAt(side, slot);
         if (c == null || c.ability !== 'maya_promote' || c.face_down || c.downed || c.subtype !== 'striver' || this.inStasis(c)) return false;
-        if (this.sides[side].promoted[slot] || nextForm(c.id) === '') return false;
+        if (this.sides[side].promoted[slot] || !this._nextInHideout(side, c)) return false;
         return this.characters(side).some(e => e.slot !== slot && isLion(e.card) && e.card.authority >= c.authority);
     }
 
@@ -1616,6 +1616,10 @@ export class DuelState {
         if (old == null || old.subtype !== 'striver' || old.charmed) return;   // only Strivers level up (not a CHARMED one)
         const toId = nextForm(old.id);
         if (toId === '') return;
+        if (!this._nextInHideout(side, old)) {   // (its next level has to be waiting in the Hideout)
+            this._emit('notice', { side, text: `${String(old.name).toUpperCase()} CAN'T PROMOTE: NO ${String(getCard(toId).name ?? toId).toUpperCase()} LV${toInt(getCard(toId).level) || 2} IN THE HIDEOUT` });
+            return;
+        }
         if (s.promoted[slot]) {   // (once per turn)
             this._emit('notice', { side, text: `${String(old.name).toUpperCase()} CAN'T PROMOTE AGAIN THIS TURN` });
             return;
@@ -2647,7 +2651,7 @@ export class DuelState {
                 case 'defenders': return x.card.position === 'def' && !x.card.downed && !x.card.face_down && !this.frozen(x.card);
                 case 'spent': return !!x.card.has_attacked && !x.card.downed && (x.card.again_turn ?? 0) !== this.turn;
                 case 'statused': return this._afflicted(x.card);
-                case 'promotable': return x.card.subtype === 'striver' && nextForm(x.card.id) !== '' && !this.sides[x.side].promoted[x.slot]
+                case 'promotable': return x.card.subtype === 'striver' && this._nextInHideout(x.side, x.card) && !this.sides[x.side].promoted[x.slot]
                     && !x.card.downed && !x.card.charmed;
                 case 'charmable': return x.card.cardType !== 'leader' && !x.card.charmed;
                 case 'changed': {   // REWIND helps: an enemy's net gains, your character's net losses
@@ -3204,10 +3208,16 @@ export class DuelState {
         return this.characters(side).filter(e => e.card.downed && isLion(e.card)).sort(strongestFirst);
     }
 
+    /** Whether a Striver's next level waits in the side's Hideout: it can't promote without it. */
+    _nextInHideout(side, card) {
+        const to = nextForm(card.id);
+        return to !== '' && this.sides[side].hideout.some(h => h.id === to);
+    }
+
     _promotableStrivers(side) {
         return this.characters(side).filter(e => isLion(e.card) && e.card.subtype === 'striver'
             && !e.card.downed && !e.card.face_down && !this.sides[side].promoted[e.slot]
-            && nextForm(e.card.id) !== '')
+            && this._nextInHideout(side, e.card))
             .sort((a, b) => (toInt(b.card.level) - toInt(a.card.level)) || (a.slot - b.slot));
     }
 

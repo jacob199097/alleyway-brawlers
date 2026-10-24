@@ -841,9 +841,10 @@ async function deckClan(setup) {
  * the shared catalog), the promoted forms they own for its Strivers, and the deck's leader.
  */
 async function loadSetupFromDb(pool, playerId) {
-    const { getCard, nextForm } = await engine;
+    const { getCard } = await engine;
+    const { deckHideout } = require('../utils/deckHideout');
     const { rows: decks } = await pool.query(
-        `SELECT id, leader_card_id FROM decks WHERE player_id = $1
+        `SELECT id, leader_card_id, hideout_set FROM decks WHERE player_id = $1
          ORDER BY is_active DESC, updated_at DESC LIMIT 1`, [playerId]);
     if (!decks.length) return { error: 'You need a complete 40-card deck to play online.' };
     const { rows } = await pool.query(
@@ -870,20 +871,11 @@ async function loadSetupFromDb(pool, playerId) {
         }
         for (let i = 0; i < r.copies; i++) deck.push(spec(r));
     }
-    const { rows: inv } = await pool.query(
-        `SELECT c.name, c.authority, c.attack, c.defense, c.rarity, c.art_url, pi.quantity
-         FROM player_inventory pi JOIN cards c ON c.id = pi.card_id WHERE pi.player_id = $1`, [playerId]);
-    const owned = new Map(inv.map(r => [r.art_url, r]));
+    // The Hideout the player chose in the Deck Editor (utils/deckHideout.js)
     const hideout = [];
-    const seen = new Set();
-    for (const r of rows) {
-        let next = nextForm(r.art_url);
-        while (next && !seen.has(next)) {
-            seen.add(next);
-            const o = owned.get(next);
-            if (o) for (let i = 0; i < Math.min(3, o.quantity); i++) hideout.push(spec(o));
-            next = nextForm(next);
-        }
+    for (const r of await deckHideout(pool, decks[0], playerId)) {
+        if (!Object.keys(getCard(r.art_url)).length) continue;   // (not playable by the rules yet)
+        for (let i = 0; i < r.copies; i++) hideout.push(spec(r));
     }
     let leader = '';
     if (decks[0].leader_card_id) {

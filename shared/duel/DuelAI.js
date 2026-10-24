@@ -40,7 +40,7 @@ function everyCardSetup() {
             if (!leader) leader = id;
         } else if (c.cardType === 'gang_member') {
             if (Math.trunc(Number(c.level) || 1) === 1) base.push(id);
-            else hideout.push(id);
+            else hideout.push(id, id);   // (two of each, like the deck: a Striver can't promote without its next level waiting)
         } else {
             base.push(id);
         }

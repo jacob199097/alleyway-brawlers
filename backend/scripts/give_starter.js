@@ -85,6 +85,12 @@ async function writeCards(client, deckId, s) {
     for (const [id, copies] of s.recipe.deck) {
         await client.query('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, s.dbId[id], copies]);
     }
+    // ...and its Hideout (the higher levels of its Strivers)
+    await client.query('DELETE FROM deck_hideout WHERE deck_id = $1', [deckId]);
+    for (const [id, copies] of s.recipe.hideout) {
+        await client.query('INSERT INTO deck_hideout (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, s.dbId[id], Math.min(3, copies)]);
+    }
+    await client.query('UPDATE decks SET hideout_set = TRUE WHERE id = $1', [deckId]);
 }
 
 /** How many copies topping up would add to a player's collection. */

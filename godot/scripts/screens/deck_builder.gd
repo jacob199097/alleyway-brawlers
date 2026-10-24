@@ -2,6 +2,8 @@ extends Screen
 ## Deck builder: your collection on the left, the deck on the right.
 ## Click (or drag) a card to add it, click (or drag back) a deck row to remove one copy.
 ## 40 cards, max 3 copies, plus an optional leader. Right-click any card to zoom.
+## The Hideout (under the deck list) holds the higher levels of your Strivers: click a level 2+ card
+## to put it there (up to 3 of each). A Striver only promotes to a level waiting in the Hideout.
 ## Filters: search, clan, type/role, keyword and Authority. AUTO-FILL tops the deck up to 40,
 ## and deck codes (AWB1:...) share a deck as text. The server validates and saves the deck.
 
@@ -18,6 +20,7 @@ var _decks: Array = []
 var _deck_idx := 0
 var _deck_id = null
 var _deck: Array = []          # one entry per copy: {cardId, name, rarity, art_url}
+var _hideout: Array = []       # the same, for the Hideout (Strivers' level 2+ cards)
 var _leader = null             # inventory row of the chosen leader, or null
 var _dirty := false
 var _filter_text := ""
@@ -199,9 +202,9 @@ func _build_collection() -> void:
 	_grid.add_theme_constant_override("h_separation", 10)
 	_grid.add_theme_constant_override("v_separation", 12)
 	scroll.add_child(_grid)
-	# Drop a deck row here to remove it
-	p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.get("source") == "deck",
-		func(_at, d): _remove(d.cardId))
+	# Drop a deck or Hideout row here to remove it
+	p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.get("source") in ["deck", "hideout"],
+		func(_at, d): _remove_hideout(d.cardId) if d.source == "hideout" else _remove(d.cardId))
 
 
 func _build_deck_panel() -> void:
@@ -237,9 +240,10 @@ func _build_deck_panel() -> void:
 	tools.add_child(UI.button("CLEAR", func():
 		if _deck.is_empty():
 			return
-		UI.dialog(self, "CLEAR THE DECK?", "Take every card out of this deck? (Nothing is saved until you press SAVE.)",
+		UI.dialog(self, "CLEAR THE DECK?", "Take every card out of this deck and its Hideout? (Nothing is saved until you press SAVE.)",
 			[["CLEAR", func():
 				_deck.clear()
+				_hideout.clear()
 				_dirty = true
 				_render_all(), UI.RED], ["CANCEL", func(): pass]]), Vector2(120, 52), UI.RED))
 	tools.add_child(UI.button("COPY CODE", _copy_code, Vector2(170, 52)))
@@ -265,6 +269,10 @@ func _load_deck() -> void:
 	for c in r.data.get("cards", []):
 		for i in int(c.copies):
 			_deck.append({"cardId": c.id, "name": c.name, "rarity": c.rarity, "art_url": c.get("art_url", "")})
+	_hideout = []
+	for c in r.data.get("hideout", []):
+		for i in int(c.copies):
+			_hideout.append(_entry(c))
 	_leader = r.data.get("leader")
 	_dirty = false
 	_render_all()
@@ -286,14 +294,38 @@ func _copies(card_id) -> int:
 	return _deck.filter(func(c): return c.cardId == card_id).size()
 
 
-## A Striver's higher levels you haven't collected ("Rook LV2"): it can't promote past them.
-func _missing_levels(card_id: String) -> Array:
+## Copies of a card in the Hideout.
+func _hidden(card_id) -> int:
+	return _hideout.filter(func(c): return c.cardId == card_id).size()
+
+
+## A deck or Hideout entry for an inventory row.
+static func _entry(item: Dictionary) -> Dictionary:
+	return {"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", ""), "level": int(item.get("level", 1))}
+
+
+## The inventory row for a card game ID ("card_mili_016"), or {}.
+func _item_by_art(art: String) -> Dictionary:
+	for i in _inventory:
+		if str(i.get("art_url", "")) == art:
+			return i
+	return {}
+
+
+## Whether a card game ID waits in the Hideout.
+func _in_hideout(art: String) -> bool:
+	return _hideout.any(func(c): return str(c.art_url) == art)
+
+
+## A Striver's higher levels that aren't in the Hideout ("Rook LV2"): it can't promote to them.
+## owned: only the ones you own (true) or only the ones you haven't collected (false).
+func _missing_levels(card_id: String, owned: bool) -> Array:
 	var line := CardDB.striver_line(card_id)
 	var out: Array = []
 	if line.is_empty() or line[0] != card_id:
 		return out
 	for i in range(1, line.size()):
-		if _owned_copies(line[i]) <= 0:
+		if not _in_hideout(line[i]) and (_owned_copies(line[i]) > 0) == owned:
 			out.append("%s LV%d" % [CardDB.get_card(line[i]).get("name", line[i]), i + 1])
 	return out
 
@@ -305,27 +337,84 @@ func _owned_copies(card_id: String) -> int:
 	return 0
 
 
-## Under the deck list: the Hideout, the higher levels of the deck's Strivers that come along with
-## them (up to 3 of each you own), and any level you haven't collected yet (it can't promote past it).
+## Under the deck list: the Hideout, the higher levels of your Strivers you put there (click a row
+## to take one out), then the levels the deck's Strivers could promote to that aren't there yet:
+## + to add one you own, or NOT COLLECTED.
 func _render_hideout(card_ids: Array) -> void:
-	var lines: Array = []
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 12)
+	_list.add_child(head_row)
+	var head := UI.label("HIDEOUT  ·  %d CARD%s" % [_hideout.size(), "" if _hideout.size() == 1 else "S"], 18, UI.GOLD, true)
+	head.tooltip_text = "Your Strivers' higher levels wait in the Hideout during a match. A Striver can only promote to a level that's waiting here, so put them in: click a level 2+ card in your collection (up to 3 of each)."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
+	head.custom_minimum_size = Vector2(440, 0)
+	head_row.add_child(head)
+	var wanted: Array = []   # [game id, name] of levels the deck's Strivers could use
+	var seen := {}
 	for id in card_ids:
 		var line := CardDB.striver_line(str(id))
 		if line.is_empty() or line[0] != str(id):
 			continue
 		for i in range(1, line.size()):
-			var n := mini(3, _owned_copies(line[i]))
-			var name := "%s LV%d" % [CardDB.get_card(line[i]).get("name", line[i]), i + 1]
-			lines.append([name, n])
-	if lines.is_empty():
+			if not seen.has(line[i]) and not _in_hideout(line[i]):
+				seen[line[i]] = true
+				wanted.append([line[i], "%s LV%d" % [CardDB.get_card(line[i]).get("name", line[i]), i + 1]])
+	if wanted.any(func(w): return _owned_copies(w[0]) > 0):
+		var all := UI.button("+ ADD ALL", _fill_hideout, Vector2(170, 40), UI.GREEN)
+		all.tooltip_text = "Put every higher level of this deck's Strivers you own in the Hideout (up to 3 of each)"
+		head_row.add_child(all)
+	var grouped := {}
+	var order: Array = []
+	for c in _hideout:
+		if not grouped.has(c.cardId):
+			grouped[c.cardId] = c.duplicate()
+			grouped[c.cardId].count = 0
+			order.append(c.cardId)
+		grouped[c.cardId].count += 1
+	if order.is_empty():
+		var none := UI.label("   Empty: Strivers can't promote without their next level here.", 15, UI.MUTED)
+		_list.add_child(none)
+	for id in order:
+		_rows[id] = _deck_row(grouped[id], true)
+		_list.add_child(_rows[id])
+	for w in wanted:
+		var item := _item_by_art(w[0])
+		if item.is_empty():
+			_list.add_child(UI.label("   %s  —  NOT COLLECTED" % w[1], 15, UI.RED))
+			continue
+		var add := Button.new()
+		add.text = "   +  %s  —  not in the Hideout" % w[1]
+		add.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		add.flat = true
+		add.add_theme_font_size_override("font_size", 15)
+		add.add_theme_color_override("font_color", Color("ffb35c"))
+		add.tooltip_text = "Click to put %s in the Hideout" % w[1]
+		add.pressed.connect(func(): _add(item))
+		_list.add_child(add)
+
+
+## + ADD ALL: every higher level of the deck's Strivers you own goes in the Hideout (up to 3 of each).
+func _fill_hideout() -> void:
+	var added := 0
+	var seen := {}
+	for e in _deck:
+		var line := CardDB.striver_line(str(e.art_url))
+		if line.is_empty() or line[0] != str(e.art_url):
+			continue
+		for i in range(1, line.size()):
+			var item := _item_by_art(line[i])
+			if item.is_empty() or seen.has(line[i]):
+				continue
+			seen[line[i]] = true
+			while _hidden(item.id) < mini(3, int(item.get("quantity", 0))):
+				_hideout.append(_entry(item))
+				added += 1
+	if added == 0:
 		return
-	var head := UI.label("HIDEOUT  ·  COMES WITH YOUR STRIVERS", 15, UI.GOLD, true)
-	head.tooltip_text = "Your Strivers' higher levels wait in the Hideout during a match and come out when they promote. You don't add them: every copy you own (up to 3) comes along."
-	head.mouse_filter = Control.MOUSE_FILTER_PASS
-	_list.add_child(head)
-	for l in lines:
-		var row := UI.label(("   %s  ×%d" % [l[0], l[1]]) if l[1] > 0 else "   %s  —  NOT COLLECTED" % l[0], 15, UI.MUTED if l[1] > 0 else UI.RED)
-		_list.add_child(row)
+	_dirty = true
+	Sfx.play("draw", 1.2)
+	_render_all()
+	UI.toast(self, "%d card(s) put in the Hideout" % added, UI.GREEN)
 
 
 ## A Striver above level 1 (a promoted form): it never goes in the deck, it waits in the Hideout
@@ -337,8 +426,7 @@ static func _hideout_level(item: Dictionary) -> int:
 
 func _add(item: Dictionary, from: Control = null) -> void:
 	if _hideout_level(item) > 0:
-		UI.toast(self, "Level %d %s waits in the Hideout: add its level 1 card and it comes along" % [_hideout_level(item), item.get("name", "")], UI.GOLD)
-		Sfx.play("error")
+		_add_hideout(item, from)
 		return
 	var have := _copies(item.id)
 	if have >= 3:
@@ -353,14 +441,52 @@ func _add(item: Dictionary, from: Control = null) -> void:
 	_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 	_dirty = true
 	Sfx.play("draw", 1.2)
-	var missing := _missing_levels(str(item.get("art_url", "")))
-	if not missing.is_empty():   # (it can't promote past a level you haven't collected)
+	var art := str(item.get("art_url", ""))
+	var to_add := _missing_levels(art, true)
+	var missing := _missing_levels(art, false)
+	if not to_add.is_empty():   # (it can't promote to a level that isn't waiting in the Hideout)
+		UI.toast(self, "Put %s in the Hideout so %s can promote" % [" and ".join(to_add), item.get("name", "")], UI.GOLD)
+	elif not missing.is_empty():
 		UI.toast(self, "%s can't promote yet: you haven't collected %s" % [item.get("name", ""), " and ".join(missing)], UI.GOLD)
 	var start := from.get_global_rect() if from and is_instance_valid(from) else Rect2()
 	_render_all()
 	_fly_in(item, start)
 	if _deck.size() == 40:
 		_complete()
+
+
+## A Striver's level 2+ card goes in the Hideout (up to 3 of each).
+func _add_hideout(item: Dictionary, from: Control = null) -> void:
+	if str(item.get("subtype", "")) != "striver":
+		UI.toast(self, "Only a Striver's higher levels go in the Hideout", UI.RED)
+		return
+	var have := _hidden(item.id)
+	if have >= 3:
+		UI.toast(self, "Max 3 copies per card in the Hideout", UI.RED)
+		return
+	if have >= int(item.get("quantity", 0)):
+		UI.toast(self, "You only own %d" % int(item.quantity), UI.RED)
+		return
+	_hideout.append(_entry(item))
+	_dirty = true
+	Sfx.play("draw", 1.2)
+	# A hint when its earlier levels aren't in the deck / Hideout (it can't be reached)
+	var line := CardDB.striver_line(str(item.get("art_url", "")))
+	if not line.is_empty() and not _deck.any(func(c): return str(c.art_url) == line[0]):
+		UI.toast(self, "%s is in the Hideout, but this deck has no %s LV1 to promote" % [item.name, CardDB.get_card(line[0]).get("name", line[0])], UI.GOLD)
+	var start := from.get_global_rect() if from and is_instance_valid(from) else Rect2()
+	_render_all()
+	_fly_in(item, start)
+
+
+func _remove_hideout(card_id) -> void:
+	for i in range(_hideout.size() - 1, -1, -1):
+		if _hideout[i].cardId == card_id:
+			_hideout.remove_at(i)
+			_dirty = true
+			Sfx.play("flip")
+			break
+	_render_all()
 
 
 func _remove(card_id) -> void:
@@ -442,8 +568,7 @@ func _item_for(card_id) -> Dictionary:
 
 
 ## Tops the deck up to 40: characters first (about 28), strongest for their Authority, then
-## Hustles and Ambushes, then anything left. Promoted forms are skipped: they wait in the
-## Hideout by themselves.
+## Hustles and Ambushes, then anything left. Promoted forms go in the Hideout instead.
 func _auto_fill() -> void:
 	if _deck_id == null:
 		UI.toast(self, "Make a deck first (+ NEW)", UI.RED)
@@ -475,6 +600,7 @@ func _auto_fill() -> void:
 	if added == 0:
 		UI.toast(self, "No more cards in your collection to add", UI.RED)
 		return
+	_fill_hideout()   # (and the higher levels of its Strivers in the Hideout)
 	_dirty = true
 	Sfx.play("draw", 1.2)
 	_render_all()
@@ -482,8 +608,8 @@ func _auto_fill() -> void:
 		UI.GREEN if _deck.size() == 40 else UI.GOLD)
 
 
-## The deck as text: AWB1:<base64 of "leader|card*copies,card*copies,...">, by card ID, so a code
-## works for anyone who owns the cards.
+## The deck as text: AWB1:<base64 of "leader|card*copies,...|hideout card*copies,...">, by card ID,
+## so a code works for anyone who owns the cards. (Older codes have no Hideout part.)
 func _deck_code() -> String:
 	var counts := {}
 	var order: Array = []
@@ -493,8 +619,12 @@ func _deck_code() -> String:
 			order.append(art)
 		counts[art] = counts.get(art, 0) + 1
 	var parts: Array = order.map(func(a): return "%s*%d" % [a, counts[a]])
+	var hcounts := {}
+	for c in _hideout:
+		hcounts[str(c.art_url)] = hcounts.get(str(c.art_url), 0) + 1
+	var hparts: Array = hcounts.keys().map(func(a): return "%s*%d" % [a, hcounts[a]])
 	var leader := str(_leader.get("art_url", "")) if _leader is Dictionary else ""
-	return CODE_PREFIX + Marshalls.utf8_to_base64("%s|%s" % [leader, ",".join(parts)])
+	return CODE_PREFIX + Marshalls.utf8_to_base64("%s|%s|%s" % [leader, ",".join(parts), ",".join(hparts)])
 
 
 func _copy_code() -> void:
@@ -527,7 +657,7 @@ func _load_code(code: String) -> void:
 		return
 	var text := Marshalls.base64_to_utf8(code.trim_prefix(CODE_PREFIX))
 	var halves := text.split("|")
-	if halves.size() != 2:
+	if halves.size() < 2 or halves.size() > 3:
 		UI.toast(self, "That deck code is damaged", UI.RED)
 		return
 	var by_art := {}
@@ -548,6 +678,21 @@ func _load_code(code: String) -> void:
 			var name := str(item.get("name", CardDB.get_card(bits[0]).get("name", bits[0])))
 			missing.append("%s ×%d" % [name, want - have])
 	_deck = deck.slice(0, 40)
+	_hideout = []
+	if halves.size() > 2:
+		for part in halves[2].split(",", false):
+			var bits := part.split("*")
+			var want := clampi(int(bits[1]) if bits.size() > 1 else 1, 1, 3)
+			var item: Dictionary = by_art.get(bits[0], {})
+			if _hideout_level(item) == 0 or str(item.get("subtype", "")) != "striver":
+				if item.is_empty():
+					missing.append("%s ×%d (Hideout)" % [CardDB.get_card(bits[0]).get("name", bits[0]), want])
+				continue
+			var have := mini(want, int(item.get("quantity", 0)))
+			for n in have:
+				_hideout.append(_entry(item))
+			if have < want:
+				missing.append("%s ×%d (Hideout)" % [item.name, want - have])
 	var leader: Dictionary = by_art.get(halves[0], {})
 	if halves[0] != "":
 		if leader.get("card_type") == "leader":
@@ -576,8 +721,14 @@ func _save(after := Callable()) -> void:
 	var cards: Array = []
 	for id in grouped:
 		cards.append({"cardId": id, "copies": grouped[id]})
+	var hgrouped := {}
+	for c in _hideout:
+		hgrouped[c.cardId] = hgrouped.get(c.cardId, 0) + 1
+	var hideout: Array = []
+	for id in hgrouped:
+		hideout.append({"cardId": id, "copies": hgrouped[id]})
 	var r := await Api.request("PUT", "/api/deck/%s/cards" % _deck_id,
-		{"cards": cards, "leaderCardId": _leader.id if _leader is Dictionary else null})
+		{"cards": cards, "leaderCardId": _leader.id if _leader is Dictionary else null, "hideout": hideout})
 	if r.ok:
 		_dirty = false
 		_decks[_deck_idx].card_count = 40
@@ -658,10 +809,6 @@ func _exit() -> void:
 func _matches(item: Dictionary) -> bool:
 	if item.get("card_type") == "leader":
 		return false
-	# A Striver's later levels come along with its level 1 card (its stars show how many): they're
-	# only listed when looking at Strivers
-	if _hideout_level(item) > 0 and _kind != "striver":
-		return false
 	if _faction != "all" and item.get("clan") != _faction:
 		return false
 	match _kind:
@@ -717,13 +864,12 @@ func _render_collection() -> void:
 		tile.pressed.connect(func(t): _add(item, t))
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
 		if CardDB.striver_stage(CardDB.get_card(str(item.get("art_url", "")))).y > 1 and _hideout_level(item) == 0:
-			tile.tooltip_text = "A Striver: its higher levels wait in your Hideout and come along with it. Right-click to see them."
-		if _hideout_level(item) > 0:   # (a promoted form: it comes with its level 1 card)
-			tile.badge = "LV%d" % _hideout_level(item)
-			tile.dimmed = true
-			tile.tooltip_text = "Waits in the Hideout: add its level 1 card to the deck"
-			_grid.add_child(tile)
-			continue
+			tile.tooltip_text = "A Striver: put its higher levels in the Hideout so it can promote. Right-click to see them."
+		if _hideout_level(item) > 0:   # (a promoted form: it goes in the Hideout)
+			var hid := _hidden(item.id)
+			tile.badge = "%d/%d" % [hid, mini(3, int(item.get("quantity", 0)))]   # (its stars show the level)
+			tile.dimmed = hid >= mini(3, int(item.get("quantity", 0)))
+			tile.tooltip_text = "Click to put it in the Hideout: a Striver can only promote to a level waiting there"
 		tile.set_drag_forwarding(func(_at):
 			var prev := UI.texture_rect(UI.card_art(item), TILE * 0.8)
 			prev.modulate.a = 0.85
@@ -785,8 +931,8 @@ func _render_stats() -> void:
 			cheap += 1
 		most_tributes = maxi(most_tributes, DuelState.tributes_for(c))
 		var next := CardDB.next_form(str(e.get("art_url", "")))
-		if c.get("subtype") == "striver" and next != "" and not owned.has(next):
-			stuck[str(c.get("name", ""))] = str(CardDB.get_card(next).get("name", next))
+		if c.get("subtype") == "striver" and next != "" and not _in_hideout(next):
+			stuck[str(c.get("name", ""))] = ["%s LV%d" % [CardDB.get_card(next).get("name", next), int(CardDB.get_card(next).get("level", 2))], owned.has(next)]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	_stats.add_child(row)
@@ -827,7 +973,7 @@ func _render_stats() -> void:
 	if most_tributes > 0 and cheap < 4 + 2 * most_tributes:
 		warn.append("Heavies need characters to sacrifice: only %d characters cost 3 Authority or less." % cheap)
 	for name in stuck:
-		warn.append("%s can't promote: you don't own %s." % [name, stuck[name]])
+		warn.append(("%s can't promote: put %s in the Hideout." if stuck[name][1] else "%s can't promote: you don't own %s.") % [name, stuck[name][0]])
 	if curve[6] > 6:
 		warn.append("%d cards cost 7+ Authority: you may draw them long before you can play them." % curve[6])
 	for w in warn.slice(0, 4):
@@ -839,7 +985,7 @@ func _render_stats() -> void:
 		_stats.add_child(UI.label("  …and %d more" % (warn.size() - 4), 14, UI.MUTED))
 
 
-func _deck_row(c: Dictionary) -> Control:
+func _deck_row(c: Dictionary, in_hideout := false) -> Control:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(640, 64)
 	b.add_theme_stylebox_override("normal", UI.box(Color("14141e"), UI.rarity_color(c.rarity), 2, 6))
@@ -852,7 +998,7 @@ func _deck_row(c: Dictionary) -> Control:
 	var thumb := UI.texture_rect(art if full else null, Vector2(150, 56), true)
 	thumb.position = Vector2(4, 4)
 	b.add_child(thumb)
-	var n := UI.label(str(c.name), 22, Color.WHITE, true)
+	var n := UI.label(str(c.name) + ("  LV%d" % int(c.get("level", 2)) if in_hideout else ""), 22, UI.GOLD if in_hideout else Color.WHITE, true)
 	n.position = Vector2(168, 16)
 	b.add_child(n)
 	var cnt := UI.label("×%d" % c.count, 28, UI.GOLD, true)
@@ -861,12 +1007,12 @@ func _deck_row(c: Dictionary) -> Control:
 	var minus := UI.label("−", 32, UI.RED, true)
 	minus.position = Vector2(604, 8)
 	b.add_child(minus)
-	b.pressed.connect(func(): _remove(c.cardId))
+	b.pressed.connect(func(): _remove_hideout(c.cardId) if in_hideout else _remove(c.cardId))
 	b.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
 			var item = _inventory.filter(func(i): return i.id == c.cardId)
 			UI.card_zoom(self, item[0] if not item.is_empty() else c))
-	b.set_drag_forwarding(func(_at): return {"source": "deck", "cardId": c.cardId}, Callable(), Callable())
+	b.set_drag_forwarding(func(_at): return {"source": "hideout" if in_hideout else "deck", "cardId": c.cardId}, Callable(), Callable())
 	return b
 
 

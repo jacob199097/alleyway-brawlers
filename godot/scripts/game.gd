@@ -394,12 +394,6 @@ func load_duel_deck() -> Dictionary:
 	var dr := await Api.request("GET", "/api/deck/%s" % active.id)
 	if not dr.ok:
 		return {"error": dr.error}
-	var ir := await Api.request("GET", "/api/profile/inventory")
-	var owned := {}
-	if ir.ok and ir.data is Array:
-		for row in ir.data:
-			owned[str(row.get("art_url", ""))] = row
-
 	var deck: Array = []
 	for row in dr.data.get("cards", []):
 		var id := str(row.get("art_url", ""))
@@ -407,16 +401,13 @@ func load_duel_deck() -> Dictionary:
 			continue   # not playable by the rules yet
 		for i in int(row.get("copies", 1)):
 			deck.append(_card_spec(id, row))
-	var hideout: Array = []
-	var seen := {}
-	for row in dr.data.get("cards", []):
-		var next := CardDB.next_form(str(row.get("art_url", "")))
-		while next != "" and not seen.has(next):
-			seen[next] = true
-			if owned.has(next):
-				for i in mini(3, int(owned[next].get("quantity", 0))):
-					hideout.append(_card_spec(next, owned[next]))
-			next = CardDB.next_form(next)
+	var hideout: Array = []   # (the higher levels the player put in the deck's Hideout)
+	for row in dr.data.get("hideout", []):
+		var id := str(row.get("art_url", ""))
+		if CardDB.get_card(id).is_empty():
+			continue
+		for i in int(row.get("copies", 1)):
+			hideout.append(_card_spec(id, row))
 	var leader := ""
 	var lrow = dr.data.get("leader")
 	if lrow is Dictionary and not CardDB.get_card(str(lrow.get("art_url", ""))).is_empty():

@@ -41,6 +41,8 @@ async function copiesInDecks(client, playerId) {
         `SELECT card_id, MAX(copies)::int AS copies FROM (
              SELECT dc.card_id, dc.copies FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id WHERE d.player_id = $1
              UNION ALL
+             SELECT dh.card_id, dh.copies FROM deck_hideout dh JOIN decks d ON d.id = dh.deck_id WHERE d.player_id = $1
+             UNION ALL
              SELECT leader_card_id, 1 FROM decks WHERE player_id = $1 AND leader_card_id IS NOT NULL
          ) used GROUP BY card_id`, [playerId]);
     return new Map(rows.map(r => [r.card_id, r.copies]));

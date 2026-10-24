@@ -102,8 +102,8 @@ async function seedStarter(client, playerId, recipe, clanName) {
     const name = `${clanName} Starter`;
     await client.query('DELETE FROM decks WHERE player_id = $1 AND name = $2', [playerId, name]);
     const { rows: deckRows } = await client.query(
-        `INSERT INTO decks (player_id, name, is_active, leader_card_id)
-         VALUES ($1, $2, TRUE, $3)
+        `INSERT INTO decks (player_id, name, is_active, leader_card_id, hideout_set)
+         VALUES ($1, $2, TRUE, $3, TRUE)
          RETURNING id`,
         [playerId, name, recipe.leader ? dbId[recipe.leader] : null]
     );
@@ -111,6 +111,9 @@ async function seedStarter(client, playerId, recipe, clanName) {
     await client.query('UPDATE decks SET is_active = FALSE WHERE player_id = $1 AND id <> $2', [playerId, deckId]);
     for (const [id, copies] of recipe.deck) {
         await client.query('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, dbId[id], copies]);
+    }
+    for (const [id, copies] of recipe.hideout) {
+        await client.query('INSERT INTO deck_hideout (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, dbId[id], Math.min(3, copies)]);
     }
 }
 

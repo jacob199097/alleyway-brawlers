@@ -3,6 +3,7 @@
 const router          = require('express').Router();
 const { requireAuth } = require('./middleware');
 const { pool }        = require('../db/pool');
+const { deckHideout } = require('../utils/deckHideout');
 
 // ── GET /api/deck — list all decks for the player ────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
@@ -49,7 +50,8 @@ router.get('/:id', requireAuth, async (req, res) => {
             );
             leader = lr[0] || null;
         }
-        res.json({ ...deck, cards: rows, leader });
+        const hideout = await deckHideout(pool, deck, req.playerId);
+        res.json({ ...deck, cards: rows, leader, hideout });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -60,7 +62,7 @@ router.post('/', requireAuth, async (req, res) => {
     const { name } = req.body;
     try {
         const { rows } = await pool.query(
-            `INSERT INTO decks (player_id, name) VALUES ($1, $2) RETURNING *`,
+            `INSERT INTO decks (player_id, name, hideout_set) VALUES ($1, $2, TRUE) RETURNING *`,
             [req.playerId, name || 'New Deck']
         );
         res.status(201).json(rows[0]);
@@ -70,13 +72,15 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // ── PUT /api/deck/:id/cards — replace deck contents (full sync) ───────────────
-// Expects body: { cards: [{ cardId, copies }] }
+// Expects body: { cards: [{ cardId, copies }], leaderCardId, hideout: [{ cardId, copies }] }
+// (hideout: the higher levels of Strivers the player puts in the Hideout; left out = unchanged)
 router.put('/:id/cards', requireAuth, async (req, res) => {
     const deck = await _getDeckOrFail(req.params.id, req.playerId, res);
     if (!deck) return;
 
-    const { cards, leaderCardId } = req.body;
+    const { cards, leaderCardId, hideout } = req.body;
     if (!Array.isArray(cards)) return res.status(400).json({ error: 'cards must be an array.' });
+    if (hideout !== undefined && !Array.isArray(hideout)) return res.status(400).json({ error: 'hideout must be an array.' });
 
     // Merge duplicate entries and validate copy counts before touching the DB
     const wanted = new Map();   // cardId → copies
@@ -86,6 +90,14 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Each card needs a cardId and a whole number of copies.' });
         }
         wanted.set(entry.cardId, (wanted.get(entry.cardId) || 0) + copies);
+    }
+    const hidden = new Map();   // cardId → copies, in the Hideout
+    for (const entry of hideout || []) {
+        const copies = entry?.copies ?? 1;
+        if (typeof entry?.cardId !== 'string' || !Number.isInteger(copies) || copies < 1) {
+            return res.status(400).json({ error: 'Each Hideout card needs a cardId and a whole number of copies.' });
+        }
+        hidden.set(entry.cardId, (hidden.get(entry.cardId) || 0) + copies);
     }
     const totalCopies = [...wanted.values()].reduce((s, n) => s + n, 0);
     if (totalCopies !== 40) return res.status(400).json({ error: `Deck must be exactly 40 cards (currently ${totalCopies}).` });
@@ -98,7 +110,7 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
          FROM   cards c
          JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1
          WHERE  c.id::text = ANY($2::text[])`,
-        [req.playerId, [...wanted.keys()]]
+        [req.playerId, [...wanted.keys(), ...hidden.keys()]]
     );
     const ownedById = new Map(owned.map(r => [r.id, r]));
     for (const [cardId, copies] of wanted) {
@@ -110,6 +122,17 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
             return res.status(400).json({ error: `${row.name} (level ${level}) waits in the Hideout: put its level 1 card in the deck instead.` });
         }
         if (copies > 3) return res.status(400).json({ error: `Max 3 copies of ${row.name}.` });
+        if (copies > row.quantity) return res.status(400).json({ error: `You only own ${row.quantity} of ${row.name}.` });
+    }
+    // The Hideout: only a Striver's higher levels (level 2 and up), up to 3 of each you own
+    for (const [cardId, copies] of hidden) {
+        const row = ownedById.get(cardId);
+        if (!row) return res.status(400).json({ error: 'The Hideout has a card you do not own.' });
+        const c = CARD_CATALOG[row.art_url] || {};
+        if (row.card_type !== 'gang_member' || c.subtype !== 'striver' || Math.trunc(Number(c.level) || 1) < 2) {
+            return res.status(400).json({ error: `${row.name} can't go in the Hideout: only a Striver's higher levels wait there.` });
+        }
+        if (copies > 3) return res.status(400).json({ error: `Max 3 copies of ${row.name} in the Hideout.` });
         if (copies > row.quantity) return res.status(400).json({ error: `You only own ${row.quantity} of ${row.name}.` });
     }
 
@@ -148,6 +171,13 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
                     [leaderCardId, req.params.id]
                 );
             }
+        }
+        if (hideout !== undefined) {
+            await client.query('DELETE FROM deck_hideout WHERE deck_id = $1', [req.params.id]);
+            for (const [cardId, copies] of hidden) {
+                await client.query('INSERT INTO deck_hideout (deck_id, card_id, copies) VALUES ($1, $2, $3)', [req.params.id, cardId, copies]);
+            }
+            await client.query('UPDATE decks SET hideout_set = TRUE WHERE id = $1', [req.params.id]);
         }
         await client.query(
             `UPDATE decks SET updated_at = NOW() WHERE id = $1`, [req.params.id]

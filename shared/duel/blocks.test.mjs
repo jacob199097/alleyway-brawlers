@@ -12,6 +12,9 @@ CARD_CATALOG.block_grunt = { id: 'block_grunt', name: 'Grunt', clan: 'test', car
 /** A board in the brawl phase of turn 3, player to act; decks of plain grunts. */
 function board(player = [], opponent = []) {
     const st = new DuelState({ player: Array(10).fill('block_grunt'), opponent: Array(10).fill('block_grunt') }, {}, {}, 'player', -1);
+    for (const s of ['player', 'opponent']) {   // (every higher level waits in the Hideout, so Strivers can promote)
+        st.sides[s].hideout = Object.keys(CARD_CATALOG).filter(id => Number(CARD_CATALOG[id].level) > 1).flatMap(id => [1, 2, 3].map(() => st.makeCard(id)));
+    }
     st.turn = 3;
     st.phase = 'brawl';
     for (const [side, cards] of [['player', player], ['opponent', opponent]]) {

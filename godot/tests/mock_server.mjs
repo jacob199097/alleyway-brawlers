@@ -201,7 +201,8 @@ const routes = {
         const d = decks.find(x => x.id === id);
         if (!d) return [404, { error: 'Deck not found.' }];
         return [200, { ...deckSummary(d), cards: [...d.cards].map(([cid, copies]) => ({ ...byId.get(cid), copies })),
-            leader: d.leader_card_id ? byId.get(d.leader_card_id) : null }];
+            leader: d.leader_card_id ? byId.get(d.leader_card_id) : null,
+            hideout: [...(d.hideout || new Map())].map(([cid, copies]) => ({ ...byId.get(cid), copies })) }];
     },
     'PUT /api/deck/:id/cards': (b, id) => {
         const d = decks.find(x => x.id === id);
@@ -209,6 +210,7 @@ const routes = {
         if (n !== 40) return [400, { error: `Deck must be exactly 40 cards (currently ${n}).` }];
         d.cards = new Map(b.cards.map(c => [c.cardId, c.copies]));
         if (b.leaderCardId !== undefined) d.leader_card_id = b.leaderCardId;
+        if (b.hideout !== undefined) d.hideout = new Map(b.hideout.map(c => [c.cardId, c.copies]));
         return [200, { success: true, totalCopies: n }];
     },
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },

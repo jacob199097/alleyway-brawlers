@@ -754,7 +754,7 @@ func can_promote(side: String, slot: int) -> bool:
 	var c = card_at(side, slot)
 	if c == null or c.get("ability") != "maya_promote" or c.face_down or c.downed or c.get("subtype") != "striver" or in_stasis(c):
 		return false
-	if sides[side].promoted.has(slot) or CardDB.next_form(c.id) == "":
+	if sides[side].promoted.has(slot) or not _next_in_hideout(side, c):
 		return false
 	for e in characters(side):
 		if e.slot != slot and is_lion(e.card) and e.card.authority >= c.authority:
@@ -1788,6 +1788,10 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		return
 	var to_id := CardDB.next_form(old.id)
 	if to_id == "":
+		return
+	if not _next_in_hideout(side, old):   # (its next level has to be waiting in the Hideout)
+		_emit("notice", {"side": side, "text": "%s CAN'T PROMOTE: NO %s LV%d IN THE HIDEOUT" % [str(old.name).to_upper(),
+			str(CardDB.get_card(to_id).get("name", to_id)).to_upper(), int(CardDB.get_card(to_id).get("level", 2))]})
 		return
 	if s.promoted.has(slot):   # (once per turn)
 		_emit("notice", {"side": side, "text": "%s CAN'T PROMOTE AGAIN THIS TURN" % str(old.name).to_upper()})
@@ -2989,7 +2993,7 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			"statused":
 				return _afflicted(x.card)
 			"promotable":
-				return x.card.get("subtype") == "striver" and CardDB.next_form(str(x.card.id)) != "" and not sides[x.side].promoted.has(x.slot) \
+				return x.card.get("subtype") == "striver" and _next_in_hideout(x.side, x.card) and not sides[x.side].promoted.has(x.slot) \
 					and not x.card.downed and not (x.card.get("charmed") is Dictionary)
 			"charmable":
 				return x.card.get("cardType") != "leader" and not (x.card.get("charmed") is Dictionary)
@@ -3691,10 +3695,16 @@ func _downed_lions(side: String) -> Array:
 	return out
 
 
+## Whether a Striver's next level waits in the side's Hideout: it can't promote without it.
+func _next_in_hideout(side: String, card: Dictionary) -> bool:
+	var to := CardDB.next_form(str(card.id))
+	return to != "" and sides[side].hideout.any(func(h): return h.get("id") == to)
+
+
 func _promotable_strivers(side: String) -> Array:
 	var out := characters(side).filter(func(e): return is_lion(e.card) and e.card.get("subtype") == "striver" \
 		and not e.card.downed and not e.card.face_down and not sides[side].promoted.has(e.slot) \
-		and CardDB.next_form(e.card.id) != "")
+		and _next_in_hideout(side, e.card))
 	out.sort_custom(func(a, b): return int(a.card.level) > int(b.card.level) or (int(a.card.level) == int(b.card.level) and a.slot < b.slot))
 	return out
 

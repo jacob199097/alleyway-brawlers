@@ -5,9 +5,13 @@
 import assert from 'node:assert';
 import { DuelState, BACK } from './DuelState.js';
 import { choose } from './DuelAI.js';
+import { CARD_CATALOG } from '../cards.js';
 
 const duel = () => {
     const st = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1);
+    for (const s of ['player', 'opponent']) {   // (every higher level waits in the Hideout, so Strivers can promote)
+        st.sides[s].hideout = Object.keys(CARD_CATALOG).filter(id => Number(CARD_CATALOG[id].level) > 1).flatMap(id => [1, 2, 3].map(() => st.makeCard(id)));
+    }
     st.turn = 5;
     st.phase = 'deployment';
     st.active = 'player';
@@ -114,5 +118,21 @@ st._asks = [];
 st._offerFlips();
 const offer = st._asks.find(a => a.key === 'flip');
 assert.ok(offer && offer.side === 'opponent' && offer.options[0].id === 'no', "offered to its owner on the other player's turn");
+
+// A Striver only promotes to a level waiting in the Hideout (the player puts them there)
+st = duel();
+st.sides.player.field[1] = st.makeCard('card_nebu_001');
+st.sides.player.hideout = [];
+st._asks = [];
+st._events = [];
+st._promote('player', 1, 'test');
+assert.equal(st._asks.length, 0, 'no promotion without Kade LV2 in the Hideout');
+assert.ok(st._events.some(e => e.type === 'notice' && /NO KADE LV2 IN THE HIDEOUT/.test(e.text)), 'says why');
+assert.ok(!st.sides.player.promoted[1], 'still free to promote later this turn');
+st.sides.player.hideout = [st.makeCard('card_nebu_002')];
+st._promote('player', 1, 'test');
+answer(st, 'atk');
+assert.equal(st.sides.player.field[1].id, 'card_nebu_002', 'promotes once its next level is there');
+assert.equal(st.sides.player.hideout.length, 0, 'taken from the Hideout');
 
 console.log('charm: ok');

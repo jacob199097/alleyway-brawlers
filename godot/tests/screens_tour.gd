@@ -228,8 +228,12 @@ func _run() -> void:
 		await get_tree().create_timer(2.0).timeout
 		var db = _screen()
 		db._deck.clear()
+		db._hideout.clear()
 		db._auto_fill()
+		db._hideout = db._hideout.slice(0, 5)   # (some levels left out: "+ ... not in the Hideout")
 		db._render_all()
+		await get_tree().process_frame
+		db._list.get_parent().scroll_vertical = 100000   # (down to the Hideout)
 		await _shot("k1_deck", 1.0)
 		for item in db._inventory:
 			if str(item.get("card_type", "")) == "gang_member" and CardDB.striver_line(str(item.get("art_url", ""))).size() > 1 and int(item.get("level", 1)) == 1:

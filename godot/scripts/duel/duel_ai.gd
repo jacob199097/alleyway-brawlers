@@ -24,8 +24,8 @@ static func test_setup() -> Dictionary:
 			"gang_member":
 				if int(c.level) == 1:
 					base.append(id)
-				else:
-					hideout.append(id)
+				else:   # (two of each, like the deck: a Striver can't promote without its next level waiting)
+					hideout.append_array([id, id])
 			_:
 				base.append(id)
 	var deck: Array = []
