@@ -183,6 +183,46 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--underworld-only" in OS.get_cmdline_user_args():   # (Underworld's grave summon, skull attack and back; Wildcard's deal-in)
+		var deck4 := await Game.load_duel_deck()
+		Game.duel_setup = deck4
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "crypt"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var u = _screen()
+		if u._menu:
+			u._menu.visible = false
+		var ids: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		var uc: Dictionary = CardDB.get_card(ids[0]).duplicate()
+		uc.clanTag = "underworld"
+		var back = u._new_view(uc, "player", false)
+		back.set_back(CardDB.back("underworld"), CardDB.back_style("underworld"))
+		back.position = Vector2(1650, 700)
+		back.scale = Vector2.ONE * 1.6
+		var g = u._new_view(uc, "player", true)
+		g.position = u.slot_pos("player", 1)
+		u._grave_rise(g, u.slot_pos("player", 1), true)
+		for i in 6:
+			await _shot("u%02d_grave" % i, 0.12)
+		var wc: Dictionary = CardDB.get_card(ids[1]).duplicate()
+		wc.clanTag = "wildcard"
+		var w = u._new_view(wc, "player", true)
+		u._deal_in(w, u.slot_pos("player", 3), false)
+		for i in 4:
+			await _shot("u%02d_deal" % i, 0.1)
+		await get_tree().create_timer(1.0).timeout
+		var dv = u._new_view(CardDB.get_card(ids[2]).duplicate(), "opponent", true)
+		dv.position = u.slot_pos("opponent", 2)
+		dv.home = dv.position
+		g.home = u.slot_pos("player", 1)
+		var tpos: Vector2 = dv.home
+		u._skull_strike(g, dv, tpos, (tpos - g.home).normalized(), true, false)
+		for i in 14:
+			await _shot("u%02d_skull" % i, 0.08)
+		await _shot("u_back", 0.5)
+		get_tree().quit()
+		return
 	if "--deck-only" in OS.get_cmdline_user_args():   # (the deck editor's Hideout list, a Striver's zoom, the active deck while matchmaking)
 		Game.go("deck_builder")
 		await get_tree().create_timer(2.0).timeout

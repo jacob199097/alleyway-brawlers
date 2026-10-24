@@ -36,6 +36,10 @@ uniform float radar_radius = 0.335;      // the outer ring, in card widths
 uniform float roulette = 0.0;
 uniform sampler2D roulette_tex : filter_linear;
 uniform vec2 roulette_center = vec2(0.0, -0.035);   // the wheel's centre, as uv (card centre = 0)
+// hellfire: the Underworld back: its red cracks pulse, violet mist drifts up around the horned skull,
+// and the skull's eyes glow. Brighter while hovered (galaxy_glow).
+uniform float hellfire = 0.0;
+uniform vec2 hell_eyes = vec2(0.056, -0.025);   // the skull's eyes: ±x and y, as uv (card centre = 0)
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
 
 varying vec2 s;
@@ -205,6 +209,24 @@ void fragment() {
 		float r = length(d);
 		float rim = smoothstep(0.012, 0.0, abs(r - 0.37)) * (0.5 + 0.5 * sin(atan(d.y, d.x) * 18.0 - galaxy_angle * 9.0));
 		col.rgb += vec3(1.0, 0.75, 0.3) * rim * w * (0.12 + 0.25 * galaxy_glow);
+	}
+
+	if (hellfire > 0.0) {
+		vec2 p = vec2(uv.x, uv.y * aspect);
+		// The red cracks throb, unevenly
+		float red = clamp((col.r - max(col.g, col.b)) * 3.0, 0.0, 1.0);
+		float throb = 0.5 + 0.5 * sin(TIME * 2.2 + vnoise(p * 6.0) * 5.0);
+		col.rgb += vec3(1.0, 0.15, 0.22) * red * throb * 0.6 * hellfire * (1.0 + 0.8 * galaxy_glow);
+		// Violet mist rising, thinner over the skull
+		float mist = vnoise(vec2(p.x * 5.0, p.y * 4.0 + TIME * 0.35)) * vnoise(vec2(p.x * 3.0 + 1.7, p.y * 2.5 + TIME * 0.22));
+		float away = smoothstep(0.12, 0.42, length(p - vec2(0.0, hell_eyes.y * aspect)));
+		col.rgb += vec3(0.55, 0.25, 0.95) * mist * (0.4 + 0.3 * galaxy_glow) * away * hellfire;
+		// The skull's eyes glow
+		for (int i = 0; i < 2; i++) {
+			vec2 e = vec2((i == 0 ? -1.0 : 1.0) * hell_eyes.x, hell_eyes.y * aspect);
+			float g = exp(-pow(length(p - e) / 0.03, 2.0));
+			col.rgb += vec3(0.85, 0.45, 1.0) * g * (0.55 + 0.45 * sin(TIME * 3.0 + float(i) * 0.7)) * hellfire * (1.0 + 1.2 * galaxy_glow);
+		}
 	}
 
 	// A soft diagonal band of light that slides across as the card tilts

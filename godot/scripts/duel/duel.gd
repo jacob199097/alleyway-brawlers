@@ -62,9 +62,12 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
 ## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
 ## attack "guns": rapid gunfire, with muzzle flashes, tracers and bullet hits (Militia).
-## attack "cards": a volley of spinning playing cards thrown at the target, a gold ace to finish (Wildcard).
+## attack "cards": a volley of spinning playing cards thrown at the target, a gold ace to finish (Wildcard);
+## summon "deal": dealt in from the dealer's side of the table, spinning, landing in a burst of chips.
+## attack "skulls": glowing purple skulls hurled at the target, a great skull to finish (Underworld);
+## summon "grave": a tombstone bursts up out of the cracked ground and the character climbs out of the grave.
 const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"},
-	"wildcard": {"attack": "cards"}}
+	"wildcard": {"attack": "cards", "summon": "deal"}, "underworld": {"attack": "skulls", "summon": "grave"}}
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
@@ -1976,6 +1979,10 @@ func _ev_summon(ev: Dictionary) -> void:
 			await _warp_in(v, target, _clan_color(c), heavy)
 		elif _clan_style(c, "summon") == "airdrop":
 			await _airdrop(v, target, _clan_color(c), heavy)
+		elif _clan_style(c, "summon") == "grave":
+			await _grave_rise(v, target, heavy)
+		elif _clan_style(c, "summon") == "deal":
+			await _deal_in(v, target, heavy)
 		else:
 			var rise := Vector2(0, -70 if side == "player" else 70)
 			await v.move_to(target + rise, 1.75, v.home_rot, 0.3 if heavy else 0.24).finished
@@ -2204,6 +2211,8 @@ func _ev_clash(ev: Dictionary) -> void:
 		await _gun_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "cards":
 		await _card_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "skulls":
+		await _skull_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
 		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
@@ -2406,6 +2415,204 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	if heavy:
 		_cam_reset(0.45)
 		_dim(0.0, 0.35)
+
+
+## Underworld's summon: the ground cracks open with a violet glow, a tombstone bursts up out of it, and
+## the character climbs out of the grave in front of it, pale and ghostly, then takes on its colour.
+func _grave_rise(v: CardView, target: Vector2, heavy: bool) -> void:
+	var violet := Color(0.7, 0.35, 1.0)
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	# The card waits out of sight, below the ground
+	var up := create_tween().set_parallel()
+	up.tween_property(v, "modulate:a", 0.0, 0.12)
+	var stone := GraveStone.new()
+	stone.position = target + Vector2(0, 30)
+	stone.scale = Vector2(1.0, 0.0)
+	stone.z_index = 7
+	cards_layer.add_child(stone)
+	Sfx.play("slam", 0.7, -2.0)
+	shake(8.0 if heavy else 5.0)
+	_burst(target + Vector2(0, 60), Color(0.35, 0.3, 0.4), 26 if heavy else 16, 380.0, 0.6, 700.0)   # earth thrown up
+	_burst(target + Vector2(0, 40), violet, 18, 220.0, 0.8, -60.0)   # a violet glow from below
+	var rise := stone.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	rise.tween_property(stone, "scale", Vector2.ONE * (1.25 if heavy else 1.0), 0.28)
+	await rise.finished
+	# The character climbs out: from low and small, ghostly, up to its place
+	v.position = target + Vector2(0, 70)
+	v.rotation = v.home_rot
+	v.scale = Vector2.ONE * 0.55 * v.board_scale
+	v.modulate = Color(0.6, 0.45, 0.9, 0.0)
+	Sfx.play("ambush", 0.6, -8.0)
+	var climb := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	climb.tween_property(v, "position", target, 0.42)
+	climb.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.42)
+	climb.tween_property(v, "modulate", Color(0.8, 0.7, 1.0, 1.0), 0.3)
+	for i in 3:   # wisps of soul rising off it
+		_burst(target + Vector2(randf_range(-40, 40), 30 - i * 30), Color(0.75, 0.6, 1.0, 0.8), 6, 120.0, 0.9, -120.0)
+	await climb.finished
+	v.create_tween().tween_property(v, "modulate", Color.WHITE, 0.35)
+	_ring(target, violet, 1.5 if heavy else 1.15)
+	var gone := stone.create_tween()
+	gone.tween_interval(0.3)
+	gone.tween_property(stone, "modulate:a", 0.0, 0.4)
+	gone.tween_callback(stone.queue_free)
+	await _impact(target, heavy)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Wildcard's summon: dealt in from across the table, spinning flat, and landing with a burst of chips.
+func _deal_in(v: CardView, target: Vector2, heavy: bool) -> void:
+	var gold := Color(1.0, 0.82, 0.35)
+	var from := Vector2(1080, DIVIDER_Y - 40)
+	v.position = from
+	v.scale = Vector2.ONE * 0.5 * v.board_scale
+	v.rotation = v.home_rot - TAU * (2.0 if heavy else 1.5)
+	v.modulate.a = 1.0
+	Sfx.play("shuffle", 1.4, -2.0)
+	if heavy:
+		_cam_focus(target, 1.06, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	t.tween_property(v, "position", target, 0.42 if heavy else 0.34)
+	t.tween_property(v, "rotation", v.home_rot, 0.42 if heavy else 0.34)
+	t.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.42 if heavy else 0.34)
+	await t.finished
+	v.kick(Vector2(0, 1), 12.0)
+	Sfx.play("karat", 1.2, -6.0)
+	for col in [Color(0.85, 0.1, 0.12), Color(0.1, 0.08, 0.1), gold]:   # chips scattering off it: red, black and gold
+		_burst(target, col, 8 if heavy else 5, 340.0, 0.55, 500.0)
+	_ring(target, gold, 1.3 if heavy else 1.0)
+	await _impact(target, heavy)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Underworld's attack: the attacker raises a hand and glowing purple skulls fly at the target one after
+## another, each bursting into violet flame; a big hit ends with a great skull and the full impact.
+func _skull_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var violet := Color(0.72, 0.35, 1.0)
+	var side_v := dir.orthogonal()
+	var from := a.home + dir * 100.0
+	_cam_focus(a.home.lerp(tpos, 0.35), 1.05 if big else 1.03, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 28.0, 0.24)
+	t.tween_property(a, "scale", Vector2.ONE * 1.18 * a.board_scale, 0.24)
+	Sfx.play("ambush", 1.3, -8.0)
+	_burst(from, violet, 14, 160.0, 0.5, -40.0)   # the skulls gather in its hand
+	await t.finished
+	_clear_attack_line()
+	var n := 3
+	for i in n:
+		var sk := SkullBolt.new()
+		sk.position = from
+		sk.z_index = 72
+		fx.add_child(sk)
+		var to := tpos + side_v * randf_range(-30.0, 30.0)
+		var bend := side_v * (70.0 if i % 2 == 0 else -70.0) * randf_range(0.6, 1.1)
+		var start := sk.position
+		var fly := sk.create_tween()
+		fly.tween_method(func(k: float):
+			var m := start.lerp(to, k) + bend * 4.0 * k * (1.0 - k)
+			sk.trail.push_front(m)
+			if sk.trail.size() > 9:
+				sk.trail.pop_back()
+			sk.position = m
+			sk.rotation = (to - start).angle() + PI / 2 + sin(k * 9.0) * 0.25
+			sk.queue_redraw(), 0.0, 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		fly.tween_callback(func():
+			_burst(to, violet, 12, 260.0, 0.45, -80.0)
+			_sparks(to, dir, Color(0.85, 0.6, 1.0), 10, 50.0)
+			Sfx.play("hit", randf_range(0.8, 1.0), -8.0)
+			shake(4.0)
+			if d:
+				d.kick(dir, 10.0)
+				d.flash()
+			sk.queue_free())
+		a.kick(-dir, 6.0)
+		await _wait(0.11)
+	await _wait(0.2)
+	if big:   # a great skull, thrown hard
+		var great := SkullBolt.new()
+		great.position = from
+		great.scale = Vector2.ONE * 2.0
+		great.z_index = 73
+		fx.add_child(great)
+		Sfx.play("laser", 0.6, -4.0)
+		var s0 := great.position
+		var fly2 := great.create_tween()
+		fly2.tween_method(func(k: float):
+			var m := s0.lerp(tpos, k)
+			great.trail.push_front(m)
+			if great.trail.size() > 12:
+				great.trail.pop_back()
+			great.position = m
+			great.rotation = dir.angle() + PI / 2
+			great.queue_redraw(), 0.0, 1.0, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		await fly2.finished
+		great.queue_free()
+	# Impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("hit", 0.8 if direct else 0.95)
+	Sfx.play("boom", 0.9 if big else 1.15, 0.0 if big else -5.0)
+	shake(22.0 if big else 12.0)
+	_shockwave(tpos, 0.9 if big else 0.5)
+	_post_pulse("aberration", 12.0 if big else 5.0, 0.4)
+	_burst(tpos, violet, 30, 520.0)
+	_burst(tpos, Color(1.0, 0.25, 0.35), 12, 380.0)
+	_ring(tpos, violet, 1.5 if big else 1.2)
+	if d:
+		d.flash()
+		d.kick(dir, 30.0 if big else 22.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (30.0 if big else 18.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
+
+
+## A tombstone (Underworld's summon): a rounded slab with a cross and a crack, mossy at the foot.
+class GraveStone extends Node2D:
+	func _draw() -> void:
+		var w := 70.0
+		var h := 96.0
+		var stone := Color(0.42, 0.4, 0.46)
+		var pts := PackedVector2Array()
+		pts.append(Vector2(-w / 2, 0))
+		for i in 13:   # the rounded top
+			var ang := PI + i * PI / 12.0
+			pts.append(Vector2(cos(ang) * w / 2, -h + w / 2 + sin(ang) * w / 2))
+		pts.append(Vector2(w / 2, 0))
+		draw_colored_polygon(pts, stone)
+		draw_polyline(pts, Color(0.18, 0.16, 0.22), 3.0, true)
+		draw_line(Vector2(0, -h + 18), Vector2(0, -24), Color(0.22, 0.2, 0.26), 6.0)
+		draw_line(Vector2(-16, -h + 36), Vector2(16, -h + 36), Color(0.22, 0.2, 0.26), 6.0)
+		draw_polyline(PackedVector2Array([Vector2(18, -h + 26), Vector2(10, -h + 44), Vector2(20, -h + 58), Vector2(12, -40)]), Color(0.7, 0.4, 1.0, 0.9), 2.0, true)   # a glowing crack
+		draw_rect(Rect2(-w / 2 - 8, -6, w + 16, 10), Color(0.2, 0.28, 0.16))   # the turned earth
+
+
+## A skull of violet flame (Underworld's attack), with a fading trail.
+class SkullBolt extends Node2D:
+	var trail: Array = []
+
+	func _draw() -> void:
+		for i in trail.size():
+			var p: Vector2 = (trail[i] - position).rotated(-rotation) / scale.x
+			var k := 1.0 - float(i + 1) / (trail.size() + 1)
+			draw_circle(p, 13.0 * k, Color(0.65, 0.3, 1.0, 0.3 * k))
+		draw_circle(Vector2.ZERO, 22.0, Color(0.6, 0.25, 1.0, 0.25))   # its glow
+		draw_circle(Vector2(0, -3), 14.0, Color(0.93, 0.9, 1.0))       # the cranium
+		draw_rect(Rect2(-8, 6, 16, 9), Color(0.93, 0.9, 1.0))           # the jaw
+		for x in [-5.5, 5.5]:
+			draw_circle(Vector2(x, -3), 4.2, Color(0.35, 0.05, 0.6))    # eye sockets, lit violet inside
+			draw_circle(Vector2(x, -3), 1.8, Color(0.85, 0.5, 1.0))
+		draw_colored_polygon(PackedVector2Array([Vector2(-2, 4), Vector2(2, 4), Vector2(0, 0)]), Color(0.3, 0.1, 0.4))
+		for x in [-5, 0, 5]:
+			draw_line(Vector2(x, 9), Vector2(x, 15), Color(0.3, 0.2, 0.35), 1.2)
 
 
 ## The Militia targeting reticle: rings and crosshair ticks, turning as it locks on.

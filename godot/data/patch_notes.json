@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.63",
+        "notes": [
+            "Two new arenas: The Crypt (torches, rising embers and violet glowing slots) and Forward Base (floodlights and glow sticks).",
+            "Underworld clan (cards coming soon): its characters climb out of a grave when summoned, hurl glowing skulls when they attack, and its card back comes alive (red cracks pulse, mist drifts, the skull's eyes glow).",
+            "Wildcard characters are now dealt onto the table, spinning, with a burst of chips."
+        ]
+    },
+    {
         "version": "0.9.62",
         "notes": [
             "New keyword CHARM: take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner.",

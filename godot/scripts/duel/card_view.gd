@@ -60,7 +60,7 @@ var _spin_speed := 0.09
 var _spin_idle := 0.09                  # radians per second at rest...
 var _spin_hover := 1.6                  # ...and while a face-down card is hovered (it also glows)
 ## Speeds per moving back (CardDB.BACK_STYLES): [at rest, hovered]
-const BACK_SPEEDS := {"galaxy": [0.09, 1.6], "radar": [1.5, 4.8], "roulette": [0.22, 1.4]}
+const BACK_SPEEDS := {"galaxy": [0.09, 1.6], "radar": [1.5, 4.8], "roulette": [0.22, 1.4], "hellfire": [0.5, 2.0]}
 var _tilt := Vector2.ZERO        # current (y_rot, x_rot) in the card's own frame
 var _kick := Vector2.ZERO        # recoil from hits, decays
 var _flip_deg := 0.0             # extra turn while flipping over

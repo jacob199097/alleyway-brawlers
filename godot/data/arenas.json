@@ -36,5 +36,29 @@
             {"kind": "spin", "at": [1465, 70], "r": 128, "speed": 0.5},
             {"kind": "smoke", "at": [268, 82]},
             {"kind": "glints", "points": [[380, 40], [1150, 140], [625, 915], [1500, 640], [150, 150], [1090, 40], [1440, 600], [1410, 540], [175, 760]]}
+        ]},
+    {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.png",
+        "board": {"style": "neon", "color": "#b06bff"},
+        "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.1, "neon": 0.45},
+        "fx": [
+            {"kind": "pool", "at": [240, 70], "r": 150, "color": "#b45cff", "flicker": true},
+            {"kind": "pool", "at": [1300, 70], "r": 150, "color": "#b45cff", "flicker": true},
+            {"kind": "pool", "at": [150, 745], "r": 150, "color": "#b45cff", "flicker": true},
+            {"kind": "pool", "at": [1385, 745], "r": 150, "color": "#b45cff", "flicker": true},
+            {"kind": "pool", "at": [430, 875], "r": 140, "color": "#b45cff", "flicker": true},
+            {"kind": "pool", "at": [1090, 875], "r": 140, "color": "#b45cff", "flicker": true},
+            {"kind": "embers", "rect": [200, 160, 1130, 680], "color": "#ff3b6b"},
+            {"kind": "dust", "rect": [160, 120, 1210, 760], "color": "#c9a0ff"}
+        ]},
+    {"id": "base", "ambience": "", "stutter": false, "name": "Forward Base", "image": "arena_1v1_base.png",
+        "board": {"style": "paint", "tint": "#e4f0c4"},
+        "alive": {"rain": 0.0, "sheen": 0.1, "haze": 0.05, "neon": 0.35},
+        "fx": [
+            {"kind": "pool", "at": [400, 40], "r": 220, "color": "#fff1c4"},
+            {"kind": "pool", "at": [1150, 40], "r": 220, "color": "#fff1c4"},
+            {"kind": "pool", "at": [125, 700], "r": 220, "color": "#fff1c4"},
+            {"kind": "pool", "at": [1420, 700], "r": 220, "color": "#fff1c4"},
+            {"kind": "glints", "points": [[240, 280], [1360, 300], [85, 630], [1490, 640], [370, 845], [920, 870], [1120, 890], [1500, 300]]},
+            {"kind": "dust", "rect": [220, 160, 1100, 700], "color": "#e6f2c8"}
         ]}
 ]
