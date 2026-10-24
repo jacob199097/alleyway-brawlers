@@ -35,7 +35,7 @@ const DORMANT_GIFTS = ['pierce', 'immune', 'untargetable'];   // passives a Dorm
 // Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
 const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 // What an "immune" passive keeps off a card
-const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'suppress'];
+const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'suppress', 'silence', 'bounty', 'charm'];
 export const LEADER = -2;
 
 // ── Card data ──────────────────────────────────────────────────────────────
@@ -377,6 +377,46 @@ export class DuelState {
         }
     }
 
+    /** Whose card it is: a CHARMED character fights for whoever charmed it, but goes back to its owner
+     *  (to their Gutter, hand or deck if it leaves the field). */
+    _ownerOf(side, c) {
+        return c && c.charmed ? String(c.charmed.owner) : side;
+    }
+
+    /** A Continuous Ambush its owner may flip face-up (outside an attack): set on an earlier turn, not JAMMED. */
+    canFlip(side, slot) {
+        if (!BACK.includes(slot) || this.winner !== '' || !this.sides[side] || this.sides[side].out) return false;
+        const a = this.cardAt(side, slot);
+        return a != null && !!a.face_down && a.cardType === 'ambush' && DuelState.isLasting(a)
+            && a.set_turn != null && toInt(a.set_turn) < this.turn && toInt(this.sides[side].jam_until ?? -1) < this.turn;
+    }
+
+    /** Flip a Continuous Ambush face-up: its "when sprung" effects happen (with no attacker) and it stays. */
+    _flipSet(side, slot) {
+        const a = this.cardAt(side, slot);
+        this._spring(side, slot);
+        this._effect(side, a, `${a.name} is flipped face-up`, slot);
+        for (const e of this._fx(a, 'defend')) {
+            if (this.winner !== '') return;
+            if (this._fxCond(side, NO_SLOT, e, null)) this._doFx(side, NO_SLOT, a, e, {});
+        }
+        this._recalc();
+    }
+
+    /** On a player's turn, the others may flip their Continuous Ambushes (its start, and after they deploy). */
+    _offerFlips() {
+        for (const side of this.foesOf(this.active)) {
+            const slots = BACK.filter(b => this.canFlip(side, b));
+            if (!slots.length) continue;
+            const options = [{ id: 'no', label: 'NOT NOW' },
+                ...slots.map(b => ({ id: String(b), label: `FLIP ${String(this.cardAt(side, b).name).toUpperCase()}`, side, slot: b }))];
+            this._ask(side, 'flip', 'Flip a Continuous Ambush face-up?', this.cardAt(side, slots[0]), options, (choice) => {
+                const b = toInt(choice);
+                if (choice !== 'no' && this.canFlip(side, b)) this._flipSet(side, b);
+            });
+        }
+    }
+
     /** An Equip card (a Hustle that attaches to a character). */
     static isEquip(c) {
         return !!c && String(c.cardType ?? '') === 'hustle' && String(c.subtype ?? '') === 'equip';
@@ -486,10 +526,13 @@ export class DuelState {
             case 'ramp': return s.authority_max < MAX_AUTHORITY;
             case 'jam': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].cardType === 'ambush'));
             case 'barricade': return true;
+            case 'tribute_damage': return toInt(c.tribute_atk ?? 0) > 0;
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
         }
         if (!('target' in e)) return true;
-        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed' }[String(e.do ?? '')] ?? 'any';
+        if (String(e.do ?? '') === 'charm' && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
+        const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
+            promote_ally: 'promotable', charm: 'charmable' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -567,6 +610,7 @@ export class DuelState {
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
         if (c.bounty) out.push('bounty');
+        if (c.charmed) out.push('charm');
         if (this._equipsOn(c).length) out.push('equipped');
         // Just promoted or Awakened: it can't attack this turn
         if (toInt(c.rest_turn ?? -1) === this.turn && c.has_attacked && !c.downed) out.push('resting');
@@ -743,6 +787,12 @@ export class DuelState {
                 }
                 break;
             case 'ability': ok = this._useAbility(side, toInt(a.slot)); break;
+            case 'flip':   // a Continuous Ambush, face-up on your own turn
+                if (this.canAct(side) && this.canFlip(side, toInt(a.slot))) {
+                    this._flipSet(side, toInt(a.slot));
+                    ok = true;
+                }
+                break;
             case 'activate': ok = this._activate(side, toInt(a.slot), toInt(a.fx ?? 1)); break;
             case 'choose': ok = this._answer(side, String(a.option)); break;
             case 'discard': ok = this._chooseDiscard(side, toInt(a.uid)); break;
@@ -772,13 +822,17 @@ export class DuelState {
         const c = this.sides[side].hand[i];
         this._spend(side, this.costOf(side, c));
         this.sides[side].hand.splice(i, 1);
+        let tributeAtk = 0;
         for (const slot_ of DuelState.tributeList(tribute)) {   // sacrificed, or deployed over
             const t = this.cardAt(side, slot_);
             this.sides[side].field[slot_] = null;
+            tributeAtk += toInt(t.attack);
+            const own = this._ownerOf(side, t);
+            delete t.charmed;
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
-            if (!t.token) this.sides[side].gutter.push(t);   // (tokens vanish)
+            if (!t.token) this.sides[own].gutter.push(t);   // (tokens vanish)
             const ev = { side, slot: slot_, card: clone(t), for: clone(c) };
             if (!DuelState.needsTribute(c)) ev.replace = true;
             this._emit('tribute', ev);
@@ -787,9 +841,11 @@ export class DuelState {
         c.face_down = false;   // characters are always face-up, in ATK or DEF (only Ambushes are set face-down)
         c.has_attacked = false;
         c.deployed_turn = this.turn;
+        if (DuelState.needsTribute(c)) c.tribute_atk = tributeAtk;   // (tribute_damage: "the ATK it sacrificed")
         this.sides[side].field[slot] = c;
         this._emit('summon', { side, slot, card: clone(c) });
         this._onDeploy(side, slot, c);
+        if (this.winner === '') this._offerFlips();   // (the others may flip a Continuous Ambush now)
         return true;
     }
 
@@ -800,6 +856,7 @@ export class DuelState {
         if (c.cardType !== 'hustle') this._spend(side, this.costOf(side, c));   // (a Hustle is paid for when it's activated)
         this.sides[side].hand.splice(i, 1);
         c.face_down = true;
+        c.set_turn = this.turn;
         this.sides[side].field[slot] = c;
         this._emit('set', { side, slot, card: clone(c) });
         return true;
@@ -1230,10 +1287,14 @@ export class DuelState {
         if (c == null) return;
         this.sides[side].field[slot] = null;
         const bounty = c.bounty;
+        const own = this._ownerOf(side, c);
+        delete c.charmed;
         c.downed = false;
         c.mods = [];
         this._clearStatus(c);
-        if (!c.token) this.sides[side].gutter.push(c);   // a token vanishes
+        if (!c.token) this.sides[own].gutter.push(c);   // a token vanishes
+        // UNDEAD: the first time it's KO'd, it rises at the end of the turn
+        if (!c.token && !c.risen && this._fx(c, 'passive').some(e => String(e.do ?? '') === 'undead')) c.rise_turn = this.turn;
         this._emit('ko', { side, slot, card: clone(c) });
         this._runFx(side, slot, c, 'self_ko');
         // "When another of your characters is KO'd"
@@ -1262,6 +1323,8 @@ export class DuelState {
     _topdeck(side, slot) {
         const c = this.cardAt(side, slot);
         this.sides[side].field[slot] = null;
+        const own = this._ownerOf(side, c);
+        delete c.charmed;
         if (c.token) {
             this._emit('ko', { side, slot, card: clone(c) });
             return;
@@ -1273,14 +1336,15 @@ export class DuelState {
         c.has_attacked = false;
         for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used', 'fx_count']) delete c[k];
         this._clearStatus(c);
-        this.sides[side].deck.push(c);   // (draws take from the end)
-        this._emit('topdeck', { side, slot, card: clone(c) });
+        this.sides[own].deck.push(c);   // (draws take from the end)
+        this._emit('topdeck', own === side ? { side, slot, card: clone(c) } : { side, slot, card: clone(c), to: own });
     }
 
     /** Remove a character from the game: it doesn't go to the Gutter, and no KO effects happen. */
     _exile(side, slot) {
         const c = this.cardAt(side, slot);
         this.sides[side].field[slot] = null;
+        delete c.charmed;
         this._clearStatus(c);
         this._emit('ko', { side, slot, card: clone(c), exiled: true });
     }
@@ -1549,7 +1613,7 @@ export class DuelState {
     _promote(side, slot, reason) {
         const s = this.sides[side];
         const old = this.cardAt(side, slot);
-        if (old == null || old.subtype !== 'striver') return;   // only Strivers level up
+        if (old == null || old.subtype !== 'striver' || old.charmed) return;   // only Strivers level up (not a CHARMED one)
         const toId = nextForm(old.id);
         if (toId === '') return;
         if (s.promoted[slot]) {   // (once per turn)
@@ -1869,10 +1933,12 @@ export class DuelState {
             if (choice === 'keep' || !FRONT.includes(l) || !this.canSacrifice(side, l)) { keep(); return; }
             const t = this.cardAt(side, l);
             this.sides[side].field[l] = null;
+            const own = this._ownerOf(side, t);
+            delete t.charmed;
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
-            if (!t.token) this.sides[side].gutter.push(t);   // (tokens vanish)
+            if (!t.token) this.sides[own].gutter.push(t);   // (tokens vanish)
             this._emit('tribute', { side, slot: l, card: clone(t), for: clone(card), replace: true });
             this._effect(side, c, `${c.name}: ${t.name} makes room for ${card.name}`, NO_SLOT);
             place(l);
@@ -1937,6 +2003,7 @@ export class DuelState {
     }
 
     _runFx(side, slot, c, when, def = null, vs = {}) {
+        if (def && String(when).endsWith('deployed')) vs = { ...vs, deployed: def };   // (target "deployed": that character)
         const list = this._fx(c, when);
         let i = 0;
         while (i < list.length) {
@@ -2347,6 +2414,36 @@ export class DuelState {
                     }
                 });
                 break;
+            case 'tribute_damage': {   // a Heavy: the ATK of the characters it sacrificed, as Morale damage
+                const dmg = toInt(c.tribute_atk ?? 0);
+                if (dmg <= 0) break;
+                this._withFoe(side, c, vs, () => true, (foe) => {
+                    this._effect(side, c, `${c.name}: ${dmg} Morale damage (the ATK it sacrificed)`, slot);
+                    this._damage(foe, dmg);
+                });
+                break;
+            }
+            case 'promote_ally':   // PROMOTE one (or all) of your Strivers
+                this._fxApply(side, slot, c, e, vs, 'promotable', 'PROMOTE', (x) => {
+                    const name = x.card.name;
+                    this._promote(x.side, x.slot, c.name);
+                    return `${c.name} PROMOTES ${name}`;
+                }, `${c.name} PROMOTES %s`);
+                break;
+            case 'charm':   // CHARM: take control of an enemy character until the end of the turn
+                this._fxApply(side, slot, c, e, vs, 'charmable', 'CHARM', (x) => {
+                    const lane = this._emptyLane(side);
+                    if (lane < 0) return `${x.card.name} resists the CHARM (no room)`;
+                    this.sides[x.side].field[x.slot] = null;
+                    x.card.charmed = { owner: x.side, slot: x.slot, until: this.turn };
+                    x.card.has_attacked = false;
+                    delete x.card.rest_turn;
+                    this.sides[side].field[lane] = x.card;
+                    this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card) });
+                    this._recalc();
+                    return `${c.name} CHARMS ${x.card.name}: it fights for ${side === this.active ? 'its charmer' : 'the other side'} this turn`;
+                }, `${c.name} CHARMS %s`);
+                break;
             case 'damage':
                 this._withFoe(side, c, vs, () => true, (foe) => {
                     this._effect(side, c, `${c.name}: ${n} Morale damage`, slot);
@@ -2550,6 +2647,9 @@ export class DuelState {
                 case 'defenders': return x.card.position === 'def' && !x.card.downed && !x.card.face_down && !this.frozen(x.card);
                 case 'spent': return !!x.card.has_attacked && !x.card.downed && (x.card.again_turn ?? 0) !== this.turn;
                 case 'statused': return this._afflicted(x.card);
+                case 'promotable': return x.card.subtype === 'striver' && nextForm(x.card.id) !== '' && !this.sides[x.side].promoted[x.slot]
+                    && !x.card.downed && !x.card.charmed;
+                case 'charmable': return x.card.cardType !== 'leader' && !x.card.charmed;
                 case 'changed': {   // REWIND helps: an enemy's net gains, your character's net losses
                     const net = (x.card.mods || []).reduce((t, m) => t + toInt(m.atk) + toInt(m.def), 0);
                     return x.side === side ? net < 0 : net > 0;
@@ -2566,6 +2666,14 @@ export class DuelState {
                 break;
             case 'attacker':
                 if (vs && vs.card && this.cardAt(vs.side, vs.slot) === vs.card) entries = [{ side: vs.side, slot: vs.slot, card: vs.card }];
+                break;
+            case 'deployed':   // "that character": the one just deployed (deploy triggers)
+                if (vs && vs.deployed) {
+                    for (const s2 of Object.keys(this.sides)) {
+                        const at = FRONT.find(l => this.sides[s2].field[l] === vs.deployed);
+                        if (at != null) entries = [{ side: s2, slot: at, card: vs.deployed }];
+                    }
+                }
                 break;
             case 'ally': case 'allies':
                 entries = this._fxPool(side, e, slot).map(x => ({ side, slot: x.slot, card: x.card }));
@@ -2587,7 +2695,7 @@ export class DuelState {
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(what_);
         if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
-        if (target === 'attacker') entries = entries.filter(x => x.side === side || !this._passive(x.side, x.slot, x.card, 'untargetable'));
+        if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._passive(x.side, x.slot, x.card, 'untargetable'));
         return entries;
     }
 
@@ -2694,6 +2802,8 @@ export class DuelState {
     _bounce(side, slot) {
         const c = this.cardAt(side, slot);
         this.sides[side].field[slot] = null;
+        const own = this._ownerOf(side, c);
+        delete c.charmed;
         if (c.token) {   // a token has no hand to go back to: it vanishes
             this._emit('ko', { side, slot, card: clone(c) });
             return;
@@ -2705,8 +2815,8 @@ export class DuelState {
         c.has_attacked = false;
         for (const k of ['shield', 'stun_until', 'down_turns', 'kings_test', 'fx_used', 'fx_count']) delete c[k];
         this._clearStatus(c);
-        this.sides[side].hand.push(c);
-        this._emit('bounce', { side, slot, card: clone(c) });
+        this.sides[own].hand.push(c);
+        this._emit('bounce', own === side ? { side, slot, card: clone(c) } : { side, slot, card: clone(c), to: own });
     }
 
     _auras(side) {
@@ -2805,6 +2915,53 @@ export class DuelState {
         this._checkAwaken(this.active);
         this._recalc();
         this._setPhase('deployment');
+        if (this.winner === '') this._offerFlips();
+    }
+
+    /** The end of a turn: CHARMED characters go back to their owners (to their own lane, else the first
+     *  empty one, else their Gutter), and UNDEAD characters KO'd this turn rise (once), in DEF with half
+     *  their ATK and DEF. Same as _turn_over in duel_state.gd. */
+    _turnOver() {
+        for (const side of Object.keys(this.sides)) {
+            for (const slot of FRONT) {
+                const c = this.sides[side].field[slot];
+                if (c == null || !c.charmed || toInt(c.charmed.until) > this.turn) continue;
+                const own = String(c.charmed.owner), back = toInt(c.charmed.slot);
+                delete c.charmed;
+                this.sides[side].field[slot] = null;
+                const to = this.sides[own].field[back] == null ? back : this._emptyLane(own);
+                if (to < 0) {   // no room back home: to its owner's Gutter
+                    c.mods = [];
+                    this._clearStatus(c);
+                    this.sides[own].gutter.push(c);
+                    this._emit('ko', { side, slot, card: clone(c) });
+                    continue;
+                }
+                this.sides[own].field[to] = c;
+                this._emit('charm', { side, slot, to_side: own, to_slot: to, card: clone(c), back: true });
+            }
+        }
+        for (const side of Object.keys(this.sides)) {
+            const s = this.sides[side];
+            for (const c of s.gutter.filter(g => g.rise_turn != null && toInt(g.rise_turn) <= this.turn)) {
+                delete c.rise_turn;
+                const lane = this._emptyLane(side);
+                if (lane < 0 || s.out) continue;   // no room: it stays in the Gutter
+                s.gutter.splice(s.gutter.indexOf(c), 1);
+                c.risen = true;
+                c.downed = false;
+                c.position = 'def';
+                c.face_down = false;
+                c.has_attacked = false;
+                delete c.fx_count;
+                c.mods = [{ atk: -Math.floor(toInt(c.base_attack) / 2), def: -Math.floor(toInt(c.base_defense) / 2), until_turn: FOREVER }];
+                c.deployed_turn = this.turn;
+                s.field[lane] = c;
+                this._emit('summon', { side, slot: lane, card: clone(c), from: 'undead' });
+                this._effect(side, c, `${c.name} rises from the Gutter (UNDEAD)`, lane);
+            }
+        }
+        this._recalc();
     }
 
     _endTurn() {
@@ -2816,6 +2973,7 @@ export class DuelState {
         }
         this._leaderFx(this.active, 'dormant_turn_end');
         if (this.winner !== '') return;
+        this._turnOver();
         const s = this.sides[this.active];
         for (const c of s.field) if (c != null) c.has_attacked = false;
         s.brutus_bonus = 0;

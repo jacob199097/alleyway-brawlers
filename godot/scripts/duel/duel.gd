@@ -658,6 +658,11 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s stood back up" % _cname(ev.card), side)
 		"discard":
 			_log("%s discarded %s" % [_who(side), _cname(ev.card)], side)
+		"charm":
+			if ev.get("back", false):
+				_log("%s goes back to its owner" % _cname(ev.card), str(ev.to_side))
+			else:
+				_log("%s is CHARMED" % _cname(ev.card), str(ev.to_side))
 		"position":
 			_log("%s switched to %s" % [_cname(ev.card), "DEF" if ev.card.get("position") == "def" else "ATK"], side)
 		"awaken":
@@ -1789,6 +1794,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_stand(ev)
 		"discard":
 			await _ev_discard(ev)
+		"charm":
+			await _ev_charm(ev)
 		"stats":
 			_ev_stats(ev)
 		"notice":
@@ -1929,6 +1936,13 @@ func _ev_summon(ev: Dictionary) -> void:
 			v.modulate.a = 0.0
 			create_tween().tween_property(v, "modulate:a", 1.0, 0.3)
 			_ring(target, _clan_color(c), 0.9)
+		"undead":   # UNDEAD: it climbs back out of its owner's Gutter, a pale green glow around it
+			v = _new_view(c, side, true)
+			v.position = pile_pos(side, "gutter")
+			v.modulate = Color(0.75, 1.0, 0.8, 0.0)
+			create_tween().tween_property(v, "modulate", Color.WHITE, 0.6)
+			_ring(target, Color(0.6, 1.0, 0.7), 1.2)
+			_float_text(target + Vector2(0, -110 if side == "player" else 110), "UNDEAD!", Color(0.7, 1.0, 0.75), 38)
 		_:
 			v = _take_from_hand(side, c.uid, c)
 	field[side][slot] = v
@@ -3176,12 +3190,13 @@ func _ev_tribute(ev: Dictionary) -> void:
 
 ## A card effect sends a character back to its owner's hand.
 func _ev_bounce(ev: Dictionary) -> void:
-	var side: String = ev.side
-	var v: CardView = field[side].get(ev.slot)
-	field[side].erase(ev.slot)
+	var from: String = ev.side
+	var side := str(ev.get("to", from))   # (a CHARMED card goes back to its owner's hand)
+	var v: CardView = field[from].get(ev.slot)
+	field[from].erase(ev.slot)
 	if v == null:
 		v = _new_view(ev.card, side, side == "player")
-		v.position = slot_pos(side, ev.slot)
+		v.position = slot_pos(from, ev.slot)
 	v.show_badge = false
 	v.downed = false
 	v.glow = 0.0
@@ -3203,12 +3218,13 @@ func _ev_bounce(ev: Dictionary) -> void:
 
 ## A character goes back on top of its owner's deck: it turns face-down and slides onto the pile.
 func _ev_topdeck(ev: Dictionary) -> void:
-	var side: String = ev.side
-	var v: CardView = field[side].get(ev.slot)
-	field[side].erase(ev.slot)
+	var from: String = ev.side
+	var side := str(ev.get("to", from))   # (a CHARMED card goes back on its owner's deck)
+	var v: CardView = field[from].get(ev.slot)
+	field[from].erase(ev.slot)
 	if v == null:
 		v = _new_view(ev.card, side, true)
-		v.position = slot_pos(side, ev.slot)
+		v.position = slot_pos(from, ev.slot)
 	v.show_badge = false
 	v.downed = false
 	v.glow = 0.0
@@ -3691,6 +3707,35 @@ func _ev_stand(ev: Dictionary) -> void:
 	_float_text(v.home + Vector2(0, -120 if ev.side == "player" else 120), "%s STANDS UP" % str(ev.card.get("name", "")).to_upper(), GREEN, 32)
 	Sfx.play("promote", 1.3, -6.0)
 	await v.move_to(v.home, 1.0, v.home_rot, 0.3, Tween.TRANS_BACK).finished
+
+
+## CHARM: the character drifts across to the side that charmed it, pink hearts trailing (or, at the
+## end of the turn, back home: "back").
+func _ev_charm(ev: Dictionary) -> void:
+	var from: String = ev.side
+	var to: String = str(ev.to_side)
+	var v: CardView = field[from].get(ev.slot)
+	field[from].erase(ev.slot)
+	if v == null:
+		v = _new_view(ev.card, to, true)
+		v.position = slot_pos(from, ev.slot)
+	v.set_card(ev.card)
+	v.side = to
+	var target := slot_pos(to, int(ev.to_slot))
+	field[to][int(ev.to_slot)] = v
+	v.home = target
+	v.home_rot = PI / 2 if str(ev.card.get("position", "atk")) == "def" else 0.0
+	v.z_index = 440
+	var pink := Color(1.0, 0.45, 0.75)
+	Sfx.play("whoosh", 0.8)
+	_ring(v.position, pink, 1.1)
+	if not ev.get("back", false):
+		_float_text(v.position + Vector2(0, -110 if from == "player" else 110), "CHARMED!", pink, 40)
+		for i in 6:   # hearts trailing it across
+			_burst(v.position.lerp(target, i / 5.0), pink, 4, 160, 0.5, i * 0.05)
+	await v.move_to(target, v.home_scale, v.home_rot, 0.55, Tween.TRANS_SINE).finished
+	v.z_index = 10
+	_ring(target, pink, 0.8)
 
 
 func _ev_discard(ev: Dictionary) -> void:
@@ -5076,7 +5121,7 @@ func _player_ready() -> void:
 	for slot in field.player:
 		var ready := duel.can_attack_with("player", slot) or duel.can_promote("player", slot) \
 			or duel.can_use_ability("player", slot)
-		var can_activate := not duel.activations("player", slot).is_empty() or _set_ready(slot)
+		var can_activate := not duel.activations("player", slot).is_empty() or _set_ready(slot) or duel.can_flip("player", slot)
 		if ready or can_activate:
 			# Gold: can act. Teal pulse: an ability can be activated (gold to teal when both)
 			field.player[slot].glow_color = GOLD if ready else TEAL
@@ -5583,6 +5628,8 @@ func _on_field_click(slot: int) -> void:
 	var abilities: Array = duel.activations("player", slot)
 	for k in abilities:
 		opts.append([_activate_label(slot, k, abilities.size() > 1), true, _field_action.bind({"kind": "activate", "slot": slot, "fx": k})])
+	if duel.can_flip("player", slot):   # a Continuous Ambush set on an earlier turn: turn it face-up now
+		opts.append(["FLIP %s FACE-UP" % str(c.get("name", "")).to_upper(), true, _field_action.bind({"kind": "flip", "slot": slot})])
 	var reason := ""
 	var set_card = duel.card_at("player", slot)
 	if set_card != null and duel.set_hustle_slot("player", set_card) == slot:

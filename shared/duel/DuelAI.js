@@ -67,6 +67,7 @@ export function choose(d, side, level = 'normal') {
         return { kind: 'choose', option: p.options[0].id };
     }
     if (d.active !== side) return {};
+    for (const b of BACK) if (d.canFlip(side, b)) return { kind: 'flip', slot: b };   // (a Continuous Ambush: on as soon as it can be)
     let a = {};
     if (d.phase === 'deployment') a = deploy(d, side, level);
     else if (d.phase === 'brawl') a = brawl(d, side, level);

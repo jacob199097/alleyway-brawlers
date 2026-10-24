@@ -58,6 +58,9 @@ static func choose(d: DuelState, side: String, level := "normal") -> Dictionary:
 		return {"kind": "choose", "option": d.pending.options[0].id}
 	if d.active != side:
 		return {}
+	for b in DuelState.BACK:   # (a Continuous Ambush: on as soon as it can be)
+		if d.can_flip(side, b):
+			return {"kind": "flip", "slot": b}
 	var a := {}
 	match d.phase:
 		"deployment":

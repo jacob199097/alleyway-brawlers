@@ -38,6 +38,14 @@ const FX_SAMPLES := [
 	# Destroying face-up Continuous / Equip cards (shatter), and face-down ones (break_ambush)
 	[{"when": "deploy", "do": "shatter", "amount": 2}, {"when": "ko", "do": "break_ambush", "amount": 1}],
 	[{"when": "deploy", "do": "wreck", "amount": 1}],
+	# CHARM (take control for the turn), UNDEAD (rises once), PROMOTE one of your Strivers, a Heavy's
+	# tribute damage, "that character" (the one just deployed)
+	[{"when": "deploy", "do": "charm", "target": "enemy"}],
+	[{"when": "passive", "do": "undead"}, {"when": "attack", "do": "buff", "target": "self", "atk": 200}],
+	[{"when": "activate", "do": "promote_ally", "target": "ally"}],
+	[{"when": "deploy", "do": "tribute_damage"}, {"when": "passive", "do": "undead"}],
+	[{"when": "foe_deployed", "do": "swap", "target": "deployed", "until": "turn"}],
+	[{"when": "ally_deployed", "do": "charm", "target": "enemy", "once": true}],
 	# Set stats: ATK / DEF become a number (this turn, or for good)
 	[{"when": "deploy", "do": "set_stats", "target": "enemy", "atk": 100, "def": 100, "until": "turn"}],
 	[{"when": "defend", "do": "set_stats", "target": "attacker", "atk": 100, "until": "forever"}],
@@ -162,6 +170,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "negate"}, {"do": "draw", "amount": 1}],
 	[{"do": "buff", "target": "enemy", "atk": -1500, "until": "turn"}],
 	[{"do": "freeze", "target": "enemy", "negate": true}],
+	[{"do": "charm", "target": "enemy"}, {"do": "draw", "amount": 1}],
+	[{"do": "promote_ally", "target": "ally"}],
 	[{"do": "buff", "target": "attacker", "atk": -800, "luck": "coin"}, {"do": "negate", "if_luck": "lost"}],
 	[{"do": "down", "target": "attacker"}],
 	[{"do": "bounce", "target": "attacker", "if": "vs_atk"}, {"do": "draw", "amount": 1}],

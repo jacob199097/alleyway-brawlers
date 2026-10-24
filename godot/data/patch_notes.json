@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.62",
+        "notes": [
+            "New keyword CHARM: take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner.",
+            "New keyword UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF with half its ATK and DEF.",
+            "New effects: PROMOTE one of your Strivers (Hustles and Activate abilities), a Heavy dealing the ATK it sacrificed as Morale damage, and deploy triggers that hit \"that character\" (the one just deployed).",
+            "Continuous Ambushes can be flipped face-up without an attack once they've been set since an earlier turn: on your turn (click it), or when offered at the start of your opponent's turn and after they deploy.",
+            "Characters can now be immune to SILENCE, BOUNTY and CHARM too."
+        ]
+    },
+    {
         "version": "0.9.61",
         "notes": [
             "Deck Editor: a HIDEOUT list under your deck shows the higher levels of your Strivers that come along (every copy you own, up to 3), and the ones you haven't collected yet.",

@@ -16,6 +16,7 @@ const STATUS_STYLE := {
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
+	"charm": [Color("ff6fb5"), "CHM", "CHARMED"],
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 }
 
@@ -564,6 +565,11 @@ func _draw_statuses() -> void:
 			L.draw_line(Vector2(tx - 26.0, ty), Vector2(tx, ty), Color(0.71, 0.9, 0.33, 0.85 * (1.0 - ph)), 2.0, true)
 	if statuses.has("silence"):
 		_draw_silenced(L, r, t)
+	if statuses.has("charm"):   # little pink hearts drifting up off it: it fights for the other side this turn
+		for i in 4:
+			var ph := fmod(t * 0.5 + i * 0.25, 1.0)
+			var hp := Vector2(r.position.x + 18.0 + i * 28.0 + sin(t * 2.0 + i) * 4.0, r.end.y - 20.0 - ph * (r.size.y - 30.0))
+			_heart(L, hp, 5.0 + 2.0 * sin(t * 4.0 + i), Color(1.0, 0.45, 0.75, 0.85 * (1.0 - ph)))
 	if statuses.has("equipped"):   # a gold chain link at the bottom corner: something is attached to it
 		var at := Vector2(r.position.x + 14.0, r.end.y - 30.0)
 		var glint := 0.7 + 0.3 * sin(t * 2.4)
@@ -598,6 +604,12 @@ func _draw_statuses() -> void:
 		_status_layer.draw_rect(pill, col, false, 1.5)
 		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
 		x += 38.0
+
+
+func _heart(L: Node2D, at: Vector2, size: float, col: Color) -> void:
+	L.draw_circle(at + Vector2(-size * 0.5, 0), size * 0.6, col)
+	L.draw_circle(at + Vector2(size * 0.5, 0), size * 0.6, col)
+	L.draw_colored_polygon(PackedVector2Array([at + Vector2(-size * 1.05, size * 0.15), at + Vector2(size * 1.05, size * 0.15), at + Vector2(0, size * 1.4)]), col)
 
 
 ## SILENCE: a speech bubble over its art with a red cross through it, bobbing gently; its effects are muted.

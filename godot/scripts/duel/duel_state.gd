@@ -36,7 +36,7 @@ const NO_SLOT := -10             # effects of a card that isn't on the field (a 
 ## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
 const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
 ## What an "immune" passive keeps off a card
-const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "suppress"]
+const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "suppress", "silence", "bounty", "charm"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -397,6 +397,49 @@ func _run_lasting(side: String, when: String, def = null, vs := {}) -> void:
 
 ## The Equip cards on character c: [{side (their owner), slot, card}]
 ## An Equip card (a Hustle that attaches to a character).
+## Whose card it is: a CHARMED character fights for whoever charmed it, but goes back to its owner
+## (to their Gutter, hand or deck if it leaves the field).
+func _owner_of(side: String, c) -> String:
+	return str(c.charmed.owner) if c is Dictionary and c.get("charmed") is Dictionary else side
+
+
+## A Continuous Ambush its owner may flip face-up (outside an attack): set on an earlier turn, not JAMMED.
+func can_flip(side: String, slot: int) -> bool:
+	if not (slot in BACK) or winner != "" or not sides.has(side) or sides[side].get("out", false):
+		return false
+	var a = card_at(side, slot)
+	return a != null and a.get("face_down", false) and a.get("cardType") == "ambush" and is_lasting(a) \
+		and a.get("set_turn") != null and int(a.set_turn) < turn and int(sides[side].get("jam_until", -1)) < turn
+
+
+## Flip a Continuous Ambush face-up: its "when sprung" effects happen (with no attacker) and it stays.
+func _flip_set(side: String, slot: int) -> void:
+	var a: Dictionary = card_at(side, slot)
+	_spring(side, slot)
+	_effect(side, a, "%s is flipped face-up" % a.name, slot)
+	for e in _fx(a, "defend"):
+		if winner != "":
+			return
+		if _fx_cond(side, NO_SLOT, e, null):
+			_do_fx(side, NO_SLOT, a, e, {})
+	_recalc()
+
+
+## On a player's turn, the others may flip their Continuous Ambushes (its start, and after they deploy).
+func _offer_flips() -> void:
+	for side in foes_of(active):
+		var slots: Array = BACK.filter(func(b): return can_flip(side, b))
+		if slots.is_empty():
+			continue
+		var options: Array = [{"id": "no", "label": "NOT NOW"}]
+		for b in slots:
+			options.append({"id": str(b), "label": "FLIP %s" % str(card_at(side, b).name).to_upper(), "side": side, "slot": b})
+		_ask(side, "flip", "Flip a Continuous Ambush face-up?", card_at(side, slots[0]), options, func(choice: String) -> void:
+			var b := int(choice)
+			if choice != "no" and can_flip(side, b):
+				_flip_set(side, b))
+
+
 static func is_equip(c) -> bool:
 	return c is Dictionary and str(c.get("cardType", "")) == "hustle" and str(c.get("subtype", "")) == "equip"
 
@@ -534,12 +577,16 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("cardType") == "ambush"))
 		"barricade":
 			return true
+		"tribute_damage":
+			return int(c.get("tribute_atk", 0)) > 0
 		"attack_again":
 			return card_at(side, slot) == c and c.has_attacked and int(c.get("again_turn", 0)) != turn
 	if not e.has("target"):
 		return true
+	if str(e.get("do", "")) == "charm" and _empty_lane(side) < 0:   # (no lane to take it to)
+		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused", "rewind": "changed"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -642,6 +689,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("silence")
 	if c.has("bounty"):
 		out.append("bounty")
+	if c.get("charmed") is Dictionary:
+		out.append("charm")
 	if not _equips_on(c).is_empty():
 		out.append("equipped")
 	# Just promoted or Awakened: it can't attack this turn
@@ -859,6 +908,10 @@ func do_action(side: String, a: Dictionary) -> bool:
 				ok = true
 		"ability":
 			ok = _use_ability(side, int(a.slot))
+		"flip":   # a Continuous Ambush, face-up on your own turn
+			if can_act(side) and can_flip(side, int(a.slot)):
+				_flip_set(side, int(a.slot))
+				ok = true
 		"activate":
 			ok = _activate(side, int(a.slot), int(a.get("fx", 1)))
 		"choose":
@@ -894,14 +947,18 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 	var c: Dictionary = sides[side].hand[i]
 	_spend(side, cost_of(side, c))
 	sides[side].hand.remove_at(i)
+	var tribute_atk := 0
 	for slot_ in tribute_list(tribute):   # sacrificed, or deployed over
 		var t: Dictionary = card_at(side, slot_)
 		sides[side].field[slot_] = null
+		tribute_atk += int(t.attack)
+		var own := _owner_of(side, t)
+		t.erase("charmed")
 		t.downed = false
 		t.mods = []
 		_clear_status(t)
 		if not t.get("token", false):   # (tokens vanish)
-			sides[side].gutter.append(t)
+			sides[own].gutter.append(t)
 		var ev := {"side": side, "slot": slot_, "card": t.duplicate(true), "for": c.duplicate(true)}
 		if not needs_tribute(c):
 			ev.replace = true
@@ -911,8 +968,12 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 	c.has_attacked = false
 	c.deployed_turn = turn
 	sides[side].field[slot] = c
+	if needs_tribute(c):   # (tribute_damage: "the ATK it sacrificed")
+		c.tribute_atk = tribute_atk
 	_emit("summon", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_on_deploy(side, slot, c)
+	if winner == "":   # (the others may flip a Continuous Ambush now)
+		_offer_flips()
 	return true
 
 
@@ -925,6 +986,7 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 		_spend(side, cost_of(side, c))
 	sides[side].hand.remove_at(i)
 	c.face_down = true
+	c.set_turn = turn
 	sides[side].field[slot] = c
 	_emit("set", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	return true
@@ -1403,11 +1465,16 @@ func _ko(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
 	var bounty = c.get("bounty")
+	var own := _owner_of(side, c)
+	c.erase("charmed")
 	c.downed = false
 	c.mods = []
 	_clear_status(c)
 	if not c.get("token", false):   # a token vanishes
-		sides[side].gutter.append(c)
+		sides[own].gutter.append(c)
+	# UNDEAD: the first time it's KO'd, it rises at the end of the turn
+	if not c.get("token", false) and not c.get("risen", false) and _fx(c, "passive").any(func(e): return str(e.get("do", "")) == "undead"):
+		c.rise_turn = turn
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_ko")
 	# "When another of your characters is KO'd"
@@ -1438,6 +1505,8 @@ func _afflicted(c: Dictionary) -> bool:
 func _topdeck(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
+	var own := _owner_of(side, c)
+	c.erase("charmed")
 	if c.get("token", false):
 		_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 		return
@@ -1449,14 +1518,18 @@ func _topdeck(side: String, slot: int) -> void:
 	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used", "fx_count"]:
 		c.erase(k)
 	_clear_status(c)
-	sides[side].deck.append(c)   # (draws take from the end)
-	_emit("topdeck", {"side": side, "slot": slot, "card": c.duplicate(true)})
+	sides[own].deck.append(c)   # (draws take from the end)
+	if own == side:
+		_emit("topdeck", {"side": side, "slot": slot, "card": c.duplicate(true)})
+	else:
+		_emit("topdeck", {"side": side, "slot": slot, "card": c.duplicate(true), "to": own})
 
 
 ## Remove a character from the game: it doesn't go to the Gutter, and no KO effects happen.
 func _exile(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
+	c.erase("charmed")
 	_clear_status(c)
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true), "exiled": true})
 
@@ -1711,7 +1784,7 @@ func _on_deploy(side: String, slot: int, c: Dictionary, evolved := false) -> voi
 func _promote(side: String, slot: int, reason: String) -> void:
 	var s: Dictionary = sides[side]
 	var old = card_at(side, slot)
-	if old == null or old.get("subtype") != "striver":   # only Strivers level up
+	if old == null or old.get("subtype") != "striver" or old.get("charmed") is Dictionary:   # only Strivers level up (not a CHARMED one)
 		return
 	var to_id := CardDB.next_form(old.id)
 	if to_id == "":
@@ -2124,11 +2197,13 @@ func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable
 				return
 			var t: Dictionary = card_at(side, l)
 			sides[side].field[l] = null
+			var own := _owner_of(side, t)
+			t.erase("charmed")
 			t.downed = false
 			t.mods = []
 			_clear_status(t)
 			if not t.get("token", false):   # (tokens vanish)
-				sides[side].gutter.append(t)
+				sides[own].gutter.append(t)
 			_emit("tribute", {"side": side, "slot": l, "card": t.duplicate(true), "for": card.duplicate(true), "replace": true})
 			_effect(side, c, "%s: %s makes room for %s" % [c.name, t.name, card.name], NO_SLOT)
 			place.call(l))
@@ -2228,6 +2303,9 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 ## Run a card's effects for a trigger. \`def\` is the other card involved (the defender for
 ## attack / ko / down, the attacker for defend, the new ally for ally_deployed).
 func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, vs := {}) -> void:
+	if def is Dictionary and when.ends_with("deployed"):   # (target "deployed": that character)
+		vs = vs.duplicate()
+		vs.deployed = def
 	var list := _fx(c, when)
 	var i := 0
 	while i < list.size():
@@ -2663,6 +2741,32 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 					var milled: Dictionary = fd.pop_back()
 					sides[foe].gutter.append(milled)
 					_emit("mill", {"side": foe, "card": milled.duplicate(true)}))
+		"tribute_damage":   # a Heavy: the ATK of the characters it sacrificed, as Morale damage
+			var dmg := int(c.get("tribute_atk", 0))
+			if dmg > 0:
+				_with_foe(side, c, vs, func(_f): return true, func(foe: String):
+					_effect(side, c, "%s: %d Morale damage (the ATK it sacrificed)" % [c.name, dmg], slot)
+					_damage(foe, dmg))
+		"promote_ally":   # PROMOTE one (or all) of your Strivers
+			var fn := func(x: Dictionary) -> String:
+				var name: String = x.card.name
+				_promote(x.side, x.slot, c.name)
+				return "%s PROMOTES %s" % [c.name, name]
+			_fx_apply(side, slot, c, e, vs, "promotable", "PROMOTE", fn, "%s PROMOTES %%s" % c.name)
+		"charm":   # CHARM: take control of an enemy character until the end of the turn
+			var fn := func(x: Dictionary) -> String:
+				var lane := _empty_lane(side)
+				if lane < 0:
+					return "%s resists the CHARM (no room)" % x.card.name
+				sides[x.side].field[x.slot] = null
+				x.card.charmed = {"owner": x.side, "slot": x.slot, "until": turn}
+				x.card.has_attacked = false
+				x.card.erase("rest_turn")
+				sides[side].field[lane] = x.card
+				_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true)})
+				_recalc()
+				return "%s CHARMS %s: it fights for %s this turn" % [c.name, x.card.name, "its charmer" if side == active else "the other side"]
+			_fx_apply(side, slot, c, e, vs, "charmable", "CHARM", fn, "%s CHARMS %%s" % c.name)
 		"damage":
 			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
 				_effect(side, c, "%s: %d Morale damage" % [c.name, n], slot)
@@ -2884,6 +2988,11 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				return x.card.has_attacked and not x.card.downed and int(x.card.get("again_turn", 0)) != turn
 			"statused":
 				return _afflicted(x.card)
+			"promotable":
+				return x.card.get("subtype") == "striver" and CardDB.next_form(str(x.card.id)) != "" and not sides[x.side].promoted.has(x.slot) \
+					and not x.card.downed and not (x.card.get("charmed") is Dictionary)
+			"charmable":
+				return x.card.get("cardType") != "leader" and not (x.card.get("charmed") is Dictionary)
 			"changed":   # REWIND helps: an enemy's net gains, your character's net losses
 				var net := 0
 				for m in x.card.get("mods", []):
@@ -2902,6 +3011,12 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			"attacker":
 				if not vs.is_empty() and card_at(vs.side, vs.slot) == vs.card:
 					entries = [{"side": vs.side, "slot": vs.slot, "card": vs.card}]
+			"deployed":   # "that character": the one just deployed (deploy triggers)
+				if vs.get("deployed") is Dictionary:
+					for s2 in sides:
+						for l in FRONT:
+							if is_same(sides[s2].field[l], vs.deployed):
+								entries = [{"side": s2, "slot": l, "card": vs.deployed}]
 			"ally", "allies":
 				entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 			"enemy", "enemies":
@@ -2924,7 +3039,7 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune", covers).is_empty())
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
-	if target == "attacker":
+	if target == "attacker" or target == "deployed":
 		entries = entries.filter(func(x): return x.side == side or _passive(x.side, x.slot, x.card, "untargetable").is_empty())
 	return entries
 
@@ -3077,6 +3192,8 @@ func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
 func _bounce(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	sides[side].field[slot] = null
+	var own := _owner_of(side, c)
+	c.erase("charmed")
 	if c.get("token", false):   # a token has no hand to go back to: it vanishes
 		_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 		return
@@ -3088,8 +3205,11 @@ func _bounce(side: String, slot: int) -> void:
 	for k in ["shield", "stun_until", "down_turns", "kings_test", "fx_used", "fx_count"]:
 		c.erase(k)
 	_clear_status(c)
-	sides[side].hand.append(c)
-	_emit("bounce", {"side": side, "slot": slot, "card": c.duplicate(true)})
+	sides[own].hand.append(c)
+	if own == side:
+		_emit("bounce", {"side": side, "slot": slot, "card": c.duplicate(true)})
+	else:
+		_emit("bounce", {"side": side, "slot": slot, "card": c.duplicate(true), "to": own})
 
 
 ## Passive buffs active on \`side\`: [[source slot (-1 = dormant leader), effect], ...]
@@ -3215,6 +3335,53 @@ func _begin_turn() -> void:
 	_check_awaken(active)
 	_recalc()
 	_set_phase("deployment")
+	if winner == "":
+		_offer_flips()
+
+
+## The end of a turn: CHARMED characters go back to their owners (to their own lane, else the first
+## empty one, else their Gutter), and UNDEAD characters KO'd this turn rise (once), in DEF with half
+## their ATK and DEF. Same as _turnOver in DuelState.js.
+func _turn_over() -> void:
+	for side in sides:
+		for slot in FRONT:
+			var c = sides[side].field[slot]
+			if c == null or not (c.get("charmed") is Dictionary) or int(c.charmed.until) > turn:
+				continue
+			var own := str(c.charmed.owner)
+			var back := int(c.charmed.slot)
+			c.erase("charmed")
+			sides[side].field[slot] = null
+			var to := back if sides[own].field[back] == null else _empty_lane(own)
+			if to < 0:   # no room back home: to its owner's Gutter
+				c.mods = []
+				_clear_status(c)
+				sides[own].gutter.append(c)
+				_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
+				continue
+			sides[own].field[to] = c
+			_emit("charm", {"side": side, "slot": slot, "to_side": own, "to_slot": to, "card": c.duplicate(true), "back": true})
+	for side in sides:
+		var s: Dictionary = sides[side]
+		var rising: Array = s.gutter.filter(func(g): return g.get("rise_turn") != null and int(g.rise_turn) <= turn)
+		for c in rising:
+			c.erase("rise_turn")
+			var lane := _empty_lane(side)
+			if lane < 0 or s.get("out", false):   # no room: it stays in the Gutter
+				continue
+			s.gutter.remove_at(s.gutter.find(c))
+			c.risen = true
+			c.downed = false
+			c.position = "def"
+			c.face_down = false
+			c.has_attacked = false
+			c.erase("fx_count")
+			c.mods = [{"atk": -int(floor(int(c.base_attack) / 2.0)), "def": -int(floor(int(c.base_defense) / 2.0)), "until_turn": FOREVER}]
+			c.deployed_turn = turn
+			s.field[lane] = c
+			_emit("summon", {"side": side, "slot": lane, "card": c.duplicate(true), "from": "undead"})
+			_effect(side, c, "%s rises from the Gutter (UNDEAD)" % c.name, lane)
+	_recalc()
 
 
 func _end_turn() -> void:
@@ -3228,6 +3395,7 @@ func _end_turn() -> void:
 	_leader_fx(active, "dormant_turn_end")
 	if winner != "":
 		return
+	_turn_over()
 	var s: Dictionary = sides[active]
 	for c in s.field:
 		if c != null:
