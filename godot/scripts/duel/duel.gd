@@ -189,6 +189,7 @@ func _ready() -> void:
 		arena = ArenaRoulette.find(arena_id)
 		if not arena.is_empty():
 			bg = "res://assets/" + str(arena.image)
+			_ambience = str(arena.get("ambience", "city_rain"))   # (rain only where it rains)
 	if ResourceLoader.exists(bg):
 		$BackLayer/Background.texture = load(bg)
 		if not _paint.is_empty():
@@ -1642,6 +1643,7 @@ func _pump() -> void:
 func _after_events() -> void:
 	if duel.winner != "":
 		return
+	_settle_board()
 	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
 	if _watching():
 		_clear_highlights()
@@ -1902,7 +1904,7 @@ func _ev_phase(ev: Dictionary) -> void:
 
 func _ev_authority(ev: Dictionary) -> void:
 	var p: Dictionary = _panels[ev.side]
-	p.auth.text = "AUTHORITY   %d / %d" % [ev.value, ev.max]
+	p.auth.text = "AUTHORITY   %d / %d" % [ev.value, maxi(ev.max, ev.value)]   # (going second: 2 / 2, not 2 / 1)
 	var delta: int = ev.delta
 	var at: Vector2 = p.auth.global_position + Vector2(200, 0)
 	_float_text(at, ("+%d" % delta) if delta > 0 else str(delta), BLUE if delta > 0 else GOLD, 30)
@@ -2163,6 +2165,15 @@ func _ev_clash(ev: Dictionary) -> void:
 	elif ev.target >= 0:
 		d = field[foe].get(ev.target)
 	var tpos := _target_pos(foe, ev.target)
+	# A boost (or cut) for this brawl only ("+700 ATK for this Brawl"): it pops up over the card first
+	var shown_a: Array = a.stats()
+	if shown_a.size() >= 2 and int(ev.att) != int(shown_a[0]) and int(ev.att) > 0:
+		await _brawl_boost(a, int(ev.att) - int(shown_a[0]), "ATK")
+	if d is CardView and ev.vs in ["ATK", "DEF"]:
+		var shown_d: Array = d.stats()
+		var base_d: int = int(shown_d[1] if ev.vs == "DEF" else shown_d[0]) if shown_d.size() >= 2 else int(ev.def)
+		if int(ev.def) != base_d:
+			await _brawl_boost(d, int(ev.def) - base_d, ev.vs)
 	_float_text(a.home, str(ev.att), GOLD, 54)
 	if d:
 		_float_text(d.home, "%s %d" % [ev.vs, ev.def], RED if ev.vs == "ATK" else BLUE, 44)
@@ -3174,6 +3185,9 @@ func _ev_bounce(ev: Dictionary) -> void:
 	v.show_badge = false
 	v.downed = false
 	v.glow = 0.0
+	v.statuses = []   # (a card in the hand has no statuses: no WANTED poster on a card back)
+	if v == _hovered:   # (it was just clicked as the target)
+		_hovered = null
 	v.set_card(ev.card)
 	Sfx.play("whoosh", 1.2)
 	_ring(v.position, BLUE, 1.2)
@@ -3996,7 +4010,7 @@ func _layout_hand(side: String) -> void:
 		v.home_rot = 0.0
 		if v.busy or (v == _press and _dragging):
 			continue
-		if v == _hovered or v == _selected:
+		if side == "player" and (v == _hovered or v == _selected):   # (only your own hand lifts: a card just sent to theirs stays there)
 			v.z_index = 300
 			v.move_to(Vector2(v.home.x, HAND_LIFT_Y), HOVER_SCALE, 0.0, 0.14)
 			continue
@@ -4148,6 +4162,37 @@ func _screen_flash(color: Color, alpha: float) -> void:
 
 func _clear_attack_line() -> void:
 	_arrow.hide_arrow()
+
+
+## A brawl-only boost or cut: "+700 ATK" rises over the card with a pulse and a ring (green up, red down).
+func _brawl_boost(v: CardView, delta: int, what: String) -> void:
+	var up := delta > 0
+	var col := Color(0.45, 1.0, 0.55) if up else Color(1.0, 0.4, 0.4)
+	Sfx.play("effect", 1.4 if up else 0.8, -6.0)
+	_ring(v.home, col, 0.9)
+	_float_text(v.home + Vector2(0, -40), "%s%d %s" % ["+" if up else "-", absi(delta), what], col, 40)
+	var s := v.scale
+	var t := create_tween()
+	t.tween_property(v, "scale", s * 1.08, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(v, "scale", s, 0.16)
+	await _wait(0.45)
+
+
+## After a batch of events, a character left mid-animation goes back to its place: e.g. an attacker
+## whose attack was negated (no brawl to bring it back down).
+func _settle_board() -> void:
+	var raised := false
+	for side in field:
+		for slot in field[side]:
+			var v: CardView = field[side][slot]
+			if v == null or v.busy or v == _hovered:
+				continue
+			if v.z_index >= 400:   # (lifted for an attack)
+				v.z_index = 10
+				v.go_home(0.22)
+				raised = true
+	if raised and _mode != "target":
+		_clear_attack_line()
 
 
 ## While the player aims an attack, the arrow follows the mouse and locks onto valid targets.
@@ -4644,6 +4689,8 @@ func _status_word(k) -> String:
 	var kw := Keywords.find(word)
 	if kw != "" and STATUS_COLORS.get(k) == null:
 		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, Keywords.LIST[kw][0].to_html(false), word]
+	if Keywords.STATUS_HELP.has(str(k).to_upper()):   # (DOWNED, CAN'T ATTACK YET: explained when hovered too)
+		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [str(k).to_upper(), STATUS_COLORS.get(k, "e6e6f0"), Keywords._escape(word)]
 	return "[b][color=#%s]%s[/color][/b]" % [STATUS_COLORS.get(k, "e6e6f0"), Keywords._escape(word)]
 
 
@@ -4810,7 +4857,7 @@ func _refresh_hud() -> void:
 		if c.is_empty():
 			continue
 		var p: Dictionary = _panels[side]
-		p.auth.text = "AUTHORITY   %d / %d" % [c.authority, c.authority_max]
+		p.auth.text = "AUTHORITY   %d / %d" % [c.authority, maxi(c.authority_max, c.authority)]
 		p.piles.text = "HAND %d    ·    DECK %d" % [c.hand, c.deck]
 	queue_redraw()
 
@@ -4892,10 +4939,14 @@ func _build_turn_box() -> void:
 	_ui.turn_who = who
 
 
+## The arena's background sound (arenas.json "ambience": rain only where it rains; "" = none)
+var _ambience := "city_rain"
+
+
 ## The duel's music and the street around it (Game.sound); the neon starts acting up.
 func _play_music() -> void:
 	Game.sound.music("duel", 2.0)
-	Game.sound.ambience("city_rain")
+	Game.sound.ambience(_ambience)
 	_neon_loop()
 
 
@@ -5355,7 +5406,9 @@ func _zoom_hovered() -> bool:
 	if v == null or v.card.is_empty() or not (v.face_up or v.side == "player"):
 		return false
 	var base := CardDB.get_card(str(v.card.get("id", "")))
-	UI.card_zoom($HUD/UI, base if not base.is_empty() else v.card)
+	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
+	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
+	UI.card_zoom($HUD/UI, zc)
 	return true
 
 

@@ -31,6 +31,11 @@ const LIST := {
 ## PHRASE_ONLY ones are keywords only as the whole phrase ("Double its ATK" isn't DOUBLE OR NOTHING).
 const PHRASES := {"LOADED": ["DICE"], "DOUBLE": ["OR", "NOTHING"]}
 const PHRASE_ONLY := ["DOUBLE"]
+## Statuses that aren't keywords, explained the same way when hovered or zoomed
+const STATUS_HELP := {
+	"DOWNED": [Color("ff5a5a"), "DOWNED: it lost a brawl (or was knocked down). It drops to DEF position and its effects stop working. Attacked again while Downed, it is KO'd. It stands back up, in DEF, at the start of its owner's turn after a full round."],
+	"RESTING": [Color("ffb35a"), "CAN'T ATTACK YET: it was deployed, promoted or Awakened this turn, so it can't attack until its owner's next turn."],
+}
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]
 
@@ -121,6 +126,8 @@ static func markup(text: String) -> String:
 
 ## Tooltip text for a keyword.
 static func describe(kw: String) -> String:
+	if STATUS_HELP.has(kw):
+		return "[b][color=#%s]%s[/color][/b]\n%s" % [STATUS_HELP[kw][0].to_html(false), "CAN'T ATTACK YET" if kw == "RESTING" else kw, STATUS_HELP[kw][1]]
 	if not LIST.has(kw):
 		return ""
 	return "[b][color=#%s]%s[/color][/b]\n%s" % [LIST[kw][0].to_html(false), full_name(kw), LIST[kw][1]]

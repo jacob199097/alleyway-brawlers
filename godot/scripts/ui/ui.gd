@@ -725,8 +725,15 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	body.text = text
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(body)
-	# What its keywords mean, under the text
-	var seen := Keywords.found(raw)
+	# What its statuses (in a duel) and keywords mean, under the text
+	var seen: Array = []
+	for k in c.get("live_status", []):
+		var skw := "EQUIP" if str(k) == "equipped" else str(k).to_upper()
+		if Keywords.describe(skw) != "" and not seen.has(skw):
+			seen.append(skw)
+	for k in Keywords.found(raw):
+		if not seen.has(k):
+			seen.append(k)
 	if not seen.is_empty():
 		var gl := RichTextLabel.new()
 		gl.bbcode_enabled = true
@@ -736,7 +743,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		gl.add_theme_font_size_override("bold_font_size", 17)
 		gl.add_theme_color_override("default_color", Color(0.72, 0.74, 0.86))
 		gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		gl.text = "\n".join(seen.slice(0, 5).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
+		gl.text = "\n".join(seen.slice(0, 6).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
 		info.add_child(gl)
 	# A Striver: its evolution, this level lit up; click a level (or press ◀ ▶) to zoom into it
 	var my_id := str(c.get("id", c.get("cardId", "")))

@@ -273,4 +273,13 @@ st.sides.player.field[BACK[0]] = null;   // (the Equip is destroyed)
 st._recalc();
 assert.equal(wearer.defense, 1000, 'the Equip gone: its +700 DEF is gone');
 
+// Promotion is once per turn on every turn: a Striver that promoted on its owner's turn can promote
+// again on the opponent's (e.g. Penny Harlow LV2 when another character is attacked)
+st = duel([]);
+st.sides.player.promoted = { 0: true };
+st.active = 'opponent';
+st.turn += 1;
+st._beginTurn();
+assert.deepEqual(st.sides.player.promoted, {}, "the opponent's turn starts: yours are fresh too");
+
 console.log('hustles: ok');

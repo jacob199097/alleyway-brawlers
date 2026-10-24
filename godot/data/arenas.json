@@ -1,7 +1,7 @@
 [
     {"id": "alley", "name": "Back Alley", "image": "arena_1v1.png"},
     {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png"},
-    {"id": "pit", "stutter": false, "name": "The Pit", "image": "arena_1v1_pit.png",
+    {"id": "pit", "ambience": "crowd", "stutter": false, "name": "The Pit", "image": "arena_1v1_pit.png",
         "board": {"style": "paint", "tint": "#efe6cf"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.3},
         "fx": [
@@ -12,14 +12,14 @@
             {"kind": "dust", "rect": [220, 110, 1100, 780], "color": "#ffe2b0"},
             {"kind": "flashes", "points": [[60, 300], [90, 520], [70, 700], [1440, 420], [1460, 640], [1420, 250], [700, 30], [900, 25], [500, 40], [1100, 990], [400, 990]]}
         ]},
-    {"id": "observatory", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.png",
+    {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.png",
         "board": {"style": "neon", "color": "#b388ff"},
         "alive": {"rain": 0.0, "sheen": 0.08, "haze": 0.03, "neon": 0.5},
         "fx": [
             {"kind": "twinkle", "rect": [160, 150, 1220, 740], "color": "#efe8ff"},
             {"kind": "shooting", "rect": [180, 170, 1180, 680]}
         ]},
-    {"id": "junkyard", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.png",
+    {"id": "junkyard", "ambience": "", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.png",
         "board": {"style": "paint", "tint": "#e8873e"},
         "alive": {"rain": 0.1, "sheen": 0.12, "haze": 0.06, "neon": 0.4},
         "fx": [
@@ -29,7 +29,7 @@
             {"kind": "embers", "rect": [60, 700, 320, 220], "color": "#ff9a3c"},
             {"kind": "embers", "rect": [1370, 230, 160, 160], "color": "#ff9a3c"}
         ]},
-    {"id": "casino", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.png",
+    {"id": "casino", "ambience": "crowd", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.png",
         "board": {"style": "felt", "color": "#d9a944"},
         "alive": {"rain": 0.0, "sheen": 0.05, "haze": 0.04, "neon": 0.3},
         "fx": [

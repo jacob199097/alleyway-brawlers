@@ -1,5 +1,19 @@
 [
     {
+        "version": "0.9.60",
+        "notes": [
+            "Strivers can promote on your opponent's turn even if they promoted on yours (e.g. Penny Harlow LV2 on heads). Once per turn still applies, and a message now says when a Striver can't promote again this turn.",
+            "Rain only falls (and is heard) on the Back Alley and the Rooftop; the Pit and the casino have a crowd, the others are quiet.",
+            "Going second shows your bonus Authority properly (2 / 2, not 2 / 1).",
+            "A card sent back to your opponent's hand no longer gets stuck big over your hand.",
+            "An attacker whose attack is negated goes back to its place.",
+            "Opening Wildcard packs: the roulette no longer shows over the cards you pulled.",
+            "DOWNED (and \"can't attack yet\") explain themselves when hovered, and zooming into a card on the field explains its statuses.",
+            "Brawl-only boosts show: \"+700 ATK\" pops up over the card before the fight.",
+            "SILENCE shows a crossed-out speech bubble on the card; EQUIPPED shows a gold chain link."
+        ]
+    },
+    {
         "version": "0.9.59",
         "notes": [
             "The Wildcard card back's roulette wheel turns more slowly."

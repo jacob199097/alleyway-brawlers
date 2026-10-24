@@ -1711,10 +1711,13 @@ func _on_deploy(side: String, slot: int, c: Dictionary, evolved := false) -> voi
 func _promote(side: String, slot: int, reason: String) -> void:
 	var s: Dictionary = sides[side]
 	var old = card_at(side, slot)
-	if old == null or s.promoted.has(slot) or old.get("subtype") != "striver":   # only Strivers level up
+	if old == null or old.get("subtype") != "striver":   # only Strivers level up
 		return
 	var to_id := CardDB.next_form(old.id)
 	if to_id == "":
+		return
+	if s.promoted.has(slot):   # (once per turn)
+		_emit("notice", {"side": side, "text": "%s CAN'T PROMOTE AGAIN THIS TURN" % str(old.name).to_upper()})
 		return
 	s.promoted[slot] = true
 	var preview := CardDB.get_card(to_id)
@@ -3157,7 +3160,8 @@ static func _set_text(mod: Dictionary) -> String:
 
 func _begin_turn() -> void:
 	var s: Dictionary = sides[active]
-	s.promoted = {}
+	for k in sides:   # (once per turn: any turn, e.g. a Striver promoting on the opponent's)
+		sides[k].promoted = {}
 	s.mentor_used = false
 	s.turns = int(s.get("turns", 0)) + 1
 	if int(s.get("barricade", 0)) > 0:   # (it lasts until your next turn)

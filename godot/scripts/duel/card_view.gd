@@ -562,6 +562,17 @@ func _draw_statuses() -> void:
 			var ty := r.position.y + r.size.y * (0.2 + i * 0.12)
 			var tx := r.position.x - 30.0 + ph * (r.size.x + 60.0)
 			L.draw_line(Vector2(tx - 26.0, ty), Vector2(tx, ty), Color(0.71, 0.9, 0.33, 0.85 * (1.0 - ph)), 2.0, true)
+	if statuses.has("silence"):
+		_draw_silenced(L, r, t)
+	if statuses.has("equipped"):   # a gold chain link at the bottom corner: something is attached to it
+		var at := Vector2(r.position.x + 14.0, r.end.y - 30.0)
+		var glint := 0.7 + 0.3 * sin(t * 2.4)
+		for k in 2:
+			var c := at + Vector2(k * 8.0, -k * 5.0)
+			L.draw_set_transform(c, -0.6, Vector2(1.0, 0.6))
+			L.draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(0.1, 0.06, 0.02, 0.8), 4.5, true)
+			L.draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(1.0, 0.78, 0.35, glint), 2.5, true)
+		L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if statuses.has("stasis"):
 		_draw_time_bubble(L, r, t)
 	if statuses.has("bounty"):
@@ -587,6 +598,21 @@ func _draw_statuses() -> void:
 		_status_layer.draw_rect(pill, col, false, 1.5)
 		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
 		x += 38.0
+
+
+## SILENCE: a speech bubble over its art with a red cross through it, bobbing gently; its effects are muted.
+func _draw_silenced(L: Node2D, r: Rect2, t: float) -> void:
+	L.draw_rect(r, Color(0.45, 0.43, 0.55, 0.16))   # a faint grey hush over the card
+	var at := Vector2(r.position.x + 26.0, r.position.y + 44.0 + sin(t * 2.0) * 2.0)
+	var bubble := Rect2(at - Vector2(17, 12), Vector2(34, 24))
+	L.draw_rect(Rect2(bubble.position + Vector2(2, 2), bubble.size), Color(0, 0, 0, 0.35))
+	L.draw_rect(bubble, Color(0.95, 0.95, 0.98, 0.95))
+	L.draw_colored_polygon(PackedVector2Array([at + Vector2(-8, 11), at + Vector2(-1, 11), at + Vector2(-11, 19)]), Color(0.95, 0.95, 0.98, 0.95))   # its tail
+	for i in 3:   # the words it can't say
+		L.draw_circle(at + Vector2(-8 + i * 8, 0), 2.2, Color(0.35, 0.35, 0.45))
+	var red := Color(0.9, 0.12, 0.15, 0.95)
+	L.draw_line(at + Vector2(-13, -9), at + Vector2(13, 9), red, 3.2, true)
+	L.draw_line(at + Vector2(13, -9), at + Vector2(-13, 9), red, 3.2, true)
 
 
 ## BOUNTY: a little WANTED poster pinned to the card's right edge, swaying, with what it pays out

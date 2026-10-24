@@ -1549,9 +1549,13 @@ export class DuelState {
     _promote(side, slot, reason) {
         const s = this.sides[side];
         const old = this.cardAt(side, slot);
-        if (old == null || s.promoted[slot] || old.subtype !== 'striver') return;   // only Strivers level up
+        if (old == null || old.subtype !== 'striver') return;   // only Strivers level up
         const toId = nextForm(old.id);
         if (toId === '') return;
+        if (s.promoted[slot]) {   // (once per turn)
+            this._emit('notice', { side, text: `${String(old.name).toUpperCase()} CAN'T PROMOTE AGAIN THIS TURN` });
+            return;
+        }
         s.promoted[slot] = true;
         const preview = getCard(toId);
         const ask = this._ask(side, 'position', `Promote to ${preview.name ?? toId}: choose its position`, preview, [
@@ -2747,7 +2751,7 @@ export class DuelState {
 
     _beginTurn() {
         const s = this.sides[this.active];
-        s.promoted = {};
+        for (const k of Object.keys(this.sides)) this.sides[k].promoted = {};   // (once per turn: any turn, e.g. a Striver promoting on the opponent's)
         s.mentor_used = false;
         s.turns = toInt(s.turns) + 1;
         if (toInt(s.barricade ?? 0) > 0) {   // (it lasts until your next turn)

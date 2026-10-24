@@ -183,6 +183,21 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--second-only" in OS.get_cmdline_user_args():   # (going second: your Authority on your first turn)
+		var deck3 := await Game.load_duel_deck()
+		Game.duel_setup = deck3
+		Game.duel_setup.first = "opponent"
+		Game.go("duel")
+		for i in 12:
+			await get_tree().create_timer(1.5).timeout
+			var d3 = _screen()
+			if d3 and d3.duel and not d3.duel.pending.is_empty() and d3.duel.pending.side == "player":
+				d3._act("player", {"kind": "choose", "option": "keep"})
+			await _shot("s%02d" % i, 0.1)
+			if d3 and d3.duel:
+				print("TURN ", d3.duel.turn, " active ", d3.duel.active, " auth ", d3.duel.sides.player.authority, "/", d3.duel.sides.player.authority_max, " hud ", d3._panels.player.auth.text)
+		get_tree().quit()
+		return
 	if "--discard-only" in OS.get_cmdline_user_args():   # (the CPU discards 2 cards to an effect of yours: a shot every 0.4 s)
 		var deck2 := await Game.load_duel_deck()
 		Game.duel_setup = deck2
