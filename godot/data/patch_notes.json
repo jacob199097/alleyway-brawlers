@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.61",
+        "notes": [
+            "Deck Editor: a HIDEOUT list under your deck shows the higher levels of your Strivers that come along (every copy you own, up to 3), and the ones you haven't collected yet.",
+            "Adding a Striver warns you if you haven't collected its higher levels (it can't promote past them).",
+            "Zooming into a card shows its evolution line on every screen, the Deck Editor included.",
+            "Saving a deck that isn't your active deck asks if you want to make it active.",
+            "Your active deck shows in the bottom-left while you search for a match."
+        ]
+    },
+    {
         "version": "0.9.60",
         "notes": [
             "Strivers can promote on your opponent's turn even if they promoted on yours (e.g. Penny Harlow LV2 on heads). Once per turn still applies, and a message now says when a Striver can't promote again this turn.",

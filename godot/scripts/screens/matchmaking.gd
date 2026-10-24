@@ -46,6 +46,7 @@ func _ready() -> void:
 	row.add_child(_cpu)
 	Net.event.connect(_on_event)
 	Net.connect_to_server()
+	UI.active_deck_plate(self, Vector2(30, 900))
 
 
 func _exit_tree() -> void:

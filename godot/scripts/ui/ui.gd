@@ -291,6 +291,44 @@ static func tex(path: String) -> Texture2D:
 const ROULETTE_TEX := preload("res://shaders/wildcard_roulette.png")
 
 
+## Bottom-left while you wait for a match: the deck you'll play (its leader, name and record).
+static func active_deck_plate(parent: Control, at: Vector2) -> void:
+	var r := await Api.request("GET", "/api/deck")
+	if not r.ok or not (r.data is Array) or r.data.is_empty() or not is_instance_valid(parent):
+		return
+	var d: Dictionary = r.data[0]
+	for x in r.data:
+		if x.get("is_active", false):
+			d = x
+	var leader_id := ""
+	var dr := await Api.request("GET", "/api/deck/%s" % d.id)
+	if dr.ok and dr.data is Dictionary and dr.data.get("leader") is Dictionary:
+		leader_id = str(dr.data.leader.get("art_url", ""))
+	if not is_instance_valid(parent):
+		return
+	var p := glass(panel(GOLD, Color(0.04, 0.04, 0.1, 0.92)), Color(0.02, 0.03, 0.1, 0.6))
+	p.position = at
+	p.custom_minimum_size = Vector2(430, 140)
+	parent.add_child(p)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	p.add_child(row)
+	if leader_id != "":
+		var art := TextureRect.new()
+		art.texture = CardDB.art(leader_id)
+		art.custom_minimum_size = Vector2(80, 112)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(art)
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(col)
+	col.add_child(label("ACTIVE DECK", 16, GOLD, true))
+	col.add_child(label(str(d.get("name", "Deck")).left(22), 28, Color.WHITE, true))
+	var games := int(d.get("games", 0))
+	col.add_child(label(("%d/40 cards" % int(d.get("card_count", 0))) + ("   ·   %d W / %d L" % [int(d.get("wins", 0)), games - int(d.get("wins", 0))] if games > 0 else ""), 18, MUTED))
+
+
 static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/card.gdshader")
@@ -747,6 +785,8 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		info.add_child(gl)
 	# A Striver: its evolution, this level lit up; click a level (or press ◀ ▶) to zoom into it
 	var my_id := str(c.get("id", c.get("cardId", "")))
+	if CardDB.get_card(my_id).is_empty():   # (a collection item: its id is the collection's, the card is its art_url)
+		my_id = str(c.get("art_url", c.get("cardId", my_id)))
 	var levels := CardDB.striver_line(my_id)
 	var at := levels.find(my_id)
 	var go_level := func(i: int):

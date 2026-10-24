@@ -183,6 +183,23 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--deck-only" in OS.get_cmdline_user_args():   # (the deck editor's Hideout list, a Striver's zoom, the active deck while matchmaking)
+		Game.go("deck_builder")
+		await get_tree().create_timer(2.0).timeout
+		var db = _screen()
+		db._deck.clear()
+		db._auto_fill()
+		db._render_all()
+		await _shot("k1_deck", 1.0)
+		for item in db._inventory:
+			if str(item.get("card_type", "")) == "gang_member" and CardDB.striver_line(str(item.get("art_url", ""))).size() > 1 and int(item.get("level", 1)) == 1:
+				UI.card_zoom(db, item)
+				break
+		await _shot("k2_zoom", 1.0)
+		Game.go("matchmaking")
+		await _shot("k3_matchmaking", 3.0)
+		get_tree().quit()
+		return
 	if "--second-only" in OS.get_cmdline_user_args():   # (going second: your Authority on your first turn)
 		var deck3 := await Game.load_duel_deck()
 		Game.duel_setup = deck3

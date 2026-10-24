@@ -286,6 +286,48 @@ func _copies(card_id) -> int:
 	return _deck.filter(func(c): return c.cardId == card_id).size()
 
 
+## A Striver's higher levels you haven't collected ("Rook LV2"): it can't promote past them.
+func _missing_levels(card_id: String) -> Array:
+	var line := CardDB.striver_line(card_id)
+	var out: Array = []
+	if line.is_empty() or line[0] != card_id:
+		return out
+	for i in range(1, line.size()):
+		if _owned_copies(line[i]) <= 0:
+			out.append("%s LV%d" % [CardDB.get_card(line[i]).get("name", line[i]), i + 1])
+	return out
+
+
+func _owned_copies(card_id: String) -> int:
+	for i in _inventory:
+		if str(i.get("art_url", "")) == card_id:
+			return int(i.get("quantity", 0))
+	return 0
+
+
+## Under the deck list: the Hideout, the higher levels of the deck's Strivers that come along with
+## them (up to 3 of each you own), and any level you haven't collected yet (it can't promote past it).
+func _render_hideout(card_ids: Array) -> void:
+	var lines: Array = []
+	for id in card_ids:
+		var line := CardDB.striver_line(str(id))
+		if line.is_empty() or line[0] != str(id):
+			continue
+		for i in range(1, line.size()):
+			var n := mini(3, _owned_copies(line[i]))
+			var name := "%s LV%d" % [CardDB.get_card(line[i]).get("name", line[i]), i + 1]
+			lines.append([name, n])
+	if lines.is_empty():
+		return
+	var head := UI.label("HIDEOUT  ·  COMES WITH YOUR STRIVERS", 15, UI.GOLD, true)
+	head.tooltip_text = "Your Strivers' higher levels wait in the Hideout during a match and come out when they promote. You don't add them: every copy you own (up to 3) comes along."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
+	_list.add_child(head)
+	for l in lines:
+		var row := UI.label(("   %s  ×%d" % [l[0], l[1]]) if l[1] > 0 else "   %s  —  NOT COLLECTED" % l[0], 15, UI.MUTED if l[1] > 0 else UI.RED)
+		_list.add_child(row)
+
+
 ## A Striver above level 1 (a promoted form): it never goes in the deck, it waits in the Hideout
 ## and comes with its level 1 card. Its level, or 0 for any other card.
 static func _hideout_level(item: Dictionary) -> int:
@@ -311,6 +353,9 @@ func _add(item: Dictionary, from: Control = null) -> void:
 	_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 	_dirty = true
 	Sfx.play("draw", 1.2)
+	var missing := _missing_levels(str(item.get("art_url", "")))
+	if not missing.is_empty():   # (it can't promote past a level you haven't collected)
+		UI.toast(self, "%s can't promote yet: you haven't collected %s" % [item.get("name", ""), " and ".join(missing)], UI.GOLD)
 	var start := from.get_global_rect() if from and is_instance_valid(from) else Rect2()
 	_render_all()
 	_fly_in(item, start)
@@ -537,6 +582,15 @@ func _save(after := Callable()) -> void:
 		_dirty = false
 		_decks[_deck_idx].card_count = 40
 		UI.toast(self, "Deck saved!", UI.GREEN)
+		if not _decks[_deck_idx].get("is_active", false):   # (the one you play with: ask)
+			var go_on := func(make_active: bool) -> void:
+				if make_active:
+					await _set_active()
+				if after.is_valid():
+					after.call()
+			UI.dialog(self, "ACTIVE DECK", "Make \"%s\" your active deck? It's the deck you play matches with." % str(_decks[_deck_idx].get("name", "Deck")),
+				[["MAKE ACTIVE", go_on.bind(true), UI.GOLD], ["NOT NOW", go_on.bind(false)]])
+			return
 		if after.is_valid():
 			after.call()
 	else:
@@ -698,6 +752,7 @@ func _render_deck() -> void:
 	for id in order:
 		_rows[id] = _deck_row(grouped[id])
 		_list.add_child(_rows[id])
+	_render_hideout(order.map(func(id): return str(grouped[id].art_url)))
 	_count.text = "%d/40" % _deck.size()
 	_count.label_settings.font_color = UI.BLUE if _deck.size() == 40 else UI.RED
 	_render_stats()
