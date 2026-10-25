@@ -1938,9 +1938,12 @@ func _recalc() -> void:
 			var c = s.field[slot]
 			if c == null:
 				continue
-			# (what an Equip changed goes when the Equip is gone)
+			# (what an Equip changed, on its character or any other, goes when the Equip is gone)
 			if c.mods.any(func(m): return m.get("equip") != null):
-				var on: Array = _equips_on(c).map(func(q): return int(q.card.uid))
+				var on: Array = []
+				for sd in sides:
+					for x in _lasting(sd, "equip"):
+						on.append(int(x.card.uid))
 				c.mods = c.mods.filter(func(m): return m.get("equip") == null or on.has(int(m.equip)))
 			var atk: int = c.base_attack
 			var df: int = c.base_defense

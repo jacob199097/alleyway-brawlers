@@ -109,6 +109,21 @@ static func striver_stage(card: Dictionary) -> Vector2i:
 
 
 ## Card art texture, or null when the art isn't synced (see tools/sync_assets).
+## A card's artwork as it shows in a match: a token with several artworks (artVariants) shows the
+## one its uid picks (<id>.png, <id>_v2.png, ...), the same on both players' screens.
+static func art_for(c: Dictionary, id := "") -> Texture2D:
+	if id == "":
+		id = str(c.get("art_url", c.get("id", "")))
+	var n := int(c.get("artVariants", get_card(id).get("artVariants", 1)))
+	if n > 1 and c.has("uid"):
+		var v := posmod(int(c.uid), n) + 1
+		if v > 1:
+			var t := art("%s_v%d" % [id, v])
+			if t:
+				return t
+	return art(id)
+
+
 static func art(id: String) -> Texture2D:
 	if _art.has(id):
 		return _art[id]

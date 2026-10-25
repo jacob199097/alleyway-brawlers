@@ -695,7 +695,7 @@ static func card_art(c: Dictionary) -> Texture2D:
 	for key in ["art_url", "cardId", "id"]:
 		var v = c.get(key)
 		if v is String and v != "":
-			var t := CardDB.art(v)
+			var t := CardDB.art_for(c, v)
 			if t:
 				return t
 	return null

@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.67",
+        "notes": [
+            "Tokens can come in several artworks: each one that comes onto the field shows one of them (the same on both players' screens).",
+            "An Equip that changes other characters when it's played (e.g. all enemies lose ATK) now keeps that change while the Equip stays on the field; before, it was lost at once."
+        ]
+    },
+    {
         "version": "0.9.66",
         "notes": [
             "Six new arenas: The Graveyard (the Underworld's home: candlelit graves, creeping mist, ghost lights, blowing leaves and bats), Glowshroom Grove, The Lab, The Docks, Frozen Lake and Dust Bowl. Forward Base is now the Militia Outpost.",

@@ -1743,12 +1743,13 @@ export class DuelState {
             const roan = s.leader_state === 'dormant' && s.leader.effectKey === 'king_roan_leader' && lions >= 2;
             const auras = this._auras(side);
             const foeAuras = foes.flatMap(f => this._auras(f)).filter(a => String(a[1].target ?? '') === 'enemies');
+            const liveEquips = new Set(Object.keys(this.sides).flatMap(sd => this._lasting(sd, 'equip').map(x => toInt(x.card.uid))));
             values[side] = {};
             for (const slot of FRONT) {
                 const c = s.field[slot];
                 if (c == null) continue;
-                // (what an Equip changed goes when the Equip is gone)
-                if (c.mods.some(m => m.equip != null)) c.mods = c.mods.filter(m => m.equip == null || this._equipsOn(c).some(q => toInt(q.card.uid) === toInt(m.equip)));
+                // (what an Equip changed, on its character or any other, goes when the Equip is gone)
+                if (c.mods.some(m => m.equip != null)) c.mods = c.mods.filter(m => m.equip == null || liveEquips.has(toInt(m.equip)));
                 let atk = c.base_attack;
                 let df = c.base_defense;
                 let setAtk = false, setDef = false;   // (a set_stats: it is that number; only later changes count)

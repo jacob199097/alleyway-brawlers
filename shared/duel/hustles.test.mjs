@@ -282,4 +282,23 @@ st.turn += 1;
 st._beginTurn();
 assert.deepEqual(st.sides.player.promoted, {}, "the opponent's turn starts: yours are fresh too");
 
+// An Equip's "when played" change to OTHER characters (all enemies) lasts while the Equip is on the field
+{
+    const eq = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1);
+    eq.turn = 3; eq.phase = 'deployment'; eq.active = 'player';
+    const mine = eq.makeCard({ id: 'eq_mine', name: 'Mine', cardType: 'gang_member', clanTag: 'test', attack: 1000, defense: 1000 });
+    const foe = eq.makeCard({ id: 'eq_foe', name: 'Foe', cardType: 'gang_member', clanTag: 'test', attack: 2000, defense: 1000 });
+    eq.sides.player.field[0] = mine;
+    eq.sides.opponent.field[0] = foe;
+    const gear = eq.makeCard({ id: 'eq_gear', name: 'Gear', cardType: 'hustle', subtype: 'equip', clanTag: 'test', effects: [] });
+    gear.equipped_to = mine.uid;
+    eq.sides.player.field[BACK[0]] = gear;
+    eq._doFx('player', BACK[0], gear, { when: 'deploy', do: 'buff', target: 'enemies', atk: -300, until: 'forever' });
+    eq._recalc();
+    assert.equal(foe.attack, 1700, "the Equip's change to an enemy stays");
+    eq.sides.player.field[BACK[0]] = null;
+    eq._recalc();
+    assert.equal(foe.attack, 2000, 'the Equip gone: so is its change');
+}
+
 console.log('hustles: ok');

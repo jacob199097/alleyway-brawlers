@@ -103,7 +103,11 @@ for (const [key, raw] of Object.entries(exported)) {
         if (raw.subtype === 'equip' && raw.equip_to === 'enemy') c.equip_to = 'enemy';
     }
     // A token: made only by effects in a duel (never in packs, decks or the Card Library)
-    if (raw.cardType === 'gang_member' && raw.token) c.token = true;
+    if (raw.cardType === 'gang_member' && raw.token) {
+        c.token = true;
+        // Its artworks: <id>.png and <id>_v2.png ... (each token in a match shows one)
+        if (int(raw.artVariants) > 1) c.artVariants = Math.min(12, int(raw.artVariants));
+    }
     cards[id] = c;
 }
 // A changes-only export updates these cards and keeps all the others
@@ -128,10 +132,13 @@ for (const target of ['assets/cards', 'godot/assets/cards']) {
     const to = join(ROOT, target);
     if (!existsSync(to)) mkdirSync(to, { recursive: true });
     for (const c of Object.values(cards)) {
-        const from = join(artDir, `${c.id}.png`);
-        if (existsSync(from)) {
-            copyFileSync(from, join(to, `${c.id}.png`));
-            if (target === 'assets/cards') copied++;
+        const names = [c.id, ...Array.from({ length: Math.max(0, (c.artVariants || 1) - 1) }, (_, i) => `${c.id}_v${i + 2}`)];
+        for (const name of names) {
+            const from = join(artDir, `${name}.png`);
+            if (existsSync(from)) {
+                copyFileSync(from, join(to, `${name}.png`));
+                if (target === 'assets/cards') copied++;
+            }
         }
     }
 }

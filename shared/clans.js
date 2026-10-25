@@ -91,6 +91,11 @@ const CURATED = {
     },
 };
 
+// How a clan without a starter yet plays (shown when it can be chosen)
+const BLURBS = {
+    underworld: 'Rise in numbers: flood the board with Skeleton tokens, make your characters UNDEAD so they rise again, and spend the dead for power.',
+};
+
 const level = (c) => Math.trunc(Number(c.level) || 1);
 const isCollectable = (c) => c.cardType !== 'leader' && !c.token;   // (tokens are made only by effects)
 const inDeck = (c) => isCollectable(c) && !(c.cardType === 'gang_member' && level(c) > 1);
@@ -166,7 +171,7 @@ export function freeAvatars(catalog = CARD_CATALOG) {
 }
 
 export function clanBlurb(clan) {
-    return CURATED[clan]?.blurb || '';
+    return CURATED[clan]?.blurb || BLURBS[clan] || '';
 }
 
 export function pickableClans(catalog = CARD_CATALOG) {

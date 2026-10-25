@@ -140,7 +140,7 @@ func set_card(c: Dictionary) -> void:
 	uid = int(c.get("uid", uid))
 	var tex: Texture2D = null
 	if not c.is_empty():
-		tex = CardDB.art(str(c.get("art_url", c.get("id", ""))))
+		tex = CardDB.art_for(c)   # (a token picks one of its artworks)
 	_front.texture = tex
 	_fit(_front)
 	if tex == null and not c.is_empty():
