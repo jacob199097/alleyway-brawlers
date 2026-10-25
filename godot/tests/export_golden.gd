@@ -253,6 +253,13 @@ const LEADER_SAMPLES := [
 ]
 
 
+## Turf Defense (both players, then the boss; see shared/duel/turf.test.mjs)
+const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000},
+	"boss": {"seat": "boss", "name": "Test Boss", "draw": 2, "authority": 1, "phases": [
+		{"below": 6600, "label": "ENRAGED", "fx": [{"do": "buff", "target": "allies", "atk": 400, "until": "forever"}, {"do": "heal", "amount": 500}]},
+		{"below": 3300, "label": "LAST STAND", "fx": [{"do": "damage", "amount": 600, "each_foe": true}, {"do": "draw", "amount": 2}]}]}}
+
+
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out_path: String = args[0] if args.size() > 0 else "user://golden.json"
@@ -264,6 +271,8 @@ func _init() -> void:
 		var seats: Array = ["player", "opponent"]
 		if g % 6 == 4:
 			seats = ["p1", "p2", "p3", "p4"]
+		elif g % 12 == 11:   # Turf Defense: two players against a boss (teams, its Morale, extra draws, phases)
+			seats = ["p1", "p2", "boss"]
 		elif g % 6 == 5:
 			seats = ["p1", "p2", "p3"]
 		var base := DuelAI.test_setup()
@@ -297,6 +306,8 @@ func _init() -> void:
 			levels[seats[i]] = DuelAI.LEVELS[(g + i) % 3]
 		# Every fifth game is played with a weekly-challenge twist (shared/challenges.js)
 		var rules: Dictionary = TWIST_RULES[(g / 5) % TWIST_RULES.size()] if g % 5 == 2 else {}
+		if seats.has("boss"):
+			rules = TURF_RULES.duplicate(true)
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1, rules)
 		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
 		var leader_fx := {}

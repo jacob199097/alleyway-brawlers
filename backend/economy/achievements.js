@@ -51,6 +51,10 @@ const BASE = [
     { id: 'level_10',     name: 'Veteran',          desc: 'Reach level 10.',                          stat: 'level', target: 10, reward: { karat: 300, title: 'Veteran' } },
     { id: 'level_25',     name: 'Old Guard',        desc: 'Reach level 25.',                          stat: 'level', target: 25, reward: { karat: 800, title: 'Old Guard' } },
     { id: 'friends_5',    name: 'Crew Boss',        desc: 'Have 5 friends.',                          stat: 'friends', target: 5, reward: { karat: 200, title: 'Crew Boss' } },
+    // Turf Defense (economy/turf.js)
+    { id: 'turf_1',       name: 'Turf Defender',    desc: 'Beat a Turf Defense boss with a partner.', stat: 'turf_clears', target: 1, reward: { karat: 200, title: 'Turf Defender' } },
+    { id: 'turf_all',     name: 'Block Captain',    desc: 'Beat all four Turf Defense bosses.',       stat: 'turf_bosses', target: 4, reward: { dust: 500, title: 'Block Captain' } },
+    { id: 'turf_nightmare', name: 'Nightmare Slayer', desc: 'Beat a Turf Defense boss on Nightmare.', stat: 'turf_nightmare', target: 1, reward: { dust: 600, title: 'Nightmare Slayer' } },
 ];
 
 /** Every achievement: the fixed ones, then two per clan in the game. */

@@ -17,6 +17,13 @@
  * (in a brawl) or the one its player chooses. A player at 0 Morale (or decked out) is out (their place
  * in `places`); their cards leave at the end of the action and the last one standing wins. Durations
  * that run "through the next turn" last a full round. With two players everything is as before.
+ *
+ * Teams (Turf Defense, rules.teams {seat: team}, rules.order the turn order): teammates aren't foes,
+ * and a team wins when only its seats are left. rules.morale {seat: n} sets a seat's starting (and
+ * most) Morale. rules.boss {seat, name, draw, authority, phases: [{below, label, fx}]}: the boss seat
+ * draws and gets Authority extra each turn, and each phase's effects (Card Forge effects, run as the
+ * boss) happen once when its Morale drops to "below" or less ("boss_phase" event); an effect with
+ * each_foe: true hits every player (damage, drain, discard: once at each).
  */
 
 import { CARD_CATALOG } from '../cards.js';
@@ -141,8 +148,11 @@ export class DuelState {
         this.rules = { ...(rules || {}) };
         // Turn order: player, opponent; FFA seats by name (p1, p2, ...), whatever order they come in
         const keys = Object.keys(decks);
-        this.seats = keys.length === 2 && keys.includes('player') ? ['player', 'opponent'] : [...keys].sort();
+        const order = Array.isArray(this.rules.order) ? this.rules.order.map(String).filter(k => keys.includes(k)) : [];
+        this.seats = order.length === keys.length ? order
+            : keys.length === 2 && keys.includes('player') ? ['player', 'opponent'] : [...keys].sort();
         this.ffa = this.seats.length > 2;
+        this.teams = this.rules.teams && typeof this.rules.teams === 'object' ? { ...this.rules.teams } : null;
         this.first = first;
         this.places = {};                  // FFA: side -> finishing place (1 = the winner)
         this._rand = seed > 0 ? seededRandom(seed) : Math.random;
@@ -176,8 +186,9 @@ export class DuelState {
             const leader = leaderId !== '' ? this.makeCard(leaderId) : null;
             if (leader) leader.influence = leader.influence != null ? toInt(leader.influence) : leader.base_defense;   // (Forge leaders set it; else DEF)
             if (leader) leader.influence_max = leader.influence;
+            const morale = toInt((this.rules.morale || {})[side]) || toInt(this.rules.start_morale) || START_MORALE;
             this.sides[side] = {
-                morale: toInt(this.rules.start_morale) || START_MORALE,
+                morale, max_morale: morale,
                 authority: toInt(this.rules.start_authority) || 1, authority_max: toInt(this.rules.start_authority) || 1,
                 deck, hand: [], field, gutter: [], hideout,
                 leader, leader_state: leader ? 'dormant' : 'none',
@@ -251,9 +262,14 @@ export class DuelState {
         const out = [];
         for (let k = 1; k < this.seats.length; k++) {
             const s = this.seats[(i + k) % this.seats.length];
-            if (!this.sides[s].out) out.push(s);
+            if (!this.sides[s].out && !this._teammates(s, side)) out.push(s);
         }
         return out;
+    }
+
+    /** Teams: whether two seats play on the same side (never without teams). */
+    _teammates(a, b) {
+        return this.teams != null && a !== b && this.teams[a] != null && this.teams[a] === this.teams[b];
     }
 
     _alive() {
@@ -518,7 +534,7 @@ export class DuelState {
             case 'mill': return foes.some(x => x.deck.length > 0);
             case 'mill_self': return s.deck.length > 0;
             case 'entomb': return s.deck.some(mine);
-            case 'heal': return s.morale < START_MORALE;
+            case 'heal': return s.morale < toInt(s.max_morale ?? START_MORALE);
             case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].face_down));
             case 'shatter': return foes.some(x => BACK.some(b => x.field[b] != null && !x.field[b].face_down));
             case 'wreck': return foes.some(x => BACK.some(b => x.field[b] != null));
@@ -1393,7 +1409,31 @@ export class DuelState {
         if (s.morale <= 0 && this.winner === '') this._lose(side, 'morale');
         // A leader that Awakens at low Morale (its own, or an opponent's) can take the field right
         // away, even in the middle of the other player's Brawl phase
-        else if (this.winner === '') for (const x of [side, ...this.foesOf(side)]) this._checkAwaken(x, true);
+        else if (this.winner === '') {
+            for (const x of [side, ...this.foesOf(side)]) this._checkAwaken(x, true);
+            this._bossPhases(side);
+        }
+    }
+
+    /** Turf Defense: the boss's phases its Morale has dropped into, each once, in order. */
+    _bossPhases(side) {
+        const b = this.rules.boss;
+        if (!b || b.seat !== side || this.winner !== '') return;
+        const s = this.sides[side];
+        const phases = Array.isArray(b.phases) ? b.phases : [];
+        while (this.winner === '' && toInt(s.boss_phase ?? 0) < phases.length && s.morale <= toInt(phases[toInt(s.boss_phase ?? 0)].below)) {
+            const ph = phases[toInt(s.boss_phase ?? 0)];
+            s.boss_phase = toInt(s.boss_phase ?? 0) + 1;
+            this._emit('boss_phase', { side, phase: s.boss_phase, label: String(ph.label ?? '') });
+            const src = s.leader || { name: String(b.name ?? 'The boss'), uid: 'boss', effects: [] };
+            for (const e of (Array.isArray(ph.fx) ? ph.fx : [])) {
+                for (const foe of e.each_foe ? this.foesOf(side) : ['']) {
+                    if (this.winner !== '') break;
+                    this._doFx(side, NO_SLOT, src, e, foe ? { side: foe } : {});
+                }
+            }
+            this._recalc();
+        }
     }
 
     /** side is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
@@ -1411,8 +1451,9 @@ export class DuelState {
         this.places[side] = s.out;
         this._emit('eliminated', { side, place: s.out, reason });
         const left = this._alive();
-        if (left.length === 1) {
-            this.places[left[0]] = 1;
+        // The last one standing wins; with teams, the last team standing (every seat left is on it)
+        if (left.length === 1 || (this.teams != null && left.every(x => this._teammates(x, left[0]) || x === left[0]))) {
+            for (const x of left) this.places[x] = 1;
             this._end(left[0], reason);
         }
     }
@@ -2924,7 +2965,7 @@ export class DuelState {
 
     _heal(side, c, n, slot) {
         const s = this.sides[side];
-        const gain = Math.min(n, START_MORALE - s.morale);
+        const gain = Math.min(n, toInt(s.max_morale ?? START_MORALE) - s.morale);
         if (gain > 0) {
             s.morale += gain;
             this._effect(side, c, `${c.name}: +${gain} Morale`, slot);
@@ -3017,6 +3058,14 @@ export class DuelState {
             this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: SECOND_PLAYER_AUTHORITY });
         }
         if (this.turn > 1) this._draw(this.active);
+        const boss = this.rules.boss;   // (Turf Defense: the boss draws and gets Authority extra)
+        if (boss && boss.seat === this.active && this.winner === '') {
+            for (let i = 0; i < toInt(boss.draw) && this.winner === ''; i++) this._draw(this.active);
+            if (toInt(boss.authority) > 0) {
+                s.authority += toInt(boss.authority);
+                this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: toInt(boss.authority) });
+            }
+        }
         // A Downed character stays down for a full round, then gets back up in DEF position
         // at the start of its owner's turn (its owner may switch it to ATK straight away)
         for (const e of this.characters(this.active)) {
@@ -3251,6 +3300,7 @@ export class DuelState {
 
     _draw(side, opening = false) {
         const s = this.sides[side];
+        if (!s.deck.length) this._bossRecycle(side);
         if (!s.deck.length) {
             // Decked out: a player who has to draw from an empty deck loses
             if (this.winner === '') this._lose(side, 'deck_out');
@@ -3259,6 +3309,30 @@ export class DuelState {
         const c = s.deck.pop();
         s.hand.push(c);
         this._emit('draw', { side, card: clone(c), opening });
+    }
+
+    /** Turf Defense: the boss never runs out of cards: when its deck is empty, its Gutter (not
+     *  tokens) is shuffled back into it ("recycle" event). */
+    _bossRecycle(side) {
+        const b = this.rules.boss;
+        const s = this.sides[side];
+        if (!b || b.seat !== side) return;
+        const back = s.gutter.filter(c => !c.token);
+        if (!back.length) return;
+        const keep = s.gutter.filter(c => c.token);
+        s.gutter.splice(0, s.gutter.length, ...keep);
+        for (const c of back) {
+            c.mods = [];
+            c.downed = false;
+            this._clearStatus(c);
+            delete c.fx_count;
+            delete c.rise_turn;
+            c.has_attacked = false;
+            c.face_down = false;
+            s.deck.push(c);
+        }
+        this._emit('recycle', { side, count: back.length });
+        this._shuffleDeck(side);
     }
 
     _discardAt(side, i) {

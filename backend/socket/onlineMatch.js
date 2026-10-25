@@ -121,7 +121,8 @@ function statsFilter(ev, viewer) {
 }
 
 /** The whole board as `viewer` may see it (server seats; swapped afterwards). FFA (socket/ffaMatch.js):
- *  every seat, each one's place once they're out, and the turn order (seats). */
+ *  every seat, each one's place once they're out, and the turn order (seats). Turf Defense
+ *  (socket/coopMatch.js): also the teams, each seat's most Morale and the boss's phase. */
 function viewFor(state, viewer) {
     const sides = {};
     for (const seat of state.ffa ? state.seats : ['player', 'opponent']) {
@@ -141,6 +142,10 @@ function viewFor(state, viewer) {
             field: s.field.map(c => (c == null ? null : (own || !c.face_down) ? structuredClone(c) : redact(c))),
         };
         if (state.ffa) sides[seat].out = s.out || 0;
+        if (state.teams) {
+            sides[seat].max_morale = s.max_morale;
+            sides[seat].boss_phase = s.boss_phase || 0;
+        }
     }
     let pending = {};
     if (state.pending && Object.keys(state.pending).length) {
@@ -153,6 +158,7 @@ function viewFor(state, viewer) {
     }
     const view = { turn: state.turn, active: state.active, phase: state.phase, winner: state.winner, pending, sides };
     if (state.ffa) view.seats = [...state.seats];
+    if (state.teams) view.teams = { ...state.teams };
     return view;
 }
 

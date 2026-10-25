@@ -32,6 +32,8 @@ jobs:
         run: node backend/socket/spectate.test.cjs
       - name: Free-for-all lobby and matches
         run: node backend/socket/ffa.test.cjs
+      - name: Turf Defense quick match and matches
+        run: node backend/socket/coop.test.cjs
       - name: Card Forge passives do what their text says
         run: node shared/duel/passives.test.mjs
       - name: Free-for-all rules (3-4 players)
@@ -48,6 +50,8 @@ jobs:
         run: node shared/duel/underworld.test.mjs
       - name: A leader Awakens mid-turn when Morale drops
         run: node shared/duel/awaken.test.mjs
+      - name: Turf Defense rules (teams, the boss's Morale and phases) and every boss level plays through
+        run: node shared/duel/turf.test.mjs
 
   database:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)
@@ -77,6 +81,13 @@ jobs:
           DB_PASS: postgres
       - name: Account deletion
         run: node backend/routes/account.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
+      - name: Turf Defense rewards
+        run: node backend/economy/turf.test.cjs
         env:
           DB_HOST: localhost
           DB_PORT: 5432

@@ -1,0 +1,110 @@
+{
+    "_about": "Turf Defense bosses (read by the game and the server, backend/socket/coopMatch.js). Each boss is a clan's leader at full power, fought by two players together. levels: 1 Street, 2 Hard, 3 Nightmare, each unlocked by clearing the one before. A level's deck is the clan's starter (shared/clans.js) with 'add' cards swapped in for its cheapest characters; morale, draw (extra cards a turn), authority (extra Authority a turn) and phases (Card Forge effects run as the boss when its Morale drops to 'below'; each_foe: at each player) make it hard. lines: what the boss says (intro, each phase by number, low when it's nearly beaten, player_out when a player falls, defeat when it loses, victory when it wins). first_clear: the rewards for beating a level the first time (the prize card on level 1); clear: every win after; loss: what a defeat pays (any level).",
+    "loss": {"karat": 15, "xp": 80},
+    "bosses": [
+        {
+            "id": "archon", "clan": "nebula", "leader": "card_nebu_009", "name": "The Archon Ascendant", "title": "Lord of the Void",
+            "color": "#9b7bff", "arena": "observatory", "portrait": "card_nebu_009", "prize": "card_nebu_048",
+            "lines": {
+                "intro": ["Two little sparks, come to put out a star.", "I have watched galaxies collapse. Your block is nothing.", "Kneel, and I will make it quick."],
+                "phase": {"1": "The stars align. Feel the weight of eternity.", "2": "ENOUGH! I will fold this street into the void!"},
+                "low": "Impossible... the void... recedes?",
+                "player_out": "One spark gutters out. Now the other.",
+                "defeat": "This is not an ending. Stars always return.",
+                "victory": "Silence. As it was before you, and as it will be after."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
+                    "phases": [{"below": 4500, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemy"}, {"do": "draw", "amount": 1}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 13000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_nebu_041", 2], ["card_nebu_037", 2], ["card_nebu_043", 1]],
+                    "phases": [{"below": 8300, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
+                        {"below": 4200, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemy"}, {"do": "buff", "target": "allies", "atk": 700, "def": 700, "until": "forever"}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 17000, "ai": "hard", "draw": 2, "authority": 3, "add": [["card_nebu_041", 2], ["card_nebu_037", 3], ["card_nebu_043", 2], ["card_nebu_048", 2]],
+                    "phases": [{"below": 12000, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
+                        {"below": 7500, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemies"}, {"do": "buff", "target": "allies", "atk": 800, "def": 800, "until": "forever"}]},
+                        {"below": 3000, "label": "SUPERNOVA", "fx": [{"do": "damage", "amount": 1500, "each_foe": true}, {"do": "heal", "amount": 3000}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
+        },
+        {
+            "id": "graves", "clan": "militia", "leader": "card_mili_011", "name": "Warlord Graves", "title": "Commander of the Outpost",
+            "color": "#a6e35a", "arena": "base", "portrait": "card_mili_011", "prize": "card_mili_040",
+            "lines": {
+                "intro": ["Civilians in a war zone. Bold. Stupid, but bold.", "This block is under Militia control now.", "All units: open fire!"],
+                "phase": {"1": "Reinforcements, on me! Hold the line!", "2": "Call it in. Danger close. Flatten the whole street!"},
+                "low": "Fall back... FALL BACK!",
+                "player_out": "One down. Pin the other one!",
+                "defeat": "Retreat... and regroup. This isn't over.",
+                "victory": "Sector secured. Clean up this mess."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
+                    "phases": [{"below": 4500, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 1, "max_auth": 4}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_mili_014", 1], ["card_mili_037", 1]],
+                    "phases": [{"below": 7300, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 4}]},
+                        {"below": 3600, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 500}, {"do": "damage", "amount": 600, "each_foe": true}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_mili_014", 2], ["card_mili_037", 2], ["card_mili_040", 1]],
+                    "phases": [{"below": 9500, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 5}]},
+                        {"below": 5500, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 700}, {"do": "damage", "amount": 800, "each_foe": true}]},
+                        {"below": 2500, "label": "LAST STAND", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "shield", "target": "allies"}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
+        },
+        {
+            "id": "vale", "clan": "wildcard", "leader": "card_wild_001", "name": "Vincent Vale, High Roller", "title": "Owner of the House",
+            "color": "#f2c14e", "arena": "casino", "portrait": "card_wild_001", "prize": "card_wild_013",
+            "lines": {
+                "intro": ["Welcome to my table. The stakes? Everything you own.", "Two against the house. How... adorable.", "Shuffle up and deal."],
+                "phase": {"1": "The house always wins. Always.", "2": "ALL IN. Let's see what you're really holding."},
+                "low": "No... the odds were mine. They were always mine!",
+                "player_out": "Busted. Who's next to cash out?",
+                "defeat": "A lucky streak. Enjoy it while it lasts.",
+                "victory": "Thank you for your contribution to the house."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
+                    "phases": [{"below": 4500, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1000}, {"do": "draw", "amount": 1}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_wild_012", 1], ["card_wild_017", 1]],
+                    "phases": [{"below": 7300, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1500}, {"do": "draw", "amount": 2}]},
+                        {"below": 3600, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_wild_012", 2], ["card_wild_017", 1], ["card_wild_013", 1]],
+                    "phases": [{"below": 10000, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 2000}, {"do": "draw", "amount": 2}]},
+                        {"below": 6000, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 1000, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]},
+                        {"below": 2500, "label": "JACKPOT", "fx": [{"do": "damage", "amount": 1200, "each_foe": true}, {"do": "authority", "amount": 3}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
+        },
+        {
+            "id": "veyr", "clan": "underworld", "leader": "card_unde_001", "name": "Veyr, the Hollow King", "title": "Sovereign of the Dead",
+            "color": "#c45cff", "arena": "graveyard", "portrait": "card_unde_001", "prize": "card_unde_034",
+            "lines": {
+                "intro": ["The living, walking into my graveyard. How thoughtful.", "Every soul ends up in my kingdom. Yours are just early.", "Rise, my children. We have guests."],
+                "phase": {"1": "RISE! The grave gives back what it takes!", "2": "Death is not my weakness. It is my army."},
+                "low": "My crown... crumbles...",
+                "player_out": "One more soul for the Hollow Throne.",
+                "defeat": "I will wait. The dead are very, very patient.",
+                "victory": "Welcome home. Forever."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
+                    "phases": [{"below": 4500, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_unde_011", 1], ["card_unde_026", 1]],
+                    "phases": [{"below": 7300, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]},
+                        {"below": 3600, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 1}, {"do": "give_undead", "target": "allies"}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_unde_011", 2], ["card_unde_026", 1], ["card_unde_034", 1]],
+                    "phases": [{"below": 10000, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 3}]},
+                        {"below": 6000, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 2}, {"do": "give_undead", "target": "allies"}]},
+                        {"below": 2500, "label": "HOLLOW THRONE", "fx": [{"do": "drain", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 600, "until": "forever"}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
+        }
+    ]
+}

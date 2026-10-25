@@ -71,6 +71,7 @@ var rules := {}              # a challenge's twist (see _init)
 var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 var seats: Array = ["player", "opponent"]   # turn order (FFA: p1, p2, ... by name)
 var ffa := false             # 3-4 players
+var teams := {}              # Turf Defense: seat -> team (teammates aren't foes; see DuelState.js)
 var first_seat := "player"
 var places := {}             # FFA: side -> finishing place (1 = the winner)
 
@@ -90,12 +91,20 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 	_fixed_order = seed_value == -1
 	# Turn order: player, opponent; FFA seats by name (p1, p2, ...), whatever order they come in
 	var keys: Array = decks.keys()
-	if keys.size() == 2 and keys.has("player"):
+	var order: Array = []
+	if rules.get("order") is Array:
+		for k in rules.order:
+			if keys.has(str(k)):
+				order.append(str(k))
+	if order.size() == keys.size():
+		seats = order
+	elif keys.size() == 2 and keys.has("player"):
 		seats = ["player", "opponent"]
 	else:
 		seats = keys.duplicate()
 		seats.sort()
 	ffa = seats.size() > 2
+	teams = rules.teams.duplicate() if rules.get("teams") is Dictionary else {}
 	for side in seats:
 		var deck: Array = []
 		for id in decks[side]:
@@ -112,8 +121,11 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		if leader != null:
 			leader.influence = int(leader.influence) if leader.get("influence") != null else leader.base_defense   # (Forge leaders set it; else DEF)
 			leader.influence_max = leader.influence
+		var morale: int = int(rules.get("morale", {}).get(side, 0)) if rules.get("morale") is Dictionary else 0
+		if morale <= 0:
+			morale = int(rules.get("start_morale", 0)) if int(rules.get("start_morale", 0)) > 0 else START_MORALE
 		sides[side] = {
-			"morale": int(rules.get("start_morale", 0)) if int(rules.get("start_morale", 0)) > 0 else START_MORALE,
+			"morale": morale, "max_morale": morale,
 			"authority": maxi(1, int(rules.get("start_authority", 1))), "authority_max": maxi(1, int(rules.get("start_authority", 1))),
 			"deck": deck, "hand": [], "field": field, "gutter": [], "hideout": hideout,
 			"leader": leader, "leader_state": "dormant" if leader != null else "none",
@@ -162,6 +174,7 @@ func load_view(v: Dictionary) -> void:
 	sides = v.get("sides", {})
 	seats = v.get("seats", ["player", "opponent"]) if v.get("seats") is Array else ["player", "opponent"]
 	ffa = seats.size() > 2
+	teams = v.get("teams", {}) if v.get("teams") is Dictionary else {}
 	_asks.clear()
 	_new_asks.clear()
 
@@ -224,9 +237,14 @@ func foes_of(side: String) -> Array:
 	var out: Array = []
 	for k in range(1, seats.size()):
 		var s: String = seats[(i + k) % seats.size()]
-		if not _is_out(s):
+		if not _is_out(s) and not _teammates(s, side):
 			out.append(s)
 	return out
+
+
+## Teams: whether two seats play on the same side (never without teams).
+func _teammates(a: String, b: String) -> bool:
+	return not teams.is_empty() and a != b and teams.has(a) and teams.get(a) == teams.get(b)
 
 
 func _alive() -> Array:
@@ -569,7 +587,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"entomb":
 			return s.deck.any(mine)
 		"heal":
-			return s.morale < START_MORALE
+			return s.morale < int(s.get("max_morale", START_MORALE))
 		"break_ambush":
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("face_down", false)))
 		"shatter":
@@ -1601,6 +1619,27 @@ func _damage(side: String, amount: int, paid := false) -> void:
 		# away, even in the middle of the other player's Brawl phase
 		for x in [side] + foes_of(side):
 			_check_awaken(x, true)
+		_boss_phases(side)
+
+
+## Turf Defense: the boss's phases its Morale has dropped into, each once, in order.
+func _boss_phases(side: String) -> void:
+	var b = rules.get("boss")
+	if not b is Dictionary or str(b.get("seat", "")) != side or winner != "":
+		return
+	var s: Dictionary = sides[side]
+	var phases: Array = b.get("phases", []) if b.get("phases") is Array else []
+	while winner == "" and int(s.get("boss_phase", 0)) < phases.size() and s.morale <= int(phases[int(s.get("boss_phase", 0))].get("below", 0)):
+		var ph: Dictionary = phases[int(s.get("boss_phase", 0))]
+		s.boss_phase = int(s.get("boss_phase", 0)) + 1
+		_emit("boss_phase", {"side": side, "phase": s.boss_phase, "label": str(ph.get("label", ""))})
+		var src = s.leader if s.leader != null else {"name": str(b.get("name", "The boss")), "uid": "boss", "effects": []}
+		for e in (ph.get("fx", []) if ph.get("fx") is Array else []):
+			for foe in (foes_of(side) if e.get("each_foe", false) else [""]):
+				if winner != "":
+					break
+				_do_fx(side, NO_SLOT, src, e, {"side": foe} if foe != "" else {})
+		_recalc()
 
 
 ## `side` is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
@@ -1619,8 +1658,10 @@ func _lose(side: String, reason: String) -> void:
 	places[side] = s.out
 	_emit("eliminated", {"side": side, "place": s.out, "reason": reason})
 	var left := _alive()
-	if left.size() == 1:
-		places[left[0]] = 1
+	# The last one standing wins; with teams, the last team standing (every seat left is on it)
+	if left.size() == 1 or (not teams.is_empty() and left.all(func(x): return x == left[0] or _teammates(x, left[0]))):
+		for x in left:
+			places[x] = 1
 		_end(left[0], reason)
 
 
@@ -3351,7 +3392,7 @@ func _shuffle_deck(side: String) -> void:
 
 func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
 	var s: Dictionary = sides[side]
-	var gain: int = mini(n, START_MORALE - s.morale)
+	var gain: int = mini(n, int(s.get("max_morale", START_MORALE)) - s.morale)
 	if gain > 0:
 		s.morale += gain
 		_effect(side, c, "%s: +%d Morale" % [c.name, gain], slot)
@@ -3476,6 +3517,15 @@ func _begin_turn() -> void:
 		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": SECOND_PLAYER_AUTHORITY})
 	if turn > 1:
 		_draw(active)
+	var boss = rules.get("boss")   # (Turf Defense: the boss draws and gets Authority extra)
+	if boss is Dictionary and str(boss.get("seat", "")) == active and winner == "":
+		for i in int(boss.get("draw", 0)):
+			if winner != "":
+				break
+			_draw(active)
+		if int(boss.get("authority", 0)) > 0:
+			s.authority += int(boss.authority)
+			_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": int(boss.authority)})
 	# A Downed character stays down for a full round (the opponent gets one turn to finish it
 	# off), then gets back up in DEF position at the start of its owner's turn. Its owner
 	# may switch it to ATK straight away.
@@ -3743,6 +3793,8 @@ static func _prompt_event(ask: Dictionary) -> Dictionary:
 func _draw(side: String, opening := false) -> void:
 	var s: Dictionary = sides[side]
 	if s.deck.is_empty():
+		_boss_recycle(side)
+	if s.deck.is_empty():
 		# Decked out: a player who has to draw from an empty deck loses
 		if winner == "":
 			_lose(side, "deck_out")
@@ -3750,6 +3802,32 @@ func _draw(side: String, opening := false) -> void:
 	var c: Dictionary = s.deck.pop_back()
 	s.hand.append(c)
 	_emit("draw", {"side": side, "card": c.duplicate(true), "opening": opening})
+
+
+## Turf Defense: the boss never runs out of cards: when its deck is empty, its Gutter (not tokens)
+## is shuffled back into it ("recycle" event).
+func _boss_recycle(side: String) -> void:
+	var b = rules.get("boss")
+	if not b is Dictionary or str(b.get("seat", "")) != side:
+		return
+	var s: Dictionary = sides[side]
+	var back: Array = s.gutter.filter(func(c): return not c.get("token", false))
+	if back.is_empty():
+		return
+	var keep: Array = s.gutter.filter(func(c): return c.get("token", false))
+	s.gutter.clear()
+	s.gutter.append_array(keep)
+	for c in back:
+		c.mods = []
+		c.downed = false
+		_clear_status(c)
+		c.erase("fx_count")
+		c.erase("rise_turn")
+		c.has_attacked = false
+		c.face_down = false
+		s.deck.append(c)
+	_emit("recycle", {"side": side, "count": back.size()})
+	_shuffle_deck(side)
 
 
 func _discard_at(side: String, i: int) -> void:

@@ -28,6 +28,8 @@ const { pool }                  = require('./db/pool');
 const { createOnlineService, loadSetupFromDb, loadProfileFromDb, replaySteps } = require('./socket/onlineMatch');
 const { resolveMatch, resolveCpuMatch, resolveFfaMatch } = require('./economy/postMatch');
 const { createFfaService } = require('./socket/ffaMatch');
+const { createCoopService } = require('./socket/coopMatch');
+const turf = require('./economy/turf');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 const achievements = require('./economy/achievements');
 const { migrate } = require('./db/migrate');
@@ -85,6 +87,7 @@ app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/challenge', require('./routes/challenge'));   // this week's challenge (economy/challenge.js)
 app.use('/api/account', require('./routes/account'));   // account deletion
+app.use('/api/turf', require('./routes/turf'));   // Turf Defense bosses and progress (economy/turf.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -109,9 +112,10 @@ io.use((socket, next) => {
 });
 
 // ── Online matches (server-authoritative rules, socket/onlineMatch.js) ───────
-let ffa = null;   // free-for-all lobbies and matches (below)
+let ffa = null;    // free-for-all lobbies and matches (below)
+let coop = null;   // Turf Defense quick match and matches (below)
 const online = createOnlineService(io, {
-    isBusyElsewhere: (playerId) => !!ffa?.isBusy(playerId),
+    isBusyElsewhere: (playerId) => !!ffa?.isBusy(playerId) || !!coop?.isBusy(playerId),
     loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     resolveMatch,
@@ -137,8 +141,8 @@ app.locals.online = online;   // routes/social.js: which friends are in a match
 ffa = createFfaService(io, {
     loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
-    isBusyElsewhere: (playerId) => online.isBusyHere(playerId),
-    leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
+    isBusyElsewhere: (playerId) => online.isBusyHere(playerId) || !!coop?.isBusy(playerId),
+    leaveOtherQueue: (playerId) => { online.leaveQueue(playerId); coop?.leaveQueue(playerId); },
     resolveFfa: resolveFfaMatch,
     recordMatch: achievements.recordMatch,
     masteryProgress: require('./economy/mastery').progress,
@@ -147,6 +151,21 @@ ffa = createFfaService(io, {
     incrementDailyQuest,
     recordDailyWin,
 });
+// ── Turf Defense: two players against a boss, quick match (socket/coopMatch.js) ──
+coop = createCoopService(io, {
+    loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
+    loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
+    loadClears:  (playerId) => turf.clearsOf(pool, playerId),
+    resolveTurf: turf.resolve,
+    isBusyElsewhere: (playerId) => online.isBusyHere(playerId) || ffa.isBusy(playerId),
+    leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
+    recordMatch: achievements.recordMatch,
+    masteryProgress: require('./economy/mastery').progress,
+    recordDeck: (deckId, outcome) => pool.query(
+        'UPDATE decks SET games = games + 1, wins = wins + $2 WHERE id = $1', [deckId, outcome === 'win' ? 1 : 0]),
+    incrementDailyQuest,
+});
+app.locals.coop = coop;   // routes/turf.js: who's waiting for a partner
 achievements.setNotifier(online.notify);   // unlocks outside matches reach the player's game
 
 // ── Socket connections ────────────────────────────────────────────────────────
@@ -184,6 +203,7 @@ io.on('connection', (socket) => {
     // Matches, the queue and friend challenges (socket/onlineMatch.js); free-for-all (socket/ffaMatch.js)
     online.register(socket, playerData);
     ffa.register(socket, playerData);
+    coop.register(socket, playerData);
 
     // ── Chat ─────────────────────────────────────────────────────────────────
     socket.on('chat:message', ({ toPlayerId, body } = {}) => {
