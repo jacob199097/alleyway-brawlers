@@ -2322,7 +2322,7 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "attack": 1800,
-        "defense": 2000,
+        "defense": 2300,
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null
@@ -5159,7 +5159,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_016",
         "code": "UNDE-016",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +500 ATK and +400 DEF for each UNDERWORLD card in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+        "effectText": "This card gains +500 ATK and +400 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
         "effects": [
             {
                 "when": "passive",
@@ -5167,6 +5167,7 @@ export const FORGE_CARDS = {
                 "target": "self",
                 "per": "gutter",
                 "per_clan": "underworld",
+                "per_kind": "gang_member",
                 "atk": 500,
                 "def": 400
             },
@@ -5623,7 +5624,7 @@ export const FORGE_CARDS = {
         "clan": "underworld",
         "cardType": "gang_member",
         "authority": 6,
-        "tributeCost": 0,
+        "tributeCost": 2,
         "rarity": 3,
         "clanTag": "underworld",
         "effectKey": "",
@@ -5646,7 +5647,7 @@ export const FORGE_CARDS = {
         "attack": 2700,
         "defense": 0,
         "level": 1,
-        "subtype": "brawler",
+        "subtype": "heavy",
         "promotesTo": null
     },
     "card_unde_034": {
@@ -5655,7 +5656,7 @@ export const FORGE_CARDS = {
         "clan": "underworld",
         "cardType": "gang_member",
         "authority": 9,
-        "tributeCost": 2,
+        "tributeCost": 3,
         "rarity": 5,
         "clanTag": "underworld",
         "effectKey": "",

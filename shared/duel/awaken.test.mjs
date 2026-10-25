@@ -40,6 +40,11 @@ st._asks.splice(st._asks.indexOf(ask), 1);
 st._runAnswer(() => ask.cb('0'));
 assert.equal(st.sides.player.leader_state, 'awake');
 assert.equal(st.sides.player.field[0], st.sides.player.leader, 'he takes lane 1');
+// ...and, arriving on the opponent's turn, he can attack on his owner's next turn
+st._endTurn();
+while (st._asks.length) { const x = st._asks.shift(); st._runAnswer(() => x.cb(x.options[0].id)); }
+assert.equal(st.active, 'player');
+assert.equal(st.sides.player.field[0].has_attacked, false, "ready to attack on his owner's turn");   // (the test's empty deck ends the game on the draw, so not canAttackWith)
 
 // "Stay Dormant": not asked again this turn, however much more Morale is lost; asked next turn
 st = duel();

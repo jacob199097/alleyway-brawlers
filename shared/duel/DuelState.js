@@ -2997,6 +2997,9 @@ export class DuelState {
         for (const k of Object.keys(this.sides)) this.sides[k].promoted = {};   // (once per turn: any turn, e.g. a Striver promoting on the opponent's)
         s.mentor_used = false;
         s.turns = toInt(s.turns) + 1;
+        // Every character of yours is ready to attack on your turn, including one that arrived on the
+        // opponent's (promoted, revived or Awakened then: it was marked as having attacked)
+        for (const c of s.field) if (c != null) c.has_attacked = false;
         if (toInt(s.barricade ?? 0) > 0) {   // (it lasts until your next turn)
             s.barricade = 0;
             this._emit('barricade', { side: this.active, amount: 0 });

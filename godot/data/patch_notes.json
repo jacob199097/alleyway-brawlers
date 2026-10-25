@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.80",
+        "notes": [
+            "Fixed: a character that promoted, came back or Awakened during your opponent's turn couldn't attack on your next turn.",
+            "The Underworld clan is here: 41 new cards, Underworld booster packs, and a free Underworld Starter deck for everyone."
+        ]
+    },
+    {
         "version": "0.9.79",
         "notes": [
             "A token's card details and zoom now show the same artwork as the token on the field, and say TOKEN."
