@@ -2722,7 +2722,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 						rev.from_side = robbed
 					_emit("recover", rev)
 				card.erase("rise_turn")   # (taken before it could rise)
-				card.position = "atk"
+				card.position = "def" if e.get("position", "") == "def" else "atk"   # (position: "def": it comes in DEF)
 				card.face_down = false
 				card.has_attacked = false
 				card.deployed_turn = turn

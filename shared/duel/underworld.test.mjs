@@ -203,4 +203,13 @@ assert.equal(st.fxCan('player', -1, src, { do: 'entomb', kind: 'ambush' }), fals
 st.sides.player.deck = [];
 assert.equal(st.fxCan('player', -1, src, { do: 'mill_self', amount: 1 }), false);
 
+// Gutter to the field in DEF position (revive / call position: def; else ATK)
+st = duel();
+st.sides.player.gutter.push(unit(st, 'Ghoul', 1200, 900));
+st._doFx('player', -1, src, { do: 'revive', position: 'def' });
+assert.equal(st.sides.player.field.find(c => c && c.name === 'Ghoul')?.position, 'def', 'it comes back in DEF');
+st.sides.player.gutter.push(unit(st, 'Wight', 1200, 900));
+st._doFx('player', -1, src, { do: 'revive' });
+assert.equal(st.sides.player.field.find(c => c && c.name === 'Wight')?.position, 'atk', 'ATK unless it says DEF');
+
 console.log('underworld: ok');

@@ -2354,7 +2354,7 @@ export class DuelState {
                     delete card.fx_count;
                     if (!fromDeck) this._emit('recover', robbed != null ? { side, card: clone(card), from_side: robbed } : { side, card: clone(card) });
                     delete card.rise_turn;   // (taken before it could rise)
-                    card.position = 'atk';
+                    card.position = e.position === 'def' ? 'def' : 'atk';   // (position: "def": it comes in DEF)
                     card.face_down = false;
                     card.has_attacked = false;
                     card.deployed_turn = this.turn;

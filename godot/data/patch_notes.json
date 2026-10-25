@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.76",
+        "notes": [
+            "New card effects: characters brought back from the Gutter, or called in from the deck, can come in DEF position."
+        ]
+    },
+    {
         "version": "0.9.75",
         "notes": [
             "A leader that Awakens at low Morale, like General Graves, now takes the field the moment your Morale drops low enough, even in the middle of your opponent's attacks.",
