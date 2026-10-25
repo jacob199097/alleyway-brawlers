@@ -4,6 +4,7 @@
 //   node tools/deploy.mjs                 pull + restart
 //   node tools/deploy.mjs --patch         also copy builds/AlleywayBrawlers-<latest>-patch.pck (and the Mac
 //                                         one, -patch-macos.pck, when it's been made)
+//                                         and delete older patches and full builds from downloads/
 //   node tools/deploy.mjs --build         also copy builds/AlleywayBrawlers-<latest>-windows.zip
 //   node tools/deploy.mjs --build-mac     also copy builds/AlleywayBrawlers-<latest>-macos.zip (tools/build_mac.mjs)
 //   node tools/deploy.mjs --sync-cards    also run backend/scripts/sync_cards.mjs after pulling
@@ -75,8 +76,17 @@ if (files.length) {
     if (r.status !== 0) process.exit(r.status || 1);
 }
 
+// Only the latest version's patches and the newest full build per platform are ever served
+// (backend/routes/download.js), and each patch is ~150 MB: the rest goes, so the disk doesn't fill up
+const prune = [
+    `cd ${REPO}/downloads`,
+    `for f in AlleywayBrawlers-*-patch*.pck; do case "$f" in AlleywayBrawlers-${latest}-patch*) ;; *) rm -f -- "$f";; esac; done`,
+    'for p in windows macos; do ls -1v AlleywayBrawlers-*-$p.zip 2>/dev/null | head -n -1 | xargs -r rm -f --; done',
+    `cd ${REPO}`,
+];
 const steps = [
     `cd ${REPO}`,
+    ...(has('--patch') || has('--build') || has('--build-mac') ? prune : []),
     'git pull --ff-only',
     ...(has('--sync-cards') ? ['node backend/scripts/sync_cards.mjs'] : []),
     'sudo -n systemctl restart alleyway-backend',

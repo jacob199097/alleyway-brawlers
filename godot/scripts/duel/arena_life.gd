@@ -11,7 +11,11 @@ extends Node2D
 ##   rain / snow / sand / leaves     weather blowing across
 ##   motes          fireflies, spores or ghost lights wandering and blinking
 ##   bubbles        rising in a tank
-##   bats           a few bats flapping across now and then
+##   bats           a few bats flapping across now and then ("size", "flap" speed, "color", "most" in a flock:
+##                  bigger and slower, they're crows)
+##   scurry         a rat darting along a "path" of points now and then, stopping to sniff on the way
+##   orbit          a bright ball running round a centre (a roulette ball: fast, slowing, then sent again)
+##   cracks         ice cracking: a white line forks out across "rect" with a glint, then fades
 ##   lightning      a far-off flash, now and then
 ##   koi            fish swimming under the water, wandering, their tails swishing
 ##   ripples        rings spreading on water: where a spout pours in, and now and then anywhere in "rect"
@@ -47,7 +51,7 @@ func setup(tex: Texture2D, tint: Color, level: float) -> ArenaLife:
 
 static func handles(kind: String) -> bool:
 	return kind in ["flame", "glow", "fog", "water", "heat", "sway", "glitter", "beam", "rain", "snow", "sand",
-		"leaves", "motes", "bubbles", "bats", "lightning", "koi", "ripples"]
+		"leaves", "motes", "bubbles", "bats", "lightning", "koi", "ripples", "scurry", "orbit", "cracks"]
 
 
 func add(e: Dictionary) -> void:
@@ -82,6 +86,12 @@ func add(e: Dictionary) -> void:
 			_koi(e)
 		"ripples":
 			_ripples(e)
+		"scurry":
+			_scurry(e)
+		"orbit":
+			_orbit(e)
+		"cracks":
+			_cracks(e)
 
 
 # ── Where things are ────────────────────────────────────────────────────────
@@ -435,15 +445,17 @@ func _bats(e: Dictionary) -> void:
 		var left := randf() < 0.5
 		var y0 := randf_range(80, 1000)
 		var y1 := clampf(y0 + randf_range(-380, 380), 40, 1040)
-		for i in randi_range(1, 3):
+		var big := float(e.get("size", 1.0))
+		var beat := float(e.get("flap", 16.0))
+		var body := Color(_col(e, "#0a0810"), 0.85)
+		for i in randi_range(1, int(e.get("most", 3))):
 			var bat := Node2D.new()
 			var flap := randf() * TAU
-			var size := randf_range(0.8, 1.25)
+			var size := randf_range(0.8, 1.25) * big
 			bat.draw.connect(func():
-				var w := sin(Time.get_ticks_msec() / 1000.0 * 16.0 + flap)   # wings up and down
+				var w := sin(Time.get_ticks_msec() / 1000.0 * beat + flap)   # wings up and down
 				var tip := Vector2(30, -6 - 14 * w) * size
 				var mid := Vector2(14, -2 - 6 * w) * size
-				var body := Color(0.04, 0.03, 0.06, 0.85)
 				for s in [-1.0, 1.0]:
 					# Each wing as a fan of triangles from the body (as one polygon, the mirrored wing's
 					# outline can cross itself mid-flap and fail to triangulate)
@@ -454,7 +466,7 @@ func _bats(e: Dictionary) -> void:
 			bat.position = Vector2(-80.0 if left else 2000.0, y0 + i * randf_range(-50, 50))
 			add_child(bat)
 			var to := Vector2(2000.0 if left else -80.0, y1 + i * randf_range(-60, 60))
-			var dur := randf_range(3.2, 4.6)
+			var dur := randf_range(3.2, 4.6) * (1.0 + (big - 1.0) * 0.5)   # (crows fly slower)
 			var path := bat.create_tween().set_parallel()
 			path.tween_property(bat, "position:x", to.x, dur).set_delay(i * 0.25)
 			path.tween_property(bat, "position:y", to.y, dur).set_trans(Tween.TRANS_SINE).set_delay(i * 0.25)
@@ -589,6 +601,130 @@ func _ripple_loop(at: Vector2, radius: float, col: Color, every: float, jitter: 
 			ring.queue_redraw(), 0.0, 1.25, 1.9).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 		tw.tween_callback(ring.queue_free)
 		await get_tree().create_timer(every * randf_range(0.7, 1.3) + jitter * randf()).timeout
+
+
+## A rat: now and then it darts along the path (picture points), pausing once or twice to sniff,
+## its tail swinging, and is gone off the far end. Each run picks a direction at random.
+func _scurry(e: Dictionary) -> void:
+	var path: Array = (e.get("path", []) as Array).map(func(p): return _pt(p))
+	if path.size() < 2:
+		return
+	var every := float(e.get("every", 20.0))
+	var col := Color(_col(e, "#120d10"), 0.92)
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(every * 0.5, every * 1.5)).timeout
+		if not is_inside_tree():
+			return
+		var pts := path.duplicate()
+		if randf() < 0.5:
+			pts.reverse()
+		var rat := Node2D.new()
+		var size := randf_range(0.85, 1.15) * _k * float(e.get("size", 1.0))
+		var wiggle := randf() * TAU
+		rat.draw.connect(func():
+			var t := Time.get_ticks_msec() / 1000.0
+			var s := sin(t * 22.0 + wiggle)
+			rat.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * size)
+			rat.draw_colored_polygon(PackedVector2Array([Vector2(-9, -4), Vector2(5, -4.5), Vector2(11, -1), Vector2(13, 0), Vector2(11, 1), Vector2(5, 4.5), Vector2(-9, 4), Vector2(-11, 0)]), col)
+			rat.draw_circle(Vector2(-2, -4.5 + s * 0.6), 1.6, col)   # (an ear)
+			var tail := PackedVector2Array()
+			for j in 7:
+				tail.append(Vector2(-10 - j * 2.6, sin(t * 9.0 + wiggle + j * 0.7) * j * 0.7))
+			rat.draw_polyline(tail, col, 1.4, true))
+		rat.position = pts[0]
+		add_child(rat)
+		_redraw_while(rat)
+		var tw := rat.create_tween()
+		for j in range(1, pts.size()):
+			var a: Vector2 = pts[j - 1]
+			var b: Vector2 = pts[j]
+			tw.tween_callback(func(): rat.rotation = (b - a).angle())
+			var legs := a.distance_to(b) / (randf_range(260.0, 360.0) * _k)
+			if randf() < 0.45:   # (it stops halfway to sniff)
+				var mid := a.lerp(b, randf_range(0.35, 0.65))
+				tw.tween_property(rat, "position", mid, legs * 0.5)
+				tw.tween_interval(randf_range(0.3, 0.9))
+				tw.tween_property(rat, "position", b, legs * 0.5)
+			else:
+				tw.tween_property(rat, "position", b, legs)
+		tw.tween_callback(rat.queue_free)
+
+
+## A ball running round a centre ("at", radius "r"): sent off fast, it slows over a few seconds and
+## stops; after a pause it's sent again (a roulette wheel). "speed": its first turns a second.
+func _orbit(e: Dictionary) -> void:
+	var c := _pt(e.at)
+	var r := float(e.get("r", 90)) * _k
+	var col := _col(e, "#ffffff")
+	var ball := Sprite2D.new()
+	ball.texture = _soft_dot()
+	ball.scale = Vector2.ONE * float(e.get("size", 0.35)) * _k
+	ball.modulate = col
+	ball.material = _add
+	add_child(ball)
+	var core := Node2D.new()   # (a solid centre, so it reads as a ball, not a light)
+	core.draw.connect(func(): core.draw_circle(Vector2.ZERO, 3.2 * _k * float(e.get("size", 0.35)) / 0.35, Color(1, 1, 1, 0.95)))
+	add_child(core)
+	var ang := randf() * TAU
+	ball.position = c + Vector2.from_angle(ang) * r
+	core.position = ball.position
+	while is_inside_tree():
+		var v := float(e.get("speed", 1.6)) * TAU
+		var t := 0.0
+		var spin := randf_range(5.0, 8.0)
+		while t < spin and is_inside_tree():
+			await get_tree().process_frame
+			var dt := get_process_delta_time()
+			t += dt
+			var k := 1.0 - t / spin
+			ang -= v * k * k * dt
+			var rr := r * (1.0 - 0.18 * (1.0 - k))   # (it drops inward as it slows)
+			ball.position = c + Vector2.from_angle(ang) * rr
+			core.position = ball.position
+		if not is_inside_tree():
+			return
+		await get_tree().create_timer(randf_range(2.5, 5.0)).timeout
+
+
+## Ice cracking: now and then a crack forks out from somewhere in "rect" with a glint where it starts,
+## lingers a moment and fades.
+func _cracks(e: Dictionary) -> void:
+	var area := _rect(e.rect)
+	var col := _col(e, "#eaf8ff")
+	var every := float(e.get("every", 9.0))
+	while is_inside_tree():
+		await get_tree().create_timer(randf_range(every * 0.5, every * 1.5)).timeout
+		if not is_inside_tree():
+			return
+		var at := Vector2(randf_range(area.position.x, area.end.x), randf_range(area.position.y, area.end.y))
+		var lines: Array = []   # [[from, to], ...] in growth order
+		var tips := [[at, randf() * TAU]]
+		for step in 7:
+			var next := []
+			for tip in tips:
+				var to: Vector2 = tip[0] + Vector2.from_angle(tip[1] + randf_range(-0.5, 0.5)) * randf_range(18, 46) * _k
+				lines.append([tip[0], to, step])
+				next.append([to, tip[1] + randf_range(-0.35, 0.35)])
+				if randf() < 0.28 and next.size() < 5:
+					next.append([to, tip[1] + randf_range(0.6, 1.2) * (1.0 if randf() < 0.5 else -1.0)])
+			tips = next
+		var crack := Node2D.new()
+		crack.material = _add
+		var grown := [0.0]
+		crack.draw.connect(func():
+			for l in lines:
+				var a := clampf(grown[0] * 8.0 - float(l[2]), 0.0, 1.0)
+				if a > 0.0:
+					crack.draw_line(l[0], (l[0] as Vector2).lerp(l[1], a), Color(col, 0.55), 1.6 * _k, true)
+			crack.draw_circle(at, 5.0 * _k * clampf(1.0 - grown[0], 0.0, 1.0), Color(col, 0.8)))
+		add_child(crack)
+		var tw := crack.create_tween()
+		tw.tween_method(func(v: float):
+			grown[0] = v
+			crack.queue_redraw(), 0.0, 1.0, 0.45)
+		tw.tween_interval(1.4)
+		tw.tween_property(crack, "modulate:a", 0.0, 1.6)
+		tw.tween_callback(crack.queue_free)
 
 
 func _redraw_while(n: CanvasItem) -> void:

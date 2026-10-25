@@ -84,7 +84,7 @@ func _clan_info(c: Dictionary) -> Dictionary:
 		image = CardDB.art(str(c.leader))
 	if image == null:
 		image = CardDB.back(str(c.get("tag", "")))
-	return {"id": id, "label": str(c.get("name", id)).to_upper(), "color": Color(str(c.get("color", "#b388ff"))),
+	return {"id": id, "label": str(c.get("name", id)).to_upper(), "color": CardDB.clan_color(str(c.get("color", "#b388ff"))),
 		"image": image, "blurb": "%s%d cards · 40-card starter deck included" % [
 			str(c.blurb) + "\n\n" if str(c.get("blurb", "")) != "" else str(known.blurb) + "\n" if known.has("blurb") else "", int(c.get("cards", 0))]}
 

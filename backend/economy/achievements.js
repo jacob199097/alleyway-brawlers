@@ -57,15 +57,18 @@ const BASE = [
     { id: 'turf_nightmare', name: 'Nightmare Slayer', desc: 'Beat a Turf Defense boss on Nightmare.', stat: 'turf_nightmare', target: 1, reward: { dust: 600, title: 'Nightmare Slayer' } },
 ];
 
+/** "a" or "an" before a word ("an Underworld deck"). */
+const article = (word) => (/^[aeiou]/i.test(String(word)) ? 'an' : 'a');
+
 /** Every achievement: the fixed ones, then two per clan in the game. */
 async function definitions() {
     const { clanList } = await import('../../shared/clans.js');
     const out = [...BASE];
     for (const c of clanList()) {
-        out.push({ id: `clan_${c.id}_10`, name: `${c.name} Loyalist`, desc: `Win 10 matches with a ${c.name} deck.`,
+        out.push({ id: `clan_${c.id}_10`, name: `${c.name} Loyalist`, desc: `Win 10 matches with ${article(c.name)} ${c.name} deck.`,
             stat: `wins_clan_${c.id}`, target: 10, clan: c.id,
             reward: { back: c.id, avatar: `clan:${c.id}`, title: `${c.name} Loyalist` } });
-        out.push({ id: `clan_${c.id}_50`, name: `${c.name} Legend`, desc: `Win 50 matches with a ${c.name} deck.`,
+        out.push({ id: `clan_${c.id}_50`, name: `${c.name} Legend`, desc: `Win 50 matches with ${article(c.name)} ${c.name} deck.`,
             stat: `wins_clan_${c.id}`, target: 50, clan: c.id,
             reward: { dust: 500, title: `${c.name} Legend` } });
     }

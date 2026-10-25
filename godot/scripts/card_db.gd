@@ -30,10 +30,19 @@ static func clans() -> Array:
 		if clan == "" or seen.has(clan) or c.get("cardType") == "leader":
 			continue
 		seen[clan] = {"id": clan, "name": str(c.get("clanName", clan.capitalize())),
-			"color": Color(str(c.get("clanColor", "#b388ff"))), "tag": str(c.get("clanTag", ""))}
+			"color": clan_color(str(c.get("clanColor", "#b388ff"))), "tag": str(c.get("clanTag", ""))}
 	var out: Array = seen.values()
 	out.sort_custom(func(a, b): return a.name < b.name)
 	return out
+
+
+## A clan's colour (its clanColor) bright enough to read as text and to glow: a dark one (Underworld's
+## deep purple) keeps its hue and is brightened.
+static func clan_color(hex: String, fallback := Color("b388ff")) -> Color:
+	if not hex.begins_with("#"):
+		return fallback
+	var c := Color(hex)
+	return Color.from_hsv(c.h, c.s, 0.85) if c.get_luminance() < 0.35 else c
 
 
 ## One clan's entry from clans(), or {} if it has no cards.

@@ -17,6 +17,7 @@ const SECTIONS := [
 
 A [b]Continuous[/b] Ambush can also be flipped face-up without an attack, once it has been set since an earlier turn: on your turn (click it), or when you're offered the chance at the start of your opponent's turn and after they deploy.\n\nSome are CONTINUOUS (they stay face-up and keep working) or EQUIP (they attach to a character)."],
 	["ABILITIES", "Card text tells you when an effect happens: when deployed, when it attacks, when an ally is KO'd...\n\nA [b]teal glow[/b] means a character has an [b]ACTIVATE[/b] ability ready: click it to use it, once per turn, paying any cost shown (Authority, Morale, a discard, a sacrifice, or not attacking this turn).\n\nWhen an effect lets you choose, the cards you can pick glow: click one, or SKIP.\n\n[b]If you do[/b]: that part only happens if the part before it worked.\n\n[b]Luck[/b]: some cards flip a coin or roll a die, shown on the board. \"If tails\" parts follow the same flip. [b]DOUBLE OR NOTHING[/b]: you choose whether to bet. Bet, and a coin decides: heads, it happens twice; tails, not at all. Don't, and it happens once. [b]LOADED DICE[/b]: once per turn, a flip or roll of yours that fails is tried again."],
+	["GAME MODES", "[b]Casual[/b] and [b]Ranked[/b]: one on one. Ranked earns Rank Points (from level 5).\n\n[b]Free-for-all[/b]: four players, everyone for themselves, in turn order round the table. When you attack or an effect hits \"an opponent\", you choose which one. The last one standing wins; the rest are placed in the order they went out.\n\n[b]Turf Defense[/b]: you and a partner against a clan boss. You each have your own deck, board and Morale, and your partner's cards can't be targeted by yours. The boss has far more Morale, draws and gets Authority extra each turn, and changes [b]phase[/b] as its Morale drops (the marks on its bar). If one of you goes down, the other fights on: beat the boss and you both win. The first win on Street pays the boss's prize card."],
 ]
 
 
@@ -58,7 +59,7 @@ func _ready() -> void:
 	row.add_child(tabs)
 	var names: Array = SECTIONS.map(func(s): return s[0]) + ["KEYWORDS"]
 	for n in names:
-		var b := UI.button(n, _show.bind(n), Vector2(300, 54))
+		var b := UI.button(n, _show.bind(n), Vector2(300, 50))
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tabs[n] = b

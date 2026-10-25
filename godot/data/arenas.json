@@ -6,7 +6,13 @@
             {"kind": "glow", "mode": "pulse", "speed": 0.55, "r": 190, "strength": 0.2, "color": "#b04dff", "points": [[1360, 210], [440, 60], [1110, 990], [160, 830]]},
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#5a4f8f", "density": 0.28, "frame": 0.9, "drift": [0.02, 0.006]},
             {"kind": "rain", "amount": 170, "wind": 0.12, "alpha": 0.22},
-            {"kind": "lightning", "every": 22, "strength": 0.18, "color": "#b9b4ff"}
+            {"kind": "lightning", "every": 22, "strength": 0.18, "color": "#b9b4ff"},
+            {"kind": "glow", "mode": "blink", "speed": 1.3, "r": 70, "strength": 0.4, "color": "#4fe3ff", "points": [[68, 180], [1492, 555]]},
+            {"kind": "glow", "mode": "blink", "speed": 1.1, "r": 70, "strength": 0.4, "color": "#ff4df0", "points": [[1481, 130], [30, 735], [8, 905]]},
+            {"kind": "smoke", "at": [135, 470]},
+            {"kind": "ripples", "rect": [220, 120, 1100, 780], "r": 22, "drops": 1.2, "color": "#a8b8ff"},
+            {"kind": "scurry", "path": [[230, 985], [700, 992], [1250, 965]], "every": 24, "size": 1.3},
+            {"kind": "scurry", "path": [[118, 880], [150, 620], [118, 250]], "every": 30, "size": 1.2}
         ]},
     {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png",
         "alive": {"rain": 0.35, "sheen": 0.18, "haze": 0.05, "neon": 0.5},
@@ -35,7 +41,13 @@
             {"kind": "pool", "at": [1270, 790], "r": 210, "color": "#ffd28a"},
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#b8a58a", "density": 0.3, "frame": 1.0, "drift": [0.025, -0.01], "scale": 0.8},
             {"kind": "dust", "rect": [220, 110, 1100, 780], "color": "#ffe2b0"},
-            {"kind": "flashes", "points": [[60, 300], [90, 520], [70, 700], [1440, 420], [1460, 640], [1420, 250], [700, 30], [900, 25], [500, 40], [1100, 990], [400, 990]]}
+            {"kind": "flashes", "points": [[60, 300], [90, 520], [70, 700], [1440, 420], [1460, 640], [1420, 250], [700, 30], [900, 25], [500, 40], [1100, 990], [400, 990]]},
+            {"kind": "sway", "rect": [430, 0,640, 95], "amp": 3, "speed": 2.2},
+            {"kind": "sway", "rect": [150, 890, 1250, 134], "amp": 3.5, "speed": 2.4},
+            {"kind": "sway", "rect": [0, 200, 200, 720], "amp": 2.5, "speed": 2},
+            {"kind": "sway", "rect": [1340, 100, 196, 720], "amp": 2.5, "speed": 2.1},
+            {"kind": "glow", "mode": "breathe", "speed": 0.5, "r": 120, "strength": 0.18, "color": "#ffe0a0", "points": [[380, 60], [1110, 55], [140, 850], [1340, 870]]},
+            {"kind": "smoke", "at": [1420, 250]}
         ]},
     {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.png",
         "board": {"style": "neon", "color": "#b388ff"},
@@ -45,7 +57,11 @@
             {"kind": "fog", "rect": [160, 150, 1220, 740], "color": "#3fa6ff", "density": 0.14, "drift": [-0.008, 0.006], "scale": 1.2},
             {"kind": "twinkle", "rect": [160, 150, 1220, 740], "color": "#efe8ff"},
             {"kind": "shooting", "rect": [180, 170, 1180, 680]},
-            {"kind": "motes", "rect": [160, 150, 1220, 740], "amount": 18, "color": "#cdb8ff", "size": 0.09, "life": 6, "speed": 10, "rise": 2}
+            {"kind": "motes", "rect": [160, 150, 1220, 740], "amount": 18, "color": "#cdb8ff", "size": 0.09, "life": 6, "speed": 10, "rise": 2},
+            {"kind": "flame", "r": 62, "color": "#ffcf7a", "strength": 0.45, "points": [[330, 12], [1205, 12], [12, 300], [25, 695], [215, 830], [1362, 800], [1510, 705]]},
+            {"kind": "glow", "mode": "blink", "speed": 0.5, "r": 44, "strength": 0.45, "color": "#cfe6ff", "at": [1255, 135]},
+            {"kind": "water", "rect": [170, 160, 1200, 720], "amp": 0.8, "speed": 0.4, "sparkle": 0.3, "color": "#e0d2ff", "feather": 90},
+            {"kind": "shooting", "rect": [260, 200, 1000, 560]}
         ]},
     {"id": "junkyard", "ambience": "", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.png",
         "board": {"style": "paint", "tint": "#e8873e"},
@@ -70,7 +86,12 @@
             {"kind": "spin", "at": [1465, 70], "r": 128, "speed": 0.5},
             {"kind": "smoke", "at": [268, 82]},
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#a8957a", "density": 0.18, "frame": 1.0, "drift": [0.018, -0.008], "scale": 0.9},
-            {"kind": "glints", "points": [[380, 40], [1150, 140], [625, 915], [1500, 640], [150, 150], [1090, 40], [1440, 600], [1410, 540], [175, 760]]}
+            {"kind": "glints", "points": [[380, 40], [1150, 140], [625, 915], [1500, 640], [150, 150], [1090, 40], [1440, 600], [1410, 540], [175, 760]]},
+            {"kind": "orbit", "at": [1465, 70], "r": 100, "speed": 1.4, "size": 0.3},
+            {"kind": "glow", "mode": "breathe", "speed": 0.35, "r": 640, "strength": 0.09, "color": "#ffd9a0", "at": [768, 470]},
+            {"kind": "motes", "rect": [120, 80, 1300, 860], "amount": 14, "color": "#ffe2b0", "size": 0.08, "speed": 10},
+            {"kind": "smoke", "at": [1500, 748]},
+            {"kind": "glow", "mode": "blink", "speed": 0.6, "r": 46, "strength": 0.3, "color": "#ffe6a8", "points": [[380, 40], [1160, 80], [632, 922], [1505, 625], [145, 150]]}
         ]},
     {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.png",
         "board": {"style": "neon", "color": "#b06bff"},
@@ -82,7 +103,12 @@
             {"kind": "motes", "rect": [160, 120, 1210, 760], "amount": 6, "color": "#a8ffd8", "size": 0.32, "life": 7, "speed": 16, "rise": 1},
             {"kind": "embers", "rect": [200, 160, 1130, 680], "color": "#ff3b6b"},
             {"kind": "dust", "rect": [160, 120, 1210, 760], "color": "#c9a0ff"},
-            {"kind": "bats", "every": 20}
+            {"kind": "bats", "every": 20},
+            {"kind": "glow", "mode": "pulse", "speed": 0.35, "r": 170, "strength": 0.16, "color": "#ff2a4a", "points": [[420, 300], [1100, 260], [720, 600], [320, 700], [1200, 690], [820, 850]]},
+            {"kind": "embers", "rect": [110, 40, 1316, 880], "color": "#c46cff"},
+            {"kind": "sway", "rect": [0, 80, 120, 520], "amp": 1.8, "speed": 0.5},
+            {"kind": "sway", "rect": [1420, 80, 116, 520], "amp": 1.8, "speed": 0.5},
+            {"kind": "scurry", "path": [[1350, 960], [900, 990], [560, 985]], "every": 36, "size": 1.1, "color": "#1a0f14"}
         ]},
     {"id": "base", "ambience": "", "stutter": false, "name": "Militia Outpost", "image": "arena_1v1_base.png",
         "board": {"style": "paint", "tint": "#ffd23a"},
@@ -107,7 +133,13 @@
             {"kind": "fog", "rect": [170, 120, 1200, 790], "color": "#9d9ac4", "density": 0.16, "drift": [-0.018, 0.005], "scale": 1.3},
             {"kind": "motes", "rect": [120, 100, 1300, 820], "amount": 7, "color": "#9dffcf", "size": 0.34, "life": 8, "speed": 18, "rise": 1.5},
             {"kind": "leaves", "amount": 8, "color": "#c9622e", "color2": "#6e3a1a"},
-            {"kind": "bats", "every": 14}
+            {"kind": "bats", "every": 14},
+            {"kind": "bats", "every": 26, "size": 1.8, "flap": 8, "most": 2, "color": "#060508"},
+            {"kind": "lightning", "every": 24, "strength": 0.2, "color": "#b9a8ff"},
+            {"kind": "sway", "rect": [0, 0,300, 300], "amp": 2, "speed": 0.6},
+            {"kind": "sway", "rect": [1300, 720, 236, 304], "amp": 2, "speed": 0.55},
+            {"kind": "sway", "rect": [0, 560, 330, 260], "amp": 2, "speed": 0.65},
+            {"kind": "scurry", "path": [[300, 1010], [760, 1012], [1180, 1000]], "every": 34, "size": 1.2}
         ]},
     {"id": "grove", "ambience": "", "stutter": false, "name": "Glowshroom Grove", "image": "arena_1v1_grove.png",
         "board": {"style": "neon", "color": "#62f2ff"},
@@ -170,7 +202,11 @@
             {"kind": "flame", "r": 90, "color": "#ffb45a", "points": [[278, 72], [190, 192], [1197, 88], [1393, 215], [1490, 393], [150, 652], [298, 862], [1397, 750], [1295, 855]]},
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#cfe4ff", "density": 0.3, "frame": 1.0, "drift": [0.04, 0.01]},
             {"kind": "fog", "rect": [170, 100, 1290, 820], "color": "#d8ecff", "density": 0.12, "drift": [0.035, 0.008], "scale": 0.8},
-            {"kind": "snow", "amount": 170, "wind": 0.4}
+            {"kind": "snow", "amount": 170, "wind": 0.4},
+            {"kind": "cracks", "rect": [210, 150, 1130, 740], "every": 8},
+            {"kind": "water", "rect": [720, 0,460, 100], "amp": 2, "sparkle": 0.4, "color": "#cfeeff", "feather": 24},
+            {"kind": "ripples", "points": [[880, 40], [1060, 55]], "r": 30, "every": 2.4, "color": "#e8f8ff"},
+            {"kind": "glow", "mode": "breathe", "speed": 0.25, "r": 520, "strength": 0.06, "color": "#9fd8ff", "at": [768, 500]}
         ]},
     {"id": "canyon", "ambience": "", "stutter": false, "name": "Dust Bowl", "image": "arena_1v1_canyon.png",
         "board": {"style": "paint", "tint": "#3a1606"},

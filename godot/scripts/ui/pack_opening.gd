@@ -1197,8 +1197,7 @@ func _slam(word: String, col: Color, clan: Color, c: Dictionary) -> Array:
 
 
 func _clan_of(c: Dictionary) -> Color:
-	var hex := str(CardDB.get_card(str(c.get("art_url", c.get("cardId", "")))).get("clanColor", ""))
-	return Color(hex) if hex.begins_with("#") else _clan_col
+	return CardDB.clan_color(str(CardDB.get_card(str(c.get("art_url", c.get("cardId", "")))).get("clanColor", "")), _clan_col)
 
 
 # ── Effects ──────────────────────────────────────────────────────────────────

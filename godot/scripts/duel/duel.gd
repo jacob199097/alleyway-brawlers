@@ -861,6 +861,7 @@ func _on_net_event(name: String, data) -> void:
 			_over = data
 		"ffa:out":
 			_over = data
+			await _when_idle()
 			_show_out_panel(data)
 		"mp:emote":
 			_show_emote("opponent", str(data.get("key", "")))
@@ -2351,8 +2352,7 @@ func _clan_style(c: Dictionary, what: String) -> String:
 
 ## The clan's colour (from the Card Forge), or gold.
 func _clan_color(c: Dictionary) -> Color:
-	var hex := str(c.get("clanColor", ""))
-	return Color(hex) if hex.begins_with("#") else GOLD
+	return CardDB.clan_color(str(c.get("clanColor", "")), GOLD)
 
 
 func _clan_key(c: Dictionary) -> String:
@@ -7117,7 +7117,7 @@ func _ev_eliminated(ev: Dictionary) -> void:
 	if _coop and side != "boss":
 		_turf.say("player_out")
 		if side == "player" and duel.winner == "":
-			_show_coop_down_panel()
+			_coop_down_when_idle()
 	await _wait(0.9)
 
 
@@ -7246,6 +7246,18 @@ func _ev_recycle(ev: Dictionary) -> void:
 	_float_text(pile_pos(ev.side, "deck"), "GUTTER → DECK  ·  %d" % int(ev.get("count", 0)), _side_color(ev.side), 30)
 	_log("%s shuffles %d cards from the Gutter back into the deck" % [_who(ev.side), int(ev.get("count", 0))], ev.side)
 	await _wait(0.6)
+
+
+## Once what's playing now has played (a big moment, like an Evolve, isn't covered by a panel).
+func _when_idle() -> void:
+	while is_inside_tree() and (_playing or not _queue.is_empty()):
+		await get_tree().process_frame
+
+
+func _coop_down_when_idle() -> void:
+	await _when_idle()
+	if is_inside_tree() and duel.winner == "":
+		_show_coop_down_panel()
 
 
 ## You're down, and your ally fights on: watch (you still win if they do) or leave.
