@@ -473,7 +473,7 @@
  },
  "card_nebu_025": {
   "id": "card_nebu_025",
-  "name": "Jax, Space Bouncer",
+  "name": "Jax - Space Bouncer",
   "clan": "nebula",
   "cardType": "gang_member",
   "authority": 6,
@@ -1383,7 +1383,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 2800,
+  "attack": 2950,
   "defense": 2500,
   "level": 1,
   "subtype": "brawler",
@@ -2705,7 +2705,7 @@
   "cardType": "hustle",
   "authority": 5,
   "tributeCost": 0,
-  "rarity": 5,
+  "rarity": 4,
   "clanTag": "nebula",
   "effectKey": "",
   "art_url": "card_nebu_043",
@@ -2906,7 +2906,7 @@
  },
  "card_wild_006": {
   "id": "card_wild_006",
-  "name": "Jennifer, The Croupier",
+  "name": "Jennifer - The Croupier",
   "clan": "wildcard",
   "cardType": "gang_member",
   "authority": 2,
@@ -4285,7 +4285,7 @@
  },
  "card_nebu_044": {
   "id": "card_nebu_044",
-  "name": "Vesper, Void Dancer",
+  "name": "Vesper - Void Dancer",
   "clan": "nebula",
   "cardType": "gang_member",
   "authority": 3,
@@ -4377,5 +4377,233 @@
   "clanColor": "#9b7bff",
   "ambushClan": "nebula",
   "subtype": "continuous"
+ },
+ "card_nebu_047": {
+  "id": "card_nebu_047",
+  "name": "TS-080",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_047",
+  "code": "NEBU-047",
+  "flavourText": "The void is just a highway.",
+  "effectText": "This card is immune to POISON and BLEED.\nAt the end of your turn: Search your deck for a NEBULA Brawler with 6 or less Authority and add it to your hand.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "bleed"
+    ]
+   },
+   {
+    "when": "turn_end",
+    "do": "search",
+    "clan": "nebula",
+    "kind": "gang_member",
+    "role": "brawler",
+    "amount": 1,
+    "max_auth": 6,
+    "choose": true
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1000,
+  "defense": 2400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_048": {
+  "id": "card_nebu_048",
+  "name": "DS-001",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 10,
+  "tributeCost": 2,
+  "rarity": 5,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_048",
+  "code": "NEBU-048",
+  "flavourText": "The vanguard of the armada.",
+  "effectText": "When deployed: JAM your opponent.\nThis card is immune to POISON, BURN, BLEED, FREEZE, STUN and STASIS.\nYour NEBULA cards cost 1 less Authority.\nACTIVATE (once per turn, sacrifice another of your characters): Your opponent loses 2000 Morale.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "jam"
+   },
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "burn",
+     "bleed",
+     "freeze",
+     "stun",
+     "stasis"
+    ]
+   },
+   {
+    "when": "passive",
+    "do": "cost_down",
+    "clan": "nebula",
+    "amount": 1
+   },
+   {
+    "when": "activate",
+    "do": "damage",
+    "cost": "sacrifice",
+    "amount": 2000
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 4500,
+  "defense": 5000,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_nebu_049": {
+  "id": "card_nebu_049",
+  "name": "DS-077",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_049",
+  "code": "NEBU-049",
+  "flavourText": "Break formation. Engage at will.",
+  "effectText": "When deployed: Destroy up to 2 of your opponent's Hustle or Ambush cards, face-up or face-down.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "wreck",
+    "amount": 2
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1800,
+  "defense": 1300,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_050": {
+  "id": "card_nebu_050",
+  "name": "Atlas",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_050",
+  "code": "NEBU-050",
+  "flavourText": "Pain is just an unoptimized data packet. I deleted it long ago.",
+  "effectText": "When this card Downs a character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "down",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1200,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_051"
+ },
+ "card_nebu_051": {
+  "id": "card_nebu_051",
+  "name": "Atlas",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_051",
+  "code": "NEBU-051",
+  "flavourText": "Pain is just an unoptimized data packet. I deleted it long ago.",
+  "effectText": "When this card Downs a character: If you control a Downed NEBULA character, PROMOTE this card.\nWhen this card attacks: SHOCK one enemy character for 500.",
+  "effects": [
+   {
+    "when": "down",
+    "do": "promote",
+    "if": "ally_downed",
+    "if_clan": "nebula"
+   },
+   {
+    "when": "attack",
+    "do": "shock",
+    "target": "enemy",
+    "amount": 500
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 2000,
+  "defense": 1600,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_052"
+ },
+ "card_nebu_052": {
+  "id": "card_nebu_052",
+  "name": "Atlas",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_052",
+  "code": "NEBU-052",
+  "flavourText": "Pain is just an unoptimized data packet. I deleted it long ago.",
+  "effectText": "When this card attacks: SHOCK one enemy character for 900.\nThis card can't be targeted by your opponent's effects.\nOnce per turn, when your opponent deploys a character: Swap the ATK and DEF of that character until the end of your next turn.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "shock",
+    "target": "enemy",
+    "amount": 900
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   },
+   {
+    "when": "foe_deployed",
+    "do": "swap",
+    "target": "deployed",
+    "until": "next_turn",
+    "once": true
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 2000,
+  "defense": 1600,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
  }
 }

@@ -1,6 +1,9 @@
 // Brings cards from the Card Forge into the game.
 //
-//   node tools/import_forge.mjs <alleyway-cards.zip | unzipped folder>
+//   node tools/import_forge.mjs <alleyway-cards.zip | unzipped folder> [--skip-clan <clan>[,<clan>...]]
+//
+// --skip-clan leaves a clan's cards out (one still being made): they aren't added or changed, and the
+// ones already in the game stay as they are, even with a full export.
 //
 // Takes the Forge's export download (card_catalog.json + cards/<id>.png) and:
 //   1. writes shared/cards_forge.js (card rules data, merged into CARD_CATALOG),
@@ -17,9 +20,12 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = process.argv[2];
-if (!src || !existsSync(src)) {
-    console.error('usage: node tools/import_forge.mjs <alleyway-cards.zip | folder>');
+const args = process.argv.slice(2);
+const skipAt = args.indexOf('--skip-clan');
+const SKIP = new Set(skipAt >= 0 ? String(args[skipAt + 1] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
+const src = args.find((a, i) => !a.startsWith('--') && i !== skipAt + 1);
+if (!src || !existsSync(src) || (skipAt >= 0 && !SKIP.size)) {
+    console.error('usage: node tools/import_forge.mjs <alleyway-cards.zip | folder> [--skip-clan <clan>[,<clan>...]]');
     process.exit(2);
 }
 
@@ -46,8 +52,14 @@ const changesOnly = existsSync(metaPath) && JSON.parse(readFileSync(metaPath, 'u
 const TYPES = ['gang_member', 'leader', 'hustle', 'ambush'];
 const cards = {};
 const warnings = [];
+const skipped = [];
+const inSkipped = (c) => SKIP.has(String(c.clanTag || c.clan || '').toLowerCase());
 for (const [key, raw] of Object.entries(exported)) {
     const id = String(raw.id || key).trim();
+    if (inSkipped(raw)) {
+        skipped.push(id);
+        continue;
+    }
     if (!/^[a-z0-9_]+$/.test(id)) {
         warnings.push(`"${raw.name}": game ID "${id}" should be lower-case letters, digits and _ only; skipped.`);
         continue;
@@ -114,7 +126,8 @@ for (const [key, raw] of Object.entries(exported)) {
 // A changes-only export updates these cards and keeps all the others
 const before = await currentForgeCards();
 const incoming = Object.keys(cards);
-const all = changesOnly ? { ...before, ...cards } : cards;
+const keep = changesOnly ? before : Object.fromEntries(Object.entries(before).filter(([, c]) => inSkipped(c)));
+const all = { ...keep, ...cards };
 for (const c of Object.values(all)) {
     if (c.promotesTo && !all[c.promotesTo]) warnings.push(`${c.id}: promotes to "${c.promotesTo}", which isn't in the game or the export.`);
     const next = all[c.promotesTo];
@@ -152,6 +165,7 @@ console.log(`\n${changesOnly ? 'Changes only: ' : ''}imported ${incoming.length}
 if (updated.length) console.log(`  changed: ${updated.join(', ')}`);
 if (added.length) console.log(`  new: ${added.join(', ')}`);
 if (removed.length) console.log(`  removed: ${removed.join(', ')} (their image files are left in place)`);
+if (skipped.length) console.log(`  left out (--skip-clan ${[...SKIP].join(',')}): ${skipped.length} cards`);
 for (const w of warnings) console.log(`  ! ${w}`);
 console.log(`\nNext: commit and push, then on the server:\n  git pull && node backend/scripts/sync_cards.mjs && sudo systemctl restart alleyway-backend`);
 
@@ -161,9 +175,9 @@ function int(v) { return Math.trunc(Number(v ?? 0)) || 0; }
 function cleanEffect(e) {
     const out = {};
     // (cost: an Activate ability's cost; per: "for each"; token: the token card's id; label: a
-    // "choose one" option's text)
+    // "choose one" option's text; from: "foe" = revive from the opponent's Gutter)
     // (luck: coin / die; if_luck: follows the last flip or roll)
-    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name', 'cost', 'per', 'per_clan', 'per_kind', 'token', 'label', 'luck', 'if_luck', 'only']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
+    for (const k of ['when', 'do', 'target', 'until', 'clan', 'kind', 'if', 'role', 'name', 'cost', 'per', 'per_clan', 'per_kind', 'token', 'label', 'luck', 'if_luck', 'only', 'from']) if (e[k] != null && e[k] !== '') out[k] = String(e[k]);
     // (luck_on: the die roll needed; discard_n: what Loot discards, 0 = none)
     for (const k of ['atk', 'def', 'amount', 'n', 'times', 'max_auth', 'level', 'cost_n', 'per_max', 'luck_on', 'discard_n']) if (e[k] != null && e[k] !== '') out[k] = int(e[k]);
     if (e.once) out.once = true;

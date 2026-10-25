@@ -24,6 +24,8 @@ This:
 - regenerates `godot/data/cards.json`.
 
 The Forge is the source of truth: a card deleted in the Forge is removed on the next import.
+To hold back a clan that is still being made, add `--skip-clan <clan>` (e.g. `--skip-clan underworld`): its
+cards are left out of the import, and any of them already in the game stay as they are.
 Character roles follow the class rules, and the importer enforces them:
 
 - **Striver**: the only role with levels (Lv.1 to Lv.3). It promotes into the card set in "Promotes to".
