@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.66",
+        "notes": [
+            "Six new arenas: The Graveyard (the Underworld's home: candlelit graves, creeping mist, ghost lights, blowing leaves and bats), Glowshroom Grove, The Lab, The Docks, Frozen Lake and Dust Bowl. Forward Base is now the Militia Outpost.",
+            "Every arena has come alive: flickering candles and lanterns, rolling fog, rippling water, falling rain and snow, glittering ice, heat haze, swaying banners and tarps, sweeping searchlights, bubbling tanks, fireflies, spinning rooftop fans, blinking beacons and the odd flash of lightning.",
+            "New play mats: frosted ice on Frozen Lake, a glowing hologram grid in The Lab, rope on The Docks, spray-painted stencils at the Militia Outpost, burnt markings in the Dust Bowl and spectral lines in The Graveyard."
+        ]
+    },
+    {
         "version": "0.9.65",
         "notes": [
             "New card effects for the Underworld: a Dormant leader can make all your characters UNDEAD (or give them LIFESTEAL), cards can give a character UNDEAD, raise a character from the opponent's Gutter to fight for you, and exile cards from the opponent's Gutter so they never come back.",

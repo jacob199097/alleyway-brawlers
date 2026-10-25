@@ -1080,7 +1080,8 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 ## A mat's living layer (shaders/mat_alive.gdshader): its neon pulses and flickers, a wet sheen
 ## drifts, rain rings spread and a haze rolls across.
 ## An arena's own slots (data/arenas.json "board"): its spray paint in a colour ("paint", "tint"),
-## glowing outlines ("neon") or darker spots rimmed in gold on the felt ("felt"), each in "color".
+## glowing outlines ("neon") or darker spots rimmed in gold on the felt ("felt"), frosted ice ("frost") or
+## a lit hologram panel ("holo"), each in "color".
 func _style_board(board: Dictionary) -> void:
 	var style := str(board.get("style", "paint"))
 	if style == "paint":
@@ -1094,7 +1095,20 @@ func _style_board(board: Dictionary) -> void:
 		var a: float = {"front": 1.0, "back": 0.7, "pile": 0.5}[kind]
 		var sb := StyleBoxFlat.new()
 		sb.set_corner_radius_all(14)
-		if style == "neon":
+		if style == "frost":   # frosted panes etched into the ice
+			sb.bg_color = Color(col, 0.06 * a)
+			sb.border_color = Color(col.lightened(0.5), 0.85 * a)
+			sb.set_border_width_all(3)
+			sb.shadow_color = Color(col, 0.22 * a)
+			sb.shadow_size = 6
+		elif style == "holo":   # a lit panel in the glass floor
+			sb.bg_color = Color(col, 0.03 * a)
+			sb.border_color = Color(col.lightened(0.25), 0.9 * a)
+			sb.set_border_width_all(3)
+			sb.set_corner_radius_all(6)
+			sb.shadow_color = Color(col, 0.14 * a)
+			sb.shadow_size = 14
+		elif style == "neon":
 			sb.bg_color = Color(col, 0.03 * a)
 			sb.border_color = Color(col.lightened(0.35), 0.95 * a)
 			sb.set_border_width_all(4)
@@ -1112,7 +1126,10 @@ func _style_board(board: Dictionary) -> void:
 ## An arena coming alive (data/arenas.json "fx", positions in the picture's pixels): light pools that
 ## breathe (or flicker), drifting dust or embers, twinkling stars and shooting stars, camera flashes in
 ## the crowd, welding sparks, a turning roulette wheel, cigar smoke and glints on chips and glass.
+## Flames, fog, water, weather, beams, creatures... are made by ArenaLife (scripts/duel/arena_life.gd).
 func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
+	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, _fx_level())
+	$BackLayer.add_child(life)
 	var ts := tex.get_size()
 	var k := maxf(1920.0 / ts.x, 1080.0 / ts.y)
 	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
@@ -1146,6 +1163,9 @@ func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
 				$BackLayer.add_child(sm)
 			"glints":
 				_fx_glints(e.points.map(func(p): return to_screen.call(p)))
+			var other:
+				if ArenaLife.handles(str(other)):
+					life.add(e)
 
 
 static var _dot_tex: GradientTexture2D = null
