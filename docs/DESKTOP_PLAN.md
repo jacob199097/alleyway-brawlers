@@ -23,7 +23,7 @@ Ticked when done in the Godot client (`godot/`), however it was done there. The 
   - [x] Multiplayer runs on the server (`backend/socket/onlineMatch.js`).
   - [x] Privacy policy, terms and account deletion (0.9.72, `backend/routes/legal.js`, `account.js`).
   - [ ] Lock CORS down (`backend/server.js` still allows any origin).
-  - [ ] Code-sign the Windows exe (SmartScreen warnings), and a Steam depot build.
+  - [ ] A Steam depot build (SteamPipe). No code signing: it ships through Steam.
 
 # AlleyWay Brawlers — Desktop (Steam) Plan
 
@@ -166,7 +166,7 @@ The canvas is fixed at 844×390 (about 19.5:9), and 28 files hard-code `const W 
   (`backend/socket/onlineMatch.js` runs `shared/duel/DuelState.js`; see `godot/README.md`).
   The Phaser client's old `MatchmakingScene`/`duel:*` prototype is still unreachable.
 - Builds: electron-builder `nsis` installer for testing, plus the unpacked directory for the
-  Steam depot (SteamPipe). Code-sign the exe to avoid SmartScreen warnings.
+  Steam depot (SteamPipe). (No code signing needed: the game ships through Steam.)
 
 ## Verification
 - Web: `cd client && npm run dev` still plays end-to-end.

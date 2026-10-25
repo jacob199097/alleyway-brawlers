@@ -8,8 +8,6 @@ when it ships, or delete it if it's dropped.
 - [x] **Mac build (Apple Silicon / ARM).** Done in 0.9.69: a universal app (Apple Silicon + Intel) built
   from the PC (`tools/build_mac.mjs`), with its own patches and download, playing online with Windows
   (see "Mac build" in `docs/CARD_PIPELINE.md`).
-  - [ ] Still to do: an Apple Developer account ($99/yr) to sign and notarise it, so Macs open it
-    without the "can't check this app" warning (it opens after right-click → Open for now).
 - [ ] **Mobile version, with cross-play (PC, Mac and mobile in the same matches).** Cross-play mostly
   comes for free: the server already runs matches, decks and rewards for every player
   (`backend/socket/onlineMatch.js`), and every client speaks the same socket protocol. The work is in
@@ -17,7 +15,8 @@ when it ships, or delete it if it's dropped.
   zoom), layouts that fit phone screens, lighter assets, and store accounts (Google $25 once, Apple
   $99/yr). `shared/game_version.json` minimum-version checks need to cover each platform.
 - [ ] **Steam release.** `docs/DESKTOP_PLAN.md` still has the useful notes (use GodotSteam instead of
-  steamworks.js).
+  steamworks.js). The game ships through Steam, so no Windows code signing or Apple Developer account
+  is needed (games installed by Steam don't get the "unrecognised app" warnings).
 - [x] **Controller support** (needed for Steam Deck). Done in 0.9.72: Xbox, PlayStation and Steam Deck
   controllers drive a pointer of their own (`godot/scripts/pad.gd`, made by `game.gd`), so every screen
   works with it like a mouse. The D-pad jumps between buttons and cards, A clicks or drags, X zooms, B / Start
@@ -63,8 +62,6 @@ when it ships, or delete it if it's dropped.
   to a small rented server (VPS), or at least add a battery backup (UPS) and an uptime monitor.
 - [ ] **Crash reports:** send Godot errors / crash logs to the server, so bugs on other players' PCs
   show up.
-- [ ] **Code-sign the Windows build,** so Windows stops showing its "unrecognised app" warning on
-  install.
 
 ## Polish
 
