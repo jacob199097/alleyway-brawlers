@@ -124,4 +124,58 @@ assert.deepEqual(brawl([2000, 0], [500, 0], 'def'), [5000, 5000], 'the Skeleton 
 assert.deepEqual(brawl([2000, 0], [500, 0], 'att'), [5000, 3500], 'the Skeleton wins: the opponent still takes damage');
 assert.deepEqual(brawl([500, 0], [1500, 1000], ''), [4000, 5000], '(without it, the loser takes the difference)');
 
+// Tribute (absorb): "when you deploy another character, you may tribute it: this card gains its ATK and DEF"
+st = duel();
+const eater = unit(st, 'Eater', 1000, 800, { effects: [{ when: 'ally_deployed', do: 'absorb', target: 'deployed' }] });
+st.sides.player.field[0] = eater;
+const snack = unit(st, 'Snack', 600, 400);
+st.sides.player.field[2] = snack;
+st._runFx('player', 0, eater, 'ally_deployed', snack);
+const offer = st._asks.find(a => a.key === 'absorb');
+assert.ok(offer && offer.options.some(o => o.id === 'no'), 'the player may say no');
+answer(st, 'yes');
+st._recalc();
+assert.equal(st.sides.player.field[2], null, 'tributed');
+assert.ok(st.sides.player.gutter.includes(snack));
+assert.deepEqual([eater.attack, eater.defense], [1600, 1200], 'it gained its ATK and DEF');
+// ...or keep it
+st = duel();
+const eater2 = unit(st, 'Eater', 1000, 800, { effects: [{ when: 'ally_deployed', do: 'absorb', target: 'deployed' }] });
+st.sides.player.field[0] = eater2;
+const keeper = unit(st, 'Keeper', 600, 400);
+st.sides.player.field[2] = keeper;
+st._runFx('player', 0, eater2, 'ally_deployed', keeper);
+answer(st, 'no');
+assert.equal(st.sides.player.field[2], keeper, 'kept');
+assert.equal(eater2.attack, 1000);
+
+// "When it attacks a leader": only at a leader
+const leaderDuel = (atLeader) => {
+    const s3 = duel();
+    s3.phase = 'brawl';
+    s3.sides.opponent.leader = s3.makeCard({ id: 'test_boss', name: 'Boss', cardType: 'leader', clanTag: 'test', influence: 3000, attack: 2000, defense: 2000 });
+    s3.sides.opponent.leader_state = 'dormant';
+    const a = unit(s3, 'Raider', 1000, 1000, { effects: [{ when: 'attack_leader', do: 'draw', amount: 1 }] });
+    a.deployed_turn = 1;
+    s3.sides.player.field[1] = a;
+    s3.sides.player.deck = [s3.makeCard('test_grunt_x'), s3.makeCard('test_grunt_x')];
+    if (!atLeader) s3.sides.opponent.field[1] = unit(s3, 'Mook', 100, 100);
+    const before = s3.sides.player.hand.length;
+    s3._attack('player', 1, atLeader ? -2 : 1);
+    while (s3._asks.length) answer(s3);
+    return s3.sides.player.hand.length - before;
+};
+assert.equal(leaderDuel(true), 1, 'attacking the leader: it draws');
+assert.equal(leaderDuel(false), 0, 'attacking a character: nothing');
+
+// SILENCE for good
+st = duel();
+const chatty = unit(st, 'Chatty', 1000, 1000, { effects: [{ when: 'passive', do: 'buff', target: 'self', atk: 500 }] });
+st.sides.opponent.field[0] = chatty;
+st._doFx('player', -1, src, { do: 'silence', target: 'enemies', until: 'forever' });
+st.turn += 20;
+st._recalc();
+assert.ok(st.statuses(chatty).includes('silence'), 'still silenced 20 turns later');
+assert.equal(chatty.attack, 1000, 'its passive stays off');
+
 console.log('underworld: ok');

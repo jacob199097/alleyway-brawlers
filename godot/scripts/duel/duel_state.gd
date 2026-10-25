@@ -590,7 +590,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	if str(e.get("do", "")) == "charm" and _empty_lane(side) < 0:   # (no lane to take it to)
 		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen", "absorb": "absorbable"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -1153,13 +1153,26 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 	if not _passive(side, from, att, "pierce").is_empty() or rules.get("pierce", false):
 		ctx.pierce = true
 	var def_now = card_at(foe, target) if target >= 0 else null
-	var k := 0
+	# (at a leader: a Dormant one, or one that has taken the field)
+	var at_leader: bool = target == LEADER or (def_now != null and def_now.get("cardType") == "leader")
+	var trig: Array = []
+	var n := 0
 	for e in _fx(att, "attack"):
-		k += 1
+		n += 1
+		trig.append(["attack", e, n])
+	if at_leader:
+		n = 0
+		for e in _fx(att, "attack_leader"):
+			n += 1
+			trig.append(["attack_leader", e, n])
+	for t in trig:
+		var when: String = t[0]
+		var e: Dictionary = t[1]
+		var k: int = t[2]
 		var self_buff: bool = str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self"
-		if self_buff and str(e.get("if", "")) != "":
+		if self_buff and str(e.get("if", "")) != "" and when == "attack":
 			continue   # depends on the defender: settled in the brawl (_brawl_bonus)
-		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "attack%d" % k, e) or not _fx_once(att, "attack%d" % k, e):
+		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "%s%d" % [when, k], e) or not _fx_once(att, "%s%d" % [when, k], e):
 			continue
 		if self_buff:
 			if not _luck_gate(side, from, att, e):
@@ -2633,7 +2646,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_effect(side, c, "%s: +%d max Authority" % [c.name, d], slot)
 			_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": d})
 		"silence":
-			var until_turn: int = turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
+			var until_turn: int = FOREVER if str(e.get("until", "turn")) == "forever" else turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
 			var fn := func(x: Dictionary) -> String:
 				x.card.silence_until = until_turn
 				_recalc()
@@ -2810,6 +2823,33 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				var gone: Array = g.slice(maxi(0, g.size() - n))
 				_exile_gutter(foe, gone)
 				_effect(side, c, "%s exiles %d card%s from the enemy's Gutter" % [c.name, gone.size(), "" if gone.size() == 1 else "s"], slot))
+		"absorb":   # tribute one of your characters (or the one just deployed): this card gains its ATK and DEF
+			if card_at(side, slot) != c:
+				return
+			var take := func(x: Dictionary) -> String:
+				if card_at(side, slot) != c or card_at(x.side, x.slot) != x.card:
+					return "%s can't tribute it now" % c.name
+				var atk := int(x.card.attack)
+				var df := int(x.card.defense)
+				var nm: String = x.card.name
+				_ko(x.side, x.slot)
+				c.mods.append({"atk": atk, "def": df, "until_turn": FOREVER})
+				_recalc()
+				_emit("absorb", {"side": side, "slot": slot, "from_slot": x.slot, "atk": atk, "def": df, "card": c.duplicate(true)})
+				return "%s tributes %s: +%d ATK and +%d DEF" % [c.name, nm, atk, df]
+			if str(e.get("target", "")) == "deployed":   # the player may say no
+				var found: Array = _fx_targets(side, slot, c, e, vs, "any").filter(func(t): return t.side == side and not is_same(t.card, c))
+				if found.is_empty():
+					return
+				var x: Dictionary = found[0]
+				var worth: bool = x.card.get("token", false) or int(x.card.attack) + int(x.card.defense) <= int(c.attack) + int(c.defense)
+				var yes := {"id": "yes", "label": "TRIBUTE %s" % str(x.card.name).to_upper()}
+				var no := {"id": "no", "label": "KEEP IT"}
+				_ask(side, "absorb", "%s: tribute %s? %s gains its ATK and DEF" % [c.name, x.card.name, c.name], x.card, [yes, no] if worth else [no, yes], func(choice):
+					if choice == "yes" and winner == "":
+						_effect(side, c, take.call(x), slot))
+				return
+			_fx_apply(side, slot, c, e, vs, "absorbable", "tribute", take, "%s tributes %%s" % c.name)
 		"promote_ally":   # PROMOTE one (or all) of your Strivers
 			var fn := func(x: Dictionary) -> String:
 				var name: String = x.card.name
@@ -3070,6 +3110,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 					and not x.card.downed and not (x.card.get("charmed") is Dictionary)
 			"charmable":
 				return x.card.get("cardType") != "leader" and not (x.card.get("charmed") is Dictionary)
+			"absorbable":
+				return x.card.get("cardType") != "leader" and not is_same(x.card, c)
 			"unrisen":
 				return not x.card.get("token", false) and not x.card.get("risen", false) and not x.card.get("undead_given", false)
 			"changed":   # REWIND helps: an enemy's net gains, your character's net losses

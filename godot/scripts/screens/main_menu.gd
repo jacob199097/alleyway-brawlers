@@ -316,10 +316,12 @@ func _build_bar(p: Dictionary) -> void:
 	av.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	add_child(av)
 	_text(str(p.get("username", "")).to_upper(), _bar(540, 92), 30, Color.WHITE)
-	var lv_icon := UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(42, 42))
-	lv_icon.position = _bar(1172, 90) - Vector2(21, 21)
+	# (the badge shows the level number itself)
+	var lv_icon := UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(58, 58))
+	lv_icon.position = _bar(1192, 90) - Vector2(29, 29)
+	lv_icon.tooltip_text = "Level %d" % int(p.get("level", 1))
+	lv_icon.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(lv_icon)
-	_text(str(int(p.get("level", 1))), _bar(1206, 92), 30, UI.BLUE)
 	_text(UI.shown_title(p), _bar(420, 170), 24, UI.RED)
 	var xp := UI.xp_progress(p)
 	_text("%d / %d" % [xp.current, xp.needed], _bar(1090, 158), 18, UI.BLUE)

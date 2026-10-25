@@ -183,6 +183,29 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--luck-fx" in OS.get_cmdline_user_args():   # (coin flips and die rolls, frame by frame; the menu bar; victory and defeat)
+		Game.go("main_menu")
+		await _shot("lk_menu", 2.5)
+		var deck6 := await Game.load_duel_deck()
+		Game.duel_setup = deck6
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "casino"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var y = _screen()
+		if y._menu:
+			y._menu.visible = false
+		for roll in [["coin", 1, true], ["die", 5, true], ["coin", 0, false], ["die", 1, false]]:
+			y._ev_luck({"side": "player", "slot": -1, "kind": roll[0], "value": roll[1], "won": roll[2], "need": 4 if roll[0] == "die" else 1})
+			for i in 14:
+				await _shot("lk_%s%d_%02d" % [roll[0], roll[1], i], 0.09)
+			await get_tree().create_timer(1.2).timeout
+		for res in ["win", "loss"]:
+			Game.match_result = {"result": res, "player_morale": 3400 if res == "win" else 0, "opponent_morale": 0 if res == "win" else 2100, "turns": 12}
+			Game.go("post_match")
+			await _shot("lk_post_%s" % res, 3.0)
+		get_tree().quit()
+		return
 	if "--clan-fx" in OS.get_cmdline_user_args():   # (each clan's summon then attack: shots every 0.1 s / 0.08 s)
 		var deck5 := await Game.load_duel_deck()
 		Game.duel_setup = deck5

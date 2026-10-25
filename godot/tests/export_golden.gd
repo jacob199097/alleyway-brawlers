@@ -50,6 +50,11 @@ const FX_SAMPLES := [
 	# the enemy's Gutter as a condition / "for each"
 	[{"when": "deploy", "do": "give_undead", "target": "ally"}],
 	[{"when": "passive", "do": "no_battle_damage"}],
+	# Tribute (absorb), "when it attacks a leader", SILENCE for good
+	[{"when": "ally_deployed", "do": "absorb", "target": "deployed"}],
+	[{"when": "activate", "do": "absorb", "target": "ally"}],
+	[{"when": "attack_leader", "do": "buff", "target": "self", "atk": 600}, {"when": "attack_leader", "do": "draw", "amount": 1}],
+	[{"when": "deploy", "do": "silence", "target": "enemy", "until": "forever"}],
 	[{"when": "deploy", "do": "revive", "from": "foe"}],
 	[{"when": "turn_end", "do": "exile_gutter", "amount": 2}],
 	[{"when": "activate", "do": "damage", "amount": 400, "cost": "exile_gutter", "cost_n": 2}],

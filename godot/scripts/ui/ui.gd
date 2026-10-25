@@ -746,9 +746,13 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		line.insert(1, sub.to_upper())
 	if c.get("authority") != null:
 		line.append("AUTHORITY %d" % int(c.authority))
-	info.add_child(label("  ·  ".join(line), 20, rarity_color(rarity)))
+	var kind_line := label("  ·  ".join(line), 20, rarity_color(rarity))
+	kind_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (a long type line wraps, not off the edge)
+	kind_line.custom_minimum_size = Vector2(560, 0)
+	info.add_child(kind_line)
 	if kind in ["gang_member", "leader"] and c.get("attack") != null:
-		info.add_child(label("ATK %d    DEF %d" % [int(c.attack), int(c.get("defense", 0))], 32, GOLD, true))
+		var q: bool = c.get("varStats", CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false))
+		info.add_child(label("ATK ?    DEF ?" if q else "ATK %d    DEF %d" % [int(c.attack), int(c.get("defense", 0))], 32, GOLD, true))
 	var body := RichTextLabel.new()
 	body.bbcode_enabled = true
 	body.fit_content = true

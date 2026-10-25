@@ -360,8 +360,10 @@ func _setup_online(start: Dictionary) -> void:
 		_build_spectate_bar()
 	elif not str(start.get("mode", "")).begins_with("cpu") and not _ffa:
 		_build_emote_button()
-	_ui.clock = _label(22, GOLD, true)
-	_ui.clock.position = Vector2(150, 96)
+	_ui.clock = _label(20, GOLD, true)
+	_ui.clock.position = Vector2(16, 116)
+	_ui.clock.size = Vector2(214, 28)
+	_ui.clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	$HUD/UI/TurnBox.add_child(_ui.clock)
 	_clock_left = float(start.get("clock", ONLINE_TURN_SECS))
 	if not start.get("resync", false) and not _spectating:
@@ -1827,6 +1829,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_discard(ev)
 		"charm":
 			await _ev_charm(ev)
+		"absorb":
+			await _ev_absorb(ev)
 		"stats":
 			_ev_stats(ev)
 		"notice":
@@ -2968,37 +2972,25 @@ func _ev_luck(ev: Dictionary) -> void:
 	var won: bool = ev.get("won", false)
 	var tok := LuckToken.new()
 	tok.kind = "coin" if coin else "die"
-	tok.font = _font
 	tok.z_index = 600
-	tok.position = at
-	tok.scale = Vector2.ONE * 0.4
 	cards_layer.add_child(tok)
 	if ev.get("again", false):   # LOADED DICE: the lost one is tried again
 		_float_text(at + Vector2(0, -230), "LOADED DICE!", GOLD, 34)
 		_burst(at + Vector2(0, -150), GOLD, 16, 240, 0.5, 0.0)
 		Sfx.play("promote", 1.4, -8.0)
-	var up := create_tween().set_parallel()
-	up.tween_property(tok, "position", at + Vector2(0, -150), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	up.tween_property(tok, "scale", Vector2.ONE * 1.3, 0.28)
-	for i in 10:   # a coin turns edge-on and over; a die tumbles through its faces
-		if i == 0:
-			Sfx.play("coin_flip" if coin else "dice_roll")
-		if coin:
-			tok.scale.x = 1.3 * absf(cos(i * 1.2))
-			tok.face = i % 2
-		else:
-			tok.face = randi_range(1, 6)
-			tok.rotation = randf_range(-0.6, 0.6)
-		tok.queue_redraw()
-		await _wait(0.055)
-	tok.face = value
-	tok.rotation = 0.0
-	tok.scale = Vector2.ONE * 1.7
+	var rest := at + Vector2(0, -150)   # where it lands and shows the result
+	tok.ground = rest.y + 44.0
+	Sfx.play("coin_flip" if coin else "dice_roll")
+	if coin:
+		await _toss_coin(tok, at, rest, value == 1)
+	else:
+		await _roll_die(tok, at, rest, value)
 	tok.edge = Color("6ef08a") if won else RED
-	tok.queue_redraw()
-	create_tween().tween_property(tok, "scale", Vector2.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	Sfx.play("coin_land" if coin else "dice_land", 1.0, -2.0)
-	_burst(tok.position, tok.edge, 18, 260, 0.6, 0.0)
+	tok.land()
+	_burst(tok.position, tok.edge, 22, 300, 0.6, 0.0)
+	_ring(tok.position, tok.edge.lightened(0.3), 1.2)
+	shake(5.0)
 	var need := int(ev.get("need", 1))
 	var text := ("HEADS!" if value == 1 else "TAILS") if coin else ("ROLLED %d" % value + ((" · SUCCESS" if won else " · FAILED") if need > 1 else ""))
 	if ev.get("double", false):   # DOUBLE OR NOTHING: the stakes, and a bigger win
@@ -3007,7 +2999,7 @@ func _ev_luck(ev: Dictionary) -> void:
 			_burst(tok.position, GOLD, 34, 420, 0.8, 0.0)
 			_ring(tok.position, GOLD, 1.6)
 			Sfx.play("legendary", 1.5, -10.0)
-	_float_text(tok.position + Vector2(0, -80), text, tok.edge, 30)
+	_float_text(tok.position + Vector2(0, -110), text, tok.edge, 30)
 	# A leader that Awakens on luck counts its wins: LUCK 3 / 5 over it
 	if won:
 		_luck_wins[side] = int(_luck_wins.get(side, 0)) + 1
@@ -3017,47 +3009,132 @@ func _ev_luck(ev: Dictionary) -> void:
 			var have := maxi(int(_luck_wins[side]), int(duel.sides.get(side, {}).get("luck_won", 0)))
 			_float_text(lv.position + Vector2(0, -110 if side == "player" else 110), "READY TO AWAKEN" if have >= goal else "LUCK %d / %d" % [mini(have, goal), goal], GOLD, 26)
 			_burst(lv.position, GOLD, 12, 200, 0.5, 0.0)
-	await _wait(0.55)
+	await _wait(0.7)
 	var out := create_tween()
 	out.tween_property(tok, "modulate:a", 0.0, 0.25)
 	out.tween_callback(tok.queue_free)
 
 
-## A coin (a star for heads, plain for tails) or a die with its pips, for luck effects.
-class LuckToken extends Node2D:
-	const PIPS := {1: [Vector2(0, 0)], 2: [Vector2(-1, -1), Vector2(1, 1)], 3: [Vector2(-1, -1), Vector2(0, 0), Vector2(1, 1)],
-		4: [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)],
-		5: [Vector2(-1, -1), Vector2(1, -1), Vector2(0, 0), Vector2(-1, 1), Vector2(1, 1)],
-		6: [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(1, 1)]}
-	var kind := "coin"
-	var face := 1          # coin: 1 heads, 0 tails; die: 1-6
-	var edge := Color(0, 0, 0, 0)   # once it lands: green if the effect happens, red if not
-	var font: Font
+## A coin flipped off the card: it spins end over end up into the air, glinting, falls back and
+## settles showing heads or tails with a little wobble.
+func _toss_coin(tok: LuckToken, from: Vector2, rest: Vector2, heads: bool) -> void:
+	var turns := 6 + randi() % 2   # whole half-turns, so it ends on the right face
+	var flips := float(turns * 2 + (0 if heads else 1)) * PI
+	var tilt := randf_range(-0.35, 0.35)
+	var peak := rest + Vector2(randf_range(-30, 30), -230)
+	var dur := 0.95
+	var t := create_tween()
+	t.tween_method(func(k: float):
+		# up and back down (a parabola), turning fast then slowing as it comes down
+		var up := 4.0 * k * (1.0 - k)
+		tok.position = from.lerp(rest, k) + (peak - rest.lerp(from, 0.5)) * up * 0.9
+		tok.scale = Vector2.ONE * lerpf(0.45, 1.0, minf(1.0, k * 2.5)) * (1.0 + up * 0.35)
+		var spin := 1.0 - pow(1.0 - k, 2.2)
+		tok.set_rot(Basis(Vector3.RIGHT, flips * spin) * Basis(Vector3.UP, tilt * (1.0 - k)))
+		tok.height = up, 0.0, 1.0, dur)
+	await t.finished
+	# settles: rocks on its edge for a moment
+	var w := create_tween()
+	w.tween_method(func(k: float):
+		var a := sin(k * TAU * 2.5) * 0.35 * (1.0 - k)
+		tok.set_rot(Basis(Vector3.RIGHT, (0.0 if heads else PI) + a)), 0.0, 1.0, 0.35)
+	await w.finished
 
-	func _draw() -> void:
-		if kind == "coin":
-			var metal := Color("f4c542") if face == 1 else Color("c3c7d1")
-			if edge.a > 0.0:
-				draw_circle(Vector2.ZERO, 52, edge)
-			draw_circle(Vector2.ZERO, 46, metal.darkened(0.4))
-			draw_circle(Vector2.ZERO, 41, metal)
-			draw_arc(Vector2.ZERO, 34, 0.0, TAU, 40, metal.darkened(0.25), 3.0, true)
-			if face == 1:   # heads: a star
-				var pts := PackedVector2Array()
-				for k in 10:
-					pts.append(Vector2.from_angle(-PI / 2 + k * PI / 5) * (24.0 if k % 2 == 0 else 10.0))
-				draw_colored_polygon(pts, metal.darkened(0.45))
-			elif font:
-				draw_string(font, Vector2(-40, 13), "T", HORIZONTAL_ALIGNMENT_CENTER, 80, 36, metal.darkened(0.5))
+
+## A die thrown from the card: it tumbles through the air, bounces twice and comes to rest showing the roll.
+func _roll_die(tok: LuckToken, from: Vector2, rest: Vector2, value: int) -> void:
+	var face_rot: Basis = {
+		1: Basis.IDENTITY, 6: Basis(Vector3.RIGHT, PI), 2: Basis(Vector3.UP, -PI / 2), 5: Basis(Vector3.UP, PI / 2),
+		3: Basis(Vector3.RIGHT, PI / 2), 4: Basis(Vector3.RIGHT, -PI / 2)}[clampi(value, 1, 6)]
+	var final := Basis(Vector3.BACK, randf_range(-0.25, 0.25)) * Basis(Vector3.RIGHT, 0.18) * Basis(Vector3.UP, -0.22) * face_rot   # (a little turned, so it reads as a cube)
+	var axis := Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-0.4, 0.4)).normalized()
+	var spins := randf_range(5.0, 7.0) * TAU
+	var start := from + Vector2(randf_range(-40, 40), 30)
+	var dur := 1.05
+	var t := create_tween()
+	t.tween_method(func(k: float):
+		# an arc into the air, then two bounces getting smaller
+		var hgt := 0.0
+		if k < 0.55:
+			var u := k / 0.55
+			hgt = 4.0 * u * (1.0 - u) * 1.0
+		elif k < 0.82:
+			var u2 := (k - 0.55) / 0.27
+			hgt = 4.0 * u2 * (1.0 - u2) * 0.3
 		else:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color("f5f3ee")
-			sb.set_corner_radius_all(14)
-			sb.set_border_width_all(5 if edge.a > 0.0 else 2)
-			sb.border_color = edge if edge.a > 0.0 else Color("8a8a96")
-			draw_style_box(sb, Rect2(-40, -40, 80, 80))
-			for p in PIPS.get(face, []):
-				draw_circle(p * 21.0, 7.5, Color("1c1c28"))
+			var u3 := (k - 0.82) / 0.18
+			hgt = 4.0 * u3 * (1.0 - u3) * 0.08
+		tok.position = start.lerp(rest, 1.0 - pow(1.0 - k, 1.6)) + Vector2(0, -200.0 * hgt)
+		tok.scale = Vector2.ONE * lerpf(0.5, 1.0, minf(1.0, k * 2.0)) * (1.0 + hgt * 0.3)
+		var left := pow(1.0 - k, 2.4)
+		tok.set_rot(final * Basis(axis, spins * left))
+		tok.height = hgt
+		if k > 0.55 and not tok.get_meta("b1", false):
+			tok.set_meta("b1", true)
+			Sfx.play("dice_land", 1.2, -10.0)
+			_burst(tok.position + Vector2(0, 40), Color(1, 1, 1, 0.6), 8, 160, 0.3, 300.0)
+		elif k > 0.82 and not tok.get_meta("b2", false):
+			tok.set_meta("b2", true)
+			Sfx.play("dice_land", 1.35, -14.0), 0.0, 1.0, dur)
+	await t.finished
+	tok.set_rot(final)
+	tok.height = 0.0
+
+
+## A coin or a die in 3D for luck effects (shaders/luck3d.gdshader), with its shadow on the board
+## (height: 0 on the ground, 1 at the top of its throw; ground: where the shadow lies).
+class LuckToken extends Node2D:
+	const SHADER := preload("res://shaders/luck3d.gdshader")
+	const SIZE := 240.0
+	var kind := "coin"
+	var height := 0.0
+	var ground := 0.0
+	var edge := Color(0, 0, 0, 0)   # once it lands: green if the effect happens, red if not
+	var _body: ColorRect
+	var _shadow: Sprite2D
+	var _mat := ShaderMaterial.new()
+	var _flash := 0.0
+
+	func _ready() -> void:
+		_shadow = Sprite2D.new()
+		var g := Gradient.new()
+		g.set_color(0, Color(0, 0, 0, 0.55))
+		g.set_color(1, Color(0, 0, 0, 0))
+		var tex := GradientTexture2D.new()
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		tex.gradient = g
+		_shadow.texture = tex
+		_shadow.top_level = true
+		_shadow.z_index = 599
+		add_child(_shadow)
+		_body = ColorRect.new()
+		_body.size = Vector2.ONE * SIZE
+		_body.position = -_body.size / 2.0
+		_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mat.shader = SHADER
+		_mat.set_shader_parameter("kind", 0 if kind == "coin" else 1)
+		_body.material = _mat
+		add_child(_body)
+
+	func set_rot(b: Basis) -> void:
+		_mat.set_shader_parameter("rot", b)
+
+	## It lands: a white glint, then its rim glows the result colour.
+	func land() -> void:
+		_flash = 0.45
+		create_tween().tween_property(self, "_flash", 0.0, 0.35)
+		_mat.set_shader_parameter("glow", Color(edge, 0.0))
+		create_tween().tween_method(func(a: float): _mat.set_shader_parameter("glow", Color(edge, a)), 0.0, 1.0, 0.3)
+
+	func _process(_delta: float) -> void:
+		_mat.set_shader_parameter("flash", _flash)
+		if _shadow:
+			var y := ground if ground != 0.0 else global_position.y + 44.0
+			_shadow.global_position = Vector2(global_position.x + 10.0 + height * 30.0, y)
+			_shadow.scale = Vector2(1.6, 0.55) * (1.0 - height * 0.45) * scale.x * (0.9 if kind == "coin" else 1.1)
+			_shadow.modulate.a = (1.0 - height * 0.6) * modulate.a
 
 
 ## Leader awakening: the leader trembles while the screen darkens, rises to centre stage with
@@ -4207,6 +4284,37 @@ func _ev_stand(ev: Dictionary) -> void:
 
 ## CHARM: the character drifts across to the side that charmed it, pink hearts trailing (or, at the
 ## end of the turn, back home: "back").
+## A tribute (absorb): the sacrificed character's strength streams into the one that took it.
+func _ev_absorb(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(int(ev.slot))
+	if v == null:
+		return
+	var from := slot_pos(side, int(ev.get("from_slot", ev.slot)))
+	var col := _clan_color(ev.card)
+	Sfx.play("promote", 0.8, -4.0)
+	for i in 10:   # wisps flying from where it was into the card
+		var w := Sprite2D.new()
+		w.texture = ArenaLife._soft_dot()
+		w.material = _add_mat
+		w.modulate = Color(col.lightened(0.3), 0.9)
+		w.scale = Vector2.ONE * randf_range(0.3, 0.55)
+		w.position = from + Vector2(randf_range(-40, 40), randf_range(-60, 60))
+		w.z_index = 450
+		fx.add_child(w)
+		var bend := Vector2(randf_range(-80, 80), randf_range(-80, 80))
+		var a := w.position
+		var t := w.create_tween()
+		t.tween_method(func(k: float): w.position = a.lerp(v.position, k) + bend * 4.0 * k * (1.0 - k), 0.0, 1.0, randf_range(0.35, 0.5)).set_delay(i * 0.03).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_callback(w.queue_free)
+	await _wait(0.5)
+	v.flash()
+	_ring(v.position, col.lightened(0.3), 1.3)
+	_burst(v.position, col, 20, 300, 0.5, 0.0)
+	_float_text(v.position + Vector2(0, -120 if side == "player" else 120), "+%d ATK  +%d DEF" % [int(ev.atk), int(ev.def)], GOLD, 30)
+	await _wait(0.3)
+
+
 func _ev_charm(ev: Dictionary) -> void:
 	var from: String = ev.side
 	var to: String = str(ev.to_side)
@@ -4964,6 +5072,16 @@ func _finisher(panel: Control) -> void:
 
 # ── Text, banners and callouts ───────────────────────────────────────────────
 
+## A one-line label made smaller (down to min_size) until its text fits its width.
+func _fit_label(l: Label, max_size: int, min_size: int) -> void:
+	var ls: LabelSettings = l.label_settings
+	var f: Font = ls.font if ls.font else l.get_theme_font("font")
+	var size := max_size
+	while size > min_size and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > l.size.x:
+		size -= 1
+	ls.font_size = size
+
+
 func _label(font_size: int, color: Color, heading := false) -> Label:
 	var l := Label.new()
 	var ls := LabelSettings.new()
@@ -5269,6 +5387,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		parts.append(str(c.clanName).to_upper())
 	parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
 	_ui.detail_kind.text = "  ·  ".join(parts)
+	_fit_label(_ui.detail_kind, 15, 10)
 	if c.get("cardType") in ["gang_member", "leader"]:
 		var base_atk := int(c.get("base_attack", c.get("attack", 0)))
 		var base_def := int(c.get("base_defense", c.get("defense", 0)))

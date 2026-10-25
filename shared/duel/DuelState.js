@@ -533,7 +533,7 @@ export class DuelState {
         if (!('target' in e)) return true;
         if (String(e.do ?? '') === 'charm' && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
-            promote_ally: 'promotable', charm: 'charmable', give_undead: 'unrisen' }[String(e.do ?? '')] ?? 'any';
+            promote_ally: 'promotable', charm: 'charmable', give_undead: 'unrisen', absorb: 'absorbable' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -1010,12 +1010,14 @@ export class DuelState {
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
         if (this._passive(side, from, att, 'pierce') || this.rules.pierce) ctx.pierce = true;
         const defNow = target >= 0 ? this.cardAt(foe, target) : null;
-        let k = 0;
-        for (const e of this._fx(att, 'attack')) {
-            k += 1;
+        // (at a leader: a Dormant one, or one that has taken the field)
+        const atLeader = target === LEADER || (defNow != null && defNow.cardType === 'leader');
+        const trig = this._fx(att, 'attack').map((e, i) => ['attack', e, i + 1]);
+        if (atLeader) trig.push(...this._fx(att, 'attack_leader').map((e, i) => ['attack_leader', e, i + 1]));
+        for (const [when, e, k] of trig) {
             const selfBuff = String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self';
-            if (selfBuff && String(e.if ?? '') !== '') continue;   // settled in the brawl (_brawlBonus)
-            if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `attack${k}`, e) || !this._fxOnce(att, `attack${k}`, e)) continue;
+            if (selfBuff && String(e.if ?? '') !== '' && when === 'attack') continue;   // settled in the brawl (_brawlBonus)
+            if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `${when}${k}`, e) || !this._fxOnce(att, `${when}${k}`, e)) continue;
             if (selfBuff) {
                 if (!this._luckGate(side, from, att, e)) continue;
                 const se = this._scaled(side, from, e);
@@ -2292,7 +2294,7 @@ export class DuelState {
             }
             case 'silence':
                 this._fxApply(side, slot, c, e, vs, 'any', 'silence', (x) => {
-                    x.card.silence_until = this.turn + (String(e.until ?? 'turn') === 'next_turn' ? this._roundSpan() : 0);
+                    x.card.silence_until = String(e.until ?? 'turn') === 'forever' ? FOREVER : this.turn + (String(e.until ?? 'turn') === 'next_turn' ? this._roundSpan() : 0);
                     this._recalc();
                     return `${c.name} silences ${x.card.name}: its effects stop`;
                 }, `${c.name} silences %s`);
@@ -2469,6 +2471,30 @@ export class DuelState {
                     this._effect(side, c, `${c.name} exiles ${gone.length} card${gone.length === 1 ? '' : 's'} from the enemy's Gutter`, slot);
                 });
                 break;
+            case 'absorb': {   // tribute one of your characters (or the one just deployed): this card gains its ATK and DEF
+                if (this.cardAt(side, slot) !== c) break;
+                const take = (x) => {
+                    if (this.cardAt(side, slot) !== c || this.cardAt(x.side, x.slot) !== x.card) return `${c.name} can't tribute it now`;
+                    const atk = toInt(x.card.attack), def = toInt(x.card.defense), name = x.card.name;
+                    this._ko(x.side, x.slot);
+                    c.mods.push({ atk, def, until_turn: FOREVER });
+                    this._recalc();
+                    this._emit('absorb', { side, slot, from_slot: x.slot, atk, def, card: clone(c) });
+                    return `${c.name} tributes ${name}: +${atk} ATK and +${def} DEF`;
+                };
+                if (String(e.target ?? '') === 'deployed') {   // the player may say no
+                    const x = this._fxTargets(side, slot, c, e, vs, 'any').find(t => t.side === side && t.card !== c);
+                    if (!x) break;
+                    const worth = x.card.token || toInt(x.card.attack) + toInt(x.card.defense) <= toInt(c.attack) + toInt(c.defense);
+                    const yes = { id: 'yes', label: `TRIBUTE ${String(x.card.name).toUpperCase()}` }, no = { id: 'no', label: 'KEEP IT' };
+                    this._ask(side, 'absorb', `${c.name}: tribute ${x.card.name}? ${c.name} gains its ATK and DEF`, x.card, worth ? [yes, no] : [no, yes], (choice) => {
+                        if (choice === 'yes' && this.winner === '') this._effect(side, c, take(x), slot);
+                    });
+                    break;
+                }
+                this._fxApply(side, slot, c, e, vs, 'absorbable', 'tribute', take, `${c.name} tributes %s`);
+                break;
+            }
             case 'promote_ally':   // PROMOTE one (or all) of your Strivers
                 this._fxApply(side, slot, c, e, vs, 'promotable', 'PROMOTE', (x) => {
                     const name = x.card.name;
@@ -2708,6 +2734,7 @@ export class DuelState {
                 case 'promotable': return x.card.subtype === 'striver' && this._nextInHideout(x.side, x.card) && !this.sides[x.side].promoted[x.slot]
                     && !x.card.downed && !x.card.charmed;
                 case 'charmable': return x.card.cardType !== 'leader' && !x.card.charmed;
+                case 'absorbable': return x.card.cardType !== 'leader' && x.card !== c;
                 case 'unrisen': return !x.card.token && !x.card.risen && !x.card.undead_given;
                 case 'changed': {   // REWIND helps: an enemy's net gains, your character's net losses
                     const net = (x.card.mods || []).reduce((t, m) => t + toInt(m.atk) + toInt(m.def), 0);

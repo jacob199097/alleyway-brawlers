@@ -56,9 +56,9 @@ func _ready() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		art.add_child(l)
-	# The two buttons drawn into the artwork (in its 1536×1024 pixels)
-	_art_button(Rect2(205, 745, 555, 160), "BRAWL AGAIN", func(): Game.go("ffa_lobby" if d.get("ffa", false) else "fight_mode"))
-	_art_button(Rect2(805, 745, 495, 160), "MENU", func(): Game.go("main_menu"))
+	# The two buttons, under the title (the artwork leaves room for them)
+	_result_button(Vector2(645, 488), "BRAWL AGAIN", UI.RED, func(): Game.go("ffa_lobby" if d.get("ffa", false) else "fight_mode"))
+	_result_button(Vector2(975, 488), "MENU", UI.BLUE, func(): Game.go("main_menu"))
 	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), _mvp_panel(d.get("mvp", {}) if d.get("mvp") is Dictionary else {})]
 	_show_mastery(d.get("mastery"))
 	_submit(d)
@@ -434,22 +434,17 @@ func _rematch_end(message: String) -> void:
 	_rematch_note.label_settings.font_color = UI.RED
 
 
-func _art_button(r: Rect2, text: String, cb: Callable) -> void:
-	var k := ART_SIZE.x / 1536.0
-	var b := Button.new()
-	b.position = ART_POS + r.position * k
-	b.size = r.size * k
-	b.tooltip_text = text
-	b.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	b.add_theme_stylebox_override("hover", UI.box(Color(1, 1, 1, 0.1), UI.GOLD, 3, 10))
-	b.add_theme_stylebox_override("pressed", UI.box(Color(1, 1, 1, 0.2), UI.GOLD, 3, 10))
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	if UI.tex("victory.png") == null:
-		b.text = text
-	b.pressed.connect(func():
-		Sfx.play("click")
-		cb.call())
+## A big comic-style button under the title, fading in once the title has landed.
+func _result_button(at: Vector2, text: String, accent: Color, cb: Callable) -> void:
+	var b := UI.button(text, cb, Vector2(300, 70), accent)
+	b.position = at
+	b.add_theme_font_override("font", UI.font())
+	b.add_theme_font_size_override("font_size", 32)
+	b.modulate.a = 0.0
 	add_child(b)
+	var t := b.create_tween()
+	t.tween_interval(1.1)
+	t.tween_property(b, "modulate:a", 1.0, 0.35)
 
 
 ## The result in numbers, under the title: why it ended, and Morale and turns counting up.

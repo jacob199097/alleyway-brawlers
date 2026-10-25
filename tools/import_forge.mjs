@@ -103,6 +103,7 @@ for (const [key, raw] of Object.entries(exported)) {
         if (raw.subtype === 'equip' && raw.equip_to === 'enemy') c.equip_to = 'enemy';
     }
     // A token: made only by effects in a duel (never in packs, decks or the Card Library)
+    if (unit && raw.varStats) c.varStats = true;   // ("?" ATK and DEF: its effects give it them)
     if (raw.cardType === 'gang_member' && raw.token) {
         c.token = true;
         // Its artworks: <id>.png and <id>_v2.png ... (each token in a match shows one)

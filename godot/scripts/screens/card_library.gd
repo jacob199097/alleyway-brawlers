@@ -300,7 +300,9 @@ func _show_detail(c: Dictionary) -> void:
 	var line := "%s%s  ·  %s" % [kind, ("  ·  " + str(sub).to_upper()) if sub is String else "", str(UI.RARITY_LABEL.get(rarity, "")).to_upper()]
 	_detail.add_child(UI.label(line, 17, UI.rarity_color(rarity)))
 	if c.get("cardType") in ["gang_member", "leader"]:
-		_detail.add_child(UI.label("ATK %d   DEF %d   ·   AUTHORITY %d" % [int(c.get("attack", 0)), int(c.get("defense", 0)), int(c.get("authority", 0))], 22, UI.GOLD, true))
+		var q: bool = CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false)
+		var st := ("ATK ?   DEF ?" if q else "ATK %d   DEF %d" % [int(c.get("attack", 0)), int(c.get("defense", 0))])
+		_detail.add_child(UI.label("%s   ·   AUTHORITY %d" % [st, int(c.get("authority", 0))], 22, UI.GOLD, true))
 	# Keywords are coloured and explain themselves when hovered
 	var t := RichTextLabel.new()
 	t.bbcode_enabled = true
