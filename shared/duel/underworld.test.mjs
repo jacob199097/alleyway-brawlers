@@ -102,6 +102,16 @@ assert.equal(st._fxCond('player', -1, { if: 'foe_gutter_ge', n: 3 }, null), true
 assert.equal(st._fxCond('player', -1, { if: 'foe_gutter_ge', n: 4 }, null), false);
 st._doFx('player', -1, src, { do: 'damage', amount: 100, per: 'foe_gutter' });
 assert.equal(st.sides.opponent.morale, 4700, '100 for each card in their Gutter');
+// ...counting only one kind of card (and clan): characters, not Hustles or Ambushes
+st.sides.opponent.gutter.push(st.makeCard({ id: 'test_trick', name: 'Trick', cardType: 'hustle', clanTag: 'test' }));
+st._doFx('player', -1, src, { do: 'damage', amount: 100, per: 'foe_gutter', per_kind: 'gang_member' });
+assert.equal(st.sides.opponent.morale, 4400, 'the Hustle in their Gutter does not count');
+st.sides.player.gutter.push(unit(st, 'D'), unit(st, 'E', 1000, 1000, { clanTag: 'other' }),
+    st.makeCard({ id: 'test_trap', name: 'Trap', cardType: 'ambush', clanTag: 'test' }));
+assert.equal(st._perCount('player', -1, { per: 'gutter' }), 3);
+assert.equal(st._perCount('player', -1, { per: 'gutter', per_kind: 'gang_member' }), 2, 'characters only');
+assert.equal(st._perCount('player', -1, { per: 'gutter', per_kind: 'gang_member', per_clan: 'test' }), 1, "that clan's characters only");
+assert.equal(st._perCount('player', -1, { per: 'gutter', per_kind: 'ambush' }), 1);
 
 // "You take no battle damage from brawls involving this card"
 const brawl = (atkStats, defStats, guardOn) => {

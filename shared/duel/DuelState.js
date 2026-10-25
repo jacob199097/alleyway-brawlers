@@ -1907,8 +1907,8 @@ export class DuelState {
 
     /** "For each": what effect e counts (same as _per_count in duel_state.gd). */
     _perCount(side, slot, e) {
-        const clan = String(e.per_clan ?? '');
-        const ofClan = (x) => clan === '' || x.clanTag === clan;
+        const clan = String(e.per_clan ?? ''), kind = String(e.per_kind ?? '');
+        const ofClan = (x) => (clan === '' || x.clanTag === clan) && (kind === '' || x.cardType === kind);
         const s = this.sides[side];
         let n;
         switch (String(e.per ?? '')) {
@@ -1916,7 +1916,7 @@ export class DuelState {
             case 'enemies': n = this._enemyChars(side).length; break;
             case 'foe_downed': n = this._enemyChars(side).filter(x => x.card.downed).length; break;
             case 'gutter': n = s.gutter.filter(ofClan).length; break;
-            case 'foe_gutter': n = this.foesOf(side).reduce((t, f) => t + this.sides[f].gutter.length, 0); break;
+            case 'foe_gutter': n = this.foesOf(side).reduce((t, f) => t + this.sides[f].gutter.filter(ofClan).length, 0); break;
             case 'hand': n = s.hand.filter(ofClan).length; break;
             case 'roll': n = Math.max(1, toInt(this._roll)); break;   // the die just rolled (_luckGate)
             default: return 1;

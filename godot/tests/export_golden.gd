@@ -60,6 +60,7 @@ const FX_SAMPLES := [
 	[{"when": "activate", "do": "damage", "amount": 400, "cost": "exile_gutter", "cost_n": 2}],
 	[{"when": "attack", "do": "buff", "target": "self", "atk": 100, "per": "foe_gutter"}],
 	[{"when": "turn_start", "do": "drain", "amount": 300, "if": "foe_gutter_ge", "n": 3}],
+	[{"when": "passive", "do": "buff", "target": "self", "atk": 400, "def": 250, "per": "gutter", "per_kind": "gang_member"}, {"when": "attack", "do": "damage", "amount": 100, "per": "foe_gutter", "per_kind": "hustle"}],
 	# Set stats: ATK / DEF become a number (this turn, or for good)
 	[{"when": "deploy", "do": "set_stats", "target": "enemy", "atk": 100, "def": 100, "until": "turn"}],
 	[{"when": "defend", "do": "set_stats", "target": "attacker", "atk": 100, "until": "forever"}],

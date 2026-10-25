@@ -2048,7 +2048,7 @@ func _recalc() -> void:
 #   more do: token (copies of the card `token` into empty lanes; they vanish when they leave the
 #           field) | call (a character from your deck onto the field, filters like revive)
 #   per:    "for each": atk / def / amount are multiplied by a count (allies | enemies |
-#           foe_downed | gutter | hand; per_clan, per_max)
+#           foe_downed | gutter | foe_gutter | hand; per_clan, per_kind, per_max)
 #   or:     "choose one": this effect or the next (same trigger); the player picks (label: its text)
 #   until:  buff: turn | next_turn | forever (while the card stays on the field)
 #   amount: poison (ATK lost per turn), burn (Morale lost per turn), bleed (ATK/DEF lost per
@@ -2156,11 +2156,13 @@ func _of_if_clan(cards: Array, e: Dictionary) -> Array:
 	return cards.filter(func(x): return clan == "" or x.get("clanTag") == clan)
 
 
-## "For each": what effect `e` counts (per: allies | enemies | foe_downed | gutter | hand;
-## per_clan: only that clan's; per_max: at most this many).
+## "For each": what effect `e` counts (per: allies | enemies | foe_downed | gutter | foe_gutter | hand;
+## per_clan: only that clan's; per_kind: only that card type's (gang_member | hustle | ambush), for
+## cards in a Gutter or hand; per_max: at most this many).
 func _per_count(side: String, slot: int, e: Dictionary) -> int:
 	var clan := str(e.get("per_clan", ""))
-	var of_clan := func(x: Dictionary) -> bool: return clan == "" or x.get("clanTag") == clan
+	var kind := str(e.get("per_kind", ""))
+	var of_clan := func(x: Dictionary) -> bool: return (clan == "" or x.get("clanTag") == clan) and (kind == "" or x.get("cardType") == kind)
 	var s: Dictionary = sides[side]
 	var n := 0
 	match str(e.get("per", "")):
@@ -2175,7 +2177,7 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 		"foe_gutter":
 			n = 0
 			for f in foes_of(side):
-				n += sides[f].gutter.size()
+				n += sides[f].gutter.filter(of_clan).size()
 		"hand":
 			n = s.hand.filter(of_clan).size()
 		"roll":   # the die just rolled (_luck_gate)

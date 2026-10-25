@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.73",
+        "notes": [
+            "New card effects: \"for each\" counts can count one kind of card, such as each character in your Gutter (not Hustles or Ambushes)."
+        ]
+    },
+    {
         "version": "0.9.72",
         "notes": [
             "Controller support: Xbox, PlayStation and Steam Deck controllers work everywhere. The left stick moves a pointer and the D-pad jumps between buttons and cards; A selects (hold to drag), X zooms in on a card, B goes back, Y moves to the next phase. Every button is listed in Settings, Controls.",
