@@ -50,12 +50,18 @@ const preset = mac ? 'Patch macOS' : 'Patch';
 const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-patch${mac ? '-macos' : ''}.pck`);
 const base = mac ? join(ROOT, 'builds', `macos_${patchBase}`, 'AlleywayBrawlers.pck')
     : join(ROOT, 'builds', `windows_${patchBase}`, 'AlleywayBrawlers.exe');
-if (existsSync(base)) {
-    // Only the files that differ from the full build players have (Godot compares against its pack)
-    execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-patch', preset, out, '--patches', base], { stdio: 'inherit' });
-} else {
-    console.warn(`No ${base}: the patch carries everything the Patch preset allows, not just the changes.`);
-    execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', preset, out], { stdio: 'inherit' });
+try {
+    if (existsSync(base)) {
+        // Only the files that differ from the full build players have (Godot compares against its pack)
+        execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-patch', preset, out, '--patches', base], { stdio: 'inherit' });
+    } else {
+        console.warn(`No ${base}: the patch carries everything the Patch preset allows, not just the changes.`);
+        execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', preset, out], { stdio: 'inherit' });
+    }
+} catch (err) {
+    if (existsSync(out)) unlinkSync(out);   // (a half-written patch must never reach downloads/)
+    console.error(`\nGodot couldn't make the patch: ${err.message.split('\n')[0]}`);
+    process.exit(1);
 }
 if (!existsSync(out)) throw new Error('Godot did not write the patch.');
 const removed = deletedFiles(out);
