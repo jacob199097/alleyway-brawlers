@@ -22,7 +22,7 @@ Ticked when done in the Godot client (`godot/`), however it was done there. The 
   - [x] Public server address over HTTPS (https://alleywaybrawlers.duckdns.org).
   - [x] Multiplayer runs on the server (`backend/socket/onlineMatch.js`).
   - [x] Privacy policy, terms and account deletion (0.9.72, `backend/routes/legal.js`, `account.js`).
-  - [ ] Lock CORS down (`backend/server.js` still allows any origin).
+  - [x] Lock CORS down: only the game (no Origin header) and the server's own pages (`backend/utils/origins.js`).
   - [ ] A Steam depot build (SteamPipe). No code signing: it ships through Steam.
 
 # AlleyWay Brawlers — Desktop (Steam) Plan
@@ -160,8 +160,8 @@ The canvas is fixed at 844×390 (about 19.5:9), and 28 files hard-code `const W 
 - **Public server address.** `192.168.0.200` is LAN-only. Put the backend behind a domain with
   HTTPS, e.g. a Cloudflare Tunnel (no port forwarding) or a VPS. Set `VITE_SERVER_URL` for the
   desktop build, and update `APP_BASE_URL`/`APP_CLIENT_URL` in `backend/.env`.
-- Lock CORS (`backend/server.js` uses `cors()` and Socket.io `origin: '*'`) to the web origin and
-  the `app://` origin.
+- CORS is locked (`backend/utils/origins.js`): requests without an Origin (the game) and the server's own
+  site only; any other website gets 403, on the API and the live socket.
 - Multiplayer: online matches are server-authoritative for the Godot client
   (`backend/socket/onlineMatch.js` runs `shared/duel/DuelState.js`; see `godot/README.md`).
   The Phaser client's old `MatchmakingScene`/`duel:*` prototype is still unreachable.

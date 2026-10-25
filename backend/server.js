@@ -22,6 +22,7 @@ const express      = require('express');
 const http         = require('http');
 const { Server }   = require('socket.io');
 const cors         = require('cors');
+const { allowedOrigins, originAllowed, refuseOtherSites } = require('./utils/origins');
 const jwt          = require('jsonwebtoken');
 
 const { pool }                  = require('./db/pool');
@@ -53,10 +54,13 @@ const achievementRoutes = require('./routes/achievements');
 const dailyRoutes = require('./routes/daily');
 
 // ── App setup ─────────────────────────────────────────────────────────────────
+// Only the game (no Origin header) and the server's own pages may call in (utils/origins.js)
+const ORIGINS = allowedOrigins();
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
+    cors: { origin: (origin, cb) => cb(null, originAllowed(origin, ORIGINS)), methods: ['GET', 'POST'] },
+    allowRequest: (req, cb) => cb(null, originAllowed(req.headers.origin, ORIGINS)),   // (websockets skip CORS: checked here)
     pingTimeout:  60_000,
     pingInterval: 25_000,
 });
@@ -65,7 +69,8 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors());
+app.use(refuseOtherSites(ORIGINS));
+app.use(cors({ origin: (origin, cb) => cb(null, originAllowed(origin, ORIGINS)) }));
 app.use(express.json());
 
 // ── REST API routes ───────────────────────────────────────────────────────────

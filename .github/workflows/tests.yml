@@ -74,6 +74,8 @@ jobs:
           node-version: 20
       - name: Install server packages
         run: npm ci --prefix backend --omit=dev
+      - name: Only the game and the server's own pages may call in (CORS)
+        run: node backend/utils/origins.test.cjs
       - name: Crafting and achievements
         run: node backend/economy/progression.test.cjs
         env:

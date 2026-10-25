@@ -32,9 +32,8 @@ when it ships, or delete it if it's dropped.
   `godot/data/bosses.json`; server: `backend/socket/coopMatch.js`, `backend/economy/turf.js`.
   Later: boss-only cards and prize cards of their own (the prizes are the clan Legendaries for now),
   a boss music track (`assets/sfx/music_boss.mp3` is used when it exists), friend invites.
-- [ ] **Wildcard cards.** Frame, card back, booster, deck box, crest and effects (luck, DOUBLE OR
-  NOTHING, LOADED DICE) are ready; the cards themselves are being made.
-- [ ] **Re-import Continuous / Equip cards** through the Forge, so their effect text loses the old
+- [x] **Wildcard cards.** In the game (44 cards, with packs and a starter deck).
+- [x] **Re-import Continuous / Equip cards** through the Forge, so their effect text loses the old
   "CONTINUOUS" / "EQUIP:" line (removed from the text box in Forge v84; it's on the type line).
 - [ ] **How to Play / tutorial pages for newer mechanics:** luck, DOUBLE OR NOTHING, LOADED DICE,
   Equips, Strivers and evolution.
@@ -61,8 +60,8 @@ when it ships, or delete it if it's dropped.
   survive a disk failure. (There's no backup script in the repo yet.)
 - [ ] **Hosting:** the server is a home machine behind DuckDNS. Before a wider or mobile launch, move
   to a small rented server (VPS), or at least add a battery backup (UPS) and an uptime monitor.
-- [ ] **Crash reports:** send Godot errors / crash logs to the server, so bugs on other players' PCs
-  show up.
+- [x] **Crash reports:** the game sends its errors and crashes to the server (`client_errors` table,
+  `godot/scripts/error_report.gd`, `backend/routes/telemetry.js`).
 
 ## Polish
 
