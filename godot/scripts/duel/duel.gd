@@ -1789,6 +1789,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_mill(ev)
 		"recover":
 			await _ev_recover(ev)
+		"gutter_exile":
+			await _ev_gutter_exile(ev)
 		"promote":
 			await _ev_promote(ev)
 		"effect":
@@ -3541,7 +3543,7 @@ func _ev_mill(ev: Dictionary) -> void:
 func _ev_recover(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var v := _new_view(ev.card, side, side == "player")
-	v.position = pile_pos(side, "gutter")
+	v.position = pile_pos(str(ev.get("from_side", side)), "gutter")   # (raised from the opponent's Gutter: from theirs)
 	v.z_index = 420
 	Sfx.play("promote", 1.3, -6.0)
 	_burst(v.position, GREEN, 20, 240, 0.6, -200.0)
@@ -3549,6 +3551,27 @@ func _ev_recover(ev: Dictionary) -> void:
 	hand[side].append(v)
 	_layout_hand(side)
 	await _wait(0.4)
+
+
+## Cards leave a Gutter for good (exiled): they rise off the pile and burn away in violet flame.
+func _ev_gutter_exile(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var at := pile_pos(side, "gutter")
+	var cards: Array = ev.get("cards", [])
+	Sfx.play("ko", 0.7, -4.0)
+	_float_text(at + Vector2(0, -120 if side == "player" else 120), "EXILED ×%d" % cards.size(), Color("c58bff"), 30)
+	for i in mini(cards.size(), 4):
+		var v := _new_view(cards[i], side, true)
+		v.position = at
+		v.z_index = 420 + i
+		v.scale = Vector2.ONE * 0.8
+		var t := v.create_tween().set_parallel()
+		t.tween_property(v, "position", at + Vector2((i - 1.5) * 50.0, -150.0 if side == "player" else 150.0), 0.55).set_delay(i * 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t.tween_property(v, "modulate", Color(0.8, 0.4, 1.4, 0.0), 0.55).set_delay(0.2 + i * 0.08)
+		t.chain().tween_callback(v.queue_free)
+	_burst(at, Color("b06bff"), 34, 260, 0.9, -260.0)
+	_ring(at, Color("b06bff"), 1.0)
+	await _wait(0.7)
 
 
 ## A card effect restores Morale.

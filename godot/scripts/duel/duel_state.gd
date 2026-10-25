@@ -29,7 +29,7 @@ const OPENING_HAND := 5
 const SECOND_PLAYER_AUTHORITY := 1 # going second: extra Authority on your first turn only
 const LEADER_DEFEAT_PENALTY := 0   # Morale lost when a Dormant leader is defeated (none: it was never on the field)
 const FRONT := [0, 1, 2, 3, 4]   # character slots
-const DORMANT_GIFTS := ["pierce", "immune", "untargetable"]   # passives a Dormant leader can give your characters
+const DORMANT_GIFTS := ["pierce", "immune", "untargetable", "undead", "lifesteal"]   # passives a Dormant leader can give your characters
 const BACK := [5, 6, 7, 8, 9]    # ambush slots
 const DIRECT := -1               # attack target: the opponent's morale
 const NO_SLOT := -10             # effects of a card that isn't on the field (a Hustle, a sprung Ambush)
@@ -551,7 +551,11 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"recover":
 			return s.gutter.any(mine)
 		"revive":
+			if e.get("from", "") == "foe":
+				return _room_for(side) and foes.any(func(x): return x.gutter.any(mine))
 			return _room_for(side) and s.gutter.any(mine)
+		"exile_gutter":
+			return foes.any(func(x): return not x.gutter.is_empty())
 		"call":
 			return _room_for(side) and s.deck.any(mine)
 		"token":
@@ -586,7 +590,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	if str(e.get("do", "")) == "charm" and _empty_lane(side) < 0:   # (no lane to take it to)
 		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -691,6 +695,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("bounty")
 	if c.get("charmed") is Dictionary:
 		out.append("charm")
+	if c.get("undead_given", false):
+		out.append("undead")
 	if not _equips_on(c).is_empty():
 		out.append("equipped")
 	# Just promoted or Awakened: it can't attack this turn
@@ -811,6 +817,8 @@ func _can_pay(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
 			return characters(side).any(func(x): return x.slot != slot)
 		"exhaust":
 			return not c.has_attacked and not c.downed
+		"exile_gutter":
+			return s.gutter.size() >= n
 	return true
 
 
@@ -848,6 +856,10 @@ func _activate(side: String, slot: int, k: int) -> bool:
 				_effect(side, c, "%s sacrifices %s" % [c.name, name], slot)
 				if winner == "":
 					go.call())
+		"exile_gutter":   # the cards that have been in your Gutter longest
+			_exile_gutter(side, sides[side].gutter.slice(0, n))
+			_effect(side, c, "%s: exiles %d card%s from the Gutter to activate" % [c.name, n, "" if n == 1 else "s"], slot)
+			go.call()
 		"exhaust":
 			c.has_attacked = true
 			_effect(side, c, "%s activates: it can't attack this turn" % c.name, slot)
@@ -1463,6 +1475,8 @@ func _ko(side: String, slot: int) -> void:
 	if card_at(side, slot) == null:
 		return
 	var c: Dictionary = card_at(side, slot)
+	var undead: bool = not c.get("token", false) and not c.get("risen", false) \
+		and (c.get("undead_given", false) or not _passive(side, slot, c, "undead").is_empty())
 	sides[side].field[slot] = null
 	var bounty = c.get("bounty")
 	var own := _owner_of(side, c)
@@ -1473,7 +1487,7 @@ func _ko(side: String, slot: int) -> void:
 	if not c.get("token", false):   # a token vanishes
 		sides[own].gutter.append(c)
 	# UNDEAD: the first time it's KO'd, it rises at the end of the turn
-	if not c.get("token", false) and not c.get("risen", false) and _fx(c, "passive").any(func(e): return str(e.get("do", "")) == "undead"):
+	if undead:
 		c.rise_turn = turn
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_ko")
@@ -2134,6 +2148,10 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 			n = _enemy_chars(side).filter(func(x): return x.card.downed).size()
 		"gutter":
 			n = s.gutter.filter(of_clan).size()
+		"foe_gutter":
+			n = 0
+			for f in foes_of(side):
+				n += sides[f].gutter.size()
 		"hand":
 			n = s.hand.filter(of_clan).size()
 		"roll":   # the die just rolled (_luck_gate)
@@ -2274,6 +2292,8 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return _enemy_chars(side).size() >= n
 		"gutter_ge":
 			return _of_if_clan(s.gutter, e).size() >= n
+		"foe_gutter_ge":
+			return foes_of(side).any(func(f): return sides[f].gutter.size() >= n)
 		"leader_dormant":
 			return s.leader_state == "dormant"
 		"leader_awake":
@@ -2524,7 +2544,10 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_fx_apply(side, slot, c, e, vs, "any", "swap ATK and DEF", fn, "%s swaps the ATK and DEF of %%s" % c.name)
 		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
 			var fn := func(x: Dictionary) -> String:
+				var kept = x.card.get("undead_given", false)
 				_clear_status(x.card)
+				if kept:
+					x.card.undead_given = true
 				x.card.erase("stun_until")
 				_emit("cleanse", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s is cleansed" % x.card.name
@@ -2635,14 +2658,27 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			if not _room_for(side):
 				return
 			var from_deck := str(e.get("do", "")) == "call"
-			var pile: Array = s.deck if from_deck else s.gutter
+			# (from: "foe": a character from the opponent's Gutter, which fights for you from now on)
+			var robbed := ""
+			if not from_deck and e.get("from", "") == "foe":
+				for f in foes_of(side):
+					if sides[f].gutter.any(func(x): return _fx_kind_ok(x, e)):
+						robbed = f
+						break
+				if robbed == "":
+					return
+			var pile: Array = s.deck if from_deck else (sides[robbed].gutter if robbed != "" else s.gutter)
 			var place := func(card: Dictionary, lane: int) -> bool:
 				card.downed = false
 				card.mods = []
 				_clear_status(card)
 				card.erase("fx_count")
 				if not from_deck:
-					_emit("recover", {"side": side, "card": card.duplicate(true)})
+					var rev := {"side": side, "card": card.duplicate(true)}
+					if robbed != "":
+						rev.from_side = robbed
+					_emit("recover", rev)
+				card.erase("rise_turn")   # (taken before it could rise)
 				card.position = "atk"
 				card.face_down = false
 				card.has_attacked = false
@@ -2652,7 +2688,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				if from_deck:
 					ev.from = "deck"
 				_emit("summon", ev)
-				_effect(side, c, ("%s: %s is called in" if from_deck else "%s: %s is back on the street") % [c.name, card.name], slot)
+				_effect(side, c, ("%s: %s is called in" if from_deck else ("%s raises %s from the enemy's Gutter" if robbed != "" else "%s: %s is back on the street")) % [c.name, card.name], slot)
 				_recalc()
 				if is_same(card_at(side, lane), card):
 					_on_deploy(side, lane, card)   # (it counts as deployed)
@@ -2751,6 +2787,18 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_with_foe(side, c, vs, func(_f): return true, func(foe: String):
 					_effect(side, c, "%s: %d Morale damage (the ATK it sacrificed)" % [c.name, dmg], slot)
 					_damage(foe, dmg))
+		"give_undead":   # UNDEAD for a character: the next time it's KO'd, it rises at the end of the turn
+			var fn := func(x: Dictionary) -> String:
+				x.card.undead_given = true
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "undead", "card": x.card.duplicate(true)})
+				return "%s is UNDEAD: it will rise once after it's KO'd" % x.card.name
+			_fx_apply(side, slot, c, e, vs, "unrisen", "UNDEAD", fn, "%s makes %%s UNDEAD" % c.name)
+		"exile_gutter":   # the newest cards in the opponent's Gutter, out of the game
+			_with_foe(side, c, vs, func(f): return not sides[f].gutter.is_empty(), func(foe: String):
+				var g: Array = sides[foe].gutter
+				var gone: Array = g.slice(maxi(0, g.size() - n))
+				_exile_gutter(foe, gone)
+				_effect(side, c, "%s exiles %d card%s from the enemy's Gutter" % [c.name, gone.size(), "" if gone.size() == 1 else "s"], slot))
 		"promote_ally":   # PROMOTE one (or all) of your Strivers
 			var fn := func(x: Dictionary) -> String:
 				var name: String = x.card.name
@@ -2880,6 +2928,20 @@ func _owner_next_turn(side: String) -> int:
 func _clear_status(c: Dictionary) -> void:
 	for k in STATUS_KEYS:
 		c.erase(k)
+	c.erase("undead_given")
+
+
+## Cards out of a side's Gutter and out of the game (Card Forge: exile_gutter).
+func _exile_gutter(side: String, cards: Array) -> void:
+	if cards.is_empty():
+		return
+	var s: Dictionary = sides[side]
+	for g in cards:
+		var i: int = s.gutter.find(g)
+		if i >= 0:
+			s.gutter.remove_at(i)
+		g.erase("rise_turn")   # (an UNDEAD card exiled doesn't rise)
+	_emit("gutter_exile", {"side": side, "cards": cards.map(func(g): return g.duplicate(true))})
 
 
 ## POISON and BURN tick at the start of their owner's turn.
@@ -2997,6 +3059,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 					and not x.card.downed and not (x.card.get("charmed") is Dictionary)
 			"charmable":
 				return x.card.get("cardType") != "leader" and not (x.card.get("charmed") is Dictionary)
+			"unrisen":
+				return not x.card.get("token", false) and not x.card.get("risen", false) and not x.card.get("undead_given", false)
 			"changed":   # REWIND helps: an enemy's net gains, your character's net losses
 				var net := 0
 				for m in x.card.get("mods", []):

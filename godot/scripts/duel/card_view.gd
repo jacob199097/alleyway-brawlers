@@ -16,7 +16,7 @@ const STATUS_STYLE := {
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
-	"charm": [Color("ff6fb5"), "CHM", "CHARMED"],
+	"charm": [Color("ff6fb5"), "CHM", "CHARMED"], "undead": [Color("8dffb0"), "UND", "UNDEAD"],
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 }
 

@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.65",
+        "notes": [
+            "New card effects for the Underworld: a Dormant leader can make all your characters UNDEAD (or give them LIFESTEAL), cards can give a character UNDEAD, raise a character from the opponent's Gutter to fight for you, and exile cards from the opponent's Gutter so they never come back.",
+            "New ACTIVATE cost: exile cards from your own Gutter. Cards can also count the cards in your opponent's Gutter.",
+            "Exiled Gutter cards burn away in violet flame; a character made UNDEAD shows an UNDEAD marker."
+        ]
+    },
+    {
         "version": "0.9.64",
         "notes": [
             "Your Hideout is now yours to build: in the Deck Editor, click a Striver's level 2 or 3 card to put it in the deck's Hideout (up to 3 of each). Higher levels no longer go in by themselves.",

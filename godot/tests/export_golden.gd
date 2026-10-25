@@ -46,6 +46,14 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "tribute_damage"}, {"when": "passive", "do": "undead"}],
 	[{"when": "foe_deployed", "do": "swap", "target": "deployed", "until": "turn"}],
 	[{"when": "ally_deployed", "do": "charm", "target": "enemy", "once": true}],
+	# Underworld: give UNDEAD, raise from the enemy's Gutter, exile Gutter cards (effect and Activate cost),
+	# the enemy's Gutter as a condition / "for each"
+	[{"when": "deploy", "do": "give_undead", "target": "ally"}],
+	[{"when": "deploy", "do": "revive", "from": "foe"}],
+	[{"when": "turn_end", "do": "exile_gutter", "amount": 2}],
+	[{"when": "activate", "do": "damage", "amount": 400, "cost": "exile_gutter", "cost_n": 2}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 100, "per": "foe_gutter"}],
+	[{"when": "turn_start", "do": "drain", "amount": 300, "if": "foe_gutter_ge", "n": 3}],
 	# Set stats: ATK / DEF become a number (this turn, or for good)
 	[{"when": "deploy", "do": "set_stats", "target": "enemy", "atk": 100, "def": 100, "until": "turn"}],
 	[{"when": "defend", "do": "set_stats", "target": "attacker", "atk": 100, "until": "forever"}],
@@ -172,6 +180,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "freeze", "target": "enemy", "negate": true}],
 	[{"do": "charm", "target": "enemy"}, {"do": "draw", "amount": 1}],
 	[{"do": "promote_ally", "target": "ally"}],
+	[{"do": "give_undead", "target": "allies"}],
+	[{"do": "revive", "from": "foe"}, {"do": "exile_gutter", "amount": 1}],
 	[{"do": "buff", "target": "attacker", "atk": -800, "luck": "coin"}, {"do": "negate", "if_luck": "lost"}],
 	[{"do": "down", "target": "attacker"}],
 	[{"do": "bounce", "target": "attacker", "if": "vs_atk"}, {"do": "draw", "amount": 1}],
@@ -219,6 +229,10 @@ const LEADER_SAMPLES := [
 		{"when": "dormant", "do": "untargetable"}, {"when": "dormant", "do": "buff", "target": "enemies", "def": -300},
 		{"when": "dormant_turn_end", "do": "stand", "target": "allies"}, {"when": "awaken", "do": "revive"},
 		{"when": "attack", "do": "buff", "target": "self", "atk": 500}]},
+	# Underworld: your characters have UNDEAD (and LIFESTEAL) while it's Dormant
+	{"effectKey": "", "awakenCondition": {"gutter": 5}, "effects": [
+		{"when": "dormant", "do": "undead"}, {"when": "dormant", "do": "lifesteal"},
+		{"when": "awaken", "do": "revive", "from": "foe"}]},
 	# Wildcard: Awakens after 3 won flips / rolls; flips a coin every turn while it waits
 	{"effectKey": "", "awakenCondition": {"luck": 3}, "effects": [
 		{"when": "dormant_turn_start", "do": "draw", "amount": 1, "luck": "coin"},
