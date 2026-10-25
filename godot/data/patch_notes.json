@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.77",
+        "notes": [
+            "SILENCE no longer stops a Striver from PROMOTING: its other effects still switch off.",
+            "New card effect: Morale damage to yourself (\"If tails, you lose 500 Morale\")."
+        ]
+    },
+    {
         "version": "0.9.76",
         "notes": [
             "New card effects: characters brought back from the Gutter, or called in from the deck, can come in DEF position."

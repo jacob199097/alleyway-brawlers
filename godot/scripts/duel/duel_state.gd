@@ -2108,13 +2108,15 @@ func _fx(c, when: String) -> Array:
 	var out: Array = []
 	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects
 		return out
-	if int(c.get("silence_until", 0)) >= turn:   # SILENCED: its effects don't work
-		return out
+	# SILENCED: its effects don't work, except its own PROMOTE (a Striver still levels up)
+	var silenced: bool = int(c.get("silence_until", 0)) >= turn
 	# A Downed character's effects don't work, except as it goes Down or is KO'd, and the ones
 	# that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
 	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
 	for e in _fold_if_done(c.get("effects", [])):
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
+			if silenced and str(e.get("do", "")) != "promote":
+				continue
 			if downed and not (str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
 				continue
 			out.append(e)
@@ -2906,6 +2908,10 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				return "%s CHARMS %s: it fights for %s this turn" % [c.name, x.card.name, "its charmer" if side == active else "the other side"]
 			_fx_apply(side, slot, c, e, vs, "charmable", "CHARM", fn, "%s CHARMS %%s" % c.name)
 		"damage":
+			if e.get("to", "") == "self":   # the card's own player loses it (a risk or a price; a BARRICADE doesn't stop it)
+				_effect(side, c, "%s: you lose %d Morale" % [c.name, n], slot)
+				_damage(side, n, true)
+				return
 			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
 				_effect(side, c, "%s: %d Morale damage" % [c.name, n], slot)
 				_damage(foe, n))

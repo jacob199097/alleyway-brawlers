@@ -64,6 +64,7 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "mill_self", "amount": 2}, {"when": "turn_end", "do": "entomb", "kind": "gang_member", "choose": true}],
 	[{"when": "activate", "do": "entomb", "amount": 2, "cost": "authority", "cost_n": 1}, {"when": "ko", "do": "mill_self", "amount": 1, "per": "allies"}],
 	[{"when": "ko", "do": "revive", "position": "def"}, {"when": "turn_end", "do": "call", "position": "def", "max_auth": 4}],
+	[{"when": "ko", "do": "damage", "amount": 400, "to": "self", "luck": "coin"}, {"when": "deploy", "do": "damage", "amount": 200, "to": "self"}],
 	# Set stats: ATK / DEF become a number (this turn, or for good)
 	[{"when": "deploy", "do": "set_stats", "target": "enemy", "atk": 100, "def": 100, "until": "turn"}],
 	[{"when": "defend", "do": "set_stats", "target": "attacker", "atk": 100, "until": "forever"}],

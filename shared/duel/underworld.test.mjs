@@ -212,4 +212,32 @@ st.sides.player.gutter.push(unit(st, 'Wight', 1200, 900));
 st._doFx('player', -1, src, { do: 'revive' });
 assert.equal(st.sides.player.field.find(c => c && c.name === 'Wight')?.position, 'atk', 'ATK unless it says DEF');
 
+// SILENCE stops a card's effects, except its own PROMOTE: a silenced Striver still levels up
+st = duel();
+const rouke = st.makeCard(CARD_CATALOG.card_nebu_015);   // Rouke LV1: promotes when you deploy another NEBULA character
+st.sides.player.field[0] = rouke;
+st.sides.player.hideout.push(st.makeCard(CARD_CATALOG.card_nebu_016));
+rouke.silence_until = 99;
+const pal = st.makeCard({ id: 'test_pal', name: 'Pal', cardType: 'gang_member', clanTag: 'nebula', attack: 500, defense: 500, authority: 1 });
+st.sides.player.hand.push(pal);
+st.sides.player.authority = 5;
+st.sides.player.authority_max = 5;
+assert.ok(st.doAction('player', { kind: 'summon', uid: pal.uid, slot: 1, position: 'atk' }));
+while (st._asks.length || st.pending.key) { if (st.pending.key) st.doAction(st.pending.side, { kind: 'choose', option: st.pending.options[0].id }); else answer(st); }
+assert.equal(st.sides.player.field[0]?.id, 'card_nebu_016', 'silenced, it still promotes to LV2');
+const lv2 = st.sides.player.field[0];
+lv2.silence_until = 99;
+assert.deepEqual(st._fx(lv2, 'ally_deployed'), [], 'its other effects stay off (LV2: +ATK when you deploy)');
+assert.equal(st._fx(lv2, 'attack').length, 1, 'but its PROMOTE (after attacking twice) still counts');
+
+// Morale damage to yourself (to: self): the card's own player loses it, past a BARRICADE
+st = duel();
+st.sides.player.morale = 5000;
+st.sides.opponent.morale = 5000;
+st.sides.player.barricade = 1000;
+st._doFx('player', -1, src, { do: 'damage', amount: 500, to: 'self' });
+assert.deepEqual([st.sides.player.morale, st.sides.opponent.morale], [4500, 5000], 'you lose it, not your opponent');
+st._doFx('player', -1, src, { do: 'damage', amount: 300 });
+assert.equal(st.sides.opponent.morale, 4700);
+
 console.log('underworld: ok');

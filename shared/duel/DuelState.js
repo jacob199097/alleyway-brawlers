@@ -1836,12 +1836,14 @@ export class DuelState {
 
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
-        if (toInt(c.silence_until ?? 0) >= this.turn) return [];   // SILENCED: its effects don't work
+        // SILENCED: its effects don't work, except its own PROMOTE (a Striver still levels up)
+        const silenced = toInt(c.silence_until ?? 0) >= this.turn;
         // A Downed character's effects don't work, except as it goes Down or is KO'd, and the ones
         // that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
         const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
         // "*": all of them (Hustles, Ambushes)
         return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
+            && !(silenced && String(e.do ?? '') !== 'promote')
             && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
     }
 
@@ -2552,6 +2554,11 @@ export class DuelState {
                 }, `${c.name} CHARMS %s`);
                 break;
             case 'damage':
+                if (e.to === 'self') {   // the card's own player loses it (a risk or a price; a BARRICADE doesn't stop it)
+                    this._effect(side, c, `${c.name}: you lose ${n} Morale`, slot);
+                    this._damage(side, n, true);
+                    break;
+                }
                 this._withFoe(side, c, vs, () => true, (foe) => {
                     this._effect(side, c, `${c.name}: ${n} Morale damage`, slot);
                     this._damage(foe, n);
