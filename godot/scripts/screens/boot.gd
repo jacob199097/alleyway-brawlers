@@ -3,6 +3,7 @@ extends Screen
 ## (scripts/content_sync.gd), then resumes a saved session or goes to login.
 
 const ContentSync := preload("res://scripts/content_sync.gd")
+const STALL_MS := 60000   # a patch download that gets nothing for this long gives up
 ## Shown on the download panel while new cards or an update come down, a new one every few seconds.
 const TIPS := [
 	["DOWNED", "A Downed character is knocked into DEF and its effects stop. It stands back up after a full round, unless it's attacked again first: then it's KO'd."],
@@ -139,19 +140,27 @@ func _apply_patch(p: Dictionary) -> bool:
 	_status.visible = false
 	_build_panel("UPDATING TO v%s" % version, "Downloading a small update. The game restarts when it's done.", "0%")
 	var http := HTTPRequest.new()
-	http.timeout = 120.0
+	http.timeout = 0.0   # (a patch can take minutes on a slow line: it only gives up when it stalls, below)
 	add_child(http)
 	var err := http.request(Api.base_url() + str(p.path))
 	var result: Array = []
 	http.request_completed.connect(func(r, code, _h, body): result.assign([r, code, body]))
+	var last_got := -1
+	var moved_at := Time.get_ticks_msec()
 	while err == OK and result.is_empty():
 		var got := http.get_downloaded_bytes()
+		if got != last_got:
+			last_got = got
+			moved_at = Time.get_ticks_msec()
+		elif Time.get_ticks_msec() - moved_at > STALL_MS:   # nothing arrived for a minute: give up
+			http.cancel_request()
+			break
 		var total := maxi(1, size if size > 0 else http.get_body_size())
 		_bar_fill.size.x = 520.0 * clampf(float(got) / total, 0.0, 1.0)
 		_bar_label.text = "%d%%  ·  %.1f / %.1f MB" % [int(100.0 * got / total), got / 1048576.0, total / 1048576.0]
 		await get_tree().process_frame
 	http.queue_free()
-	var ok: bool = err == OK and result[0] == HTTPRequest.RESULT_SUCCESS and result[1] == 200
+	var ok: bool = err == OK and not result.is_empty() and result[0] == HTTPRequest.RESULT_SUCCESS and result[1] == 200
 	if ok:
 		var bytes: PackedByteArray = result[2]
 		var hash := HashingContext.new()

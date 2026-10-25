@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.74",
+        "notes": [
+            "A fresh full download of the game, so updates are small again. In-game updates no longer give up on a slow connection: they keep going as long as the download is moving."
+        ]
+    },
+    {
         "version": "0.9.73",
         "notes": [
             "New card effects: \"for each\" counts can count one kind of card, such as each character in your Gutter (not Hustles or Ambushes)."
