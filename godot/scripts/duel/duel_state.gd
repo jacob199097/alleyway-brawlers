@@ -3454,6 +3454,11 @@ func _begin_turn() -> void:
 		sides[k].promoted = {}
 	s.mentor_used = false
 	s.turns = int(s.get("turns", 0)) + 1
+	# Every character of yours is ready to attack on your turn, including one that arrived on the
+	# opponent's (promoted, revived or Awakened then: it was marked as having attacked)
+	for c in s.field:
+		if c != null:
+			c.has_attacked = false
 	if int(s.get("barricade", 0)) > 0:   # (it lasts until your next turn)
 		s.barricade = 0
 		_emit("barricade", {"side": active, "amount": 0})
