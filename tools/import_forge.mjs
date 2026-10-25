@@ -23,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const skipAt = args.indexOf('--skip-clan');
 const SKIP = new Set(skipAt >= 0 ? String(args[skipAt + 1] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
-const src = args.find((a, i) => !a.startsWith('--') && i !== skipAt + 1);
+const src = args.find((a, i) => !a.startsWith('--') && (skipAt < 0 || i !== skipAt + 1));
 if (!src || !existsSync(src) || (skipAt >= 0 && !SKIP.size)) {
     console.error('usage: node tools/import_forge.mjs <alleyway-cards.zip | folder> [--skip-clan <clan>[,<clan>...]]');
     process.exit(2);

@@ -89,12 +89,32 @@ const CURATED = {
             ['card_wild_031', 3], ['card_wild_032', 3],
         ],
     },
+    // 30 characters, 10 Hustles/Ambushes: a fast Gutter and UNDEAD, with a few Skeleton makers. Null, Mortivar,
+    // Last Rites and Haunting are left for packs. Even-ish with the other starters (node tools/balance.mjs
+    // --vs underworld,<clan> --starters: 44-56%); more token makers (Rattle, a third Bone Harvest) made it much weaker.
+    underworld: {
+        blurb: 'Rise in numbers: flood the board with Skeleton tokens, fill your Gutter, and make your characters UNDEAD so they rise again.',
+        leader: 'card_unde_001',   // Veyr - the Hollow King
+        deck: [
+            // Strivers Dredge, Vespera, Malachar, Bonesy, Wick; Knell, Ferrik, Gravekeeper Mott, Sable, Doctor Morbus,
+            // Noctra, Lenore, Grimhound, Ossian, Hollow Wraith; Heavy Omen; Grasping Hands, Raise the Dead, Soul Toll,
+            // Bone Harvest, Danse Macabre, Open Grave, Chains of the Damned
+            ['card_unde_003', 2], ['card_unde_017', 2], ['card_unde_014', 2], ['card_unde_037', 2], ['card_unde_040', 2],
+            ['card_unde_007', 2], ['card_unde_008', 2], ['card_unde_035', 2], ['card_unde_006', 2], ['card_unde_031', 2],
+            ['card_unde_013', 2], ['card_unde_036', 2], ['card_unde_010', 2], ['card_unde_032', 1], ['card_unde_033', 1],
+            ['card_unde_009', 1], ['card_unde_024', 3], ['card_unde_021', 2], ['card_unde_023', 1], ['card_unde_022', 2],
+            ['card_unde_027', 1], ['card_unde_029', 1], ['card_unde_030', 1],
+        ],
+        hideout: [
+            ['card_unde_004', 3], ['card_unde_005', 3], ['card_unde_019', 3], ['card_unde_020', 3],
+            ['card_unde_015', 3], ['card_unde_016', 3], ['card_unde_038', 3], ['card_unde_039', 3],
+            ['card_unde_041', 3], ['card_unde_042', 3],
+        ],
+    },
 };
 
 // How a clan without a starter yet plays (shown when it can be chosen)
-const BLURBS = {
-    underworld: 'Rise in numbers: flood the board with Skeleton tokens, make your characters UNDEAD so they rise again, and spend the dead for power.',
-};
+const BLURBS = {};
 
 const level = (c) => Math.trunc(Number(c.level) || 1);
 const isCollectable = (c) => c.cardType !== 'leader' && !c.token;   // (tokens are made only by effects)

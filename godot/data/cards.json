@@ -163,7 +163,7 @@
   "art_url": "card_nebu_009",
   "code": "NEBU-009",
   "flavourText": "Strike me, and time itself will answer.",
-  "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When your Authority reaches 8, this leader may take the field.",
+  "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When your Authority reaches 8, this leader may take the field.\nWhen this leader Awakens: Swap the ATK and DEF of all enemy characters until the end of your opponent's next turn.",
   "effects": [
    {
     "when": "dormant_hit",
@@ -175,6 +175,12 @@
     "when": "dormant_turn_start",
     "do": "force_def",
     "target": "enemy"
+   },
+   {
+    "when": "awaken",
+    "do": "swap",
+    "target": "enemies",
+    "until": "next_turn"
    }
   ],
   "clanName": "Nebula",
@@ -356,7 +362,7 @@
   "name": "Megan",
   "clan": "nebula",
   "cardType": "gang_member",
-  "authority": 1,
+  "authority": 2,
   "tributeCost": 0,
   "rarity": 2,
   "clanTag": "nebula",
@@ -484,7 +490,7 @@
   "art_url": "card_nebu_025",
   "code": "NEBU-025",
   "flavourText": "What's the password?",
-  "effectText": "Once per turn, when this card is attacked: Put the attacker in STASIS.\nThis card is immune to SHOCK, FREEZE and STUN.\nThis card can't be Downed as long as you control another character.",
+  "effectText": "Once per turn, when this card is attacked: Put the attacker in STASIS.\nThis card is immune to SHOCK, FREEZE, STUN, SUPPRESS, SILENCE and CHARM.\nThis card can't be Downed as long as you control another character.",
   "effects": [
    {
     "when": "defend",
@@ -498,7 +504,10 @@
     "statuses": [
      "shock",
      "freeze",
-     "stun"
+     "stun",
+     "suppress",
+     "silence",
+     "charm"
     ]
    },
    {
@@ -610,13 +619,14 @@
   "art_url": "card_nebu_029",
   "code": "NEBU-029",
   "flavourText": "Probably Shouldn't have hammered there",
-  "effectText": "When an enemy attacks one of your NEBULA characters: If your opponent controls 3 or more characters, put all enemy characters in STASIS and negate the attack.",
+  "effectText": "When an enemy attacks one of your NEBULA characters: If your opponent controls 3 or more characters, put all enemy characters in ATK position in STASIS and negate the attack.",
   "effects": [
    {
     "when": "defend",
     "do": "stasis",
     "target": "enemies",
     "if": "enemies_ge",
+    "only": "atk",
     "n": 3,
     "negate": true
    }
@@ -808,12 +818,11 @@
   "art_url": "card_nebu_032",
   "code": "NEBU-032",
   "flavourText": "The stars don’t make legends. The fight does.",
-  "effectText": "Once per turn, when this card Downs a character: Switch one enemy character to ATK position.\nWhen this card attacks: It gains +700 ATK for this Brawl.\nThis card has PIERCE.",
+  "effectText": "Once per turn, when this card KOs a character: This card may attack again this turn.\nWhen this card attacks: It gains +700 ATK for this Brawl.\nThis card has PIERCE.",
   "effects": [
    {
-    "when": "down",
-    "do": "force_atk",
-    "target": "enemy",
+    "when": "ko",
+    "do": "attack_again",
     "once": true
    },
    {
@@ -914,20 +923,24 @@
   "art_url": "card_nebu_035",
   "code": "NEBU-035",
   "flavourText": "DS? Yeah.. It stands for Destroyer Services as you're about to find out.",
-  "effectText": "This card is immune to BLEED.\nAt the start of your turn: SHOCK one enemy character for 500.",
+  "effectText": "This card is immune to POISON, BURN, BLEED, SUPPRESS and CHARM.\nAt the end of your turn: SHOCK one enemy character for 800.",
   "effects": [
    {
     "when": "passive",
     "do": "immune",
     "statuses": [
-     "bleed"
+     "poison",
+     "burn",
+     "bleed",
+     "suppress",
+     "charm"
     ]
    },
    {
-    "when": "turn_start",
+    "when": "turn_end",
     "do": "shock",
     "target": "enemy",
-    "amount": 500
+    "amount": 800
    }
   ],
   "clanName": "Nebula",
@@ -1042,7 +1055,7 @@
   "art_url": "card_mili_001",
   "code": "MILI-001",
   "flavourText": "Fall in line, or I'll put you in one.",
-  "effectText": "When this card KOs a character: One of your other MILITIA characters gains +500 ATK permanently.\nWhen you deploy another MILITIA character: Gain 2 Authority this turn.",
+  "effectText": "When this card KOs a character: One of your other MILITIA characters gains +500 ATK permanently.\nOnce per turn, when you deploy another MILITIA character: Gain 3 Authority this turn.",
   "effects": [
    {
     "when": "ko",
@@ -1055,7 +1068,8 @@
    {
     "when": "ally_deployed",
     "do": "authority",
-    "amount": 2,
+    "amount": 3,
+    "once": true,
     "when_clan": "militia"
    }
   ],
@@ -1113,14 +1127,14 @@
   "art_url": "card_mili_003",
   "code": "MILI-003",
   "flavourText": "You won't hear the shot. You won't see the flash. You'll just stop breathing.",
-  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SUPPRESS one enemy character for 300.",
+  "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SUPPRESS one enemy character for 200.",
   "effects": [
    {
     "when": "activate",
     "do": "suppress",
     "target": "enemy",
     "cost": "exhaust",
-    "amount": 300
+    "amount": 200
    }
   ],
   "clanName": "Militia",
@@ -1252,7 +1266,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 1700,
+  "attack": 1800,
   "defense": 1100,
   "level": 2,
   "subtype": "striver",
@@ -1291,7 +1305,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 2800,
+  "attack": 2900,
   "defense": 2000,
   "level": 3,
   "subtype": "striver",
@@ -1368,7 +1382,7 @@
   "art_url": "card_mili_011",
   "code": "MILI-011",
   "flavourText": "This city has chewed up better men than you. But while my flag still flies, this ground belongs to the Militia.",
-  "effectText": "While this leader is Dormant and you control 2 or more MILITIA characters: Your MILITIA characters gain +200 ATK.\nAWAKEN: When your Morale is 2000 or less, this leader may take the field.",
+  "effectText": "While this leader is Dormant and you control 2 or more MILITIA characters: Your MILITIA characters gain +200 ATK.\nAWAKEN: When your Morale is 2000 or less, this leader may take the field.\nWhen this leader Awakens: SUPPRESS all enemy characters in ATK position for 400.",
   "effects": [
    {
     "when": "dormant",
@@ -1379,6 +1393,13 @@
     "atk": 200,
     "n": 2,
     "if_clan": "militia"
+   },
+   {
+    "when": "awaken",
+    "do": "suppress",
+    "target": "enemies",
+    "only": "atk",
+    "amount": 400
    }
   ],
   "clanName": "Militia",
@@ -1447,7 +1468,7 @@
   "art_url": "card_mili_013",
   "code": "MILI-013",
   "flavourText": "This'll do for now",
-  "effectText": "When played: The equipped character gains +700 DEF permanently.",
+  "effectText": "When played: The equipped character gains +700 DEF for as long as this is equipped.",
   "effects": [
    {
     "when": "deploy",
@@ -2197,14 +2218,15 @@
   "art_url": "card_nebu_016",
   "code": "NEBU-016",
   "flavourText": "Built for speed. Wired for chaos.",
-  "effectText": "When you deploy another NEBULA character: This card gains +500 ATK until the end of your turn.\nAfter this card attacks 2 times: PROMOTE this card.",
+  "effectText": "Once per turn, when you deploy another NEBULA character: This card gains +600 ATK until the end of your turn.\nAfter this card attacks 2 times: PROMOTE this card.",
   "effects": [
    {
     "when": "ally_deployed",
     "do": "buff",
     "target": "self",
     "until": "turn",
-    "atk": 500,
+    "atk": 600,
+    "once": true,
     "when_clan": "nebula"
    },
    {
@@ -2711,14 +2733,14 @@
   "art_url": "card_nebu_043",
   "code": "NEBU-043",
   "flavourText": "Everything. Everywhere. All at once. Then, nothing.",
-  "effectText": "At the end of your turn: If your opponent controls 3 or more characters, return one enemy character to its owner's hand.",
+  "effectText": "At the end of your turn: If your opponent controls 4 or more characters, return one enemy character to its owner's hand.",
   "effects": [
    {
     "when": "turn_end",
     "do": "bounce",
     "target": "enemy",
     "if": "enemies_ge",
-    "n": 3
+    "n": 4
    }
   ],
   "clanName": "Nebula",
@@ -3698,13 +3720,13 @@
   "art_url": "card_wild_030",
   "code": "WILD-030",
   "flavourText": "Red or black, darling. I own both.",
-  "effectText": "When you play a Hustle: Roll a die. On a 4 or more, PROMOTE this card.",
+  "effectText": "When you play a Hustle: Roll a die. On a 2 or more, PROMOTE this card.",
   "effects": [
    {
     "when": "hustle_played",
     "do": "promote",
     "luck": "die",
-    "luck_on": 4
+    "luck_on": 2
    }
   ],
   "clanName": "Wildcard",
@@ -3728,7 +3750,7 @@
   "art_url": "card_wild_031",
   "code": "WILD-031",
   "flavourText": "Red or black, darling. I own both.",
-  "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, draw 1 card.\nWhen you play a Hustle: If you have 4 or more cards in hand, PROMOTE this card.",
+  "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, draw 1 card.\nWhen you play a Hustle: If you have 3 or more cards in hand, PROMOTE this card.",
   "effects": [
    {
     "when": "activate",
@@ -3740,7 +3762,7 @@
     "when": "hustle_played",
     "do": "promote",
     "if": "hand_ge",
-    "n": 4
+    "n": 3
    }
   ],
   "clanName": "Wildcard",
@@ -3764,14 +3786,15 @@
   "art_url": "card_wild_032",
   "code": "WILD-032",
   "flavourText": "Red or black, darling. I own both.",
-  "effectText": "This card gains +100 ATK for each card in your hand.\nACTIVATE (once per turn): Roll a die. On a 3 or more, search your deck for a WILDCARD Hustle and add it to your hand.",
+  "effectText": "This card gains +150 ATK and +150 DEF for each card in your hand.\nACTIVATE (once per turn): Roll a die. On a 3 or more, search your deck for a WILDCARD Hustle and add it to your hand.",
   "effects": [
    {
     "when": "passive",
     "do": "buff",
     "target": "self",
     "per": "hand",
-    "atk": 100
+    "atk": 150,
+    "def": 150
    },
    {
     "when": "activate",
@@ -4116,13 +4139,19 @@
   "art_url": "card_wild_042",
   "code": "WILD-042",
   "flavourText": "Finders keepers!",
-  "effectText": "When this card is KO'd: Flip a coin. If heads, draw 2 cards.",
+  "effectText": "When this card is Downed: Flip a coin. If heads, draw 2 cards. If tails, your opponent loses 1 Morale.",
   "effects": [
    {
-    "when": "self_ko",
+    "when": "self_downed",
     "do": "draw",
     "luck": "coin",
     "amount": 2
+   },
+   {
+    "when": "self_downed",
+    "do": "damage",
+    "if_luck": "lost",
+    "amount": 1
    }
   ],
   "clanName": "Wildcard",
@@ -4391,14 +4420,19 @@
   "art_url": "card_nebu_047",
   "code": "NEBU-047",
   "flavourText": "The void is just a highway.",
-  "effectText": "This card is immune to POISON and BLEED.\nAt the end of your turn: Search your deck for a NEBULA Brawler with 6 or less Authority and add it to your hand.",
+  "effectText": "This card is immune to POISON, BURN, BLEED, STUN, STASIS, SUPPRESS and CHARM.\nAt the end of your turn: Search your deck for a NEBULA Brawler with 6 or less Authority and add it to your hand.",
   "effects": [
    {
     "when": "passive",
     "do": "immune",
     "statuses": [
      "poison",
-     "bleed"
+     "burn",
+     "bleed",
+     "stun",
+     "stasis",
+     "suppress",
+     "charm"
     ]
    },
    {
@@ -4426,14 +4460,14 @@
   "clan": "nebula",
   "cardType": "gang_member",
   "authority": 10,
-  "tributeCost": 2,
+  "tributeCost": 3,
   "rarity": 5,
   "clanTag": "nebula",
   "effectKey": "",
   "art_url": "card_nebu_048",
   "code": "NEBU-048",
   "flavourText": "The vanguard of the armada.",
-  "effectText": "When deployed: JAM your opponent.\nThis card is immune to POISON, BURN, BLEED, FREEZE, STUN and STASIS.\nYour NEBULA cards cost 1 less Authority.\nACTIVATE (once per turn, sacrifice another of your characters): Your opponent loses 2000 Morale.",
+  "effectText": "When deployed: JAM your opponent.\nThis card is immune to POISON, BURN, BLEED, STUN, STASIS, SUPPRESS and CHARM.\nYour NEBULA cards cost 1 less Authority.\nACTIVATE (once per turn, sacrifice another of your characters): Your opponent loses 2000 Morale.",
   "effects": [
    {
     "when": "deploy",
@@ -4446,9 +4480,10 @@
      "poison",
      "burn",
      "bleed",
-     "freeze",
      "stun",
-     "stasis"
+     "stasis",
+     "suppress",
+     "charm"
     ]
    },
    {
@@ -4578,13 +4613,13 @@
   "art_url": "card_nebu_052",
   "code": "NEBU-052",
   "flavourText": "Pain is just an unoptimized data packet. I deleted it long ago.",
-  "effectText": "When this card attacks: SHOCK one enemy character for 900.\nThis card can't be targeted by your opponent's effects.\nOnce per turn, when your opponent deploys a character: Swap the ATK and DEF of that character until the end of your next turn.",
+  "effectText": "When this card attacks: SHOCK one enemy character for 1000.\nThis card can't be targeted by your opponent's effects.\nOnce per turn, when your opponent deploys a character: Swap the ATK and DEF of that character until the end of your next turn.",
   "effects": [
    {
     "when": "attack",
     "do": "shock",
     "target": "enemy",
-    "amount": 900
+    "amount": 1000
    },
    {
     "when": "passive",
@@ -4604,6 +4639,1371 @@
   "defense": 2500,
   "level": 3,
   "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_001": {
+  "id": "card_unde_001",
+  "name": "Veyr - the Hollow King",
+  "clan": "underworld",
+  "cardType": "leader",
+  "authority": 10,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_001",
+  "code": "UNDE-001",
+  "flavourText": "Kings rule over the living. Gods rule over the heavens. But all souls, even those of kings and gods, eventually kneel before me.",
+  "effectText": "While this leader is Dormant, at the start of your turn: Deploy a Skeleton token in ATK position.\nAWAKEN: When your Gutter has 10 or more cards, this leader may take the field.\nWhen this leader Awakens: Give your other UNDERWORLD characters UNDEAD.",
+  "effects": [
+   {
+    "when": "dormant_turn_start",
+    "do": "token",
+    "token": "card_unde_002",
+    "amount": 1
+   },
+   {
+    "when": "awaken",
+    "do": "give_undead",
+    "target": "allies",
+    "clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 3200,
+  "defense": 2400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "awakenCondition": {
+   "gutter": 10
+  },
+  "influence": 4500
+ },
+ "card_unde_002": {
+  "id": "card_unde_002",
+  "name": "Skeleton",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_002",
+  "code": "UNDE-002",
+  "flavourText": "I’ve got a bone to pick with the living.",
+  "effectText": "You take no battle damage from brawls involving this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "no_battle_damage"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 500,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "token": true,
+  "artVariants": 3
+ },
+ "card_unde_003": {
+  "id": "card_unde_003",
+  "name": "Dredge",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_003",
+  "code": "UNDE-003",
+  "flavourText": "Some dig graves to bury the dead. I dig them to see who's ready to come back.",
+  "effectText": "When another of your characters is attacked: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_attacked",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 700,
+  "defense": 0,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_004"
+ },
+ "card_unde_004": {
+  "id": "card_unde_004",
+  "name": "Dredge",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_004",
+  "code": "UNDE-004",
+  "flavourText": "Some dig graves to bury the dead. I dig them to see who's ready to come back.",
+  "effectText": "After this card attacks 2 times: PROMOTE this card.\nThis card is UNDEAD.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "promote",
+    "times": 2
+   },
+   {
+    "when": "passive",
+    "do": "undead"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1700,
+  "defense": 0,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_005"
+ },
+ "card_unde_005": {
+  "id": "card_unde_005",
+  "name": "Dredge",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_005",
+  "code": "UNDE-005",
+  "flavourText": "Some dig graves to bury the dead. I dig them to see who's ready to come back.",
+  "effectText": "This card is UNDEAD.\nOnce per turn, when you deploy another UNDERWORLD character: You may tribute that character, and this card gains its ATK and DEF.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "ally_deployed",
+    "do": "absorb",
+    "target": "deployed",
+    "once": true,
+    "when_clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2400,
+  "defense": 0,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_006": {
+  "id": "card_unde_006",
+  "name": "Sable",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_006",
+  "code": "UNDE-006",
+  "flavourText": "You should fear the dark. It's the only place you'll ever see me coming.",
+  "effectText": "This card can't be targeted by your opponent's effects.\nWhen this card KOs a character: Give one enemy character BLEED 300.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "untargetable"
+   },
+   {
+    "when": "ko",
+    "do": "bleed",
+    "target": "enemy",
+    "amount": 300
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1500,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_007": {
+  "id": "card_unde_007",
+  "name": "Knell",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_007",
+  "code": "UNDE-007",
+  "flavourText": "Hear that bell? That's the sound of your time running out.",
+  "effectText": "When deployed: Put the first UNDERWORLD Brawler from your deck onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "call",
+    "clan": "underworld",
+    "role": "brawler",
+    "amount": 1
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 300,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_008": {
+  "id": "card_unde_008",
+  "name": "Ferrik",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_008",
+  "code": "UNDE-008",
+  "flavourText": "Climb aboard, lost soul. The crossing is free... but the return trip will cost you everything.",
+  "effectText": "At the end of your turn: Search your deck for an UNDERWORLD character and add it to your hand, and reveal it.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "search",
+    "clan": "underworld",
+    "kind": "gang_member",
+    "amount": 1,
+    "choose": true,
+    "reveal": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 800,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_009": {
+  "id": "card_unde_009",
+  "name": "Omen",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 1,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_009",
+  "code": "UNDE-009",
+  "flavourText": "I have seen your final hour. Struggle all you like, little mortal. Fate does not make mistakes.",
+  "effectText": "When deployed: SILENCE one enemy character for as long as it stays on the field.\nOnce per turn, when your opponent deploys a character: Give one of your other UNDERWORLD characters UNDEAD.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "silence",
+    "target": "enemy",
+    "until": "forever"
+   },
+   {
+    "when": "foe_deployed",
+    "do": "give_undead",
+    "target": "ally",
+    "clan": "underworld",
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2700,
+  "defense": 2500,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_unde_010": {
+  "id": "card_unde_010",
+  "name": "Grimhound",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_010",
+  "code": "UNDE-010",
+  "flavourText": "GRRRRAAAHHH! ...No soul escapes my jaws!",
+  "effectText": "This card is UNDEAD.\nWhen this card KOs a character: Switch one enemy character to ATK position.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "ko",
+    "do": "force_atk",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2300,
+  "defense": 500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_011": {
+  "id": "card_unde_011",
+  "name": "Null — The Void Devourer",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 2,
+  "rarity": 4,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_011",
+  "code": "UNDE-011",
+  "flavourText": "I hunger... for your flesh, your soul, your very existence. And when nothing remains, I shall devour the stars.",
+  "effectText": "ACTIVATE (once per turn): If your opponent controls 3 or more characters, EXILE one enemy character.\nOnce per turn, when this card attacks: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "exile",
+    "target": "enemy",
+    "if": "enemies_ge",
+    "n": 3
+   },
+   {
+    "when": "attack",
+    "do": "wreck",
+    "amount": 1,
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 3300,
+  "defense": 2700,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_unde_012": {
+  "id": "card_unde_012",
+  "name": "Rattle",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_012",
+  "code": "UNDE-012",
+  "flavourText": "Finders keepers! And if yer still using it, well... you should've held on tighter! Hehehe!",
+  "effectText": "Once per turn, when you deploy another UNDERWORLD character: Draw 2 cards.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "draw",
+    "amount": 2,
+    "once": true,
+    "when_clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 100,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_013": {
+  "id": "card_unde_013",
+  "name": "Noctra — The Banshee",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_013",
+  "code": "UNDE-013",
+  "flavourText": "They silenced me in life... NOW THE WHOLE UNDERWORLD WILL HEAR MY SCREAMS!",
+  "effectText": "ACTIVATE (once per turn): SILENCE one enemy character until the end of your opponent's next turn.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "silence",
+    "target": "enemy",
+    "until": "next_turn"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1700,
+  "defense": 500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_014": {
+  "id": "card_unde_014",
+  "name": "Malachar — The Hellbound",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_014",
+  "code": "UNDE-014",
+  "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
+  "effectText": "When this card attacks a leader: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack_leader",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1100,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_015"
+ },
+ "card_unde_015": {
+  "id": "card_unde_015",
+  "name": "Malachar — The Hellbound",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_015",
+  "code": "UNDE-015",
+  "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
+  "effectText": "This card gains +400 ATK and +250 DEF for each UNDERWORLD character in your Gutter.\nAfter this card attacks 3 times: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "gutter",
+    "per_clan": "underworld",
+    "per_kind": "gang_member",
+    "atk": 400,
+    "def": 250
+   },
+   {
+    "when": "attack",
+    "do": "promote",
+    "times": 3
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 0,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_016",
+  "varStats": true
+ },
+ "card_unde_016": {
+  "id": "card_unde_016",
+  "name": "Malachar — The Hellbound",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_016",
+  "code": "UNDE-016",
+  "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
+  "effectText": "This card gains +500 ATK and +400 DEF for each UNDERWORLD card in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "gutter",
+    "per_clan": "underworld",
+    "atk": 500,
+    "def": 400
+   },
+   {
+    "when": "down",
+    "do": "stun",
+    "target": "enemy",
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 0,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null,
+  "varStats": true
+ },
+ "card_unde_017": {
+  "id": "card_unde_017",
+  "name": "Vespera — The Soul Weaver",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_017",
+  "code": "UNDE-017",
+  "flavourText": "Hush now, little soul. Struggling only tangles the thread... and I do so hate having to start over.",
+  "effectText": "At the end of your turn: If your Gutter has 2 or more UNDERWORLD cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "gutter_ge",
+    "n": 2,
+    "if_clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 400,
+  "defense": 200,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_019"
+ },
+ "card_unde_019": {
+  "id": "card_unde_019",
+  "name": "Vespera — The Soul Weaver",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_019",
+  "code": "UNDE-019",
+  "flavourText": "Hush now, little soul. Struggling only tangles the thread... and I do so hate having to start over.",
+  "effectText": "At the end of your turn: Give one of your other UNDERWORLD characters UNDEAD.\nWhen another of your characters is KO'd: If your Gutter has 5 or more UNDERWORLD cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "give_undead",
+    "target": "ally",
+    "clan": "underworld"
+   },
+   {
+    "when": "ally_ko",
+    "do": "promote",
+    "if": "gutter_ge",
+    "n": 5,
+    "if_clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1000,
+  "defense": 2100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_020"
+ },
+ "card_unde_020": {
+  "id": "card_unde_020",
+  "name": "Vespera — The Soul Weaver",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_020",
+  "code": "UNDE-020",
+  "flavourText": "Hush now, little soul. Struggling only tangles the thread... and I do so hate having to start over.",
+  "effectText": "At the end of your turn: Give one of your other UNDERWORLD characters UNDEAD.\nACTIVATE (once per turn, discard 1 card): Return an UNDERWORLD character of your choice from your Gutter to your hand.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "give_undead",
+    "target": "ally",
+    "clan": "underworld"
+   },
+   {
+    "when": "activate",
+    "do": "recover",
+    "clan": "underworld",
+    "kind": "gang_member",
+    "cost": "discard",
+    "amount": 1,
+    "cost_n": 1,
+    "choose": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1600,
+  "defense": 3300,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_021": {
+  "id": "card_unde_021",
+  "name": "Raise the Dead",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_021",
+  "code": "UNDE-021",
+  "flavourText": "Nobody stays buried on my streets.",
+  "effectText": "Put an UNDERWORLD character with 5 or less Authority of your choice from your Gutter onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "revive",
+    "clan": "underworld",
+    "amount": 1,
+    "max_auth": 5,
+    "choose": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_022": {
+  "id": "card_unde_022",
+  "name": "Bone Harvest",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_022",
+  "code": "UNDE-022",
+  "flavourText": "Plant 'em deep. They always come back up.",
+  "effectText": "Deploy 2 Skeleton tokens in ATK position.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "token",
+    "token": "card_unde_002",
+    "amount": 2
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_023": {
+  "id": "card_unde_023",
+  "name": "Soul Toll",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_023",
+  "code": "UNDE-023",
+  "flavourText": "Everyone pays the ferryman. Everyone.",
+  "effectText": "DRAIN 250 for each card in your Gutter (up to 8).",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "drain",
+    "per": "gutter",
+    "amount": 250,
+    "per_max": 8
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_024": {
+  "id": "card_unde_024",
+  "name": "Grasping Hands",
+  "clan": "underworld",
+  "cardType": "ambush",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_024",
+  "code": "UNDE-024",
+  "flavourText": "The dead want you down here with them.",
+  "effectText": "When an enemy attacks one of your characters: DOWN the attacker.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "down",
+    "target": "attacker"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_025": {
+  "id": "card_unde_025",
+  "name": "Haunting",
+  "clan": "underworld",
+  "cardType": "ambush",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_025",
+  "code": "UNDE-025",
+  "flavourText": "Scream all you like. I'll scream louder.",
+  "effectText": "Once per turn, when your opponent deploys a character: SILENCE that character until the end of your next turn.",
+  "effects": [
+   {
+    "when": "foe_deployed",
+    "do": "silence",
+    "target": "deployed",
+    "until": "next_turn",
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "subtype": "continuous"
+ },
+ "card_unde_026": {
+  "id": "card_unde_026",
+  "name": "Last Rites",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_026",
+  "code": "UNDE-026",
+  "flavourText": "Ring the bell. Somebody's time is up.",
+  "effectText": "If your Gutter has 8 or more cards, EXILE one enemy character.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "exile",
+    "target": "enemy",
+    "if": "gutter_ge",
+    "n": 8
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_027": {
+  "id": "card_unde_027",
+  "name": "Danse Macabre",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_027",
+  "code": "UNDE-027",
+  "flavourText": "Everybody dances when the dead are playing.",
+  "effectText": "Your UNDERWORLD characters gain +300 ATK.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "allies",
+    "clan": "underworld",
+    "atk": 300
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "subtype": "continuous"
+ },
+ "card_unde_028": {
+  "id": "card_unde_028",
+  "name": "Death's Embrace",
+  "clan": "underworld",
+  "cardType": "ambush",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_028",
+  "code": "UNDE-028",
+  "flavourText": "Hold them close. Death never lets go.",
+  "effectText": "When an enemy attacks one of your characters: Give your UNDERWORLD characters UNDEAD.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "give_undead",
+    "target": "allies",
+    "clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_029": {
+  "id": "card_unde_029",
+  "name": "Open Grave",
+  "clan": "underworld",
+  "cardType": "ambush",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_029",
+  "code": "UNDE-029",
+  "flavourText": "Watch your step. This one was dug for you.",
+  "effectText": "When an enemy attacks one of your characters: Put the attacker on top of its owner's deck.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "topdeck",
+    "target": "attacker"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e"
+ },
+ "card_unde_030": {
+  "id": "card_unde_030",
+  "name": "Chains of the Damned",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_030",
+  "code": "UNDE-030",
+  "flavourText": "Every link is a soul that tried to run.",
+  "effectText": "The equipped character gains +500 ATK.\nThe equipped character has LIFESTEAL.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "atk": 500
+   },
+   {
+    "when": "passive",
+    "do": "lifesteal"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "subtype": "equip"
+ },
+ "card_unde_031": {
+  "id": "card_unde_031",
+  "name": "Doctor Morbus",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_031",
+  "code": "UNDE-031",
+  "flavourText": "Breathe deep. The cure is worse than the disease.",
+  "effectText": "When deployed: Give one enemy character POISON 250.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "poison",
+    "target": "enemy",
+    "amount": 250
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1100,
+  "defense": 600,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_032": {
+  "id": "card_unde_032",
+  "name": "Ossian, the Bone Thief",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_032",
+  "code": "UNDE-032",
+  "flavourText": "You weren't using him anyway.",
+  "effectText": "When deployed: Put a character with 4 or less Authority of your choice from your opponent's Gutter onto your side of the field in ATK position.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "revive",
+    "from": "foe",
+    "amount": 1,
+    "max_auth": 4,
+    "choose": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2100,
+  "defense": 500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_033": {
+  "id": "card_unde_033",
+  "name": "Hollow Wraith",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_033",
+  "code": "UNDE-033",
+  "flavourText": "It has no face. It only needs yours.",
+  "effectText": "This card is UNDEAD.\nThis card can't be attacked while you control another character that can be.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "passive",
+    "do": "elusive"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2700,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_034": {
+  "id": "card_unde_034",
+  "name": "Mortivar — The Bone Colossus",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 9,
+  "tributeCost": 2,
+  "rarity": 5,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_034",
+  "code": "UNDE-034",
+  "flavourText": "A thousand graves emptied to build me. A thousand more to come.",
+  "effectText": "When deployed: Give your other UNDERWORLD characters UNDEAD.\nThis card gains +200 ATK for each UNDERWORLD character in your Gutter (up to 10).",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "give_undead",
+    "target": "allies",
+    "clan": "underworld"
+   },
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "gutter",
+    "per_clan": "underworld",
+    "per_kind": "gang_member",
+    "atk": 200,
+    "per_max": 10
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 3000,
+  "defense": 2600,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_unde_035": {
+  "id": "card_unde_035",
+  "name": "Gravekeeper Mott",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_035",
+  "code": "UNDE-035",
+  "flavourText": "Forty years I've filled these graves. Lately they won't stay filled.",
+  "effectText": "When deployed: Deploy a Skeleton token in ATK position.\nAt the end of your turn: Send the top card of your deck to your Gutter.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "token",
+    "token": "card_unde_002",
+    "amount": 1
+   },
+   {
+    "when": "turn_end",
+    "do": "mill_self",
+    "amount": 1
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1200,
+  "defense": 600,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_036": {
+  "id": "card_unde_036",
+  "name": "Lenore, the Grave Bride",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_036",
+  "code": "UNDE-036",
+  "flavourText": "Till death do us part? Oh, darling. Death is where it starts.",
+  "effectText": "This card is UNDEAD.\nOnce per turn, when another of your characters is KO'd: Give one of your other UNDERWORLD characters UNDEAD.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "ally_ko",
+    "do": "give_undead",
+    "target": "ally",
+    "clan": "underworld",
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1600,
+  "defense": 400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_037": {
+  "id": "card_unde_037",
+  "name": "Bonesy",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_037",
+  "code": "UNDE-037",
+  "flavourText": "Used to break ankles on the court. Now I break bones on the battlefield. Guess some things never change.",
+  "effectText": "At the end of your turn: If you control 2 or more other characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "allies",
+    "n": 2,
+    "if_clan": ""
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 300,
+  "defense": 0,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_038"
+ },
+ "card_unde_038": {
+  "id": "card_unde_038",
+  "name": "Bonesy",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_038",
+  "code": "UNDE-038",
+  "flavourText": "Used to break ankles on the court. Now I break bones on the battlefield. Guess some things never change.",
+  "effectText": "This card is UNDEAD.\nAt the start of your turn: Deploy a Skeleton token in ATK position.\nAfter this card attacks 2 times: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "turn_start",
+    "do": "token",
+    "token": "card_unde_002",
+    "amount": 1
+   },
+   {
+    "when": "attack",
+    "do": "promote",
+    "times": 2
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1750,
+  "defense": 400,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_039"
+ },
+ "card_unde_039": {
+  "id": "card_unde_039",
+  "name": "Bonesy",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_039",
+  "code": "UNDE-039",
+  "flavourText": "Used to break ankles on the court. Now I break bones on the battlefield. Guess some things never change.",
+  "effectText": "This card is UNDEAD.\nThis card gains +300 ATK for each other character you control.\nAt the start of your turn: Deploy a Skeleton token in ATK position.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "undead"
+   },
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "allies",
+    "atk": 300
+   },
+   {
+    "when": "turn_start",
+    "do": "token",
+    "token": "card_unde_002",
+    "amount": 1
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2400,
+  "defense": 800,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_040": {
+  "id": "card_unde_040",
+  "name": "Wick",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_040",
+  "code": "UNDE-040",
+  "flavourText": "Every lost soul finds its way to my lantern.",
+  "effectText": "When this card is KO'd: Draw 1 card.\nWhen another of your characters is KO'd: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "self_ko",
+    "do": "draw",
+    "amount": 1
+   },
+   {
+    "when": "ally_ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 400,
+  "defense": 300,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_041"
+ },
+ "card_unde_041": {
+  "id": "card_unde_041",
+  "name": "Wick",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_041",
+  "code": "UNDE-041",
+  "flavourText": "Every lost soul finds its way to my lantern.",
+  "effectText": "When deployed: Return an UNDERWORLD character of your choice from your Gutter to your hand.\nAt the end of your turn: If your Gutter has 6 or more cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "recover",
+    "clan": "underworld",
+    "kind": "gang_member",
+    "amount": 1,
+    "choose": true
+   },
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "gutter_ge",
+    "n": 6
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1400,
+  "defense": 1600,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_042"
+ },
+ "card_unde_042": {
+  "id": "card_unde_042",
+  "name": "Wick",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_042",
+  "code": "UNDE-042",
+  "flavourText": "Every lost soul finds its way to my lantern.",
+  "effectText": "This card has LIFESTEAL.\nWhen an enemy character is KO'd: DRAIN 500.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "lifesteal"
+   },
+   {
+    "when": "foe_ko",
+    "do": "drain",
+    "amount": 500
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2800,
+  "defense": 2200,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_045": {
+  "id": "card_wild_045",
+  "name": "Viktor",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_045",
+  "code": "WILD-045",
+  "flavourText": "The house doesn't forgive debts. It buries them.",
+  "effectText": "When deployed: Flip a coin. If heads, SILENCE one enemy character for as long as it stays on the field. If tails, send the top card of your deck to your Gutter.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "silence",
+    "target": "enemy",
+    "until": "forever",
+    "luck": "coin"
+   },
+   {
+    "when": "deploy",
+    "do": "mill_self",
+    "if_luck": "lost",
+    "amount": 1
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1600,
+  "defense": 1400,
+  "level": 1,
+  "subtype": "brawler",
   "promotesTo": null
  }
 }
