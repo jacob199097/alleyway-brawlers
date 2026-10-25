@@ -173,6 +173,17 @@ const FX_SAMPLES := [
 	# Every character on the field, both sides (not this card)
 	[{"when": "deploy", "do": "down", "target": "all"}],
 	[{"when": "activate", "do": "down", "target": "all", "cost": "authority", "cost_n": 1}, {"when": "ko", "do": "buff", "target": "all", "atk": -200, "until": "next_turn"}],
+	# New triggers, targets, conditions, counts and actions: TAX, cost_up, reshuffle, neighbors / opposite,
+	# foe_hustle, ally_promoted, ally_downed, heal_gained, self_gutter
+	[{"when": "foe_hustle", "do": "buff", "target": "self", "atk": 300, "until": "forever"}, {"when": "deploy", "do": "tax", "amount": 2}],
+	[{"when": "ally_promoted", "do": "draw", "amount": 1}, {"when": "passive", "do": "cost_up", "amount": 1}],
+	[{"when": "ally_downed", "do": "buff", "target": "neighbors", "atk": 400, "until": "next_turn"}, {"when": "attack", "do": "ko", "target": "opposite", "if": "vs_def"}],
+	[{"when": "heal_gained", "do": "damage", "amount": 200}, {"when": "turn_end", "do": "heal", "amount": 300}],
+	[{"when": "self_gutter", "do": "draw", "amount": 1}, {"when": "deploy", "do": "mill_self", "amount": 2}],
+	[{"when": "turn_start", "do": "buff", "target": "self", "atk": 100, "per": "lost_1000", "until": "turn"}, {"when": "deploy", "do": "damage", "amount": 100, "per": "statused"}],
+	[{"when": "attack", "do": "buff", "target": "self", "atk": 500, "if": "morale_behind"}, {"when": "turn_end", "do": "reshuffle", "amount": 2, "if": "morale_ahead"}],
+	[{"when": "hustle_played", "do": "damage", "amount": 200, "per": "hustles_turn"}, {"when": "turn_end", "do": "draw", "amount": 1, "if": "hustles_ge", "n": 2}],
+	[{"when": "deploy", "do": "poison", "target": "opposite", "amount": 100}, {"when": "turn_start", "do": "stun", "target": "enemy", "if": "foe_statused"}],
 ]
 
 
@@ -205,6 +216,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "search", "kind": "gang_member", "max_auth": 2, "amount": 2}],
 	[{"do": "draw", "amount": 1, "or": true, "label": "Draw 1"}, {"do": "token", "token": "card_nebu_036", "amount": 1, "label": "A token"}],
 	[{"do": "damage", "amount": 100, "per": "foe_downed"}, {"do": "call", "choose": true}],
+	[{"do": "tax", "amount": 1}, {"do": "reshuffle", "amount": 3}],
+	[{"do": "draw", "amount": 1, "per": "hustles_turn"}],
 ]
 
 

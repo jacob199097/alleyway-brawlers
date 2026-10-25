@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.82",
+        "notes": [
+            "Livelier arenas: rats scurry through the Back Alley, the Graveyard and the Crypt, crows cross the Graveyard, the casino roulette ball spins, Frozen Lake cracks underfoot, the Pit crowd jostles, and neon tubes, lanterns, lamps, chains, branches and steam all move.",
+            "New card abilities for future cards: TAX (your opponent gets less Authority next turn), cards that make your opponent's cost more, and shuffling your Gutter back into your deck. New triggers (when your opponent plays a Hustle, when you PROMOTE, when an ally is Downed, when you gain Morale, when a card is milled or discarded), effects on the characters next to a card or the enemy across from it, and new conditions and \"for each\" counts.",
+            "Fixed: the Graveyard's bats caused errors mid-flap; Underworld's name was hard to read in the Card Library and achievements; \"a Underworld deck\"; the \"you're out\" panel in free-for-all and Turf Defense no longer covers another player's big moment.",
+            "How to Play explains the game modes (Free-for-all and Turf Defense)."
+        ]
+    },
+    {
         "version": "0.9.81",
         "notes": [
             "New mode: TURF DEFENSE. Team up with another player against a clan boss: The Archon Ascendant, Warlord Graves, Vincent Vale or Veyr, the Hollow King. Pick it in Fight Mode and quick match.",

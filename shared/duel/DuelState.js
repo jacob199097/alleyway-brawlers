@@ -545,6 +545,8 @@ export class DuelState {
             case 'ramp': return s.authority_max < MAX_AUTHORITY;
             case 'jam': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].cardType === 'ambush'));
             case 'barricade': return true;
+            case 'tax': return foes.length > 0;
+            case 'reshuffle': return s.gutter.some(x => !x.token);
             case 'tribute_damage': return toInt(c.tribute_atk ?? 0) > 0;
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
         }
@@ -571,7 +573,22 @@ export class DuelState {
         for (const x of this.characters(side)) if (!x.card.face_down) add(x.slot, x.card);
         for (const x of this._lasting(side, 'continuous')) add(x.slot, x.card);
         if (s.leader_state === 'dormant' && s.leader != null) add(-1, s.leader, 'dormant');
-        return Math.max(0, toInt(c.authority) - off);
+        // An opponent's "cost_up" (TAX passives): your cards cost more
+        let up = 0;
+        for (const foe of this.foesOf(side)) {
+            const more = (slot, src, when = 'passive') => {
+                for (const e of this._fx(src, when)) {
+                    if (String(e.do ?? '') !== 'cost_up' || !this._fxCond(foe, slot, e, null)) continue;
+                    if (String(e.clan ?? '') !== '' && c.clanTag !== String(e.clan)) continue;
+                    up += Math.max(1, toInt(e.amount ?? 1));
+                }
+            };
+            for (const x of this.characters(foe)) if (!x.card.face_down) more(x.slot, x.card);
+            for (const x of this._lasting(foe, 'continuous')) more(x.slot, x.card);
+            const fs = this.sides[foe];
+            if (fs.leader_state === 'dormant' && fs.leader != null) more(-1, fs.leader, 'dormant');
+        }
+        return Math.max(0, toInt(c.authority) - off + up);
     }
 
     /** A Card Forge passive of this kind that's switched on for the card in this slot (or null). */
@@ -936,8 +953,14 @@ export class DuelState {
             // A Card Forge Hustle: all of its effects happen when it's played
             if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
         }
+        if (toInt(s.hustle_turn ?? 0) !== this.turn) { s.hustle_turn = this.turn; s.hustles = 0; }
+        s.hustles = toInt(s.hustles ?? 0) + 1;   // (Hustles played this turn: "if"/"for each")
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'hustle_played', c);
         this._runLasting(side, 'hustle_played', c);
+        for (const foe of this.foesOf(side)) {
+            for (const x of this.characters(foe)) this._runFx(foe, x.slot, x.card, 'foe_hustle', c);
+            this._runLasting(foe, 'foe_hustle', c);
+        }
         this._leaderFx(side, 'dormant_hustle', c);
         switch (c.effectKey) {
             case 'corner_deal':
@@ -1316,6 +1339,7 @@ export class DuelState {
         c.position = 'def';   // a Downed character is in DEF
         this._emit('downed', { side, slot, card: clone(c) });
         this._runFx(side, slot, c, 'self_downed');
+        this._allyDowned(side, slot, c);
         return 'downed';
     }
 
@@ -1348,6 +1372,23 @@ export class DuelState {
             this._effect(bounty.by, c, `BOUNTY on ${c.name} collected: draw ${bounty.n}`, -1);
             for (let i = 0; i < toInt(bounty.n) && this.winner === ''; i++) this._draw(bounty.by);
         }
+    }
+
+    /** "When another of your characters is Downed" (by a brawl or an effect). */
+    _allyDowned(side, slot, c) {
+        for (const x of this.characters(side)) if (x.slot !== slot && this.winner === '') this._runFx(side, x.slot, x.card, 'ally_downed', c);
+        this._runLasting(side, 'ally_downed', c);
+    }
+
+    /** "When this card is milled or discarded": it just went from the deck or hand to its owner's Gutter. */
+    _toGutterFx(side, c) {
+        if (this.winner === '' && c && !c.token && (c.effects || []).length) this._runFx(side, NO_SLOT, c, 'self_gutter');
+    }
+
+    /** How many Hustles a side has played this turn. */
+    _hustlesThisTurn(side) {
+        const s = this.sides[side];
+        return toInt(s.hustle_turn ?? 0) === this.turn ? toInt(s.hustles ?? 0) : 0;
     }
 
     /** Whether a character has a status CLEANSE would take away. */
@@ -1718,6 +1759,8 @@ export class DuelState {
             s.gutter.push(old);
             this._emit('promote', { side, slot, from: clone(old), card: clone(promoted), reason });
             this._onDeploy(side, slot, promoted, true);
+            for (const x of this.characters(side)) if (this.winner === '') this._runFx(side, x.slot, x.card, 'ally_promoted', promoted);
+            this._runLasting(side, 'ally_promoted', promoted);
             if (promoted.subtype === 'striver' && isLion(promoted) && !s.mentor_used) {
                 for (const e of this.characters(side)) {
                     if (e.card.effectKey === 'pride_mentor_draw') {
@@ -1976,6 +2019,9 @@ export class DuelState {
             case 'foe_gutter': n = this.foesOf(side).reduce((t, f) => t + this.sides[f].gutter.filter(ofClan).length, 0); break;
             case 'hand': n = s.hand.filter(ofClan).length; break;
             case 'roll': n = Math.max(1, toInt(this._roll)); break;   // the die just rolled (_luckGate)
+            case 'hustles_turn': n = this._hustlesThisTurn(side); break;   // Hustles you've played this turn
+            case 'statused': n = this._enemyChars(side).filter(x => this._afflicted(x.card)).length; break;
+            case 'lost_1000': n = Math.floor(Math.max(0, toInt(s.max_morale ?? START_MORALE) - s.morale) / 1000); break;
             default: return 1;
         }
         if (e.per_max != null) n = Math.min(n, toInt(e.per_max));
@@ -2082,6 +2128,10 @@ export class DuelState {
             case 'enemies_le': return this._enemyChars(side).length <= n;
             case 'turn_ge': return this.turn >= n;
             case 'deck_le': return s.deck.length <= n;
+            case 'foe_statused': return this._enemyChars(side).some(x => this._afflicted(x.card));
+            case 'hustles_ge': return this._hustlesThisTurn(side) >= n;
+            case 'morale_behind': return this.foesOf(side).some(f => this.sides[f].morale > s.morale);
+            case 'morale_ahead': return this.foesOf(side).length > 0 && this.foesOf(side).every(f => this.sides[f].morale < s.morale);
         }
         return true;
     }
@@ -2501,6 +2551,7 @@ export class DuelState {
                         const milled = fd.pop();
                         this.sides[foe].gutter.push(milled);
                         this._emit('mill', { side: foe, card: clone(milled) });
+                        this._toGutterFx(foe, milled);
                     }
                 });
                 break;
@@ -2510,8 +2561,10 @@ export class DuelState {
                 this._effect(side, c, `${c.name}: the top ${lost} card${lost === 1 ? '' : 's'} of your deck go${lost === 1 ? 'es' : ''} to your Gutter`, slot);
                 for (let i = 0; i < lost; i++) {
                     const milled = s.deck.pop();
+                    if (milled == null) break;   // (a milled card's own effect may have drawn the rest)
                     s.gutter.push(milled);
                     this._emit('mill', { side, card: clone(milled) });
+                    this._toGutterFx(side, milled);
                 }
                 break;
             }
@@ -2520,9 +2573,35 @@ export class DuelState {
                     s.gutter.push(card);
                     this._effect(side, c, `${c.name}: sends ${card.name} from the deck to the Gutter`, slot);
                     this._emit('mill', { side, card: clone(card) });
+                    this._toGutterFx(side, card);
                     return true;
                 }, () => this._shuffleDeck(side));
                 if (!sent) this._emit('effect', { side, card: clone(c), text: `${c.name}: nothing in the deck to send`, slot });   // (not something done)
+                break;
+            }
+            case 'tax':   // TAX N: the opponent gets N less Authority on their next turn
+                this._withFoe(side, c, vs, () => true, (foe) => {
+                    this.sides[foe].tax = toInt(this.sides[foe].tax ?? 0) + n;
+                    this._effect(side, c, `${c.name}: TAX ${n}: your opponent gets ${n} less Authority next turn`, slot);
+                });
+                break;
+            case 'reshuffle': {   // up to N cards from your Gutter (the oldest; not tokens) shuffled back into your deck
+                const back = s.gutter.filter(x => !x.token).slice(0, n);
+                if (!back.length) break;
+                for (const x of back) {
+                    s.gutter.splice(s.gutter.indexOf(x), 1);
+                    x.mods = [];
+                    x.downed = false;
+                    this._clearStatus(x);
+                    delete x.fx_count;
+                    delete x.rise_turn;
+                    x.has_attacked = false;
+                    x.face_down = false;
+                    s.deck.push(x);
+                }
+                this._effect(side, c, `${c.name}: ${back.length} card${back.length === 1 ? '' : 's'} from your Gutter shuffled back into your deck`, slot);
+                this._emit('recycle', { side, count: back.length });
+                this._shuffleDeck(side);
                 break;
             }
             case 'tribute_damage': {   // a Heavy: the ATK of the characters it sacrificed, as Morale damage
@@ -2855,6 +2934,17 @@ export class DuelState {
             case 'enemy': case 'enemies':
                 for (const foe of this.foesOf(side)) entries.push(...this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card })));
                 break;
+            case 'neighbors':   // the allies in the lanes next to this card
+                if (FRONT.includes(slot) && this.cardAt(side, slot) === c) entries = this._fxPool(side, e, slot).filter(x => Math.abs(x.slot - slot) === 1).map(x => ({ side, slot: x.slot, card: x.card }));
+                break;
+            case 'opposite':   // the enemy across the table from it (your lane 1 faces their lane 5)
+                if (FRONT.includes(slot) && this.cardAt(side, slot) === c) {
+                    for (const foe of this.foesOf(side)) {
+                        const t = this.cardAt(foe, 4 - slot);
+                        if (t != null && this._fxPool(foe, e, -99).some(x => x.card === t)) entries.push({ side: foe, slot: 4 - slot, card: t });
+                    }
+                }
+                break;
             case 'all':   // every character: yours (not this card) and every opponent's
                 entries = this._fxPool(side, e, slot).map(x => ({ side, slot: x.slot, card: x.card }));
                 for (const foe of this.foesOf(side)) entries.push(...this._fxPool(foe, e, -99).map(x => ({ side: foe, slot: x.slot, card: x.card })));
@@ -2970,6 +3060,12 @@ export class DuelState {
             s.morale += gain;
             this._effect(side, c, `${c.name}: +${gain} Morale`, slot);
             this._emit('heal', { side, amount: gain, morale: s.morale });
+            if (!this._healing) {   // ("when you gain Morale" can't set itself off again)
+                this._healing = true;
+                for (const x of this.characters(side)) if (this.winner === '') this._runFx(side, x.slot, x.card, 'heal_gained');
+                this._runLasting(side, 'heal_gained');
+                this._healing = false;
+            }
         }
     }
 
@@ -3064,6 +3160,15 @@ export class DuelState {
             if (toInt(boss.authority) > 0) {
                 s.authority += toInt(boss.authority);
                 this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: toInt(boss.authority) });
+            }
+        }
+        if (toInt(s.tax ?? 0) > 0) {   // TAX: this turn's Authority, less what an opponent's card took
+            const t = Math.min(toInt(s.tax), s.authority);
+            s.tax = 0;
+            if (t > 0) {
+                s.authority -= t;
+                this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: -t });
+                this._emit('notice', { side: this.active, text: `TAX: -${t} AUTHORITY THIS TURN` });
             }
         }
         // A Downed character stays down for a full round, then gets back up in DEF position
@@ -3339,6 +3444,7 @@ export class DuelState {
         const c = this.sides[side].hand.splice(i, 1)[0];
         this.sides[side].gutter.push(c);
         this._emit('discard', { side, card: clone(c) });
+        this._toGutterFx(side, c);
     }
 
     _spend(side, amount) {

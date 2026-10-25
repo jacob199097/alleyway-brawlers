@@ -52,6 +52,8 @@ jobs:
         run: node shared/duel/awaken.test.mjs
       - name: Turf Defense rules (teams, the boss's Morale and phases) and every boss level plays through
         run: node shared/duel/turf.test.mjs
+      - name: Card Forge combos (new triggers, targets, conditions, counts, TAX, reshuffle)
+        run: node shared/duel/combos.test.mjs
 
   database:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)

@@ -72,6 +72,7 @@ var _fixed_order := false    # seed -1: never shuffle (tests compare engines)
 var seats: Array = ["player", "opponent"]   # turn order (FFA: p1, p2, ... by name)
 var ffa := false             # 3-4 players
 var teams := {}              # Turf Defense: seat -> team (teammates aren't foes; see DuelState.js)
+var _healing := false        # "when you gain Morale" effects are running (they can't set themselves off)
 var first_seat := "player"
 var places := {}             # FFA: side -> finishing place (1 = the winner)
 
@@ -603,6 +604,10 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("cardType") == "ambush"))
 		"barricade":
 			return true
+		"tax":
+			return not foes.is_empty()
+		"reshuffle":
+			return s.gutter.any(func(x): return not x.get("token", false))
 		"tribute_damage":
 			return int(c.get("tribute_atk", 0)) > 0
 		"attack_again":
@@ -638,7 +643,26 @@ func cost_of(side: String, c: Dictionary) -> int:
 			if str(e.get("clan", "")) != "" and c.get("clanTag") != str(e.get("clan", "")):
 				continue
 			off += maxi(1, int(e.get("amount", 1)))
-	return maxi(0, int(c.get("authority", 0)) - off)
+	# An opponent's "cost_up" (TAX passives): your cards cost more
+	var up := 0
+	for foe in foes_of(side):
+		var fs: Dictionary = sides[foe]
+		var theirs: Array = []
+		for x in characters(foe):
+			if not x.card.face_down:
+				theirs.append([x.slot, x.card])
+		for x in _lasting(foe, "continuous"):
+			theirs.append([x.slot, x.card])
+		if fs.leader_state == "dormant" and fs.leader != null:
+			theirs.append([-1, fs.leader])
+		for src in theirs:
+			for e in _fx(src[1], "dormant" if src[0] == -1 else "passive"):
+				if str(e.get("do", "")) != "cost_up" or not _fx_cond(foe, src[0], e, null):
+					continue
+				if str(e.get("clan", "")) != "" and c.get("clanTag") != str(e.get("clan", "")):
+					continue
+				up += maxi(1, int(e.get("amount", 1)))
+	return maxi(0, int(c.get("authority", 0)) - off + up)
 
 
 ## A Card Forge passive of this kind that's switched on for the card in this slot (or {}).
@@ -1087,9 +1111,17 @@ func _hustle(side: String, uid: int) -> bool:
 		# A Card Forge Hustle: all of its effects happen when it's played
 		if not c.get("effects", []).is_empty():
 			_run_fx(side, NO_SLOT, c, "*")
+	if int(s.get("hustle_turn", 0)) != turn:
+		s.hustle_turn = turn
+		s.hustles = 0
+	s.hustles = int(s.get("hustles", 0)) + 1   # (Hustles played this turn: "if"/"for each")
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "hustle_played", c)
 	_run_lasting(side, "hustle_played", c)
+	for foe in foes_of(side):
+		for x in characters(foe):
+			_run_fx(foe, x.slot, x.card, "foe_hustle", c)
+		_run_lasting(foe, "foe_hustle", c)
 	_leader_fx(side, "dormant_hustle", c)
 	match c.effectKey:
 		"corner_deal":
@@ -1499,6 +1531,7 @@ func _defeat(side: String, slot: int) -> String:
 	c.position = "def"   # a Downed character is in DEF
 	_emit("downed", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_run_fx(side, slot, c, "self_downed")
+	_ally_downed(side, slot, c)
 	return "downed"
 
 
@@ -1538,6 +1571,26 @@ func _ko(side: String, slot: int) -> void:
 			if winner != "":
 				break
 			_draw(str(bounty.by))
+
+
+## "When another of your characters is Downed" (by a brawl or an effect).
+func _ally_downed(side: String, slot: int, c: Dictionary) -> void:
+	for x in characters(side):
+		if x.slot != slot and winner == "":
+			_run_fx(side, x.slot, x.card, "ally_downed", c)
+	_run_lasting(side, "ally_downed", c)
+
+
+## "When this card is milled or discarded": it just went from the deck or hand to its owner's Gutter.
+func _to_gutter_fx(side: String, c) -> void:
+	if winner == "" and c is Dictionary and not c.get("token", false) and not c.get("effects", []).is_empty():
+		_run_fx(side, NO_SLOT, c, "self_gutter")
+
+
+## How many Hustles a side has played this turn.
+func _hustles_this_turn(side: String) -> int:
+	var s: Dictionary = sides[side]
+	return int(s.get("hustles", 0)) if int(s.get("hustle_turn", 0)) == turn else 0
 
 
 ## Whether a character has a status CLEANSE would take away.
@@ -1916,6 +1969,10 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		_emit("promote", {"side": side, "slot": slot, "from": old.duplicate(true),
 			"card": promoted.duplicate(true), "reason": reason})
 		_on_deploy(side, slot, promoted, true)
+		for x in characters(side):
+			if winner == "":
+				_run_fx(side, x.slot, x.card, "ally_promoted", promoted)
+		_run_lasting(side, "ally_promoted", promoted)
 		if promoted.get("subtype") == "striver" and is_lion(promoted) and not s.mentor_used:
 			for e in characters(side):
 				if e.card.get("effectKey") == "pride_mentor_draw":
@@ -2242,6 +2299,12 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 			n = s.hand.filter(of_clan).size()
 		"roll":   # the die just rolled (_luck_gate)
 			n = maxi(1, _roll)
+		"hustles_turn":   # Hustles you've played this turn
+			n = _hustles_this_turn(side)
+		"statused":
+			n = _enemy_chars(side).filter(func(x): return _afflicted(x.card)).size()
+		"lost_1000":
+			n = maxi(0, int(s.get("max_morale", START_MORALE)) - int(s.morale)) / 1000
 		_:
 			return 1
 	if e.get("per_max") != null:
@@ -2407,6 +2470,14 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return turn >= n
 		"deck_le":
 			return s.deck.size() <= n
+		"foe_statused":
+			return _enemy_chars(side).any(func(x): return _afflicted(x.card))
+		"hustles_ge":
+			return _hustles_this_turn(side) >= n
+		"morale_behind":
+			return foes_of(side).any(func(f): return sides[f].morale > s.morale)
+		"morale_ahead":
+			return not foes_of(side).is_empty() and foes_of(side).all(func(f): return sides[f].morale < s.morale)
 	return true
 
 
@@ -2866,23 +2937,48 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				for i in lost:
 					var milled: Dictionary = fd.pop_back()
 					sides[foe].gutter.append(milled)
-					_emit("mill", {"side": foe, "card": milled.duplicate(true)}))
+					_emit("mill", {"side": foe, "card": milled.duplicate(true)})
+					_to_gutter_fx(foe, milled))
 		"mill_self":   # the top N cards of your own deck go to your Gutter (fills it on purpose)
 			var lost := mini(n, s.deck.size())
 			if lost > 0:
 				_effect(side, c, "%s: the top %d card%s of your deck go%s to your Gutter" % [c.name, lost, "" if lost == 1 else "s", "es" if lost == 1 else ""], slot)
 				for i in lost:
+					if s.deck.is_empty():   # (a milled card's own effect may have drawn the rest)
+						break
 					var milled: Dictionary = s.deck.pop_back()
 					s.gutter.append(milled)
 					_emit("mill", {"side": side, "card": milled.duplicate(true)})
+					_to_gutter_fx(side, milled)
 		"entomb":   # a card of your choice (filters like search) from your deck to your Gutter
 			var sent := _fx_take(side, c, e, s.deck, "%s: choose a card to send to your Gutter" % c.name, func(card: Dictionary) -> bool:
 				s.gutter.append(card)
 				_effect(side, c, "%s: sends %s from the deck to the Gutter" % [c.name, card.name], slot)
 				_emit("mill", {"side": side, "card": card.duplicate(true)})
+				_to_gutter_fx(side, card)
 				return true, _shuffle_deck.bind(side))
 			if not sent:
 				_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: nothing in the deck to send" % c.name, "slot": slot})   # (not something done)
+		"tax":   # TAX N: the opponent gets N less Authority on their next turn
+			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
+				sides[foe].tax = int(sides[foe].get("tax", 0)) + n
+				_effect(side, c, "%s: TAX %d: your opponent gets %d less Authority next turn" % [c.name, n, n], slot))
+		"reshuffle":   # up to N cards from your Gutter (the oldest; not tokens) shuffled back into your deck
+			var back: Array = s.gutter.filter(func(x): return not x.get("token", false)).slice(0, n)
+			if not back.is_empty():
+				for x in back:
+					s.gutter.erase(x)
+					x.mods = []
+					x.downed = false
+					_clear_status(x)
+					x.erase("fx_count")
+					x.erase("rise_turn")
+					x.has_attacked = false
+					x.face_down = false
+					s.deck.append(x)
+				_effect(side, c, "%s: %d card%s from your Gutter shuffled back into your deck" % [c.name, back.size(), "" if back.size() == 1 else "s"], slot)
+				_emit("recycle", {"side": side, "count": back.size()})
+				_shuffle_deck(side)
 		"tribute_damage":   # a Heavy: the ATK of the characters it sacrificed, as Morale damage
 			var dmg := int(c.get("tribute_atk", 0))
 			if dmg > 0:
@@ -3233,6 +3329,15 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			"enemy", "enemies":
 				for foe in foes_of(side):
 					entries.append_array(_fx_pool(foe, e, -99).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
+			"neighbors":   # the allies in the lanes next to this card
+				if slot in FRONT and is_same(card_at(side, slot), c):
+					entries = _fx_pool(side, e, slot).filter(func(x): return absi(x.slot - slot) == 1).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
+			"opposite":   # the enemy across the table from it (your lane 1 faces their lane 5)
+				if slot in FRONT and is_same(card_at(side, slot), c):
+					for foe in foes_of(side):
+						var t = card_at(foe, 4 - slot)
+						if t != null and _fx_pool(foe, e, -99).any(func(x): return is_same(x.card, t)):
+							entries.append({"side": foe, "slot": 4 - slot, "card": t})
 			"all":   # every character: yours (not this card) and every opponent's
 				entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 				for foe in foes_of(side):
@@ -3397,6 +3502,13 @@ func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
 		s.morale += gain
 		_effect(side, c, "%s: +%d Morale" % [c.name, gain], slot)
 		_emit("heal", {"side": side, "amount": gain, "morale": s.morale})
+		if not _healing:   # ("when you gain Morale" can't set itself off again)
+			_healing = true
+			for x in characters(side):
+				if winner == "":
+					_run_fx(side, x.slot, x.card, "heal_gained")
+			_run_lasting(side, "heal_gained")
+			_healing = false
 
 
 ## A character goes back to its owner's hand, reset.
@@ -3526,6 +3638,13 @@ func _begin_turn() -> void:
 		if int(boss.get("authority", 0)) > 0:
 			s.authority += int(boss.authority)
 			_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": int(boss.authority)})
+	if int(s.get("tax", 0)) > 0:   # TAX: this turn's Authority, less what an opponent's card took
+		var t: int = mini(int(s.tax), s.authority)
+		s.tax = 0
+		if t > 0:
+			s.authority -= t
+			_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": -t})
+			_emit("notice", {"side": active, "text": "TAX: -%d AUTHORITY THIS TURN" % t})
 	# A Downed character stays down for a full round (the opponent gets one turn to finish it
 	# off), then gets back up in DEF position at the start of its owner's turn. Its owner
 	# may switch it to ATK straight away.
@@ -3834,6 +3953,7 @@ func _discard_at(side: String, i: int) -> void:
 	var c: Dictionary = sides[side].hand.pop_at(i)
 	sides[side].gutter.append(c)
 	_emit("discard", {"side": side, "card": c.duplicate(true)})
+	_to_gutter_fx(side, c)
 
 
 func _spend(side: String, amount: int) -> void:
