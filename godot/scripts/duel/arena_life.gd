@@ -13,6 +13,8 @@ extends Node2D
 ##   bubbles        rising in a tank
 ##   bats           a few bats flapping across now and then
 ##   lightning      a far-off flash, now and then
+##   koi            fish swimming under the water, wandering, their tails swishing
+##   ripples        rings spreading on water: where a spout pours in, and now and then anywhere in "rect"
 ## The screen effects setting (Game.settings.screen_fx) thins the particles out.
 
 const GLOW := preload("res://shaders/arena_glow.gdshader")
@@ -45,7 +47,7 @@ func setup(tex: Texture2D, tint: Color, level: float) -> ArenaLife:
 
 static func handles(kind: String) -> bool:
 	return kind in ["flame", "glow", "fog", "water", "heat", "sway", "glitter", "beam", "rain", "snow", "sand",
-		"leaves", "motes", "bubbles", "bats", "lightning"]
+		"leaves", "motes", "bubbles", "bats", "lightning", "koi", "ripples"]
 
 
 func add(e: Dictionary) -> void:
@@ -76,6 +78,10 @@ func add(e: Dictionary) -> void:
 			_bats(e)
 		"lightning":
 			_lightning(e)
+		"koi":
+			_koi(e)
+		"ripples":
+			_ripples(e)
 
 
 # ── Where things are ────────────────────────────────────────────────────────
@@ -451,6 +457,135 @@ func _bats(e: Dictionary) -> void:
 			path.tween_property(bat, "position:y", to.y, dur).set_trans(Tween.TRANS_SINE).set_delay(i * 0.25)
 			path.chain().tween_callback(bat.queue_free)
 			_redraw_while(bat)
+
+
+## Koi: "amount" fish wandering about "rect" (the pond), each one swimming to a new spot now and then.
+func _koi(e: Dictionary) -> void:
+	var area := _rect(e.rect)
+	var palettes := [[Color("f7efe2"), Color("ff6a2a")], [Color("f7efe2"), Color("e8381f")], [Color("ffb03a"), Color("f7efe2")],
+		[Color("f7efe2"), Color("1d1a22")], [Color("ff7a2e"), Color("ffd1a0")]]
+	for i in int(e.get("amount", 4)):
+		var fish := Koi.new()
+		fish.area = area
+		fish.k = _k
+		fish.size = randf_range(0.8, 1.15) * float(e.get("size", 1.0))
+		fish.colors = palettes[i % palettes.size()]
+		fish.position = Vector2(randf_range(area.position.x, area.end.x), randf_range(area.position.y, area.end.y))
+		fish.heading = randf() * TAU
+		add_child(fish)
+
+
+class Koi extends Node2D:
+	var area: Rect2
+	var k := 1.0
+	var size := 1.0
+	var colors: Array = []
+	var heading := 0.0
+	var _goal := Vector2.ZERO
+	var _speed := 0.0
+	var _phase := randf() * TAU
+	var _rest := 0.0
+	var _marks: Array = []   # [where along it, how far off its middle, how big]
+
+	func _ready() -> void:
+		for j in randi_range(2, 3):
+			_marks.append(Vector3(randf_range(0.12, 0.62), randf_range(-0.35, 0.35), randf_range(0.32, 0.5)))
+		_pick()
+
+	func _pick() -> void:
+		var m := 60.0 * k
+		_goal = Vector2(randf_range(area.position.x + m, area.end.x - m), randf_range(area.position.y + m, area.end.y - m))
+
+	func _process(delta: float) -> void:
+		var to := _goal - position
+		if to.length() < 30.0 * k:
+			_rest = randf_range(0.0, 2.5)   # (it idles a moment, then swims off)
+			_pick()
+		_rest = maxf(0.0, _rest - delta)
+		var want := to.angle()
+		heading = lerp_angle(heading, want, minf(1.0, delta * 0.9))
+		var cruise := (0.0 if _rest > 0.0 else 34.0) * k * size
+		_speed = lerpf(_speed, cruise, minf(1.0, delta * 0.8))
+		position += Vector2.from_angle(heading) * _speed * delta
+		_phase += delta * (2.0 + _speed / (8.0 * k))
+		rotation = heading
+		queue_redraw()
+
+	## Its body, nose to tail along the x axis (head at +x), bending with the swish of its tail.
+	func _spine(s: float) -> Vector2:
+		var length := 64.0 * k * size
+		return Vector2(length * (0.5 - s), sin(_phase - s * 3.2) * s * s * 7.0 * k * size)
+
+	func _draw() -> void:
+		var width := 11.0 * k * size
+		var left := PackedVector2Array()
+		var right := PackedVector2Array()
+		for i in 13:
+			var s := i / 12.0
+			var c := _spine(s)
+			var w := width * pow(sin(PI * clampf(s * 0.92 + 0.06, 0.0, 1.0)), 0.75) * (1.0 - s * 0.45)
+			var n := (_spine(minf(1.0, s + 0.02)) - _spine(maxf(0.0, s - 0.02))).orthogonal().normalized()
+			left.append(c + n * w)
+			right.append(c - n * w)
+		right.reverse()
+		var body := left + right
+		# its shadow on the pond floor, then the tail fin, the body and its patches
+		var shade := PackedVector2Array()
+		for p in body:
+			shade.append(p + Vector2(5, 9) * k)
+		draw_colored_polygon(shade, Color(0.05, 0.12, 0.12, 0.22))
+		var tail := _spine(1.0)
+		var bend := sin(_phase - 3.4) * 9.0 * k * size
+		draw_colored_polygon(PackedVector2Array([_spine(0.9), tail + Vector2(-13 * k * size, -11 * k * size + bend),
+			tail + Vector2(-6 * k * size, bend * 0.5), tail + Vector2(-13 * k * size, 11 * k * size + bend)]), Color(colors[0], 0.78))
+		for side in [-1.0, 1.0]:   # pectoral fins, flapping a little
+			var base := _spine(0.3)
+			var flap := sin(_phase * 1.3) * 3.0 * k
+			draw_colored_polygon(PackedVector2Array([base, base + Vector2(-9 * k * size, side * (14 * k * size + flap)), base + Vector2(-14 * k * size, side * 6 * k * size)]), Color(colors[0], 0.6))
+		draw_colored_polygon(body, Color(colors[0], 0.8))
+		for j in _marks.size():   # its markings: soft oval patches along its back
+			var m: Vector3 = _marks[j]
+			var at := _spine(m.x)
+			draw_set_transform(at + Vector2(0, m.y * width), (_spine(m.x + 0.02) - _spine(m.x - 0.02)).angle(), Vector2(1.8, 0.85))
+			draw_circle(Vector2.ZERO, width * m.z, Color(colors[1], 0.82))
+			draw_set_transform(Vector2.ZERO)
+		draw_circle(_spine(0.06) + Vector2(0, -3.5 * k * size), 1.4 * k, Color(0.05, 0.05, 0.08, 0.8))
+		draw_circle(_spine(0.06) + Vector2(0, 3.5 * k * size), 1.4 * k, Color(0.05, 0.05, 0.08, 0.8))
+		draw_polyline(left, Color(1, 1, 1, 0.18), 1.0, true)   # (light catching its back)
+
+
+## Rings spreading on water: steadily where water pours in ("points"), and now and then anywhere in "rect"
+## (a petal landing, a fish rising).
+func _ripples(e: Dictionary) -> void:
+	var col := _col(e, "#ffffff")
+	var r := float(e.get("r", 40.0)) * _k
+	for p in e.get("points", []):
+		_ripple_loop(_pt(p), r, col, float(e.get("every", 0.9)), 0.0)
+	if e.has("rect"):
+		var area := _rect(e.rect)
+		_ripple_loop(Vector2.ZERO, r * 0.8, col, float(e.get("drops", 2.2)) / maxf(0.25, _level), 1.0, area)
+
+
+func _ripple_loop(at: Vector2, radius: float, col: Color, every: float, jitter: float, area := Rect2()) -> void:
+	while is_inside_tree():
+		var where := at if area.size == Vector2.ZERO else Vector2(randf_range(area.position.x, area.end.x), randf_range(area.position.y, area.end.y))
+		var ring := Node2D.new()
+		ring.position = where + Vector2(randf_range(-4, 4), randf_range(-3, 3)) * _k
+		ring.scale = Vector2(1.0, 0.62)   # (seen from above at a slant)
+		ring.material = _add
+		var grow := [0.0]
+		ring.draw.connect(func():
+			for j in 2:
+				var t: float = clampf(grow[0] - j * 0.18, 0.0, 1.0)
+				if t > 0.0:
+					ring.draw_arc(Vector2.ZERO, radius * t, 0.0, TAU, 40, Color(col, 0.42 * (1.0 - t)), 2.2, true))
+		add_child(ring)
+		var tw := ring.create_tween()
+		tw.tween_method(func(v: float):
+			grow[0] = v
+			ring.queue_redraw(), 0.0, 1.25, 1.9).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+		tw.tween_callback(ring.queue_free)
+		await get_tree().create_timer(every * randf_range(0.7, 1.3) + jitter * randf()).timeout
 
 
 func _redraw_while(n: CanvasItem) -> void:

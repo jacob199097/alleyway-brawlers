@@ -158,7 +158,13 @@ func _run() -> void:
 		get_tree().quit()
 		return
 	if "--arenas" in OS.get_cmdline_user_args():   # (every 1v1 arena in a duel: its board and its life)
+		var only: Array = []   # (--arena-ids=a,b: just those)
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--arena-ids="):
+				only = a.trim_prefix("--arena-ids=").split(",")
 		for arena in load("res://scripts/ui/arena_roulette.gd").arenas():
+			if not only.is_empty() and not str(arena.id) in only:
+				continue
 			var deck := await Game.load_duel_deck()
 			Game.duel_setup = deck
 			Game.duel_setup.first = "player"

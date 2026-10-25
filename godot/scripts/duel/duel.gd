@@ -1088,8 +1088,9 @@ func _draw_slot_symbol(at: Vector2, c: Color, side: String) -> void:
 ## A mat's living layer (shaders/mat_alive.gdshader): its neon pulses and flickers, a wet sheen
 ## drifts, rain rings spread and a haze rolls across.
 ## An arena's own slots (data/arenas.json "board"): its spray paint in a colour ("paint", "tint"),
-## glowing outlines ("neon") or darker spots rimmed in gold on the felt ("felt"), frosted ice ("frost") or
-## a lit hologram panel ("holo"), each in "color".
+## glowing outlines ("neon") or darker spots rimmed in gold on the felt ("felt"), frosted ice ("frost"),
+## a lit hologram panel ("holo"), an engraved brass plate ("brass"), a sharp-edged mirror shard ("shard") or a
+## pale ring on water ("water"), each in "color".
 func _style_board(board: Dictionary) -> void:
 	var style := str(board.get("style", "paint"))
 	if style == "paint":
@@ -1116,6 +1117,28 @@ func _style_board(board: Dictionary) -> void:
 			sb.set_corner_radius_all(6)
 			sb.shadow_color = Color(col, 0.14 * a)
 			sb.shadow_size = 14
+		elif style == "brass":   # an engraved plate set into the brass floor
+			sb.bg_color = Color(col.darkened(0.72), 0.34 * a)
+			sb.border_color = Color(col, 0.95 * a)
+			sb.set_border_width_all(4)
+			sb.set_corner_radius_all(5)
+			sb.shadow_color = Color(0, 0, 0, 0.45 * a)
+			sb.shadow_size = 7
+			sb.shadow_offset = Vector2(0, 3)
+		elif style == "shard":   # a sliver of mirror floating in the void
+			sb.bg_color = Color(col, 0.05 * a)
+			sb.border_color = Color(col.lightened(0.45), 0.9 * a)
+			sb.set_border_width_all(2)
+			sb.set_corner_radius_all(0)
+			sb.shadow_color = Color(col, 0.28 * a)
+			sb.shadow_size = 16
+		elif style == "water":   # a pale ring on the pond, like a lily pad's edge
+			sb.bg_color = Color(1, 1, 1, 0.07 * a)
+			sb.border_color = Color(col, 0.8 * a)
+			sb.set_border_width_all(3)
+			sb.set_corner_radius_all(26)
+			sb.shadow_color = Color(col, 0.2 * a)
+			sb.shadow_size = 8
 		elif style == "neon":
 			sb.bg_color = Color(col, 0.03 * a)
 			sb.border_color = Color(col.lightened(0.35), 0.95 * a)

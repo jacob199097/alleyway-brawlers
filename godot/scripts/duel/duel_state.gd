@@ -862,7 +862,7 @@ func _activate(side: String, slot: int, k: int) -> bool:
 					go.call())
 		"exile_gutter":   # the cards that have been in your Gutter longest
 			_exile_gutter(side, sides[side].gutter.slice(0, n))
-			_effect(side, c, "%s: exiles %d card%s from the Gutter to activate" % [c.name, n, "" if n == 1 else "s"], slot)
+			_effect(side, c, "%s: EXILES %d card%s from the Gutter to activate" % [c.name, n, "" if n == 1 else "s"], slot)
 			go.call()
 		"exhaust":
 			c.has_attacked = true
@@ -1261,7 +1261,7 @@ func _atk_ambush(ctx: Dictionary) -> void:
 		if a != null and not jammed and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
 				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
 				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))) \
-				and (is_lasting(a) or card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att}, ctx.att)):
+				and (is_lasting(a) or card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att, "attacked": {"side": foe, "slot": ctx.target, "card": def}}, ctx.att)):
 			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
@@ -1360,7 +1360,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	var def: Dictionary = card_at(foe, target)
 	var def_atk := 0
 	var def_def := 0
-	var vs := {"side": side, "slot": from, "card": att}
+	var vs := {"side": side, "slot": from, "card": att, "attacked": {"side": foe, "slot": target, "card": def}}
 	# "When another of your characters is attacked" (covering fire)
 	for x in characters(foe):
 		if x.slot != target and winner == "" and card_at(side, from) == att:
@@ -2565,8 +2565,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			var fn := func(x: Dictionary) -> String:
 				var name: String = x.card.name
 				_exile(x.side, x.slot)
-				return "%s removes %s from the game" % [c.name, name]
-			_fx_apply(side, slot, c, e, vs, "any", "remove from the game", fn, "%s removes %%s from the game" % c.name)
+				return "%s EXILES %s" % [c.name, name]
+			_fx_apply(side, slot, c, e, vs, "any", "EXILE", fn, "%s EXILES %%s" % c.name)
 		"set_stats":   # its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
 			var mod := {"until_turn": _until(e)}
 			if is_equip(c):
@@ -2859,7 +2859,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				var g: Array = sides[foe].gutter
 				var gone: Array = g.slice(maxi(0, g.size() - n))
 				_exile_gutter(foe, gone)
-				_effect(side, c, "%s exiles %d card%s from the enemy's Gutter" % [c.name, gone.size(), "" if gone.size() == 1 else "s"], slot))
+				_effect(side, c, "%s EXILES %d card%s from the enemy's Gutter" % [c.name, gone.size(), "" if gone.size() == 1 else "s"], slot))
 		"absorb":   # tribute one of your characters (or the one just deployed): this card gains its ATK and DEF
 			if card_at(side, slot) != c:
 				return
@@ -3173,6 +3173,14 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			"attacker":
 				if not vs.is_empty() and card_at(vs.side, vs.slot) == vs.card:
 					entries = [{"side": vs.side, "slot": vs.slot, "card": vs.card}]
+			"attacked":   # the character being attacked (Ambushes, "when another of your characters is attacked")
+				var a := {}
+				if vs.has("attacked"):
+					a = vs.attacked
+				elif vs.has("ctx"):
+					a = {"side": vs.ctx.foe, "slot": vs.ctx.target, "card": card_at(vs.ctx.foe, vs.ctx.target)}
+				if not a.is_empty() and a.card != null and card_at(a.side, a.slot) == a.card:
+					entries = [{"side": a.side, "slot": a.slot, "card": a.card}]
 			"deployed":   # "that character": the one just deployed (deploy triggers)
 				if vs.get("deployed") is Dictionary:
 					for s2 in sides:

@@ -240,4 +240,43 @@ assert.deepEqual([st.sides.player.morale, st.sides.opponent.morale], [4500, 5000
 st._doFx('player', -1, src, { do: 'damage', amount: 300 });
 assert.equal(st.sides.opponent.morale, 4700);
 
+// The character being attacked (target: attacked): an Ambush, and "when another of your characters is attacked"
+st = duel();
+st.active = 'opponent';
+st.phase = 'brawl';
+const guarded = unit(st, 'Guarded', 800, 900);
+const bystander = unit(st, 'Bystander', 800, 900);
+st.sides.player.field[1] = guarded;
+st.sides.player.field[2] = bystander;
+const embrace = st.makeCard({ id: 'test_embrace', name: 'Embrace', cardType: 'ambush', clanTag: 'test', effects: [{ when: 'defend', do: 'give_undead', target: 'attacked' }] });
+embrace.face_down = true;
+st.sides.player.field[6] = embrace;
+const brute = unit(st, 'Brute', 2000, 1000);
+brute.deployed_turn = 1;
+st.sides.opponent.field[3] = brute;
+st._recalc();
+st._attack('opponent', 3, 1);
+const spring = st._asks.find(x => x.key === 'ambush');
+st._asks.splice(st._asks.indexOf(spring), 1);
+st._runAnswer(() => spring.cb('6'));
+while (st._asks.length) answer(st);
+assert.ok(guarded.undead_given || st.statuses(guarded).includes('undead') || guarded.undead, 'the attacked character got UNDEAD');
+assert.ok(!(bystander.undead_given || bystander.undead), 'not the others');
+// covering fire: SHIELD on the one being attacked
+st = duel();
+st.active = 'opponent';
+st.phase = 'brawl';
+const ward = st.makeCard({ id: 'test_ward', name: 'Ward', cardType: 'gang_member', clanTag: 'test', attack: 500, defense: 500, effects: [{ when: 'ally_attacked', do: 'shield', target: 'attacked' }] });
+const hit = unit(st, 'Hit', 800, 900);
+st.sides.player.field[0] = ward;
+st.sides.player.field[1] = hit;
+const brute2 = unit(st, 'Brute2', 2000, 1000);
+brute2.deployed_turn = 1;
+st.sides.opponent.field[3] = brute2;
+st._recalc();
+st._attack('opponent', 3, 1);
+while (st._asks.length) answer(st);
+assert.equal(st.sides.player.field[1], hit, 'its SHIELD took the blow: still on the field');
+assert.equal(hit.downed, false);
+
 console.log('underworld: ok');

@@ -742,7 +742,7 @@ export class DuelState {
             }
             case 'exile_gutter':   // the cards that have been in your Gutter longest
                 this._exileGutter(side, this.sides[side].gutter.slice(0, n));
-                this._effect(side, c, `${c.name}: exiles ${n} card${n === 1 ? '' : 's'} from the Gutter to activate`, slot);
+                this._effect(side, c, `${c.name}: EXILES ${n} card${n === 1 ? '' : 's'} from the Gutter to activate`, slot);
                 go();
                 break;
             case 'exhaust':
@@ -1110,7 +1110,7 @@ export class DuelState {
             const a = this.cardAt(foe, slot);
             if (a != null && !jammed && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
                 && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))
-                && (DuelState.isLasting(a) || this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att }, ctx.att))) {
+                && (DuelState.isLasting(a) || this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att, attacked: { side: foe, slot: ctx.target, card: def } }, ctx.att))) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
             }
         }
@@ -1171,7 +1171,7 @@ export class DuelState {
         }
         const def = this.cardAt(foe, target);
         let defAtk = 0, defDef = 0, k = 0;
-        const vs = { side, slot: from, card: att };
+        const vs = { side, slot: from, card: att, attacked: { side: foe, slot: target, card: def } };
         // "When another of your characters is attacked" (covering fire)
         for (const x of this.characters(foe)) {
             if (x.slot !== target && this.winner === '' && this.cardAt(side, from) === att) this._runFx(foe, x.slot, x.card, 'ally_attacked', att, vs);
@@ -2200,11 +2200,11 @@ export class DuelState {
                 }, `${c.name} puts %s on top of the deck`);
                 break;
             case 'exile':   // gone for good: not to the Gutter, so nothing can bring it back
-                this._fxApply(side, slot, c, e, vs, 'any', 'remove from the game', (x) => {
+                this._fxApply(side, slot, c, e, vs, 'any', 'EXILE', (x) => {
                     const name = x.card.name;
                     this._exile(x.side, x.slot);
-                    return `${c.name} removes ${name} from the game`;
-                }, `${c.name} removes %s from the game`);
+                    return `${c.name} EXILES ${name}`;
+                }, `${c.name} EXILES %s`);
                 break;
             case 'set_stats': {   // its ATK and / or DEF become these numbers: earlier changes stop counting, later ones still do
                 const mod = { until_turn: this._until(e) };
@@ -2505,7 +2505,7 @@ export class DuelState {
                     const g = this.sides[foe].gutter;
                     const gone = g.slice(Math.max(0, g.length - n));
                     this._exileGutter(foe, gone);
-                    this._effect(side, c, `${c.name} exiles ${gone.length} card${gone.length === 1 ? '' : 's'} from the enemy's Gutter`, slot);
+                    this._effect(side, c, `${c.name} EXILES ${gone.length} card${gone.length === 1 ? '' : 's'} from the enemy's Gutter`, slot);
                 });
                 break;
             case 'absorb': {   // tribute one of your characters (or the one just deployed): this card gains its ATK and DEF
@@ -2795,6 +2795,11 @@ export class DuelState {
             case 'attacker':
                 if (vs && vs.card && this.cardAt(vs.side, vs.slot) === vs.card) entries = [{ side: vs.side, slot: vs.slot, card: vs.card }];
                 break;
+            case 'attacked': {   // the character being attacked (Ambushes, "when another of your characters is attacked")
+                const a = vs && (vs.attacked || (vs.ctx ? { side: vs.ctx.foe, slot: vs.ctx.target, card: this.cardAt(vs.ctx.foe, vs.ctx.target) } : null));
+                if (a && a.card && this.cardAt(a.side, a.slot) === a.card) entries = [{ side: a.side, slot: a.slot, card: a.card }];
+                break;
+            }
             case 'deployed':   // "that character": the one just deployed (deploy triggers)
                 if (vs && vs.deployed) {
                     for (const s2 of Object.keys(this.sides)) {

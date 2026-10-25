@@ -27,6 +27,8 @@ const LIST := {
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
 	"CHARM": [Color("ff6fb5"), "CHARM: you take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner."],
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],
+	"EXILE": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
+	"EXILES": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
 	"DOUBLE": [Color("ff8f6b"), "DOUBLE OR NOTHING: you may bet on a coin flip. Heads, the effect happens twice; tails, not at all. Don't bet, and it happens once."],
 }
 ## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
