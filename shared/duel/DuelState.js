@@ -1204,23 +1204,20 @@ export class DuelState {
         let result = '';
         if (vsDef) {
             if (aVal > dVal) {
-                if (ctx.pierce) { this._damage(foe, aVal - dVal); this._lifesteal(side, from, att, aVal - dVal); }
+                if (ctx.pierce) this._battleDamage(foe, target, def, aVal - dVal, side, from, att);
                 result = this._defeat(foe, target);
             }
             else {
                 this._emit('blocked', { side: foe, slot: target });
                 if (aVal < dVal) {   // a failed attack costs the difference, as it does against ATK
-                    this._damage(side, dVal - aVal);
-                    this._lifesteal(foe, target, def, dVal - aVal);
+                    this._battleDamage(side, from, att, dVal - aVal, foe, target, def);
                 }
             }
         } else if (aVal > dVal) {
-            this._damage(foe, aVal - dVal);
-            this._lifesteal(side, from, att, aVal - dVal);
+            this._battleDamage(foe, target, def, aVal - dVal, side, from, att);
             result = this._defeat(foe, target);
         } else if (aVal < dVal) {
-            this._damage(side, dVal - aVal);
-            this._lifesteal(foe, target, def, dVal - aVal);
+            this._battleDamage(side, from, att, dVal - aVal, foe, target, def);
             this._defeat(side, from);
         } else {
             this._emit('notice', { text: 'TIE — BOTH GO DOWN' });
@@ -1238,6 +1235,18 @@ export class DuelState {
         }
         this._bleed(side, att);
         this._bleed(foe, def);
+    }
+
+    /** Battle damage: the Morale a side loses for its card losing a brawl (the other card's side may
+     *  gain it with LIFESTEAL). None if its card has "no battle damage" (a Card Forge passive). */
+    _battleDamage(side, slot, mine, amount, otherSide, otherSlot, other) {
+        if (amount <= 0) return;
+        if (!isEmpty(this._passive(side, slot, mine, 'no_battle_damage'))) {
+            this._effect(side, mine, `${mine.name}: no battle damage`, slot);
+            return;
+        }
+        this._damage(side, amount);
+        this._lifesteal(otherSide, otherSlot, other, amount);
     }
 
     _bleed(side, c) {

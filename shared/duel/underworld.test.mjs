@@ -103,4 +103,25 @@ assert.equal(st._fxCond('player', -1, { if: 'foe_gutter_ge', n: 4 }, null), fals
 st._doFx('player', -1, src, { do: 'damage', amount: 100, per: 'foe_gutter' });
 assert.equal(st.sides.opponent.morale, 4700, '100 for each card in their Gutter');
 
+// "You take no battle damage from brawls involving this card"
+const brawl = (atkStats, defStats, guardOn) => {
+    const s2 = duel();
+    s2.phase = 'brawl';
+    s2.turn = 5;
+    const a = unit(s2, 'Att', atkStats[0], atkStats[1], guardOn === 'att' ? { effects: [{ when: 'passive', do: 'no_battle_damage' }] } : {});
+    const d = unit(s2, 'Def', defStats[0], defStats[1], guardOn === 'def' ? { effects: [{ when: 'passive', do: 'no_battle_damage' }] } : {});
+    a.deployed_turn = 1;
+    s2.sides.player.field[1] = a;
+    s2.sides.opponent.field[1] = d;
+    s2.sides.player.morale = 5000;
+    s2.sides.opponent.morale = 5000;
+    assert.ok(s2.doAction('player', { kind: 'attack', from: 1, target: 1 }), 'the attack goes ahead');
+    for (let i = 0; i < 6 && s2._asks.length; i++) answer(s2, s2._asks[0].options && s2._asks[0].options.find(o => o.id === 'no') ? 'no' : undefined);
+    return [s2.sides.player.morale, s2.sides.opponent.morale];
+};
+assert.deepEqual(brawl([500, 0], [1500, 1000], 'att'), [5000, 5000], 'the Skeleton attacks and loses: no battle damage');
+assert.deepEqual(brawl([2000, 0], [500, 0], 'def'), [5000, 5000], 'the Skeleton is attacked and loses: no battle damage');
+assert.deepEqual(brawl([2000, 0], [500, 0], 'att'), [5000, 3500], 'the Skeleton wins: the opponent still takes damage');
+assert.deepEqual(brawl([500, 0], [1500, 1000], ''), [4000, 5000], '(without it, the loser takes the difference)');
+
 console.log('underworld: ok');

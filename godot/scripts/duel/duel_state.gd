@@ -1385,21 +1385,17 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	if vs_def:
 		if a_val > d_val:
 			if ctx.get("pierce", false):
-				_damage(foe, a_val - d_val)
-				_lifesteal(side, from, att, a_val - d_val)
+				_battle_damage(foe, target, def, a_val - d_val, side, from, att)
 			result = _defeat(foe, target)
 		else:
 			_emit("blocked", {"side": foe, "slot": target})
 			if a_val < d_val:   # a failed attack costs the difference, as it does against ATK
-				_damage(side, d_val - a_val)
-				_lifesteal(foe, target, def, d_val - a_val)
+				_battle_damage(side, from, att, d_val - a_val, foe, target, def)
 	elif a_val > d_val:
-		_damage(foe, a_val - d_val)
-		_lifesteal(side, from, att, a_val - d_val)
+		_battle_damage(foe, target, def, a_val - d_val, side, from, att)
 		result = _defeat(foe, target)
 	elif a_val < d_val:
-		_damage(side, d_val - a_val)
-		_lifesteal(foe, target, def, d_val - a_val)
+		_battle_damage(side, from, att, d_val - a_val, foe, target, def)
 		_defeat(side, from)
 	else:
 		_emit("notice", {"text": "TIE — BOTH GO DOWN"})
@@ -1546,6 +1542,18 @@ func _exile(side: String, slot: int) -> void:
 	c.erase("charmed")
 	_clear_status(c)
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true), "exiled": true})
+
+
+## Battle damage: the Morale a side loses for its card losing a brawl (the other card's side may gain
+## it with LIFESTEAL). None if its card has "no battle damage" (a Card Forge passive).
+func _battle_damage(side: String, slot: int, mine: Dictionary, amount: int, other_side: String, other_slot: int, other: Dictionary) -> void:
+	if amount <= 0:
+		return
+	if not _passive(side, slot, mine, "no_battle_damage").is_empty():
+		_effect(side, mine, "%s: no battle damage" % mine.name, slot)
+		return
+	_damage(side, amount)
+	_lifesteal(other_side, other_slot, other, amount)
 
 
 ## LIFESTEAL (Card Forge passive): the Morale a character takes from an opponent in a brawl, its owner gains.

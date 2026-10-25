@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.69",
+        "notes": [
+            "AlleyWay Brawlers is now on Mac (Apple Silicon and Intel). Mac and Windows players share accounts and play each other online.",
+            "New card effect: you take no battle damage from brawls involving this card."
+        ]
+    },
+    {
         "version": "0.9.68",
         "notes": [
             "Underworld characters now rise from the grave properly: the ground splits in glowing cracks, spectral fire roars up and the character burns into view from its feet up as souls curl away.",

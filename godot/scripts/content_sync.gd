@@ -34,6 +34,12 @@ static func compare_versions(a: String, b: String) -> int:
 	return 0
 
 
+## Which build this is, for the server's manifest: each platform has its own patches and download
+## (the same versions, so Mac and Windows players play each other).
+static func platform() -> String:
+	return "macos" if OS.get_name() == "macOS" else "windows"
+
+
 ## Whether the server's patch (manifest client.patch) can update this build in place.
 static func patch_fits(p, mine: String) -> bool:
 	if not p is Dictionary:
@@ -46,7 +52,7 @@ static func patch_fits(p, mine: String) -> bool:
 
 ## What the server's manifest says about game versions ({} when it can't be reached).
 static func fetch_version() -> Dictionary:
-	var r: Dictionary = await Api.request("GET", "/api/content/manifest")
+	var r: Dictionary = await Api.request("GET", "/api/content/manifest?platform=" + platform())
 	if not r.ok or not (r.data is Dictionary):
 		return {}
 	var v = r.data.get("client", {})
@@ -74,7 +80,7 @@ static func install_patch(version: String, base: String, bytes: PackedByteArray)
 
 func run(download := true) -> Dictionary:
 	var out := {"reachable": false, "version": {}, "downloaded": 0, "failed": 0}
-	var r: Dictionary = await Api.request("GET", "/api/content/manifest")
+	var r: Dictionary = await Api.request("GET", "/api/content/manifest?platform=" + platform())
 	if not r.ok or not (r.data is Dictionary):
 		return out
 	out.reachable = true

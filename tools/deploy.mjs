@@ -2,8 +2,10 @@
 // and restarts the backend. Needs the "alleyway" SSH host (see "Deploying" in docs/CARD_PIPELINE.md).
 //
 //   node tools/deploy.mjs                 pull + restart
-//   node tools/deploy.mjs --patch         also copy builds/AlleywayBrawlers-<latest>-patch.pck
+//   node tools/deploy.mjs --patch         also copy builds/AlleywayBrawlers-<latest>-patch.pck (and the Mac
+//                                         one, -patch-macos.pck, when it's been made)
 //   node tools/deploy.mjs --build         also copy builds/AlleywayBrawlers-<latest>-windows.zip
+//   node tools/deploy.mjs --build-mac     also copy builds/AlleywayBrawlers-<latest>-macos.zip (tools/build_mac.mjs)
 //   node tools/deploy.mjs --sync-cards    also run backend/scripts/sync_cards.mjs after pulling
 //   node tools/deploy.mjs --logs [n]      just show the backend's last n log lines (default 60)
 //   node tools/deploy.mjs <file> ...      also copy these files into downloads/
@@ -53,8 +55,14 @@ try {
 
 const latest = JSON.parse(readFileSync(join(ROOT, 'shared/game_version.json'), 'utf8')).latest;
 const files = args.filter(a => !a.startsWith('--'));
-if (has('--patch')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-patch.pck`));
+if (has('--patch')) {
+    files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-patch.pck`));
+    const macPatch = join(ROOT, 'builds', `AlleywayBrawlers-${latest}-patch-macos.pck`);
+    if (existsSync(macPatch)) files.push(macPatch);
+    else console.warn(`No Mac patch for ${latest} (node tools/make_patch.mjs <godot> --macos): Mac players won't get this update in place.`);
+}
 if (has('--build')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-windows.zip`));
+if (has('--build-mac')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-macos.zip`));
 for (const f of files) {
     if (!existsSync(f)) {
         console.error(`Not found: ${f}`);

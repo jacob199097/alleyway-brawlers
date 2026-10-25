@@ -49,6 +49,7 @@ const FX_SAMPLES := [
 	# Underworld: give UNDEAD, raise from the enemy's Gutter, exile Gutter cards (effect and Activate cost),
 	# the enemy's Gutter as a condition / "for each"
 	[{"when": "deploy", "do": "give_undead", "target": "ally"}],
+	[{"when": "passive", "do": "no_battle_damage"}],
 	[{"when": "deploy", "do": "revive", "from": "foe"}],
 	[{"when": "turn_end", "do": "exile_gutter", "amount": 2}],
 	[{"when": "activate", "do": "damage", "amount": 400, "cost": "exile_gutter", "cost_n": 2}],

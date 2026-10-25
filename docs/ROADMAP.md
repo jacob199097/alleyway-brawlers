@@ -5,10 +5,11 @@ when it ships, or delete it if it's dropped.
 
 ## Platforms
 
-- [ ] **Mac build (Apple Silicon / ARM).** Godot 4.7 can export a universal macOS app (ARM + Intel)
-  from the Windows PC. Getting it signed so Macs open it without warnings needs an Apple Developer
-  account ($99/yr) and, realistically, a Mac; an unsigned build only opens after right-click → Open.
-  Patches (`tools/make_patch.mjs`) would need a separate Mac `.pck` in `downloads/`.
+- [x] **Mac build (Apple Silicon / ARM).** Done in 0.9.69: a universal app (Apple Silicon + Intel) built
+  from the PC (`tools/build_mac.mjs`), with its own patches and download, playing online with Windows
+  (see "Mac build" in `docs/CARD_PIPELINE.md`).
+  - [ ] Still to do: an Apple Developer account ($99/yr) to sign and notarise it, so Macs open it
+    without the "can't check this app" warning (it opens after right-click → Open for now).
 - [ ] **Mobile version, with cross-play (PC, Mac and mobile in the same matches).** Cross-play mostly
   comes for free: the server already runs matches, decks and rewards for every player
   (`backend/socket/onlineMatch.js`), and every client speaks the same socket protocol. The work is in

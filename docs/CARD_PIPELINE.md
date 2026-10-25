@@ -110,6 +110,29 @@ somewhere else).
 If a patch ever stops the game from starting, the game notices on the next start, runs the full
 build's own code instead and doesn't download that patch again.
 
+### Mac build
+The Mac version is one app for Apple Silicon and Intel Macs, built on this PC. It is the same game: same
+versions, same server, same accounts and matches, so Mac and Windows players play each other. Only its
+full download and its patches are its own (`-macos.zip`, `-patch-macos.pck`): the game asks the
+server for its platform's patch (`/api/content/manifest?platform=macos`), and `/download` gives a Mac
+browser the Mac build (`/download/mac` always does).
+
+- **A new Mac base build** (the first one, or when Windows needs a full build too):
+  `node tools/build_mac.mjs <Godot console exe>` exports it to `builds/macos_<version>/` (keep that
+  folder: Mac patches are made against it) and writes `builds/AlleywayBrawlers-<version>-macos.zip`.
+  Set `"macos": {"patchBase": "<version>"}` in `shared/game_version.json`, push, then
+  `node tools/deploy.mjs --build-mac`.
+- **Every update after that:** after the usual `make_patch.mjs`, also run
+  `node tools/make_patch.mjs <Godot console exe> --macos`. `deploy.mjs --patch` copies both patches.
+- It needs Godot's macOS export template (`macos.zip` in Godot's `export_templates/<version>/`).
+  The art is imported for Apple Silicon too (`import_etc2_astc` in `project.godot`); Windows builds
+  and patches leave those copies out.
+- **Opening it the first time.** Without an Apple Developer account ($99/yr) the app is signed only
+  "ad hoc", so macOS warns that it can't check it. Players unzip it, drag *Alleyway Brawlers* into
+  Applications, then right-click it → **Open** → **Open** (once). If macOS says it is "damaged", run
+  `xattr -cr "/Applications/Alleyway Brawlers.app"` in Terminal, then open it again. A developer account
+  (and notarising, which `export_presets.cfg` can do with the account's keys) removes the warning.
+
 ## Deploying
 `node tools/deploy.mjs` updates the server from the PC: it checks everything is pushed, pulls on the
 server, restarts the backend and shows the log if that fails. Add `--patch` or `--build` to copy the

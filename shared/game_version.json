@@ -1,6 +1,9 @@
 {
-    "latest": "0.9.68",
-    "minimum": "0.9.68",
+    "latest": "0.9.69",
+    "minimum": "0.9.69",
     "patchBase": "0.9.21",
-    "notes": "latest: the newest Windows build. minimum: older builds must update before playing online. Raise both when you ship a build with code changes; card-only changes need neither (the game downloads new cards itself). patchBase: the oldest full build a patch (downloads/AlleywayBrawlers-<latest>-patch.pck) can update in place; raise it with a full build when project settings or autoloads change."
+    "macos": {
+        "patchBase": "0.9.69"
+    },
+    "notes": "latest: the newest Windows build. minimum: older builds must update before playing online. Raise both when you ship a build with code changes; card-only changes need neither (the game downloads new cards itself). patchBase: the oldest full build a patch (downloads/AlleywayBrawlers-<latest>-patch.pck) can update in place; raise it with a full build when project settings or autoloads change. macos.patchBase: the same for the Mac build (patches: downloads/AlleywayBrawlers-<latest>-patch-macos.pck, full builds -macos.zip); Mac and Windows share latest and minimum, so they always play each other."
 }

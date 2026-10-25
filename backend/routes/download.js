@@ -22,13 +22,13 @@ const crypto  = require('crypto');
 
 const router = express.Router();
 const DIR = path.join(__dirname, '../../downloads');
-const ZIP = /^AlleywayBrawlers-(\d+)\.(\d+)\.(\d+)-windows\.zip$/;
-const PATCH = /^AlleywayBrawlers-(\d+\.\d+\.\d+)-patch\.pck$/;
+const ZIP = /^AlleywayBrawlers-(\d+)\.(\d+)\.(\d+)-(windows|macos)\.zip$/;
+const PATCH = /^AlleywayBrawlers-(\d+\.\d+\.\d+)-patch(-macos)?\.pck$/;
 const hashes = new Map();   // file -> {mtimeMs, size, sha256}
 
-/** The patch for `version`, if one is in the folder: {path, size, sha256}. */
-function patchInfo(version) {
-    const file = `AlleywayBrawlers-${version}-patch.pck`;
+/** The patch for `version` on a platform ('windows' or 'macos'), if one is in the folder: {path, size, sha256}. */
+function patchInfo(version, platform = 'windows') {
+    const file = `AlleywayBrawlers-${version}-patch${platform === 'macos' ? '-macos' : ''}.pck`;
     const full = path.join(DIR, file);
     if (!PATCH.test(file) || !fs.existsSync(full)) return null;
     const st = fs.statSync(full);
@@ -40,12 +40,13 @@ function patchInfo(version) {
     return { path: `/download/${file}`, size: h.size, sha256: h.sha256 };
 }
 
-function newest() {
+/** The newest full build for a platform ('windows' or 'macos'): its file name, or null. */
+function newest(platform = 'windows') {
     let best = null;
     let bestKey = -1;
     for (const f of fs.existsSync(DIR) ? fs.readdirSync(DIR) : []) {
         const m = ZIP.exec(f);
-        if (!m) continue;
+        if (!m || m[4] !== platform) continue;
         const key = Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3]);
         if (key > bestKey) {
             bestKey = key;
@@ -55,11 +56,17 @@ function newest() {
     return best;
 }
 
-router.get('/', (_req, res) => {
-    const f = newest();
-    if (!f) return res.status(404).send('No game download is available yet.');
+/** The newest build for a platform, or a short note when there isn't one. */
+function send(res, platform) {
+    const f = newest(platform);
+    if (!f) return res.status(404).send(`No ${platform === 'macos' ? 'Mac' : 'Windows'} download is available yet.`);
     res.download(path.join(DIR, f), f);
-});
+}
+
+// A Mac (by its browser) gets the Mac build, anything else the Windows one
+router.get('/', (req, res) => send(res, /Macintosh|Mac OS X/i.test(String(req.get('user-agent') || '')) ? 'macos' : 'windows'));
+router.get('/mac', (_req, res) => send(res, 'macos'));
+router.get('/windows', (_req, res) => send(res, 'windows'));
 
 router.get('/:file', (req, res) => {
     const f = String(req.params.file);

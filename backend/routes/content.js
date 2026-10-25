@@ -74,25 +74,29 @@ const art = () => fingerprints(ART_DIR, (f) => f.endsWith('.png'));
 const backs = () => fingerprints(BACK_DIR, (f) => /^card_back(_[a-z0-9_]+)?\.png$/.test(f));
 const sfx = () => fingerprints(SFX_DIR, (f) => SFX_FILE.test(f));
 
-function versions() {
+/** Versions for a platform ('windows' or 'macos'): the same latest / minimum for both (they play
+ *  each other online), each with its own patch and full download. */
+function versions(platform = 'windows') {
     let v = {};
     try {
         v = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
     } catch { /* keep defaults */ }
     const latest = String(v.latest || '0.0.0');
-    const patch = v.patchBase ? patchInfo(latest) : null;
+    const mac = platform === 'macos';
+    const base = mac ? (v.macos && v.macos.patchBase) : v.patchBase;
+    const patch = base ? patchInfo(latest, platform) : null;
     return {
         latest,
         minimum: String(v.minimum || '0.0.0'),
         // An in-place update to the latest version for builds at patchBase or newer (godot/scripts/patcher.gd)
-        patch: patch ? { version: latest, base: String(v.patchBase), ...patch } : null,
+        patch: patch ? { version: latest, base: String(base), ...patch } : null,
         // The server hosts the builds itself (routes/download.js) unless .env points elsewhere
-        downloadUrl: process.env.CLIENT_DOWNLOAD_URL
-            || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download` : ''),
+        downloadUrl: (mac ? process.env.CLIENT_DOWNLOAD_URL_MAC : process.env.CLIENT_DOWNLOAD_URL)
+            || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download${mac ? '/mac' : ''}` : ''),
     };
 }
 
-router.get('/manifest', async (_req, res) => {
+router.get('/manifest', async (req, res) => {
     try {
         const c = await cards();
         const a = art();
@@ -100,7 +104,7 @@ router.get('/manifest', async (_req, res) => {
         const s = sfx();
         const contentVersion = sha256(c.hash + JSON.stringify(a) + JSON.stringify(b) + JSON.stringify(s)).slice(0, 16);
         res.set('Cache-Control', 'no-cache');
-        res.json({ contentVersion, client: versions(), cards: { hash: c.hash, size: c.size }, art: a, backs: b, sfx: s });
+        res.json({ contentVersion, client: versions(req.query.platform === 'macos' ? 'macos' : 'windows'), cards: { hash: c.hash, size: c.size }, art: a, backs: b, sfx: s });
     } catch (err) {
         console.error('[content/manifest]', err.message);
         res.status(500).json({ error: 'Could not build the content manifest.' });

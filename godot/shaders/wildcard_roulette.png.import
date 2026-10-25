@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dyi2l0y7ndu8s"
 path.bptc="res://.godot/imported/wildcard_roulette.png-94cb516d5d1ca8d37b7d2b796fe64f69.bptc.ctex"
+path.astc="res://.godot/imported/wildcard_roulette.png-94cb516d5d1ca8d37b7d2b796fe64f69.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://shaders/wildcard_roulette.png"
-dest_files=["res://.godot/imported/wildcard_roulette.png-94cb516d5d1ca8d37b7d2b796fe64f69.bptc.ctex"]
+dest_files=["res://.godot/imported/wildcard_roulette.png-94cb516d5d1ca8d37b7d2b796fe64f69.bptc.ctex", "res://.godot/imported/wildcard_roulette.png-94cb516d5d1ca8d37b7d2b796fe64f69.astc.ctex"]
 
 [params]
 
