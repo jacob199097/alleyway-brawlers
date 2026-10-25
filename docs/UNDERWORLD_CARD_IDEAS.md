@@ -62,7 +62,7 @@ Rarity: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary.
 
 ## Art style (every prompt)
 
-Attach one finished Underworld card (Veyr or Malachar) to ChatGPT with each prompt: a new character's
+Each prompt has its own setting, camera angle and twist, so the set doesn't all look like the same graveyard. Attach one finished Underworld card (Veyr or Malachar) to ChatGPT with each prompt: a new character's
 first prompt starts "Using this exact style"; a Striver's later levels start "The same character, but
 now…" with the previous level attached. The Forge adds the frame, name and text, so the art has none.
 
@@ -80,7 +80,7 @@ glowing cracks, bone white and charcoal black.**
 Forge: When deployed → Deploy tokens (Skeleton, 1).
 
 ```
-Using this exact style, a hunched old gravekeeper with a long grey beard, a battered top hat and a patched black coat, leaning on a rusted shovel in a fog-filled graveyard at night. Behind him a skeleton claws its way out of a freshly dug grave, purple soulfire leaking from the cracked earth. He holds up a hanging lantern burning with violet flame. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, seen from the bottom of a freshly dug grave looking straight up: a hunched old gravekeeper with a long grey beard, battered top hat and patched black coat stands at the edge, silhouetted against a huge blood-red moon, a shovel over his shoulder and a swinging lantern of violet flame lighting his wrinkled grin from below. A skeletal hand grips the edge of the grave right beside the viewer. Beyond the cemetery railings, a city skyline glows with purple neon. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 2. Lenore, the Grave Bride
@@ -94,7 +94,7 @@ Forge: Always → UNDEAD. Second effect: When another of your characters is KO'd
 other ally, clan Underworld, once per turn.
 
 ```
-Using this exact style, a pale undead bride in a torn, rotting wedding dress and a long tattered veil, her skin cracked with glowing violet veins, holding a bouquet of withered black roses that drip purple light. She drifts above a broken chapel aisle lined with toppled gravestones, wisps of souls circling her. Her eyes glow electric purple and blood-red tears run down her cheeks. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, a tilted, dreamlike view of a derelict hotel ballroom flooded ankle-deep with black water: a pale undead bride spins mid-dance, her torn wedding dress and long veil billowing into violet smoke, withered black rose petals turning to ash around her. A cracked wall mirror behind her shows her reflection as the living, smiling bride she once was. Her skin is cracked with glowing purple veins, blood-red tears on her cheeks, a broken chandelier hanging crooked above. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 3. The Mortician
@@ -107,7 +107,7 @@ Forge: Activate → Draw cards (2). Cost: Sacrifice another of your characters. 
 Skeleton tokens: free bodies to sacrifice.)
 
 ```
-Using this exact style, a tall, gaunt undertaker in a pinstriped black suit, rubber apron and long leather gloves, a stitched-on smile and round tinted spectacles glowing violet. He stands over a steel embalming table in a dingy basement morgue, holding a scalpel and a toe tag, jars of glowing purple fluid on the shelves and a body bag twitching behind him. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, a tight three-quarter close-up in the back room of an all-night funeral parlour under a single flickering fluorescent tube: a gaunt undertaker in a pinstriped waistcoat, rubber apron and round tinted spectacles reflecting violet light, calmly stitching a body under a white sheet with thread that glows purple. A neat steel tray of tools sits beside him, and the corpse's hand has just twitched and gripped his sleeve. He is smiling. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 4. Doctor Morbus
@@ -119,7 +119,7 @@ Using this exact style, a tall, gaunt undertaker in a pinstriped black suit, rub
 Forge: When deployed → POISON, Who: One enemy, amount 200.
 
 ```
-Using this exact style, a sinister plague doctor in a long black leather coat and a cracked bone-white beaked mask, glowing purple eyes behind round glass lenses, holding a smoking censer that leaks violet poison fog. Rats scurry around his boots on a rain-slick alley street, and red lanterns glow in the fog behind him. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, a symmetrical one-point view down an abandoned subway platform at night: a plague doctor in a long black leather coat and cracked bone-white beaked mask walks out of the train tunnel toward the viewer, swinging a smoking censer. Violet poison fog rolls off the tracks around his boots, a river of rats pours along the platform edge, and the cracked tiled walls are lit by one blood-red emergency light. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 5. Ossian, the Bone Thief
@@ -132,7 +132,7 @@ Using this exact style, a sinister plague doctor in a long black leather coat an
 Forge: When deployed → Gutter to the field, from the opponent's Gutter, Authority up to 4.
 
 ```
-Using this exact style, a wiry grave robber with a hooded, ragged cloak stitched from burial shrouds, a skull-faced mask and long bony fingers, dragging a sack bulging with stolen bones over his shoulder. He crouches on top of a cracked crypt at night, a ghostly figure rising from the sack on a thread of violet soulfire. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, an action shot in pouring rain: a wiry grave robber in a hooded cloak stitched from burial shrouds and a skull-faced mask leaps between the rooftops of two city mausoleums, mid-air, a bulging sack of stolen bones over his shoulder. A ghostly prisoner is half-pulled out of the sack on a violet chain, clawing to get free. Lightning in purple and red behind him, motion streaks in the rain. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 6. Hollow Wraith
@@ -144,7 +144,7 @@ Using this exact style, a wiry grave robber with a hooded, ragged cloak stitched
 Forge: Always → UNDEAD. Second effect: Always → Can't be attacked (elusive).
 
 ```
-Using this exact style, a towering hooded wraith with no face, only an empty black void and two burning violet eyes, its tattered robes dissolving into purple smoke at the edges. Skeletal hands hold a long rusted scythe with chains wrapped around the shaft. It floats over a misty cemetery, half see-through, gravestones visible through its body. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, an empty laundromat at three in the morning, one strip light flickering: a towering hooded wraith glides silently along the row of washing machines, half see-through, its tattered robes trailing like wet sheets and melting into purple smoke. Its face is an empty black void with two burning violet eyes, mirrored in every round machine door. Skeletal hands rest on a long rusted scythe wrapped in chains. Lonely, quiet and eerie. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 7. Mortivar — The Bone Colossus (Legendary)
@@ -159,7 +159,7 @@ ATK / DEF, This card, ATK 200, How many times: For each card in your Gutter, Cou
 Count only (kind) Characters only, At most 10.
 
 ```
-Using this exact style, a colossal giant built from thousands of fused bones and skulls, a ribcage chest with a burning violet soulfire heart inside it, a crown of horns and spinal columns, chains hanging from its arms. It rises out of a collapsing mass grave in the middle of a ruined city street, tiny skeletons climbing over its shoulders, hellfire bursting from the cracks in the ground. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character filling the frame from a low angle. No text, no border, no card frame.
+Using this exact style, a worm's-eye view from street level as a colossal giant built from thousands of fused bones and skulls tears up through a collapsing city overpass, flipped taxis and cars falling around it. A burning violet soulfire heart blazes inside its ribcage chest, a crown of horns and spines crowns its skull, and one huge bony hand crushes a streetlamp. Tiny skeletons swarm over its shoulders, and hellfire bursts up through the cracked road. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ---
@@ -182,7 +182,7 @@ Using this exact style, a colossal giant built from thousands of fused bones and
 > your turn: Deploy a Skeleton token in ATK position.
 
 ```
-Using this exact style, a small, cheeky skeleton kid with a cracked skull, a backwards baseball cap and an oversized hoodie, grinning wide and waving a rib bone like a sword. Little violet flames flicker in his eye sockets. Two smaller skeletons peek out from behind a tombstone next to him in a graveyard alley at night. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+Using this exact style, a chain-link fenced basketball court at night under one buzzing floodlight: a small, cheeky skeleton kid in a backwards cap and an oversized hoodie dribbles a glowing purple skull like a basketball, mid-crossover, grinning wide with little violet flames in his eye sockets. Two smaller skeleton buddies cheer from the bench, one banging two bones together. Graffiti-style shapes (no lettering) on the court walls, purple smoke drifting. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ```
@@ -258,7 +258,7 @@ The same character, but now the undying champion: a giant, scarred undead fighte
 Forge: Gutter to the field, clan Underworld, Authority up to 5.
 
 ```
-Using this exact style, a ritual circle carved into a cracked graveyard floor at night, glowing violet runes, candles of purple flame around the edge. In the middle, skeletal arms and a hooded corpse burst up out of the ground in a column of purple hellfire, gravestones toppling outward. No people besides the rising dead. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, a low-angle street view in a rain-soaked back alley: a manhole cover blasts into the air on a pillar of violet hellfire, and a horde of skeletons and corpses claws its way up out of the sewer, one after another. Steel shutters, dumpsters and fire escapes line the alley, and the purple light floods every puddle. No living people. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 12. Grave Robbing
@@ -282,7 +282,7 @@ Using this exact style, a pair of gloved hands prying open a coffin in a freshly
 Forge: Deploy tokens (Skeleton, 2).
 
 ```
-Using this exact style, a field of crooked gravestones under a blood-red moon, the ground split with glowing purple cracks, and a crowd of grinning skeletons pulling themselves up out of the earth at once, bony hands everywhere, bits of dirt and purple embers flying. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, an overgrown empty city lot under a huge orange-red harvest moon: rows of skeletons sprout from the dirt like crops, some only skulls poking up, some halfway out and stretching. A skeletal scarecrow with a rusted scythe stands watch over them, and a wheelbarrow piled with skulls sits at the end of a row. Tall apartment blocks loom behind a broken fence, violet mist drifting between the rows. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 14. Soul Toll
@@ -294,7 +294,7 @@ Using this exact style, a field of crooked gravestones under a blood-red moon, t
 Forge: Drain Morale, amount 200, How many times: For each card in your Gutter, At most 10.
 
 ```
-Using this exact style, a ghostly ferryman's skeletal hand held out, palm up, collecting glowing coins that are actually tiny screaming souls. Behind it a dark river of purple light flows under a crumbling stone bridge, streams of souls being pulled from the far bank toward the hand. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, a toll booth on a long foggy bridge over a river of glowing purple light: a skeletal attendant in a peaked cap leans out of the booth with an open bony palm, collecting coins that are tiny screaming souls. The barrier arm is a giant bone. A queue of pale ghost cars and ghostly figures stretches back into the fog, waiting to pay. Moody and quiet, one red lamp on the booth. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 15. Last Rites
@@ -318,7 +318,7 @@ Using this exact style, a hooded priest of the dead silhouetted against a blood-
 Forge: Continuous Hustle. Always → Change ATK / DEF, Who: All allies, clan Underworld, ATK 300.
 
 ```
-Using this exact style, a crowd of skeletons and ghosts dancing wildly in a ruined ballroom, a skeleton band playing a broken piano and a violin, chandeliers burning with violet flame, tattered party streamers and purple confetti made of embers. The dancers' bones glow purple at the joints. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, a packed underground nightclub: a skeleton DJ in headphones works the decks, a dance floor of skeletons and ghosts mid-move below him, under a mirror ball shaped like a skull that scatters violet and blood-red laser beams through the smoke. Bones glow purple at every joint, and a ghost couple twirls through a pillar in the foreground. Loud, wild and fun. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 17. Chains of the Damned
@@ -342,7 +342,7 @@ Using this exact style, a set of heavy black iron chains wrapped around a clench
 Forge: Ambush. When it's attacked → DOWN, Who: The attacker.
 
 ```
-Using this exact style, dozens of grey, rotting hands bursting out of a cracked alley street and grabbing the legs of a stumbling shadowy brawler, dragging him down. Purple light glows from the cracks, rain bounces off the pavement, and blood-red neon signs reflect in the puddles. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, looking straight down the spiral of a run-down tenement stairwell: a shadowy street fighter flees down the stairs as grey, rotting hands burst up out of every step and through the bannisters, grabbing at his ankles and coat. Purple light glows through the cracks in the steps, one bare bulb swings overhead, and peeling paint hangs from the walls. Dizzying, claustrophobic. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ## 19. Death's Embrace
@@ -380,7 +380,7 @@ Forge: Continuous Ambush. When your opponent deploys a character → SILENCE, Wh
 just deployed), once per turn.
 
 ```
-Using this exact style, a frightened street fighter standing in a dark apartment hallway, surrounded by pale ghostly faces with wide open mouths emerging from the walls, their wailing shown as rippling violet sound waves. The light bulb overhead flickers purple, and black handprints cover the peeling wallpaper. Underworld colours: deep violet and electric-purple hellfire, blood-red embers and glowing cracks, bone white and charcoal black. Square 1024x1024. No text, no border, no card frame.
+Using this exact style, a cramped apartment living room at night: a pale ghost face with a wide open, wailing mouth pushes out through the screen of an old boxy television, the screen's static glowing violet. A tough-looking street fighter in a jacket stumbles backwards over a toppled chair, terrified. Family photos on the wall have the faces scratched out, and black handprints creep across the peeling wallpaper. Underworld colours: deep violet and electric-purple hellfire, blood-red accents, bone white and charcoal black. Square 1024x1024. No text, letters or signs anywhere, no border, no card frame.
 ```
 
 ---
