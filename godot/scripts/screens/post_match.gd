@@ -57,12 +57,16 @@ func _ready() -> void:
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		art.add_child(l)
 	# The two buttons, under the title (the artwork leaves room for them)
-	_result_button(Vector2(645, 488), "BRAWL AGAIN", UI.RED, func(): Game.go("ffa_lobby" if d.get("ffa", false) else "fight_mode"))
+	var again := "turf_defense" if d.get("coop", false) else "ffa_lobby" if d.get("ffa", false) else "fight_mode"
+	_result_button(Vector2(645, 488), "FIGHT AGAIN" if d.get("coop", false) else "BRAWL AGAIN", UI.RED, func(): Game.go(again))
 	_result_button(Vector2(975, 488), "MENU", UI.BLUE, func(): Game.go("main_menu"))
-	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), _mvp_panel(d.get("mvp", {}) if d.get("mvp") is Dictionary else {})]
+	# Turf Defense's first clear of Street: the boss's prize card, where the MVP usually goes
+	var prize := str(d.get("rewards", {}).get("prize", "")) if d.get("rewards") is Dictionary and d.rewards.get("prize") is String else ""
+	var side_panel: Control = _prize_panel(prize) if prize != "" else _mvp_panel(d.get("mvp", {}) if d.get("mvp") is Dictionary else {})
+	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), side_panel]
 	_show_mastery(d.get("mastery"))
 	_submit(d)
-	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "" and not d.get("ffa", false):
+	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "" and not d.get("ffa", false) and not d.get("coop", false):
 		_rematch_box()
 	_build_fx()
 	_reveal(art, shine, rays, panels)
@@ -468,6 +472,14 @@ func _stats_strip(d: Dictionary, won: bool) -> Control:
 	if ffa:   # a free-for-all: where you finished, and the table in order
 		var players: Dictionary = d.get("players", {}) if d.get("players") is Dictionary else {}
 		reason = "You finished %s of %d" % [_place_text(int(d.get("place", 0))), maxi(players.size(), 3)]
+	var coop: bool = d.get("coop", false)
+	if coop:   # Turf Defense: you and your ally, against the boss
+		var boss: Dictionary = d.get("boss", {}) if d.get("boss") is Dictionary else {}
+		var ally := str(d.get("players", {}).get("ally", {}).get("username", "your ally")) if d.get("players") is Dictionary and d.players.get("ally") is Dictionary else "your ally"
+		var bname := str(boss.get("short", boss.get("name", "the boss")))
+		reason = ("You and %s beat %s on %s" if won else "%s… %s beat you both on %s") % ([ally, bname, str(boss.get("level_name", ""))] if won else ["So close", bname, str(boss.get("level_name", ""))])
+		if not won and str(d.get("reason", "")) in ["concede", "disconnect", "afk"]:
+			reason = "The crew went down against %s" % bname
 	var r := UI.label(reason, 26, Color.WHITE, true)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
@@ -482,6 +494,10 @@ func _stats_strip(d: Dictionary, won: bool) -> Control:
 			["TURNS", d.get("turns", "—"), Color.WHITE]]
 	if ffa:
 		rows = [["PLACE", _place_text(int(d.get("place", 0))), UI.GOLD if won else UI.RED], ["TURNS", d.get("turns", "—"), Color.WHITE]]
+	if coop:
+		var boss_col := Color(str(d.get("boss", {}).get("color", "#e63946"))) if d.get("boss") is Dictionary else UI.RED
+		rows = [["YOUR MORALE", d.get("player_morale", "—"), UI.BLUE if won else UI.RED],
+			["BOSS MORALE", d.get("opponent_morale", "—"), boss_col], ["TURNS", d.get("turns", "—"), Color.WHITE]]
 	for s in rows:
 		var c := VBoxContainer.new()
 		var cap := UI.label(s[0], 16, UI.MUTED)
@@ -494,6 +510,81 @@ func _stats_strip(d: Dictionary, won: bool) -> Control:
 			_count(val, int(s[1]), "%d", 0.7, 0.35)
 		stats.add_child(c)
 	return v
+
+
+## Turf Defense: the boss's prize card, won on the first clear of Street. It rises out of the dark
+## on a burst of light in its rarity's colour, flips over, and lands in your collection.
+func _prize_panel(id: String) -> Control:
+	var card: Dictionary = CardDB.get_card(id).duplicate()
+	card.id = id
+	var rarity := int(card.get("rarity", 1))
+	var col := UI.rarity_color(rarity)
+	var p := UI.panel(col)
+	p.position = Vector2(1280, PANEL_Y)
+	p.custom_minimum_size = Vector2(600, 440)
+	add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	var h := UI.label("★  PRIZE CARD  ★", 24, col.lightened(0.3), true)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(h)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 26)
+	v.add_child(row)
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(250, 362)
+	row.add_child(stage)
+	var rays := _spin_rays(Vector2(125, 181), 280.0, col.lightened(0.25), 18)
+	stage.add_child(rays)
+	var back := UI.texture_rect(CardDB.back(str(card.get("clanTag", ""))), Vector2(236, 334))
+	back.position = Vector2(7, 14)
+	back.stretch_mode = TextureRect.STRETCH_SCALE
+	stage.add_child(back)
+	var tile := CardTile.make(card, Vector2(236, 334))
+	tile.position = Vector2(7, 14)
+	tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
+	tile.pressed.connect(func(t): UI.card_zoom(self, t.card))
+	stage.add_child(tile)
+	var info := VBoxContainer.new()
+	info.add_theme_constant_override("separation", 4)
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(info)
+	info.add_child(UI.label("NEW CARD", 18, UI.GREEN, true))
+	var n := UI.label(str(card.get("name", "?")).to_upper(), 30, Color("ffd86b"), true)
+	n.autowrap_mode = TextServer.AUTOWRAP_WORD
+	n.custom_minimum_size = Vector2(270, 0)
+	info.add_child(n)
+	info.add_child(UI.label(str(UI.RARITY_LABEL.get(rarity, "")).to_upper(), 18, col, true))
+	info.add_child(_gap_box(10))
+	var note := UI.label("Added to your collection.\nOnly bosses drop it.", 17, UI.MUTED)
+	info.add_child(note)
+	# Face down first; it shakes, flips over in a flash, and the light behind it comes up
+	tile.modulate.a = 0.0
+	rays.modulate.a = 0.0
+	back.pivot_offset = back.size / 2
+	var t := create_tween()
+	t.tween_interval(0.9 + INTRO)
+	for i in 6:
+		t.tween_property(back, "rotation_degrees", 3.0 if i % 2 == 0 else -3.0, 0.06)
+	t.tween_callback(func():
+		Sfx.play("riser", 0.9, -4.0)
+		back.rotation_degrees = 0.0)
+	t.tween_property(back, "scale", Vector2(0.0, 1.0), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		back.visible = false
+		tile.pivot_offset = tile.size / 2
+		tile.scale = Vector2(0.0, 1.0)
+		tile.modulate.a = 1.0
+		_flash(Color(col, 0.6))
+		Sfx.play("pack_open", 1.0, -2.0))
+	t.tween_property(tile, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_callback(func():
+		Sfx.play("promote", 1.2, -6.0)
+		_burst(tile.get_global_rect().get_center(), col.lightened(0.4), 110, 900.0, 1.1, 250.0)
+		_shake_screen(10.0)
+		rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.6))
+	return p
 
 
 ## Your level and clan mastery, each with its emblem and a bar that fills with this match's XP,
@@ -799,6 +890,16 @@ func _show_rewards(rw: Dictionary) -> void:
 	_fill_bar(_xp_fill, before.pct, after.pct, new_level - old_level, 0.4 + INTRO, func(_i):
 		_level_reached(_level_icon, _level_text, UI.level_icon(new_level), "LEVEL %d" % new_level, UI.BLUE, "LEVEL UP!"))
 	var lines := ["+%d Karat" % int(rw.get("karatEarned", 0))]
+	if rw.has("bossId"):   # Turf Defense (backend/economy/turf.js)
+		if rw.get("first", false):
+			lines.push_front("★ FIRST CLEAR! ★")
+		if int(rw.get("packs", 0)) > 0:
+			var n := int(rw.packs)
+			lines.append("🎁 %d free pack%s for the first clear" % [n, "" if n == 1 else "s"])
+			Game.player.free_packs = int(Game.player.get("free_packs", 0)) + n
+			_free_pack_button()
+		if rw.get("unlockedNext", false):
+			lines.append("🔓 The next level is open")
 	var rp := int(rw.get("rankPointDelta", 0))
 	if rp != 0:   # (ranked matches)
 		lines.append("%+d Rank Points" % rp)

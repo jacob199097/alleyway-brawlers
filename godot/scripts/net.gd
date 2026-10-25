@@ -16,6 +16,10 @@ var inbox: Array = []
 var rps_inbox: Array = []   # Scissors Paper Rock messages for screens/rps.gd
 var rematch_inbox: Array = []   # rematch messages for screens/post_match.gd (may arrive before it opens)
 var ffa_inbox: Array = []       # free-for-all lobby messages for screens/ffa_lobby.gd (backend/socket/ffaMatch.js)
+var coop_inbox: Array = []      # Turf Defense queue messages for screens/turf_defense.gd (backend/socket/coopMatch.js)
+## Turf Defense: a "join them" pop-up asked to queue for this boss level ({boss, level}); the
+## Turf Defense screen picks it up when it opens
+var coop_join := {}
 var _rejoin := false        # ask the server for a match still in progress once connected
 var _ws := WebSocketPeer.new()
 var _connecting := false
@@ -63,6 +67,7 @@ func rejoin() -> void:
 		_rejoin = true
 	else:
 		send("ffa:resync")   # (a free-for-all in progress: ffa:start, or ffa:none)
+		send("coop:resync")  # (Turf Defense: coop:start, or coop:none)
 
 
 func send(name: String, data := {}) -> bool:
@@ -118,6 +123,7 @@ func _handle(msg: String) -> void:
 					_rejoin = false
 					send("mp:resync")
 					send("ffa:resync")
+					send("coop:resync")
 			elif kind == "4":
 				push_warning("Realtime login refused: " + msg.substr(2))
 				_want = false
@@ -149,7 +155,8 @@ static func normalize(v):
 
 func _on_global_event(name: String, data) -> void:
 	match name:
-		"mp:update", "mp:over", "mp:opponent", "mp:emote", "mp:spectators", "ffa:update", "ffa:over", "ffa:out":
+		"mp:update", "mp:over", "mp:opponent", "mp:emote", "mp:spectators", "ffa:update", "ffa:over", "ffa:out", \
+				"coop:update", "coop:over", "coop:emote":
 			inbox.append([name, data])
 			if inbox.size() > 500:
 				inbox.pop_front()
@@ -168,6 +175,26 @@ func _on_global_event(name: String, data) -> void:
 			var scene := get_tree().current_scene
 			if name == "ffa:lobby" and not (scene and scene.has_method("on_ffa_lobby")):
 				Game.go("ffa_lobby")   # (rejoining a lobby from another screen)
+		"coop:queue", "coop:left":
+			coop_inbox.append([name, data])
+			var scene := get_tree().current_scene
+			if name == "coop:queue" and not (scene and scene.has_method("on_coop_queue")):
+				Game.go("turf_defense")   # (still waiting for a partner, from another screen)
+		"coop:looking":
+			if data is Dictionary:
+				_coop_looking(data)
+		"coop:start":
+			inbox.clear()
+			coop_inbox.clear()
+			coop_join = {}
+			Game.duel_setup = {"online": true, "start": data}
+			Game.alert()
+			if get_tree().current_scene and get_tree().current_scene.has_method("on_online_start"):
+				get_tree().current_scene.on_online_start(data)
+			else:
+				if data is Dictionary and data.get("resync", false):
+					_toast("Rejoining Turf Defense…", UI.GOLD)
+				Game.go("duel")
 		"ffa:start":
 			inbox.clear()
 			ffa_inbox.clear()
@@ -201,7 +228,7 @@ func _on_global_event(name: String, data) -> void:
 			if data is Dictionary and data.get("unlocked") is Array:
 				show_achievements(data.unlocked)
 				Game.refresh_player()   # their Karat or Dust may have gone up
-		"mp:error", "ffa:error":
+		"mp:error", "ffa:error", "coop:error":
 			var scene := get_tree().current_scene
 			if not (scene and scene.has_method("on_online_error")):
 				_toast(str(data.get("message", "Something went wrong.")), UI.RED)
@@ -302,6 +329,25 @@ func _next_banner() -> void:
 		p.queue_free()
 		_banners.pop_front()
 		_next_banner())
+
+
+## Turf Defense: someone is waiting for a partner to fight a boss. A pop-up (not mid-match) offers
+## to join them: the Turf Defense screen opens and queues for the same boss level.
+func _coop_looking(data: Dictionary) -> void:
+	var scene := get_tree().current_scene
+	if not (scene is Control) or Game.BUSY_SCREENS.any(func(s): return scene.scene_file_path == Game.SCREENS[s]):
+		if scene and scene.has_method("on_coop_looking"):
+			scene.on_coop_looking(data)
+		return
+	Game.alert(false)
+	Sfx.play("ambush", 1.3, -4.0)
+	var who := str(data.get("username", "A player"))
+	UI.dialog(scene, "🛡  TURF DEFENSE", "%s needs a partner to fight %s (%s). Join them?" % [who, str(data.get("boss_name", "a boss")), str(data.get("level_name", ""))], [
+		["JOIN", func():
+			coop_join = {"boss": str(data.get("boss", "")), "level": int(data.get("level", 1))}
+			Game.go("turf_defense"), UI.GREEN],
+		["NOT NOW", func(): pass],
+	], UI.GOLD)
 
 
 func _show_challenge(data: Dictionary) -> void:

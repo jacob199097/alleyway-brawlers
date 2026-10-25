@@ -7,6 +7,8 @@ const RANK_COLORS := {
 }
 
 const CARD := Vector2(150, 212)   # a card in a mode's picture (the card art's shape)
+const TILE_W := 344.0             # a mode's tile (five side by side)
+const ART_W := TILE_W - 40.0      # its picture
 
 var _starting := false
 var _spin: Label = null
@@ -42,11 +44,14 @@ func _ready() -> void:
 			"sub": "Practice against the AI" + ("\nOffline: starter deck, no rewards" if Game.offline else ""),
 			"locked": false},
 		{"id": "ffa", "title": "FREE-FOR-ALL", "color": Color("ff9f43"),
-			"sub": "4 players online: CPUs fill empty seats\nLast one standing wins",
+			"sub": "4 players · CPUs fill seats\nLast one standing wins",
+			"locked": Game.offline, "lock_text": "Needs the server"},
+		{"id": "turf", "title": "TURF DEFENSE", "color": Color("ff4d6d"),
+			"sub": "2 players vs a clan boss\nBeat it for its prize card",
 			"locked": Game.offline, "lock_text": "Needs the server"},
 	]
 	for i in modes.size():
-		_card(modes[i], Vector2(90 + i * 440, 170))
+		_card(modes[i], Vector2(960 - (modes.size() * (TILE_W + 22.0) - 22.0) / 2.0 + i * (TILE_W + 22.0), 170))
 	UI.back_button(self, func(): Game.go("main_menu"))
 	var tut := UI.button("HOW TO PLAY  ·  TUTORIAL", Game.start_tutorial, Vector2(440, 60), UI.GREEN)
 	tut.position = Vector2(960 - 220, 958)
@@ -93,7 +98,7 @@ func _card(m: Dictionary, at: Vector2) -> void:
 	var locked: bool = m.locked
 	var p := UI.panel(Color(col, 0.4 if locked else 0.95), Color(0.05, 0.05, 0.12, 0.92))
 	p.position = at
-	p.custom_minimum_size = Vector2(420, 760)
+	p.custom_minimum_size = Vector2(TILE_W, 760)
 	p.modulate = Color(1, 1, 1, 0.55) if locked else Color.WHITE
 	add_child(p)
 	var v := VBoxContainer.new()
@@ -108,20 +113,21 @@ func _card(m: Dictionary, at: Vector2) -> void:
 	v.add_child(t)
 	var s := UI.label(m.sub, 20, UI.MUTED)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	s.custom_minimum_size = Vector2(380, 64)
+	s.custom_minimum_size = Vector2(ART_W, 64)
+	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (five tiles: long lines wrap)
 	v.add_child(s)
 	var art := Control.new()
-	art.custom_minimum_size = Vector2(380, 480)
+	art.custom_minimum_size = Vector2(ART_W, 480)
 	v.add_child(art)
 	var fan: Array = []
 	if m.id == "ranked" and not locked:
 		_rank_art(art)
 	else:
 		fan = _mode_art(art, m.id, col)
-		var icon := UI.label({"casual": "VS", "ranked": "🔒", "cpu": "CPU", "ffa": "FFA"}[m.id], 120 if fan.is_empty() else 84, col, true)
-		icon.size = Vector2(380, 400)
+		var icon := UI.label({"casual": "VS", "ranked": "🔒", "cpu": "CPU", "ffa": "FFA", "turf": "BOSS"}[m.id], 120 if fan.is_empty() else 84, col, true)
+		icon.size = Vector2(ART_W, 400)
 		if not fan.is_empty():   # (over the cards, low down: the cards are the picture)
-			icon.size = Vector2(380, 120)
+			icon.size = Vector2(ART_W, 120)
 			icon.position = Vector2(0, 360 if m.id != "casual" else 190)
 		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -138,9 +144,9 @@ func _card(m: Dictionary, at: Vector2) -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(l)
 	else:
-		v.add_child(UI.button("SELECT", _start.bind(m.id), Vector2(380, 70), col))
+		v.add_child(UI.button("SELECT", _start.bind(m.id), Vector2(ART_W, 70), col))
 		# The whole tile lifts toward you on hover
-		p.pivot_offset = Vector2(210, 380)
+		p.pivot_offset = Vector2(TILE_W / 2.0, 380)
 		p.mouse_entered.connect(func():
 			p.create_tween().tween_property(p, "scale", Vector2.ONE * 1.03, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			_spread(fan, 1.0))
@@ -152,7 +158,8 @@ func _card(m: Dictionary, at: Vector2) -> void:
 
 ## A mode's picture made of real cards, fanned from a point below them, over a glow in the mode's
 ## colour. Returns the cards (for _spread). Casual: the clans' leaders lean in at each other; the CPU:
-## one strong card of the other clan beside a card face down; FFA: the top card of each clan, fanned.
+## one strong card of the other clan beside a card face down; FFA: the top card of each clan, fanned;
+## Turf Defense: the bosses (each clan's leader), fanned.
 func _mode_art(parent: Control, id: String, col: Color) -> Array:
 	var picks := _mode_cards(id)
 	if picks.is_empty():
@@ -165,14 +172,15 @@ func _mode_art(parent: Control, id: String, col: Color) -> Array:
 	g.fill_from = Vector2(0.5, 0.5)
 	g.fill_to = Vector2(1.0, 0.5)
 	glow.texture = g
-	glow.size = Vector2(420, 360)
+	glow.size = Vector2(ART_W + 40.0, 360)
 	glow.position = Vector2(-20, 50)
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(glow)
 	var n := picks.size()
 	# [x offset, degrees]: casual leans the two in at each other; the others fan out
-	var lay: Array = {"casual": [[-78.0, 8.0], [78.0, -8.0]], "cpu": [[-52.0, -7.0], [42.0, 5.0]],
-		"ffa": [[-105.0, -12.0], [-35.0, -4.0], [35.0, 4.0], [105.0, 12.0]]}.get(id, [])
+	var lay: Array = {"casual": [[-70.0, 8.0], [70.0, -8.0]], "cpu": [[-46.0, -7.0], [38.0, 5.0]],
+		"ffa": [[-84.0, -12.0], [-28.0, -4.0], [28.0, 4.0], [84.0, 12.0]],
+		"turf": [[-84.0, -12.0], [-28.0, -4.0], [28.0, 4.0], [84.0, 12.0]]}.get(id, [])
 	var out: Array = []
 	for i in n:
 		var tex: Texture2D = picks[i]
@@ -181,7 +189,7 @@ func _mode_art(parent: Control, id: String, col: Color) -> Array:
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.pivot_offset = CARD / 2
 		var base: Array = lay[i] if i < lay.size() else [0.0, 0.0]
-		holder.position = Vector2(190 - CARD.x / 2 + base[0], 90)
+		holder.position = Vector2(ART_W / 2.0 - CARD.x / 2 + base[0], 90)
 		holder.rotation_degrees = base[1]
 		holder.set_meta("base", base)
 		var shadow := ColorRect.new()
@@ -210,7 +218,7 @@ func _spread(fan: Array, open: float) -> void:
 		var base: Array = h.get_meta("base")
 		var t: Tween = h.create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		t.tween_property(h, "rotation_degrees", base[1] * (1.0 + 0.45 * open), 0.25)
-		t.tween_property(h, "position:x", 190 - CARD.x / 2 + base[0] * (1.0 + 0.18 * open), 0.25)
+		t.tween_property(h, "position:x", ART_W / 2.0 - CARD.x / 2 + base[0] * (1.0 + 0.18 * open), 0.25)
 		t.tween_property(h, "position:y", 90 - 14.0 * open, 0.25)
 
 
@@ -249,6 +257,10 @@ func _mode_cards(id: String) -> Array:
 				ids.append(top[k])
 				ids.append(leaders.get(k, ""))
 			ids = ids.filter(func(x): return x != "").slice(0, 4)
+		"turf":
+			for k in clans:
+				ids.append(leaders.get(k, ""))
+			ids = ids.filter(func(x): return x != "").slice(0, 4)
 	var out: Array = []
 	for cid in ids:
 		var t: Texture2D = CardDB.back(str(CardDB.clan(cid.substr(5)).get("tag", ""))) if str(cid).begins_with("back:") else CardDB.art(str(cid))
@@ -268,12 +280,12 @@ func _rank_art(parent: Control) -> void:
 	g.fill_from = Vector2(0.5, 0.5)
 	g.fill_to = Vector2(1.0, 0.5)
 	glow.texture = g
-	glow.size = Vector2(420, 380)
+	glow.size = Vector2(ART_W + 40.0, 380)
 	glow.position = Vector2(-20, 0)
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(glow)
 	var img := UI.texture_rect(UI.tex("ranks/%s.png" % rank), Vector2(300, 300))
-	img.position = Vector2(40, 40)
+	img.position = Vector2((ART_W - 300.0) / 2.0, 40)
 	parent.add_child(img)
 	var bob := img.create_tween().set_loops()   # (it floats)
 	bob.tween_property(img, "position:y", 28.0, 1.8).set_trans(Tween.TRANS_SINE)
@@ -282,12 +294,12 @@ func _rank_art(parent: Control) -> void:
 	pulse.tween_property(glow, "modulate:a", 0.55, 1.8).set_trans(Tween.TRANS_SINE)
 	pulse.tween_property(glow, "modulate:a", 1.0, 1.8).set_trans(Tween.TRANS_SINE)
 	var name := UI.label(rank.replace("_", " ").to_upper(), 30, RANK_COLORS.get(rank, Color.WHITE), true)
-	name.size = Vector2(380, 40)
+	name.size = Vector2(ART_W, 40)
 	name.position = Vector2(0, 350)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(name)
 	var rp := UI.label("%d RP" % int(Game.player.get("rank_points", 0)), 22, UI.MUTED)
-	rp.size = Vector2(380, 30)
+	rp.size = Vector2(ART_W, 30)
 	rp.position = Vector2(0, 392)
 	rp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(rp)
@@ -321,6 +333,9 @@ func _start(mode: String) -> void:
 		return
 	if mode == "ffa":   # the lobby (screens/ffa_lobby.gd) joins the queue and starts the match
 		Game.go("ffa_lobby")
+		return
+	if mode == "turf":   # pick a boss (screens/turf_defense.gd), then quick match
+		Game.go("turf_defense")
 		return
 	# The server runs the match (and decides who goes first)
 	_starting = true

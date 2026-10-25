@@ -53,7 +53,7 @@ export function turfRules(boss, level) {
 export function bossInfo(boss, level) {
     const lv = typeof level === 'object' ? level : bossLevel(boss, level);
     return {
-        id: boss.id, clan: boss.clan, name: boss.name, title: boss.title, color: boss.color, arena: boss.arena,
+        id: boss.id, clan: boss.clan, name: boss.name, short: boss.short || boss.name, title: boss.title, color: boss.color, arena: boss.arena,
         portrait: boss.portrait, prize: boss.prize, lines: boss.lines,
         level: lv.level, level_name: lv.name, morale: lv.morale, draw: lv.draw || 0, authority: lv.authority || 0,
         phases: (lv.phases || []).map(p => ({ below: p.below, label: p.label })),

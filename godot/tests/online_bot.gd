@@ -6,7 +6,8 @@ extends Node
 ## Flags after the email: "--autoplay" (required for the bot to play), "--drop" (disconnects once
 ## mid-match to test reconnecting), "--concede" (concedes after a few turns), "--cpu" (plays the
 ## server's CPU instead of queueing; add "--ranked" for a Ranked CPU match), "--ffa" (joins a
-## free-for-all lobby, readies up, and plays its seat).
+## free-for-all lobby, readies up, and plays its seat), "--turf=<boss>:<level>" (quick-matches Turf Defense
+## for that boss level and plays its seat with its partner).
 
 const TIMEOUT_SECS := 900.0
 
@@ -43,8 +44,19 @@ func _run() -> void:
 			_finish(1, why)
 	elif "--ffa" in args:
 		Game.go("ffa_lobby")
+	elif _turf_spec() != "":
+		Net.coop_join = {"boss": _turf_spec().get_slice(":", 0), "level": int(_turf_spec().get_slice(":", 1))}
+		Game.go("turf_defense")
 	else:
 		Game.go("matchmaking")
+
+
+## "--turf=<boss>:<level>" → "<boss>:<level>" ("" without it).
+func _turf_spec() -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--turf="):
+			return a.substr(7)
+	return ""
 
 
 func _process(delta: float) -> void:
@@ -74,7 +86,8 @@ func _process(delta: float) -> void:
 		var d: Dictionary = Game.match_result
 		var rw = d.get("rewards")
 		_finish(0, "result %s (%s)%s, turns %s, morale %s vs %s, rewards %s" % [d.get("result"), d.get("reason", ""),
-			"  ·  FFA place %s of %s" % [d.get("place"), (d.get("players", {}) as Dictionary).size()] if d.get("ffa", false) else "",
+			"  ·  FFA place %s of %s" % [d.get("place"), (d.get("players", {}) as Dictionary).size()] if d.get("ffa", false) and not d.get("coop", false) \
+				else "  ·  TURF %s %s, prize %s" % [d.get("boss", {}).get("id"), d.get("boss", {}).get("level_name"), (rw.get("prize") if rw is Dictionary else null)] if d.get("coop", false) else "",
 			d.get("turns"), d.get("player_morale"), d.get("opponent_morale"),
 			"+%s XP +%s Karat" % [rw.xpEarned, rw.karatEarned] if rw is Dictionary else "none"])
 

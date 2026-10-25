@@ -445,8 +445,11 @@ func _bats(e: Dictionary) -> void:
 				var mid := Vector2(14, -2 - 6 * w) * size
 				var body := Color(0.04, 0.03, 0.06, 0.85)
 				for s in [-1.0, 1.0]:
-					bat.draw_colored_polygon(PackedVector2Array([Vector2(0, -3) * size, Vector2(mid.x * s, mid.y), Vector2(tip.x * s, tip.y),
-						Vector2(22 * s, 2) * size, Vector2(12 * s, 0) * size, Vector2(5 * s, 4) * size]), body)
+					# Each wing as a fan of triangles from the body (as one polygon, the mirrored wing's
+					# outline can cross itself mid-flap and fail to triangulate)
+					var pts := [Vector2(mid.x * s, mid.y), Vector2(tip.x * s, tip.y), Vector2(22 * s, 2) * size, Vector2(12 * s, 0) * size, Vector2(5 * s, 4) * size]
+					for k in pts.size() - 1:
+						bat.draw_primitive(PackedVector2Array([Vector2(0, -3) * size, pts[k], pts[k + 1]]), PackedColorArray([body, body, body]), PackedVector2Array())
 				bat.draw_circle(Vector2(0, 0), 4.5 * size, body))
 			bat.position = Vector2(-80.0 if left else 2000.0, y0 + i * randf_range(-50, 50))
 			add_child(bat)

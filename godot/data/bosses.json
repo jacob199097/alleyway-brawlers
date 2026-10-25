@@ -1,9 +1,9 @@
 {
-    "_about": "Turf Defense bosses (read by the game and the server, backend/socket/coopMatch.js). Each boss is a clan's leader at full power, fought by two players together. levels: 1 Street, 2 Hard, 3 Nightmare, each unlocked by clearing the one before. A level's deck is the clan's starter (shared/clans.js) with 'add' cards swapped in for its cheapest characters; morale, draw (extra cards a turn), authority (extra Authority a turn) and phases (Card Forge effects run as the boss when its Morale drops to 'below'; each_foe: at each player) make it hard. lines: what the boss says (intro, each phase by number, low when it's nearly beaten, player_out when a player falls, defeat when it loses, victory when it wins). first_clear: the rewards for beating a level the first time (the prize card on level 1); clear: every win after; loss: what a defeat pays (any level).",
+    "_about": "Turf Defense bosses (read by the game and the server, backend/socket/coopMatch.js). Each boss is a clan's leader at full power, fought by two players together (short: its name on turn banners). levels: 1 Street, 2 Hard, 3 Nightmare, each unlocked by clearing the one before. A level's deck is the clan's starter (shared/clans.js) with 'add' cards swapped in for its cheapest characters; morale, draw (extra cards a turn), authority (extra Authority a turn) and phases (Card Forge effects run as the boss when its Morale drops to 'below'; each_foe: at each player) make it hard. lines: what the boss says (intro, each phase by number, low when it's nearly beaten, player_out when a player falls, defeat when it loses, victory when it wins). first_clear: the rewards for beating a level the first time (the prize card on level 1); clear: every win after; loss: what a defeat pays (any level).",
     "loss": {"karat": 15, "xp": 80},
     "bosses": [
         {
-            "id": "archon", "clan": "nebula", "leader": "card_nebu_009", "name": "The Archon Ascendant", "title": "Lord of the Void",
+            "id": "archon", "clan": "nebula", "leader": "card_nebu_009", "name": "The Archon Ascendant", "short": "The Archon", "title": "Lord of the Void",
             "color": "#9b7bff", "arena": "observatory", "portrait": "card_nebu_009", "prize": "card_nebu_048",
             "lines": {
                 "intro": ["Two little sparks, come to put out a star.", "I have watched galaxies collapse. Your block is nothing.", "Kneel, and I will make it quick."],
@@ -29,7 +29,7 @@
             ]
         },
         {
-            "id": "graves", "clan": "militia", "leader": "card_mili_011", "name": "Warlord Graves", "title": "Commander of the Outpost",
+            "id": "graves", "clan": "militia", "leader": "card_mili_011", "name": "Warlord Graves", "short": "Graves", "title": "Commander of the Outpost",
             "color": "#a6e35a", "arena": "base", "portrait": "card_mili_011", "prize": "card_mili_040",
             "lines": {
                 "intro": ["Civilians in a war zone. Bold. Stupid, but bold.", "This block is under Militia control now.", "All units: open fire!"],
@@ -55,7 +55,7 @@
             ]
         },
         {
-            "id": "vale", "clan": "wildcard", "leader": "card_wild_001", "name": "Vincent Vale, High Roller", "title": "Owner of the House",
+            "id": "vale", "clan": "wildcard", "leader": "card_wild_001", "name": "Vincent Vale, High Roller", "short": "Vale", "title": "Owner of the House",
             "color": "#f2c14e", "arena": "casino", "portrait": "card_wild_001", "prize": "card_wild_013",
             "lines": {
                 "intro": ["Welcome to my table. The stakes? Everything you own.", "Two against the house. How... adorable.", "Shuffle up and deal."],
@@ -81,7 +81,7 @@
             ]
         },
         {
-            "id": "veyr", "clan": "underworld", "leader": "card_unde_001", "name": "Veyr, the Hollow King", "title": "Sovereign of the Dead",
+            "id": "veyr", "clan": "underworld", "leader": "card_unde_001", "name": "Veyr, the Hollow King", "short": "Veyr", "title": "Sovereign of the Dead",
             "color": "#c45cff", "arena": "graveyard", "portrait": "card_unde_001", "prize": "card_unde_034",
             "lines": {
                 "intro": ["The living, walking into my graveyard. How thoughtful.", "Every soul ends up in my kingdom. Yours are just early.", "Rise, my children. We have guests."],

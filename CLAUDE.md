@@ -25,4 +25,6 @@
 - Game updates: small code updates ship as patches (`tools/make_patch.mjs`, `godot/scripts/patcher.gd`,
   which must stay the first autoload); see "Game versions and updates" in `docs/CARD_PIPELINE.md`.
   The Mac build (`tools/build_mac.mjs`) gets its own patch each update too: `make_patch.mjs <godot> --macos`.
+- Turf Defense (2 players vs a clan boss): bosses, levels, lines and rewards in `godot/data/bosses.json`
+  (the server reads it via `shared/turf.js`); matches `backend/socket/coopMatch.js`, rewards `backend/economy/turf.js`.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

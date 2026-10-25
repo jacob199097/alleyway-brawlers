@@ -58,6 +58,11 @@ const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMat
 const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"], ["thinking", "Hmm…"],
 	["oops", "Oops!"], ["hurry", "Your move…"], ["gotcha", "Gotcha!"], ["gg", "GG"]]
 const EMOTE_GAP_MS := 2600
+## Turf Defense: quick messages to your partner (keys match EMOTES in backend/socket/coopMatch.js)
+const COOP_EMOTES := [["boss", "Hit the boss!"], ["help", "Help me!"], ["nice", "Nice!"], ["tank", "I'll hold them"],
+	["wait", "Hold on…"], ["thanks", "Thanks!"], ["go", "Go for it!"], ["gg", "GG"]]
+const TurfShow := preload("res://scripts/duel/turf_show.gd")
+const COOP_BOSS_K := 0.74   # the boss's board is bigger than yours and your ally's
 const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## A clan's own animations. attack "laser": dark purple laser beams instead of charging in;
 ## summon "warp": arrives through a swirling portal; ko "stardust": dissolves into stardust.
@@ -172,6 +177,9 @@ var _neon := {}            # the mat whose neon stutters now and then: {mat: Sha
 var _tense := false        # the music has turned tense (someone is close to losing)
 var _out := {}             # FFA: side -> finishing place, once they're out
 var _direct_btns: Array = []
+var _coop := false         # Turf Defense (backend/socket/coopMatch.js): you and your ally against a boss
+var _boss := {}            # the boss as the server sent it (shared/turf.js bossInfo)
+var _turf: TurfShow = null # its cutscenes, plate and intel (scripts/duel/turf_show.gd)
 
 
 func _ready() -> void:
@@ -234,6 +242,8 @@ func _ready() -> void:
 			var at := mat.position
 			_neon = {"mat": mat.material, "zones": _find_neon(mat.texture, func(p: Vector2) -> Vector2: return at + p * k)}
 			$BackLayer.add_child(_steam(FFA_MID))
+	elif str(online_start.get("mode", "")) == "coop":
+		_setup_coop_sides(online_start)
 	# Card backs players chose (achievements): a clan, or none = their deck's clan back
 	_chosen_back.player = str(me.get("card_back")) if me.get("card_back") is String else ""
 	if _ffa:
@@ -251,6 +261,8 @@ func _ready() -> void:
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "cpu", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
+	elif _coop:
+		_build_coop_plates(online_start.get("players", {}))
 	elif _ffa:
 		$HUD/UI/OppPanel.visible = false
 		_build_foe_plates(online_start.get("players", {}))
@@ -342,6 +354,8 @@ func _setup_online(start: Dictionary) -> void:
 	if _ffa:
 		for side in _foes:
 			_names[side] = str(start.get("players", {}).get(side, {}).get("username", side))
+	if _coop:
+		_names.boss = str(_boss.get("short", _boss.get("name", "The boss")))
 	ai_sides = []
 	_match_id = str(start.get("matchId", ""))
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
@@ -358,7 +372,7 @@ func _setup_online(start: Dictionary) -> void:
 		return
 	if _spectating:
 		_build_spectate_bar()
-	elif not str(start.get("mode", "")).begins_with("cpu") and not _ffa:
+	elif _coop or (not str(start.get("mode", "")).begins_with("cpu") and not _ffa):
 		_build_emote_button()
 	_ui.clock = _label(20, GOLD, true)
 	_ui.clock.position = Vector2(16, 116)
@@ -372,6 +386,9 @@ func _setup_online(start: Dictionary) -> void:
 		_tip_panel("WEEKLY CHALLENGE  ·  %s" % str(start.challenge.get("name", "")).to_upper(), str(start.challenge.get("text", "")), RED)
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
+	if _coop and not start.get("resync", false):
+		_coop_intro(start)
+		return
 	_after_events()
 
 
@@ -401,6 +418,8 @@ func _watching() -> bool:
 
 ## "YOUR TURN", or the player's name for a spectator (FFA: whose turn it is).
 func _turn_text(mine: bool, side := "") -> String:
+	if _coop and not mine and (side if side != "" else duel.active) == "boss":
+		return "%s STRIKES" % str(_names.get("boss", "THE BOSS")).to_upper()
 	if _ffa and not mine:
 		return "%s'S TURN" % str(_names.get(side if side != "" else duel.active, "THEIR")).to_upper()
 	if _spectating:
@@ -562,7 +581,7 @@ func _toggle_log() -> void:
 func _log(text: String, side: String) -> void:
 	if _log_text == null:
 		return
-	var color := "#8fd3ff" if side == "player" else "#ff8a94" if side != "" else "#f4d35e"
+	var color := "#8fd3ff" if side == "player" else "#7af0de" if _coop and side == "ally" else "#ff8a94" if side != "" else "#f4d35e"
 	_log_text.append_text("[color=%s]%s[/color]\n" % [color, text.replace("[", "[lb]")])
 	_log_lines += 1
 	if _log_lines > 400:
@@ -711,10 +730,11 @@ func _toggle_emote_menu() -> void:
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(grid)
-	for e in EMOTES:
+	for e in _emote_list():
 		var key: String = e[0]
 		grid.add_child(UI.button(e[1], func(): _send_emote(key), Vector2(170, 46), BLUE))
-	var mute := UI.button("UNMUTE RIVAL" if _emotes_muted else "MUTE RIVAL", func():
+	var who := "ALLY" if _coop else "RIVAL"
+	var mute := UI.button(("UNMUTE " if _emotes_muted else "MUTE ") + who, func():
 		_emotes_muted = not _emotes_muted
 		_toggle_emote_menu(), Vector2(170, 46), RED)
 	grid.add_child(mute)
@@ -731,16 +751,20 @@ func _send_emote(key: String) -> void:
 	if Time.get_ticks_msec() < _emote_ready_at:
 		return
 	_emote_ready_at = Time.get_ticks_msec() + EMOTE_GAP_MS
-	Net.send("mp:emote", {"matchId": _match_id, "key": key})
+	Net.send("coop:emote" if _coop else "mp:emote", {"matchId": _match_id, "key": key})
 	_show_emote("player", key)
 
 
-## A speech bubble by the player's or the opponent's panel.
+func _emote_list() -> Array:
+	return COOP_EMOTES if _coop else EMOTES
+
+
+## A speech bubble by the player's or the opponent's panel (Turf Defense: your ally's plate).
 func _show_emote(side: String, key: String) -> void:
-	if side == "opponent" and _emotes_muted:
+	if side != "player" and _emotes_muted:
 		return
 	var text := ""
-	for e in EMOTES:
+	for e in _emote_list():
 		if e[0] == key:
 			text = e[1]
 	if text == "":
@@ -749,7 +773,7 @@ func _show_emote(side: String, key: String) -> void:
 	if _ui.has(old) and is_instance_valid(_ui[old]):
 		_ui[old].queue_free()
 	var bubble := PanelContainer.new()
-	var accent := BLUE if side == "player" else RED
+	var accent := BLUE if side == "player" else TEAL if side == "ally" else RED
 	bubble.add_theme_stylebox_override("panel", _box(Color(0.96, 0.96, 1.0, 0.97), accent, 3, 14))
 	var l := _label(26, Color("101020"), true)
 	l.text = text
@@ -759,6 +783,10 @@ func _show_emote(side: String, key: String) -> void:
 	var sz := bubble.get_combined_minimum_size()
 	bubble.position = Vector2(40, 760 - sz.y) if side == "player" else Vector2(1896 - sz.x, 242)
 	bubble.pivot_offset = Vector2(0 if side == "player" else sz.x, sz.y if side == "player" else 0.0)
+	if side == "ally" and _panels.has("ally"):   # (over your ally's plate)
+		var plate: Control = _panels.ally.root
+		bubble.position = Vector2(plate.position.x + plate.size.x - sz.x, plate.position.y - sz.y - 6)
+		bubble.pivot_offset = Vector2(sz.x, sz.y)
 	bubble.scale = Vector2.ONE * 0.4
 	_ui[old] = bubble
 	Sfx.play("click", 1.25 if side == "player" else 0.9)
@@ -800,7 +828,7 @@ func _build_from_view() -> void:
 		var p: Dictionary = _panels[side]
 		p.shown = float(s.morale)
 		p.morale.text = str(int(s.morale))
-		p.bar.size.x = p.bar.get_parent().size.x * clampf(float(s.morale) / DuelState.START_MORALE, 0.0, 1.0)
+		p.bar.size.x = p.bar.get_parent().size.x * clampf(float(s.morale) / _max_morale(side), 0.0, 1.0)
 	_ui.turn_num.text = "TURN %d" % duel.turn
 	_ui.turn_who.text = _turn_text(duel.active == "player")
 	_set_phase_ui(duel.phase)
@@ -810,7 +838,7 @@ func _on_net_event(name: String, data) -> void:
 	if not data is Dictionary or str(data.get("matchId", _match_id)) != _match_id:
 		return
 	match name:
-		"mp:update", "ffa:update":
+		"mp:update", "ffa:update", "coop:update":
 			duel.load_view(data.view)
 			_awaiting = false
 			_clock_left = float(data.get("clock", ONLINE_TURN_SECS))
@@ -829,13 +857,15 @@ func _on_net_event(name: String, data) -> void:
 				_sweep_banner(who + why, GOLD if won else RED)
 				await _wait(1.6)
 				_finish_match(won)
-		"ffa:over":
+		"ffa:over", "coop:over":
 			_over = data
 		"ffa:out":
 			_over = data
 			_show_out_panel(data)
 		"mp:emote":
 			_show_emote("opponent", str(data.get("key", "")))
+		"coop:emote":
+			_show_emote("ally", str(data.get("key", "")))
 		"mp:spectators":
 			if not _ui.has("watchers"):
 				_ui.watchers = _label(20, Color(1, 1, 1, 0.75), true)
@@ -878,7 +908,7 @@ func on_online_error(message: String) -> void:
 
 func _on_net_opened() -> void:
 	_hide_net_banner()
-	Net.send("ffa:resync" if _ffa else "mp:resync")
+	Net.send("coop:resync" if _coop else "ffa:resync" if _ffa else "mp:resync")
 
 
 func _on_net_closed() -> void:
@@ -1049,7 +1079,7 @@ func _draw() -> void:
 			var area := _board_rect(side)
 			draw_rect(area, Color(0.02, 0.02, 0.05, 0.72))
 			var fs := int(64 * _sc(side))
-			var text := "OUT · %s" % _place_text(int(_out[side]))
+			var text := "DOWN" if _coop else "OUT · %s" % _place_text(int(_out[side]))
 			var at := Vector2(area.position.x, area.get_center().y + fs * 0.35)
 			draw_string_outline(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, fs, 10, Color(0, 0, 0, 0.9))
 			draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, fs, RED)
@@ -1498,7 +1528,7 @@ func _tension() -> void:
 	if _tense or _mode == "over" or duel == null:
 		return
 	for side in _sides:
-		if not _out.has(side) and duel.sides.has(side) and int(duel.sides[side].get("morale", DuelState.START_MORALE)) <= DuelState.START_MORALE / 3:
+		if not _out.has(side) and duel.sides.has(side) and int(duel.sides[side].get("morale", DuelState.START_MORALE)) <= _max_morale(side) / 3.0:
 			_tense = true
 			if Game.sound.has_track("duel_tense"):
 				Game.sound.music("duel_tense", 2.5)
@@ -1669,7 +1699,7 @@ func _act(side: String, action: Dictionary) -> bool:
 		return false
 	if _online:
 		# The server applies the move and sends back what happened (mp:update)
-		if _awaiting or side != "player" or not Net.send("ffa:action" if _ffa else "mp:action", {"matchId": _match_id, "action": action}):
+		if _awaiting or side != "player" or not Net.send("coop:action" if _coop else "ffa:action" if _ffa else "mp:action", {"matchId": _match_id, "action": action}):
 			return false
 		_awaiting = true
 		_clear_highlights()
@@ -1878,12 +1908,16 @@ func _play(ev: Dictionary) -> void:
 			await _ev_leader_down(ev)
 		"eliminated":
 			await _ev_eliminated(ev)
+		"boss_phase":
+			await _ev_boss_phase(ev)
+		"recycle":
+			await _ev_recycle(ev)
 		"prompt":
 			if ev.side != "player" or ev.side in ai_sides:
 				var who: String = ("%s IS DECIDING…" % str(_names.get(ev.side, "OPPONENT")).to_upper()) if _ffa \
 					else "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…"
 				var out_up: bool = _ui.has("out_panel") and is_instance_valid(_ui.out_panel)
-				_float_text(Vector2(1080, DIVIDER_Y - (170 if out_up else 0)), who, Color(1, 1, 1, 0.8), 30)
+				_float_text((FFA_MID if _coop else Vector2(1080, DIVIDER_Y)) - Vector2(0, 170 if out_up else 0), who, Color(1, 1, 1, 0.8), 30)
 				await _wait(0.35)
 
 
@@ -4505,7 +4539,7 @@ static func _influence_text(influence: int) -> String:
 func _ev_game_over(ev: Dictionary) -> void:
 	_mode = "over"
 	_cancel_interaction()
-	var won: bool = ev.winner == "player"
+	var won: bool = ev.winner == "player" or (_coop and ev.winner != "boss" and ev.winner != "")   # (Turf Defense: you win with your ally)
 	_end_reason = str(ev.get("reason", "morale"))
 	if _end_reason == "deck_out" and not _ffa:
 		var loser := "opponent" if won else "player"
@@ -4516,6 +4550,8 @@ func _ev_game_over(ev: Dictionary) -> void:
 	await _wait(0.5)
 	if DisplayServer.get_name() != "headless":
 		_end_snap = ImageTexture.create_from_image(get_viewport().get_texture().get_image())
+	if _turf:
+		await _turf.farewell(won)
 	# Your own matches get their big reveal on the post-match screen; spectators, replays and
 	# CPU-only matches don't go there, so they see it here
 	var reveal_here: bool = _spectating or not _replay.is_empty() or "player" in ai_sides
@@ -4603,7 +4639,9 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.mastery = _over.get("mastery")
 		if _over.has("result"):
 			Game.match_result.result = _over.result
-		if _ffa:
+		if _coop:
+			_coop_result_into(Game.match_result, _over)
+		elif _ffa:
 			_ffa_result_into(Game.match_result, _over)
 	Game.go("post_match")
 
@@ -5505,7 +5543,9 @@ func _set_morale(side: String, value: int) -> void:
 	t.tween_method(func(x: float): label.text = str(int(x)), from, float(value), 0.7)
 	var bar: ColorRect = p.bar
 	var full: float = bar.get_parent().size.x
-	var to_w := full * clampf(float(value) / DuelState.START_MORALE, 0.0, 1.0)
+	var to_w := full * clampf(float(value) / _max_morale(side), 0.0, 1.0)
+	if _turf and side == "boss" and value > 0 and value <= _max_morale(side) / 5.0:
+		_turf.say("low")
 	# The ghost: a pale chunk where the lost Morale was, which drains after a beat
 	var ghost: ColorRect = p.get("ghost")
 	if ghost == null:
@@ -6798,6 +6838,10 @@ func _on_menu_choice(choice: String) -> void:
 			SettingsPanel.open(overlay, false)
 		"CONCEDE":
 			_toggle_menu()
+			if _coop:
+				UI.dialog(overlay, "GIVE UP?", "You're out, and %s fights on alone. If they still win, so do you." % str(_names.get("ally", "your ally")), [
+					["GIVE UP", func(): Net.send("coop:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
+				return
 			if _ffa:
 				UI.dialog(overlay, "LEAVE THE FREE-FOR-ALL?", "You're out, in the last place still open, and the others play on.", [
 					["CONCEDE", func(): Net.send("ffa:concede", {"matchId": _match_id}), RED], ["KEEP FIGHTING", func(): pass]])
@@ -6872,7 +6916,11 @@ func _build_foe_plates(players: Dictionary) -> void:
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cards_layer.add_child(p)
 		_build_plate(side, p, players.get(side, {}) if players.get(side) is Dictionary else {}, FOE_COLORS[i % FOE_COLORS.size()])
-	# Yours: a name tag over your board, like theirs (your Morale is on your panel)
+	_build_my_tag(players)
+
+
+## Yours: a name tag over your board, like the others' (your Morale is on your panel).
+func _build_my_tag(players: Dictionary) -> void:
 	var mine: Dictionary = _boards.get("player", {})
 	if mine.is_empty():
 		return
@@ -6967,6 +7015,9 @@ func _layout_foe_hand(side: String, views: Array) -> void:
 	var p: Control = _panels[side].root if _panels.has(side) else null
 	var right: float = p.position.x + p.size.x - 26.0 if p else _board_rect(side).end.x
 	var y: float = p.position.y + 62.0 if p else _board_rect(side).position.y
+	if _coop and side == "boss":   # (Turf Defense: right of the boss's board)
+		right = _board_rect(side).end.x + 110.0
+		y = _board_rect(side).get_center().y
 	var n := views.size()
 	var gap := minf(11.0, 100.0 / maxf(1.0, n))
 	for i in n:
@@ -7055,10 +7106,18 @@ func _ev_eliminated(ev: Dictionary) -> void:
 	if _panels.has(side):
 		_panels[side].root.modulate = Color(0.55, 0.55, 0.6, 0.85)
 	var at := _board_rect(side).get_center()
-	_float_text(at, "%s OUT · %s" % ["YOU'RE" if side == "player" else str(_names.get(side, "")).to_upper(), _place_text(int(ev.place))], RED, 48)
-	_log("%s %s out (%s)" % [_who(side), "are" if side == "player" else "is", _place_text(int(ev.place))], side)
+	if _coop:
+		_float_text(at, "%s DOWN" % ("YOU'RE" if side == "player" else "%s IS" % str(_names.get(side, "")).to_upper()), RED, 48)
+		_log("%s %s down" % [_who(side), "are" if side == "player" else "is"], side)
+	else:
+		_float_text(at, "%s OUT · %s" % ["YOU'RE" if side == "player" else str(_names.get(side, "")).to_upper(), _place_text(int(ev.place))], RED, 48)
+		_log("%s %s out (%s)" % [_who(side), "are" if side == "player" else "is", _place_text(int(ev.place))], side)
 	queue_redraw()
 	_update_next_btn()
+	if _coop and side != "boss":
+		_turf.say("player_out")
+		if side == "player" and duel.winner == "":
+			_show_coop_down_panel()
 	await _wait(0.9)
 
 
@@ -7115,3 +7174,133 @@ func _ffa_result_into(r: Dictionary, data: Dictionary) -> void:
 		r.achievements = data.achievements
 	if data.get("mastery") is Dictionary:
 		r.mastery = data.mastery
+
+
+
+# ── Turf Defense (backend/socket/coopMatch.js) ───────────────────────────────
+# You and your ally against a boss: the free-for-all's boards, with the boss's on top (bigger, its
+# plate under it with the long Morale bar), yours bottom-left and your ally's bottom-right. Your
+# ally isn't a target (the rules' teams); the boss's entrance, phases and lines are TurfShow's.
+
+## Who's where: the boss's board centred on top, yours and your ally's below it.
+func _setup_coop_sides(start: Dictionary) -> void:
+	_ffa = true
+	_coop = true
+	_boss = start.get("boss", {}) if start.get("boss") is Dictionary else {}
+	_turf = TurfShow.new(self, _boss)
+	_foes = ["ally", "boss"]
+	_sides = ["player", "ally", "boss"]
+	hand = {}
+	field = {}
+	for side in _sides:
+		hand[side] = []
+		field[side] = {}
+	var k := FFA_CARD_K
+	var p := Vector2(FFA_STEP.x / (COLS[1] - COLS[0]), FFA_STEP.y / absf(ROWS.player[1] - ROWS.player[0]))
+	var half_w := (RIGHT_X - LEFT_X) * p.x / 2.0 + CARD.x * k / 2.0
+	var half_h := FFA_STEP.y / 2.0 + CARD.y * k / 2.0
+	for pair in [["player", -1.0], ["ally", 1.0]]:
+		var c := FFA_MID + Vector2((half_w + FFA_GAP.x / 2.0) * float(pair[1]), FFA_GAP.y / 2.0 + PLATE_H + 8.0 + half_h)
+		_boards[pair[0]] = {"c": c, "s": k, "p": p, "rows": "player", "plate": c.y - half_h - 8.0 - PLATE_H}
+	var kb := COOP_BOSS_K
+	var bh := FFA_STEP.y * (kb / k) / 2.0 + CARD.y * kb / 2.0
+	var cb := Vector2(FFA_MID.x, FFA_MID.y - FFA_GAP.y / 2.0 - PLATE_H - 8.0 - bh)
+	_boards.boss = {"c": cb, "s": kb, "p": p * (kb / k), "rows": "opponent", "plate": cb.y + bh + 8.0}
+
+
+## The plates: the boss's own (TurfShow.build_plate), your ally's like a free-for-all opponent's in
+## your crew's colour, your name tag, and the boss's intel where a 1v1 opponent's plate goes.
+func _build_coop_plates(players: Dictionary) -> void:
+	for side in ["boss", "ally"]:
+		var p := Panel.new()
+		p.position = _plate_rect(side).position
+		p.size = _plate_rect(side).size
+		p.z_index = 2
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cards_layer.add_child(p)
+		if side == "boss":
+			_panels.boss = _turf.build_plate(p)
+		else:
+			_build_plate("ally", p, players.get("ally", {}) if players.get("ally") is Dictionary else {}, TEAL)
+	_build_my_tag(players)
+	_turf.build_intel($HUD/UI/OppPanel)
+
+
+## The boss's entrance before the first move (the match's opening events wait for it).
+func _coop_intro(start: Dictionary) -> void:
+	_playing = true
+	await _turf.intro(start.get("players", {}) if start.get("players") is Dictionary else {})
+	_playing = false
+	_pump()
+
+
+func _ev_boss_phase(ev: Dictionary) -> void:
+	_log("%s: PHASE %d · %s" % [str(_names.get(ev.side, "The boss")), int(ev.get("phase", 1)) + 1, str(ev.get("label", ""))], ev.side)
+	if _turf:
+		await _turf.phase(ev)
+
+
+## The boss ran out of cards: its Gutter goes back into its deck.
+func _ev_recycle(ev: Dictionary) -> void:
+	Sfx.play("shuffle", 0.8)
+	_float_text(pile_pos(ev.side, "deck"), "GUTTER → DECK  ·  %d" % int(ev.get("count", 0)), _side_color(ev.side), 30)
+	_log("%s shuffles %d cards from the Gutter back into the deck" % [_who(ev.side), int(ev.get("count", 0))], ev.side)
+	await _wait(0.6)
+
+
+## You're down, and your ally fights on: watch (you still win if they do) or leave.
+func _show_coop_down_panel() -> void:
+	if _ui.has("out_panel") and is_instance_valid(_ui.out_panel):
+		return
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), TEAL, 3, 12))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	box.add_child(col)
+	var title := _label(48, RED, true)
+	title.text = "YOU'RE DOWN"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var t := _label(22, Color.WHITE)
+	t.text = "%s fights on. If they beat %s, you win too." % [str(_names.get("ally", "Your ally")), str(_names.get("boss", "the boss"))]
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(t)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	col.add_child(row)
+	row.add_child(UI.button("KEEP WATCHING", func():
+		if is_instance_valid(box):
+			box.queue_free(), Vector2(260, 56), TEAL))
+	row.add_child(UI.button("LEAVE", func():
+		Net.send("coop:quit")
+		UI.toast(overlay, "Your rewards come when the match ends.", GOLD)
+		Game.go("turf_defense"), Vector2(200, 56), RED))
+	overlay.add_child(box)
+	box.z_index = 50
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1028 - sz.x / 2, 440 - sz.y / 2)
+	_ui.out_panel = box
+
+
+## Turf Defense results for the post-match screen: won or lost together, the boss, the rewards
+## (and the prize card on a first clear).
+func _coop_result_into(r: Dictionary, data: Dictionary) -> void:
+	r.coop = true
+	r.mode = "coop"
+	r.result = "win" if data.get("won", false) else "loss"
+	r.boss = data.get("boss", _boss) if data.get("boss") is Dictionary else _boss
+	r.players = data.get("players", {})
+	r.opponent_morale = int(duel.sides.get("boss", {}).get("morale", 0))
+	if data.get("rewards") is Dictionary:
+		r.rewards = data.rewards
+	if data.get("achievements") is Array:
+		r.achievements = data.achievements
+	if data.get("mastery") is Dictionary:
+		r.mastery = data.mastery
+
+
+## A side's most Morale (a boss has its own; everyone else the usual 6000).
+func _max_morale(side: String) -> float:
+	var s = duel.sides.get(side) if duel != null else null
+	return maxf(1.0, float(s.get("max_morale", DuelState.START_MORALE)) if s is Dictionary else float(DuelState.START_MORALE))

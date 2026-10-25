@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.81",
+        "notes": [
+            "New mode: TURF DEFENSE. Team up with another player against a clan boss: The Archon Ascendant, Warlord Graves, Vincent Vale or Veyr, the Hollow King. Pick it in Fight Mode and quick match.",
+            "Each boss has three levels (Street, Hard, Nightmare) with far more Morale, extra cards and Authority each turn, and phases that turn the fight as its Morale drops, with cutscenes and lines of its own.",
+            "Beat a boss on Street for its prize card. First clears pay Karat, XP and free packs and open the next level; three new achievements.",
+            "When someone is looking for a partner, everyone online gets a pop-up to join them."
+        ]
+    },
+    {
         "version": "0.9.80",
         "notes": [
             "Fixed: a character that promoted, came back or Awakened during your opponent's turn couldn't attack on your next turn.",

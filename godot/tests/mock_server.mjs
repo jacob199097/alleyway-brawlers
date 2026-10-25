@@ -18,6 +18,8 @@ function extraClans() {
 }
 
 const port = Number(process.argv[2] || 3999);
+const TURF = await import('../../shared/turf.js');
+const turfClears = new Map();   // player id → {bossId: {level: {clears, attempts, best_turns}}}
 
 const cards = Object.values(CARD_CATALOG).map(c => ({
     id: randomUUID(), name: c.name, clan: c.clan, clan_tag: c.clanTag, card_type: c.cardType,
@@ -172,6 +174,17 @@ const routes = {
         return [200, { ok: true }];
     },
     // The daily reward (backend/economy/daily.js shape): taken already, so the tour isn't held up
+    // Turf Defense (backend/economy/turf.js status, with clears kept in memory)
+    'GET /api/turf': () => {
+        const clears = turfClears.get(player.id) || {};
+        const open = (b, n) => n <= 1 || (clears[b]?.[n - 1]?.clears || 0) > 0;
+        return [200, { loss: TURF.BOSS_DATA.loss || {}, waiting: coop?.waiting() || {}, bosses: TURF.BOSSES.map(b => ({
+            ...TURF.bossInfo(b, b.levels[0]), prize_won: (clears[b.id]?.[1]?.clears || 0) > 0,
+            levels: b.levels.map(l => ({ level: l.level, name: l.name, morale: l.morale, draw: l.draw || 0, authority: l.authority || 0,
+                phases: (l.phases || []).map(p => ({ below: p.below, label: p.label })), first_clear: l.first_clear || {}, clear: l.clear || {},
+                unlocked: open(b.id, l.level), clears: clears[b.id]?.[l.level]?.clears || 0, attempts: clears[b.id]?.[l.level]?.attempts || 0,
+                best_turns: clears[b.id]?.[l.level]?.best_turns ?? null })) })) }];
+    },
     'GET /api/daily': () => [200, { day: 3, claimed: true, streak: 3, rewards: [{ karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 }, { karat: 200 }, { dust: 150 }, { karat: 300, free_packs: 1 }] }],
     'POST /api/daily/claim': () => { player.karat += 150; return [200, { day: 3, reward: { karat: 150 }, karat: player.karat, dust: player.dust ?? 0, free_packs: player.free_packs ?? 0 }]; },
     // The leaderboard (backend/economy/leaderboard.js shape): a few rivals around the player
@@ -326,6 +339,7 @@ const require = createRequire(import.meta.url);
 const { Server } = require('../../backend/node_modules/socket.io');
 const { createOnlineService } = require('../../backend/socket/onlineMatch.js');
 const { createFfaService } = require('../../backend/socket/ffaMatch.js');
+const { createCoopService } = require('../../backend/socket/coopMatch.js');
 const { nextForm } = await import('../../shared/duel/DuelState.js');
 
 const io = new Server(server, { cors: { origin: '*' } });
@@ -339,6 +353,7 @@ io.use((socket, next) => {
 
 const spec = (c) => ({ id: c.art_url, name: c.name, authority: c.authority, attack: c.attack ?? 0, defense: c.defense ?? 0, rarity: c.rarity });
 let ffa = null;   // the free-for-all lobby and matches (backend/socket/ffaMatch.js)
+let coop = null;  // Turf Defense (backend/socket/coopMatch.js)
 const serviceDeps = {
     isBusyElsewhere: (id) => !!ffa?.isBusy(id),
     onAction(match, seat, action, ok) {
@@ -410,12 +425,42 @@ ffa = createFfaService(io, {
             newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false, newRank: p.rank, rankChanged: false, rankPointDelta: 0 };
     },
 });
+// Turf Defense: the real quick match and matches (backend/socket/coopMatch.js); rewards in memory.
+// TURF_CLEARED=1: every level starts open (to look at Hard and Nightmare)
+coop = createCoopService(io, {
+    loadSetup: serviceDeps.loadSetup,
+    loadProfile: serviceDeps.loadProfile,
+    loadClears: async (id) => turfClears.get(id) || {},
+    isBusyElsewhere: (id) => service.isBusyHere(id) || ffa.isBusy(id),
+    leaveOtherQueue: (id) => service.leaveQueue(id),
+    turnSecs: Number(process.env.FFA_TURN_SECS || 90),
+    async resolveTurf({ playerId, bossId, level, won, turns }) {
+        const p = byPlayerId(playerId);
+        const boss = TURF.findBoss(bossId), lv = TURF.bossLevel(boss, level);
+        const mine = turfClears.get(playerId) || {};
+        turfClears.set(playerId, mine);
+        const row = (mine[bossId] = mine[bossId] || {})[level] = mine[bossId]?.[level] || { clears: 0, attempts: 0, best_turns: null };
+        const first = won && row.clears === 0;
+        row.attempts += 1;
+        if (won) { row.clears += 1; row.best_turns = Math.min(row.best_turns ?? turns, turns); }
+        const pay = won ? (first ? lv.first_clear : lv.clear) : TURF.BOSS_DATA.loss;
+        p.xp += pay.xp || 0; p.karat += pay.karat || 0;
+        console.log(`TURF OVER ${p.username} ${bossId} ${level} ${won ? 'won' : 'lost'}${first ? ' (first clear)' : ''}`);
+        return { outcome: won ? 'win' : 'loss', won, first, bossId, level, karatEarned: pay.karat || 0, xpEarned: pay.xp || 0, packs: pay.packs || 0,
+            prize: first && level === 1 ? boss.prize : null, newKarat: p.karat, newXp: p.xp, newLevel: p.level, leveledUp: false,
+            packsEarned: 0, avatarsUnlocked: [], unlockedNext: first && !!TURF.bossLevel(boss, level + 1) };
+    },
+});
 io.on('connection', (socket) => {
     const { playerId, username } = socket.playerData;
     online.add(playerId);
     console.log('socket connected', username);
     service.register(socket, socket.playerData);
     ffa.register(socket, socket.playerData);
+    coop.register(socket, socket.playerData);
+    if (process.env.TURF_CLEARED && !turfClears.has(playerId)) {
+        turfClears.set(playerId, Object.fromEntries(TURF.BOSSES.map(b => [b.id, { 1: { clears: 1, attempts: 2, best_turns: 21 }, 2: { clears: 1, attempts: 3, best_turns: 26 } }])));
+    }
     socket.on('chat:message', ({ toPlayerId, body } = {}) => {
         for (const s of io.sockets.sockets.values()) {
             if (s.playerData.playerId === toPlayerId) s.emit('chat:message', { fromPlayerId: playerId, fromUsername: username, body });

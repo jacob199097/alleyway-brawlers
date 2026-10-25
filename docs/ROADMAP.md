@@ -26,11 +26,12 @@ when it ships, or delete it if it's dropped.
 
 ## Game modes & content
 
-- [ ] **Co-op boss mode (name TBD).** Two players team up against one CPU boss with fixed Morale
-  (e.g. 10000). Several levels, short cutscenes and dialogue pop-ups mid-fight; beating a boss for the
-  first time gives its prize card. Builds on the free-for-all seats in both engines, the CPU player
-  (`DuelAI`) for the boss, and server-side rewards in `backend/economy/` (with a `db/migrate_*.sql`
-  for "bosses beaten"). Name ideas: Turf Defense, Back Alley Bosses, Shakedown, Tag Team, Block Party.
+- [x] **Co-op boss mode: Turf Defense** (0.9.81). Two players (quick match) against a clan boss: one per
+  clan, three levels each (Street, Hard, Nightmare), phases as its Morale drops, an entrance cutscene,
+  phase cutscenes and lines mid-fight, and its prize card on the first Street clear. Bosses and rewards:
+  `godot/data/bosses.json`; server: `backend/socket/coopMatch.js`, `backend/economy/turf.js`.
+  Later: boss-only cards and prize cards of their own (the prizes are the clan Legendaries for now),
+  a boss music track (`assets/sfx/music_boss.mp3` is used when it exists), friend invites.
 - [ ] **Wildcard cards.** Frame, card back, booster, deck box, crest and effects (luck, DOUBLE OR
   NOTHING, LOADED DICE) are ready; the cards themselves are being made.
 - [ ] **Re-import Continuous / Equip cards** through the Forge, so their effect text loses the old
