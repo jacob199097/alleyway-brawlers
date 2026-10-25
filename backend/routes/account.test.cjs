@@ -39,7 +39,7 @@ const conn = (database) => new Client({
     const count = async (sql, params) => Number((await q(sql, params)).rows[0].n);
 
     const player = async (name) => (await q(
-        `INSERT INTO players (username, email, password_hash) VALUES ($1, $1 || '@x', 'x') RETURNING id`, [name])).rows[0].id;
+        `INSERT INTO players (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`, [name, name + '@x'])).rows[0].id;
     const gone = await player('leaving');
     const stays = await player('staying');
 
