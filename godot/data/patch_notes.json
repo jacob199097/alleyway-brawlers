@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.75",
+        "notes": [
+            "A leader that Awakens at low Morale, like General Graves, now takes the field the moment your Morale drops low enough, even in the middle of your opponent's attacks.",
+            "New card effects: send the top cards of your own deck to your Gutter, or a card of your choice from your deck to your Gutter."
+        ]
+    },
+    {
         "version": "0.9.74",
         "notes": [
             "A fresh full download of the game, so updates are small again. In-game updates no longer give up on a slow connection: they keep going as long as the download is moving."

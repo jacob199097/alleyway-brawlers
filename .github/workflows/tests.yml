@@ -44,8 +44,10 @@ jobs:
         run: node shared/duel/blocks.test.mjs
       - name: CHARM, UNDEAD, promoting a Striver, tribute damage, flipping Continuous Ambushes
         run: node shared/duel/charm.test.mjs
-      - name: Underworld effects (give UNDEAD, raise from the enemy Gutter, exile Gutter cards)
+      - name: Underworld effects (give UNDEAD, raise from the enemy Gutter, exile Gutter cards, fill your own Gutter)
         run: node shared/duel/underworld.test.mjs
+      - name: A leader Awakens mid-turn when Morale drops
+        run: node shared/duel/awaken.test.mjs
 
   database:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)

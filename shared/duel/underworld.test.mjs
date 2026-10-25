@@ -188,4 +188,19 @@ st._recalc();
 assert.ok(st.statuses(chatty).includes('silence'), 'still silenced 20 turns later');
 assert.equal(chatty.attack, 1000, 'its passive stays off');
 
+// Filling your own Gutter: the top N cards of your deck (mill_self), or one you pick (entomb, filters like search)
+st = duel();
+for (const n of ['A', 'B', 'C', 'D']) st.sides.player.deck.push(unit(st, n));
+st.sides.player.deck.push(st.makeCard({ id: 'test_trick2', name: 'Trick', cardType: 'hustle', clanTag: 'test' }));
+st._doFx('player', -1, src, { do: 'mill_self', amount: 2 });
+assert.deepEqual(st.sides.player.gutter.map(c => c.name), ['Trick', 'D'], 'the top 2 of the deck');
+assert.equal(st.sides.player.deck.length, 3);
+st._doFx('player', -1, src, { do: 'entomb', kind: 'gang_member', name: 'B', choose: true });
+answer(st);
+assert.equal(st.sides.player.gutter.at(-1).name, 'B', 'the one it was told to send');
+assert.deepEqual(st.sides.player.deck.map(c => c.name).sort(), ['A', 'C']);
+assert.equal(st.fxCan('player', -1, src, { do: 'entomb', kind: 'ambush' }), false, 'no Ambush in the deck: nothing to send');
+st.sides.player.deck = [];
+assert.equal(st.fxCan('player', -1, src, { do: 'mill_self', amount: 1 }), false);
+
 console.log('underworld: ok');

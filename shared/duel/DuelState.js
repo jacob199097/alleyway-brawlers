@@ -516,6 +516,8 @@ export class DuelState {
             case 'token': return this._roomFor(side) && !!CARD_CATALOG[String(e.token ?? '')];
             case 'discard': return foes.some(x => x.hand.length > 0);
             case 'mill': return foes.some(x => x.deck.length > 0);
+            case 'mill_self': return s.deck.length > 0;
+            case 'entomb': return s.deck.some(mine);
             case 'heal': return s.morale < START_MORALE;
             case 'break_ambush': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].face_down));
             case 'shatter': return foes.some(x => BACK.some(b => x.field[b] != null && !x.field[b].face_down));
@@ -1389,6 +1391,9 @@ export class DuelState {
         s.morale = Math.max(0, s.morale - amount);
         this._emit('damage', { side, amount, morale: s.morale });
         if (s.morale <= 0 && this.winner === '') this._lose(side, 'morale');
+        // A leader that Awakens at low Morale (its own, or an opponent's) can take the field right
+        // away, even in the middle of the other player's Brawl phase
+        else if (this.winner === '') for (const x of [side, ...this.foesOf(side)]) this._checkAwaken(x, true);
     }
 
     /** side is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
@@ -1688,9 +1693,12 @@ export class DuelState {
         ask.still = () => this.cardAt(side, slot) === old && !old.downed && !this.inStasis(old);
     }
 
-    _checkAwaken(side) {
+    /** A Dormant leader whose Awaken condition is met is offered the field (same as _check_awaken in
+     *  duel_state.gd): at the start of its owner's turn, and the moment Morale drops (midTurn), once
+     *  a turn: "stay Dormant" isn't asked again until the next turn. */
+    _checkAwaken(side, midTurn = false) {
         const s = this.sides[side];
-        if (s.leader_state !== 'dormant') return;
+        if (s.leader_state !== 'dormant' || s.awaken_asking || (midTurn && s.awaken_waited === this.turn)) return;
         const cond = s.leader.awakenCondition || {};
         if (isEmpty(cond)) return;
         // Any of: N+ standing (clan) characters, Authority N+, Morale N or less
@@ -1717,8 +1725,14 @@ export class DuelState {
         }
         taken.sort((a, b) => (a.value - b.value) || (a.slot - b.slot));
         const options = [...empties, ...taken, { id: 'wait', label: 'STAY DORMANT FOR NOW' }];
+        s.awaken_asking = true;
         this._ask(side, 'awaken', `${s.leader.name} AWAKENS! Choose a lane`, s.leader, options, (choice) => {
-            if (choice === 'wait') return;
+            delete s.awaken_asking;
+            if (s.leader_state !== 'dormant') return;
+            if (choice === 'wait') {
+                s.awaken_waited = this.turn;
+                return;
+            }
             const slot = toInt(choice);
             const displaced = s.field[slot];
             if (displaced != null) {
@@ -2447,6 +2461,27 @@ export class DuelState {
                     }
                 });
                 break;
+            case 'mill_self': {   // the top N cards of your own deck go to your Gutter (fills it on purpose)
+                const lost = Math.min(n, s.deck.length);
+                if (lost <= 0) break;
+                this._effect(side, c, `${c.name}: the top ${lost} card${lost === 1 ? '' : 's'} of your deck go${lost === 1 ? 'es' : ''} to your Gutter`, slot);
+                for (let i = 0; i < lost; i++) {
+                    const milled = s.deck.pop();
+                    s.gutter.push(milled);
+                    this._emit('mill', { side, card: clone(milled) });
+                }
+                break;
+            }
+            case 'entomb': {   // a card of your choice (filters like search) from your deck to your Gutter
+                const sent = this._fxTake(side, c, e, s.deck, `${c.name}: choose a card to send to your Gutter`, (card) => {
+                    s.gutter.push(card);
+                    this._effect(side, c, `${c.name}: sends ${card.name} from the deck to the Gutter`, slot);
+                    this._emit('mill', { side, card: clone(card) });
+                    return true;
+                }, () => this._shuffleDeck(side));
+                if (!sent) this._emit('effect', { side, card: clone(c), text: `${c.name}: nothing in the deck to send`, slot });   // (not something done)
+                break;
+            }
             case 'tribute_damage': {   // a Heavy: the ATK of the characters it sacrificed, as Morale damage
                 const dmg = toInt(c.tribute_atk ?? 0);
                 if (dmg <= 0) break;

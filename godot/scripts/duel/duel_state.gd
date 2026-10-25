@@ -564,6 +564,10 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return foes.any(func(x): return not x.hand.is_empty())
 		"mill":
 			return foes.any(func(x): return not x.deck.is_empty())
+		"mill_self":
+			return not s.deck.is_empty()
+		"entomb":
+			return s.deck.any(mine)
 		"heal":
 			return s.morale < START_MORALE
 		"break_ambush":
@@ -1592,6 +1596,11 @@ func _damage(side: String, amount: int, paid := false) -> void:
 	_emit("damage", {"side": side, "amount": amount, "morale": s.morale})
 	if s.morale <= 0 and winner == "":
 		_lose(side, "morale")
+	elif winner == "":
+		# A leader that Awakens at low Morale (its own, or an opponent's) can take the field right
+		# away, even in the middle of the other player's Brawl phase
+		for x in [side] + foes_of(side):
+			_check_awaken(x, true)
 
 
 ## `side` is out (no Morale, or decked out). Two players: the other one wins. FFA: they take the
@@ -1880,9 +1889,12 @@ func _promote(side: String, slot: int, reason: String) -> void:
 
 ## King Roan awakens at the start of your turn once you control 4+ LIONS characters or have
 ## 10+ Authority: he takes a front-row slot (sending any card there to the Gutter).
-func _check_awaken(side: String) -> void:
+## A Dormant leader whose Awaken condition is met is offered the field: at the start of its owner's
+## turn, and the moment Morale drops (mid_turn), once a turn ("stay Dormant" isn't asked again until
+## the next turn).
+func _check_awaken(side: String, mid_turn := false) -> void:
 	var s: Dictionary = sides[side]
-	if s.leader_state != "dormant":
+	if s.leader_state != "dormant" or s.get("awaken_asking", false) or (mid_turn and int(s.get("awaken_waited", -1)) == turn):
 		return
 	var cond: Dictionary = s.leader.get("awakenCondition", {})
 	if cond.is_empty():
@@ -1915,8 +1927,13 @@ func _check_awaken(side: String) -> void:
 	options.append_array(empties)
 	options.append_array(taken)
 	options.append({"id": "wait", "label": "STAY DORMANT FOR NOW"})
+	s.awaken_asking = true
 	_ask(side, "awaken", "%s AWAKENS! Choose a lane" % s.leader.name, s.leader, options, func(choice: String):
+		s.erase("awaken_asking")
+		if s.leader_state != "dormant":
+			return
 		if choice == "wait":
+			s.awaken_waited = turn
 			return
 		var slot := int(choice)
 		var displaced = s.field[slot]
@@ -2807,6 +2824,22 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 					var milled: Dictionary = fd.pop_back()
 					sides[foe].gutter.append(milled)
 					_emit("mill", {"side": foe, "card": milled.duplicate(true)}))
+		"mill_self":   # the top N cards of your own deck go to your Gutter (fills it on purpose)
+			var lost := mini(n, s.deck.size())
+			if lost > 0:
+				_effect(side, c, "%s: the top %d card%s of your deck go%s to your Gutter" % [c.name, lost, "" if lost == 1 else "s", "es" if lost == 1 else ""], slot)
+				for i in lost:
+					var milled: Dictionary = s.deck.pop_back()
+					s.gutter.append(milled)
+					_emit("mill", {"side": side, "card": milled.duplicate(true)})
+		"entomb":   # a card of your choice (filters like search) from your deck to your Gutter
+			var sent := _fx_take(side, c, e, s.deck, "%s: choose a card to send to your Gutter" % c.name, func(card: Dictionary) -> bool:
+				s.gutter.append(card)
+				_effect(side, c, "%s: sends %s from the deck to the Gutter" % [c.name, card.name], slot)
+				_emit("mill", {"side": side, "card": card.duplicate(true)})
+				return true, _shuffle_deck.bind(side))
+			if not sent:
+				_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: nothing in the deck to send" % c.name, "slot": slot})   # (not something done)
 		"tribute_damage":   # a Heavy: the ATK of the characters it sacrificed, as Morale damage
 			var dmg := int(c.get("tribute_atk", 0))
 			if dmg > 0:
