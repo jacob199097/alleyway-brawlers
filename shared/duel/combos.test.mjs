@@ -134,4 +134,31 @@ assert.ok(!st._fxCond('player', 0, { if: 'morale_ahead' }, null));
 assert.ok(st._fxCond('opponent', 0, { if: 'morale_ahead' }, null));
 assert.equal(st._perCount('player', 0, { per: 'lost_1000' }), 2, '2500 lost: 2 thousands');
 
+// BRITTLE: KO'd instead of going Down, from a brawl or an effect (a token just vanishes)
+st = duel();
+const bones = put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'brittle' }], 500, 0, { token: true }));
+assert.equal(st._defeat('player', 1), 'ko', 'a lost brawl KOs it');
+assert.equal(st.sides.player.field[1], null);
+assert.ok(!st.sides.player.gutter.includes(bones), 'a token vanishes');
+const brittle = put(st, 'opponent', 2, unit(st, [{ when: 'passive', do: 'brittle' }]));
+c = put(st, 'player', 0, unit(st));
+st._doFx('player', 0, c, { do: 'down', target: 'enemies' });
+assert.equal(st.sides.opponent.field[2], null, 'DOWN KOs it');
+assert.ok(st.sides.opponent.gutter.includes(brittle), 'to the Gutter, like any KO');
+const shocked = put(st, 'opponent', 3, unit(st, [{ when: 'passive', do: 'brittle' }], 1000, 300));
+st._doFx('player', 0, c, { do: 'shock', target: 'enemies', amount: 500 });
+assert.equal(st.sides.opponent.field[3], null, 'SHOCK past its DEF KOs it');
+const plain = put(st, 'opponent', 4, unit(st));
+st._doFx('player', 0, c, { do: 'down', target: 'enemies' });
+assert.ok(plain.downed, 'without BRITTLE it just goes Down');
+// An effect that Downs now sets off "when it's Downed" and "when another of your characters is Downed"
+st = duel();
+const riser = put(st, 'opponent', 0, unit(st, [{ when: 'self_downed', do: 'stand', target: 'self', once: true }]));
+const friend = put(st, 'opponent', 1, unit(st, [{ when: 'ally_downed', do: 'buff', target: 'self', atk: 200, until: 'forever' }]));
+c = put(st, 'player', 0, unit(st));
+st._doFx('player', 0, c, { do: 'down', target: 'enemies' });
+st._recalc();
+assert.ok(!riser.downed, "its own \"when it's Downed: it stands back up\" happened");
+assert.equal(friend.attack, 1200, '"when another of your characters is Downed" happened');
+
 console.log('combos: ok');

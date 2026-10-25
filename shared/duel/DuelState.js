@@ -1181,9 +1181,7 @@ export class DuelState {
                         return;
                     }
                     this._effect(foe, a, 'No Witnesses: the attacker is Downed and the attack negated', slot);
-                    ctx.att.downed = true;
-                    ctx.att.position = 'def';   // a Downed character is in DEF
-                    this._emit('downed', { side: ctx.side, slot: ctx.from, card: clone(ctx.att) });
+                    this._goDown(ctx.side, ctx.from, ctx.att);
                     return;
                 }
                 this._effect(foe, a, "Lion's Ambush: the attacker loses 1000 ATK this brawl", slot);
@@ -1334,6 +1332,18 @@ export class DuelState {
         if (this._staysUp(side, slot, c)) {
             this._effect(side, c, `${c.name} stays standing`, slot);
             return 'saved';
+        }
+        return this._goDown(side, slot, c);
+    }
+
+    /** A character goes Down, from a lost brawl or an effect: it drops to DEF, and its "when it's
+     *  Downed" and its allies' "when another of your characters is Downed" effects happen. BRITTLE
+     *  (Card Forge passive): it's KO'd instead (tokens like Skeletons don't clog the field).
+     *  → 'ko' | 'downed' */
+    _goDown(side, slot, c) {
+        if (this._passive(side, slot, c, 'brittle') != null) {
+            this._ko(side, slot);
+            return 'ko';
         }
         c.downed = true;
         c.position = 'def';   // a Downed character is in DEF
@@ -1602,10 +1612,8 @@ export class DuelState {
             standing.sort(strongestFirst);
             this._askTarget(side, 'hunter_down', `${att.name} KO: choose an enemy character to Down`, att,
                 standing, foe, (e) => {
-                    e.card.downed = true;
-                    e.card.position = 'def';   // a Downed character is in DEF
                     this._effect(side, att, `${att.name} Downs ${e.card.name}`, slot);
-                    this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
+                    this._goDown(foe, e.slot, e.card);
                 });
         }
         if (wasDowned) {
@@ -1704,10 +1712,8 @@ export class DuelState {
                 for (const foe of foes) {
                     for (const e of this.characters(foe)) {
                         if (!e.card.downed && e.card.defense <= 1500 && !this._staysUp(foe, e.slot, e.card)) {
-                            e.card.downed = true;
-                            e.card.position = 'def';   // a Downed character is in DEF
                             hit += 1;
-                            this._emit('downed', { side: foe, slot: e.slot, card: clone(e.card) });
+                            this._goDown(foe, e.slot, e.card);
                         }
                     }
                 }
@@ -2247,10 +2253,8 @@ export class DuelState {
             }
             case 'down':
                 this._fxApply(side, slot, c, e, vs, 'standing', 'DOWN', (x) => {
-                    x.card.downed = true;
-                    x.card.position = 'def';   // a Downed character is in DEF
-                    this._emit('downed', { side: x.side, slot: x.slot, card: clone(x.card) });
-                    return `${c.name} Downs ${x.card.name}`;
+                    const name = x.card.name;
+                    return this._goDown(x.side, x.slot, x.card) === 'ko' ? `${c.name} Downs ${name}: it's BRITTLE, so it's KO'd` : `${c.name} Downs ${name}`;
                 }, `${c.name} Downs %s`);
                 break;
             case 'ko':
@@ -2732,10 +2736,8 @@ export class DuelState {
                 this._fxApply(side, slot, c, e, vs, 'any', 'SHOCK', (x) => {
                     this._emit('status', { side: x.side, slot: x.slot, kind: 'shock', card: clone(x.card) });
                     if (!x.card.downed && n >= toInt(x.card.defense ?? 0) && !this._staysUp(x.side, x.slot, x.card)) {
-                        x.card.downed = true;
-                        x.card.position = 'def';   // a Downed character is in DEF
-                        this._emit('downed', { side: x.side, slot: x.slot, card: clone(x.card) });
-                        return `${c.name} SHOCKS ${x.card.name}: it goes Down`;
+                        const name = x.card.name;
+                        return this._goDown(x.side, x.slot, x.card) === 'ko' ? `${c.name} SHOCKS ${name}: it's BRITTLE, so it's KO'd` : `${c.name} SHOCKS ${name}: it goes Down`;
                     }
                     x.card.mods.push({ atk: 0, def: -n, until_turn: this.turn });
                     this._recalc();

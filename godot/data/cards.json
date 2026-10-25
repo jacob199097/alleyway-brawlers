@@ -4694,11 +4694,15 @@
   "art_url": "card_unde_002",
   "code": "UNDE-002",
   "flavourText": "I’ve got a bone to pick with the living.",
-  "effectText": "You take no battle damage from brawls involving this card.",
+  "effectText": "You take no battle damage from brawls involving this card.\nThis card is BRITTLE.",
   "effects": [
    {
     "when": "passive",
     "do": "no_battle_damage"
+   },
+   {
+    "when": "passive",
+    "do": "brittle"
    }
   ],
   "clanName": "Underworld",

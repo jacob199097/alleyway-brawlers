@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.83",
+        "notes": [
+            "New keyword: BRITTLE. A BRITTLE character is KO'd instead of going Down, so it doesn't sit on the field. Skeleton tokens are now BRITTLE.",
+            "Fixed: \"When it's Downed\" abilities now also happen when an effect Downs the character (DOWN, SHOCK...), not only when it loses a brawl."
+        ]
+    },
+    {
         "version": "0.9.82",
         "notes": [
             "Livelier arenas: rats scurry through the Back Alley, the Graveyard and the Crypt, crows cross the Graveyard, the casino roulette ball spins, Frozen Lake cracks underfoot, the Pit crowd jostles, and neon tubes, lanterns, lamps, chains, branches and steam all move.",

@@ -1336,9 +1336,7 @@ func _atk_ambush(ctx: Dictionary) -> void:
 					_effect(foe, a, "No Witnesses: the attack is negated", slot)
 					return
 				_effect(foe, a, "No Witnesses: the attacker is Downed and the attack negated", slot)
-				ctx.att.downed = true
-				ctx.att.position = "def"   # a Downed character is in DEF
-				_emit("downed", {"side": ctx.side, "slot": ctx.from, "card": ctx.att.duplicate(true)})
+				_go_down(ctx.side, ctx.from, ctx.att)
 				return
 			_effect(foe, a, "Lion's Ambush: the attacker loses 1000 ATK this brawl", slot)
 			ctx.bonus -= 1000
@@ -1527,6 +1525,16 @@ func _defeat(side: String, slot: int) -> String:
 	if _stays_up(side, slot, c):
 		_effect(side, c, "%s stays standing" % c.name, slot)
 		return "saved"
+	return _go_down(side, slot, c)
+
+
+## A character goes Down, from a lost brawl or an effect: it drops to DEF, and its "when it's Downed"
+## and its allies' "when another of your characters is Downed" effects happen. BRITTLE (Card Forge
+## passive): it's KO'd instead (tokens like Skeletons don't clog the field). -> "ko" | "downed"
+func _go_down(side: String, slot: int, c: Dictionary) -> String:
+	if not _passive(side, slot, c, "brittle").is_empty():
+		_ko(side, slot)
+		return "ko"
 	c.downed = true
 	c.position = "def"   # a Downed character is in DEF
 	_emit("downed", {"side": side, "slot": slot, "card": c.duplicate(true)})
@@ -1820,10 +1828,8 @@ func _on_ko(side: String, slot: int, att: Dictionary, was_downed: bool, target: 
 		standing.sort_custom(_strongest_first)
 		_ask_target(side, "hunter_down", "%s KO: choose an enemy character to Down" % att.name, att,
 			standing, foe, func(e: Dictionary):
-				e.card.downed = true
-				e.card.position = "def"   # a Downed character is in DEF
 				_effect(side, att, "%s Downs %s" % [att.name, e.card.name], slot)
-				_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)}))
+				_go_down(foe, e.slot, e.card))
 	if was_downed:
 		if key in ["hunter_lv1", "hunter_lv2"]:
 			_promote(side, slot, att.name)
@@ -1909,10 +1915,8 @@ func _on_deploy(side: String, slot: int, c: Dictionary, evolved := false) -> voi
 			for foe in foes:
 				for e in characters(foe):
 					if not e.card.downed and e.card.defense <= 1500 and not _stays_up(foe, e.slot, e.card):
-						e.card.downed = true
-						e.card.position = "def"   # a Downed character is in DEF
 						hit += 1
-						_emit("downed", {"side": foe, "slot": e.slot, "card": e.card.duplicate(true)})
+						_go_down(foe, e.slot, e.card)
 			if hit > 0:
 				_effect(side, c, "Sovereign's arrival Downs %d enem%s" % [hit, "y" if hit == 1 else "ies"], slot)
 
@@ -2636,10 +2640,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_fx_apply(side, slot, c, e, vs, "any", label, fn, "%s: %s to %%s" % [c.name, label])
 		"down":
 			var fn := func(x: Dictionary) -> String:
-				x.card.downed = true
-				x.card.position = "def"   # a Downed character is in DEF
-				_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
-				return "%s Downs %s" % [c.name, x.card.name]
+				var name: String = x.card.name
+				return ("%s Downs %s: it's BRITTLE, so it's KO'd" if _go_down(x.side, x.slot, x.card) == "ko" else "%s Downs %s") % [c.name, name]
 			_fx_apply(side, slot, c, e, vs, "standing", "DOWN", fn, "%s Downs %%s" % c.name)
 		"ko":
 			var fn := func(x: Dictionary) -> String:
@@ -3094,10 +3096,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			var fn := func(x: Dictionary) -> String:
 				_emit("status", {"side": x.side, "slot": x.slot, "kind": "shock", "card": x.card.duplicate(true)})
 				if not x.card.downed and n >= int(x.card.get("defense", 0)) and not _stays_up(x.side, x.slot, x.card):
-					x.card.downed = true
-					x.card.position = "def"   # a Downed character is in DEF
-					_emit("downed", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
-					return "%s SHOCKS %s: it goes Down" % [c.name, x.card.name]
+					var name: String = x.card.name
+					return ("%s SHOCKS %s: it's BRITTLE, so it's KO'd" if _go_down(x.side, x.slot, x.card) == "ko" else "%s SHOCKS %s: it goes Down") % [c.name, name]
 				x.card.mods.append({"atk": 0, "def": -n, "until_turn": turn})
 				_recalc()
 				return "%s SHOCKS %s: -%d DEF this turn" % [c.name, x.card.name, n]

@@ -184,6 +184,9 @@ const FX_SAMPLES := [
 	[{"when": "attack", "do": "buff", "target": "self", "atk": 500, "if": "morale_behind"}, {"when": "turn_end", "do": "reshuffle", "amount": 2, "if": "morale_ahead"}],
 	[{"when": "hustle_played", "do": "damage", "amount": 200, "per": "hustles_turn"}, {"when": "turn_end", "do": "draw", "amount": 1, "if": "hustles_ge", "n": 2}],
 	[{"when": "deploy", "do": "poison", "target": "opposite", "amount": 100}, {"when": "turn_start", "do": "stun", "target": "enemy", "if": "foe_statused"}],
+	# BRITTLE: KO'd instead of going Down; an effect's Down sets off "when it's Downed"
+	[{"when": "passive", "do": "brittle"}, {"when": "deploy", "do": "down", "target": "enemy"}],
+	[{"when": "self_downed", "do": "draw", "amount": 1}, {"when": "deploy", "do": "shock", "target": "enemies", "amount": 800}],
 ]
 
 
