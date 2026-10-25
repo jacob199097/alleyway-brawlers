@@ -183,6 +183,52 @@ func _run() -> void:
 			await _shot("w%02d" % i, 0.05)
 		get_tree().quit()
 		return
+	if "--clan-fx" in OS.get_cmdline_user_args():   # (each clan's summon then attack: shots every 0.1 s / 0.08 s)
+		var deck5 := await Game.load_duel_deck()
+		Game.duel_setup = deck5
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var x = _screen()
+		if x._menu:
+			x._menu.visible = false
+		var units: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		for clan in ["nebula", "militia", "wildcard", "underworld"]:
+			var c: Dictionary = CardDB.get_card(units[0]).duplicate()
+			c.clanTag = clan
+			var v = x._new_view(c, "player", true)
+			v.z_index = 420
+			var at: Vector2 = x.slot_pos("player", 1)
+			v.position = at
+			v.home = at
+			var col := Color(0.7, 0.35, 1.0)
+			match clan:
+				"nebula": x._warp_in(v, at, col, false)
+				"militia": x._airdrop(v, at, Color(0.6, 1.0, 0.3), false)
+				"wildcard": x._deal_in(v, at, false)
+				"underworld": x._grave_rise(v, at, false)
+			for i in 10:
+				await _shot("fx_%s_s%02d" % [clan, i], 0.1)
+			await get_tree().create_timer(0.8).timeout
+			v.home = at
+			var dv = x._new_view(CardDB.get_card(units[1]).duplicate(), "opponent", true)
+			dv.position = x.slot_pos("opponent", 2)
+			dv.home = dv.position
+			var tpos: Vector2 = dv.home
+			var dir: Vector2 = (tpos - at).normalized()
+			match clan:
+				"nebula": x._laser_strike(v, dv, tpos, dir, true, false)
+				"militia": x._gun_strike(v, dv, tpos, dir, true, false)
+				"wildcard": x._card_strike(v, dv, tpos, dir, true, false)
+				"underworld": x._skull_strike(v, dv, tpos, dir, true, false)
+			for i in 16:
+				await _shot("fx_%s_a%02d" % [clan, i], 0.08)
+			await get_tree().create_timer(1.2).timeout
+			v.queue_free()
+			dv.queue_free()
+		get_tree().quit()
+		return
 	if "--underworld-only" in OS.get_cmdline_user_args():   # (Underworld's grave summon, skull attack and back; Wildcard's deal-in)
 		var deck4 := await Game.load_duel_deck()
 		Game.duel_setup = deck4
@@ -202,8 +248,9 @@ func _run() -> void:
 		back.scale = Vector2.ONE * 1.6
 		var g = u._new_view(uc, "player", true)
 		g.position = u.slot_pos("player", 1)
+		g.z_index = 420   # (as in a real summon)
 		u._grave_rise(g, u.slot_pos("player", 1), true)
-		for i in 6:
+		for i in 12:
 			await _shot("u%02d_grave" % i, 0.12)
 		var wc: Dictionary = CardDB.get_card(ids[1]).duplicate()
 		wc.clanTag = "wildcard"
@@ -218,7 +265,7 @@ func _run() -> void:
 		g.home = u.slot_pos("player", 1)
 		var tpos: Vector2 = dv.home
 		u._skull_strike(g, dv, tpos, (tpos - g.home).normalized(), true, false)
-		for i in 14:
+		for i in 20:
 			await _shot("u%02d_skull" % i, 0.08)
 		await _shot("u_back", 0.5)
 		get_tree().quit()

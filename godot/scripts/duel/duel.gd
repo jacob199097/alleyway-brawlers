@@ -68,6 +68,12 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## summon "grave": a tombstone bursts up out of the cracked ground and the character climbs out of the grave.
 const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"},
 	"wildcard": {"attack": "cards", "summon": "deal"}, "underworld": {"attack": "skulls", "summon": "grave"}}
+const FX_RIFT := preload("res://shaders/fx_rift.gdshader")
+const FX_FIRE := preload("res://shaders/fx_fire.gdshader")
+const FX_COMET := preload("res://shaders/fx_comet.gdshader")
+const FX_RUNES := preload("res://shaders/fx_runes.gdshader")
+const FX_BEAM := preload("res://shaders/fx_beam.gdshader")
+const FX_SMOKE := preload("res://shaders/fx_smoke.gdshader")
 const LASER_GLOW := Color(0.62, 0.32, 1.0)
 const LASER_CORE := Color(0.16, 0.03, 0.3)
 
@@ -2350,6 +2356,7 @@ func _laser_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 	_sparks(tpos, dir, LASER_GLOW.lightened(0.3), 40 if big else 24)
 	_burst(tpos, LASER_GLOW, 24, 520)
 	_ring(tpos, LASER_GLOW.lightened(0.4), 1.5 if big else 1.2)
+	_flame_burst(tpos, 300.0 if big else 220.0, Color(0.95, 0.9, 1.0), LASER_GLOW, 0.5)   # (a bloom of plasma)
 	if d:
 		d.flash()
 		d.kick(dir, 30.0 if big else 22.0)
@@ -2430,6 +2437,7 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 	v.kick(Vector2(0, 1), 18.0)
 	_burst(target + Vector2(0, CARD.y / 2 - 10), Color(0.55, 0.5, 0.36), 34 if heavy else 22, 460.0, 0.6, 900.0)   # dust
 	_ring(target, col.lightened(0.25), 1.6 if heavy else 1.2)
+	_smoke_puff(target + Vector2(0, 40), 380.0 if heavy else 300.0, Color(0.55, 0.5, 0.42))   # (the dust it throws up)
 	var gone := create_tween()
 	gone.tween_property(reticle, "alpha", 0.0, 0.25)
 	gone.tween_callback(reticle.queue_free)
@@ -2439,50 +2447,160 @@ func _airdrop(v: CardView, target: Vector2, col: Color, heavy: bool) -> void:
 		_dim(0.0, 0.35)
 
 
-## Underworld's summon: the ground cracks open with a violet glow, a tombstone bursts up out of it, and
-## the character climbs out of the grave in front of it, pale and ghostly, then takes on its colour.
+## Underworld's summon: the ground splits open in a web of glowing violet cracks, spectral fire roars up
+## out of it, and the character climbs out of the flames, burning into view from the feet up, with souls
+## curling off it; the cracks cool behind it.
 func _grave_rise(v: CardView, target: Vector2, heavy: bool) -> void:
-	var violet := Color(0.7, 0.35, 1.0)
+	var violet := Color(0.72, 0.32, 1.0)
+	var k := 1.25 if heavy else 1.0
 	if heavy:
 		_cam_focus(target, 1.07, 0.3)
-	# The card waits out of sight, below the ground
-	var up := create_tween().set_parallel()
-	up.tween_property(v, "modulate:a", 0.0, 0.12)
-	var stone := GraveStone.new()
-	stone.position = target + Vector2(0, 30)
-	stone.scale = Vector2(1.0, 0.0)
-	stone.z_index = 7
-	cards_layer.add_child(stone)
-	Sfx.play("slam", 0.7, -2.0)
-	shake(8.0 if heavy else 5.0)
-	_burst(target + Vector2(0, 60), Color(0.35, 0.3, 0.4), 26 if heavy else 16, 380.0, 0.6, 700.0)   # earth thrown up
-	_burst(target + Vector2(0, 40), violet, 18, 220.0, 0.8, -60.0)   # a violet glow from below
-	var rise := stone.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	rise.tween_property(stone, "scale", Vector2.ONE * (1.25 if heavy else 1.0), 0.28)
-	await rise.finished
-	# The character climbs out: from low and small, ghostly, up to its place
-	v.position = target + Vector2(0, 70)
+	v.modulate.a = 0.0
+	# The ground splits
+	var rift := _fx_rect(FX_RIFT, target + Vector2(0, 26), Vector2(300, 250) * k, {"color": violet, "seed": randf() * 50.0, "gain": 0.75}, cards_layer, v.z_index - 2)
+	var rm: ShaderMaterial = rift.material
+	Sfx.play("slam", 0.55, -3.0)
+	Sfx.play("riser", 0.6, -8.0)
+	shake(9.0 if heavy else 6.0)
+	var crack := create_tween()
+	crack.tween_method(func(x: float): rm.set_shader_parameter("open", x), 0.0, 1.0, 0.38).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	_burst(target + Vector2(0, 40), Color(0.16, 0.13, 0.18), 22 if heavy else 14, 420.0, 0.7, 1100.0)   # earth thrown up
+	_burst(target + Vector2(0, 40), violet, 16, 240.0, 0.6, -80.0)
+	await _wait(0.2)
+	# Spectral fire roars up out of it
+	var fire := _fx_rect(FX_FIRE, target + Vector2(0, -40 * k), Vector2(240, 300) * k, {"life": 0.0, "seed": randf() * 50.0, "gain": 0.55}, cards_layer, v.z_index - 1)
+	var fm: ShaderMaterial = fire.material
+	var roar := create_tween()
+	roar.tween_method(func(x: float): fm.set_shader_parameter("life", x), 0.0, 1.0, 0.14)
+	roar.tween_interval(0.42)
+	roar.tween_method(func(x: float): fm.set_shader_parameter("life", x), 1.0, 0.0, 0.5)
+	roar.tween_callback(fire.queue_free)
+	Sfx.play("whoosh", 0.6, -2.0)
+	Sfx.play("ambush", 0.5, -10.0)
+	# The character climbs out, burning into view from its feet up
+	v.position = target + Vector2(0, 54)
 	v.rotation = v.home_rot
-	v.scale = Vector2.ONE * 0.55 * v.board_scale
-	v.modulate = Color(0.6, 0.45, 0.9, 0.0)
-	Sfx.play("ambush", 0.6, -8.0)
-	var climb := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	climb.tween_property(v, "position", target, 0.42)
-	climb.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.42)
-	climb.tween_property(v, "modulate", Color(0.8, 0.7, 1.0, 1.0), 0.3)
-	for i in 3:   # wisps of soul rising off it
-		_burst(target + Vector2(randf_range(-40, 40), 30 - i * 30), Color(0.75, 0.6, 1.0, 0.8), 6, 120.0, 0.9, -120.0)
+	v.scale = Vector2.ONE * 0.9 * v.board_scale
+	v.modulate = Color.WHITE
+	v.reveal = 0.0
+	v.reveal_color = violet.lightened(0.25)
+	_souls(target, violet, 16 if heavy else 10)
+	var climb := create_tween().set_parallel()
+	climb.tween_property(v, "position", target + Vector2(0, -10), 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	climb.tween_property(v, "scale", Vector2.ONE * 1.06 * v.board_scale, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	climb.tween_property(v, "reveal", 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await climb.finished
-	v.create_tween().tween_property(v, "modulate", Color.WHITE, 0.35)
+	v.reveal = 1.0
+	# It plants itself; the cracks cool
+	var land := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	land.tween_property(v, "position", target, 0.18)
+	land.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.22)
+	var cool := create_tween()
+	cool.tween_interval(0.25)
+	cool.tween_method(func(x: float): rm.set_shader_parameter("heat", x), 1.0, 0.0, 0.8)
+	cool.tween_callback(rift.queue_free)
 	_ring(target, violet, 1.5 if heavy else 1.15)
-	var gone := stone.create_tween()
-	gone.tween_interval(0.3)
-	gone.tween_property(stone, "modulate:a", 0.0, 0.4)
-	gone.tween_callback(stone.queue_free)
 	await _impact(target, heavy)
 	if heavy:
 		_cam_reset(0.45)
 		_dim(0.0, 0.35)
+
+
+## A rectangle running one of the effect shaders, centred on at, under parent (z: its order there).
+func _fx_rect(shader: Shader, at: Vector2, size: Vector2, params: Dictionary, parent: Node, z := 70) -> ColorRect:
+	var r := ColorRect.new()
+	r.size = size
+	r.position = at - size / 2.0
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.z_index = z
+	var m := ShaderMaterial.new()
+	m.shader = shader
+	for key in params:
+		m.set_shader_parameter(key, params[key])
+	r.material = m
+	parent.add_child(r)
+	return r
+
+
+## Souls curling up and away from a spot: pale violet wisps that swirl as they rise.
+func _souls(at: Vector2, col: Color, amount: int) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at + Vector2(0, 40)
+	p.one_shot = true
+	p.explosiveness = 0.55
+	p.amount = amount
+	p.lifetime = 1.3
+	p.texture = ArenaLife._soft_dot()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(70, 20)
+	p.direction = Vector2(0, -1)
+	p.spread = 25.0
+	p.initial_velocity_min = 90.0
+	p.initial_velocity_max = 200.0
+	p.gravity = Vector2(0, -60)
+	p.tangential_accel_min = -90.0
+	p.tangential_accel_max = 90.0
+	p.damping_min = 20.0
+	p.damping_max = 50.0
+	var size := Curve.new()
+	size.add_point(Vector2(0, 0.4))
+	size.add_point(Vector2(0.3, 1.0))
+	size.add_point(Vector2(1, 0.2))
+	p.scale_amount_curve = size
+	p.scale_amount_min = 0.35
+	p.scale_amount_max = 0.7
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0.0))
+	g.add_point(0.15, Color(col.lightened(0.3), 0.55))
+	g.set_color(g.get_point_count() - 1, Color(col, 0.0))
+	p.color_ramp = g
+	p.material = _add_mat
+	p.z_index = 80
+	fx.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(2.0).timeout.connect(p.queue_free)
+
+
+## Bone shards flying apart (a skull breaking on impact).
+func _shards(at: Vector2, dir: Vector2, amount: int) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.amount = amount
+	p.lifetime = 0.8
+	p.texture = ArenaLife._leaf()   # (a pointed sliver)
+	p.direction = dir
+	p.spread = 70.0
+	p.initial_velocity_min = 260.0
+	p.initial_velocity_max = 620.0
+	p.gravity = Vector2(0, 1100)
+	p.angular_velocity_min = -720.0
+	p.angular_velocity_max = 720.0
+	p.angle_max = 360.0
+	p.scale_amount_min = 0.35
+	p.scale_amount_max = 0.7
+	var g := Gradient.new()
+	g.set_color(0, Color(0.92, 0.88, 0.95, 1.0))
+	g.add_point(0.7, Color(0.78, 0.7, 0.85, 0.8))
+	g.set_color(g.get_point_count() - 1, Color(0.6, 0.5, 0.7, 0.0))
+	p.color_ramp = g
+	p.z_index = 82
+	fx.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+
+
+## A round burst of spectral flame, blooming and dying away.
+func _flame_burst(at: Vector2, size: float, core: Color, outer: Color, secs := 0.45) -> void:
+	var f := _fx_rect(FX_FIRE, at, Vector2.ONE * size, {"shape": 1, "core": core, "outer": outer, "life": 1.0, "seed": randf() * 50.0, "speed": 2.4}, fx, 81)
+	var m: ShaderMaterial = f.material
+	f.pivot_offset = f.size / 2.0
+	f.scale = Vector2.ONE * 0.4
+	var t := create_tween().set_parallel()
+	t.tween_property(f, "scale", Vector2.ONE * 1.15, secs).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(x: float): m.set_shader_parameter("life", x), 1.0, 0.0, secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.chain().tween_callback(f.queue_free)
 
 
 ## Wildcard's summon: dealt in from across the table, spinning flat, and landing with a burst of chips.
@@ -2506,75 +2624,114 @@ func _deal_in(v: CardView, target: Vector2, heavy: bool) -> void:
 	for col in [Color(0.85, 0.1, 0.12), Color(0.1, 0.08, 0.1), gold]:   # chips scattering off it: red, black and gold
 		_burst(target, col, 8 if heavy else 5, 340.0, 0.55, 500.0)
 	_ring(target, gold, 1.3 if heavy else 1.0)
+	_flame_burst(target, 280.0 if heavy else 220.0, Color(1.0, 0.97, 0.82), Color(1.0, 0.7, 0.18), 0.45)
+	_suits(target, 8 if heavy else 6)
 	await _impact(target, heavy)
 	if heavy:
 		_cam_reset(0.45)
 		_dim(0.0, 0.35)
 
 
-## Underworld's attack: the attacker raises a hand and glowing purple skulls fly at the target one after
-## another, each bursting into violet flame; a big hit ends with a great skull and the full impact.
+## A puff of dust or smoke that billows out and thins away (normal blend: it darkens what's behind).
+func _smoke_puff(at: Vector2, size: float, col: Color) -> void:
+	var s := _fx_rect(FX_SMOKE, at, Vector2.ONE * size, {"color": col, "seed": randf() * 50.0, "density": 0.75}, fx, 79)
+	var m: ShaderMaterial = s.material
+	s.pivot_offset = s.size / 2.0
+	s.scale = Vector2.ONE * 0.45
+	var t := create_tween().set_parallel()
+	t.tween_property(s, "scale", Vector2.ONE * 1.25, 1.0).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(x: float): m.set_shader_parameter("life", x), 1.0, 0.0, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.chain().tween_callback(s.queue_free)
+
+
+## A spent shell flicked out of the gun, tumbling to the floor.
+func _casing(at: Vector2, dir: Vector2) -> void:
+	var c := ColorRect.new()
+	c.size = Vector2(4, 9)
+	c.pivot_offset = c.size / 2.0
+	c.color = Color(0.95, 0.75, 0.3)
+	c.position = at - c.size / 2.0
+	c.z_index = 73
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.add_child(c)
+	var out := dir.orthogonal() * (1.0 if randf() < 0.5 else -1.0) * randf_range(50, 90) - dir * randf_range(10, 30)
+	var t := c.create_tween().set_parallel()
+	t.tween_property(c, "position", c.position + out + Vector2(0, -20), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(c, "rotation", randf_range(-10.0, 10.0), 0.45)
+	t.chain().tween_property(c, "position", c.position + out * 1.3 + Vector2(0, 24), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.chain().tween_property(c, "modulate:a", 0.0, 0.25)
+	t.chain().tween_callback(c.queue_free)
+
+
+## Card suits flying out of a spot, spinning and fading (Wildcard's deal-in).
+func _suits(at: Vector2, n: int) -> void:
+	for i in n:
+		var l := Label.new()
+		var s: int = i % 4
+		l.text = ["♠", "♥", "♣", "♦"][s]
+		l.add_theme_font_size_override("font_size", randi_range(26, 38))
+		l.add_theme_color_override("font_color", Color(0.9, 0.1, 0.12) if s % 2 == 1 else Color(0.1, 0.08, 0.1))
+		l.add_theme_color_override("font_outline_color", Color(1.0, 0.85, 0.4))
+		l.add_theme_constant_override("outline_size", 6)
+		l.z_index = 83
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx.add_child(l)
+		l.pivot_offset = l.get_minimum_size() / 2.0
+		l.position = at - l.pivot_offset
+		var to := at + Vector2.from_angle(TAU * i / n + randf_range(-0.3, 0.3)) * randf_range(110, 170) - l.pivot_offset
+		var t := l.create_tween().set_parallel()
+		t.tween_property(l, "position", to, 0.55).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		t.tween_property(l, "rotation", randf_range(-2.5, 2.5), 0.55)
+		t.tween_property(l, "scale", Vector2.ONE * 1.3, 0.55)
+		t.tween_property(l, "modulate:a", 0.0, 0.3).set_delay(0.3)
+		t.chain().tween_callback(l.queue_free)
+
+
+## Underworld's attack: a summoning circle opens in front of the attacker and horned skulls of violet
+## flame burst out of it one after another, trailing fire and embers, each breaking on the target in a
+## bloom of flame and bone; a big hit ends with a great skull and the full impact.
 func _skull_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
-	var violet := Color(0.72, 0.35, 1.0)
+	var violet := Color(0.72, 0.32, 1.0)
+	var hot := Color(1.0, 0.82, 1.0)
 	var side_v := dir.orthogonal()
-	var from := a.home + dir * 100.0
+	var from := a.home + dir * 118.0
 	_cam_focus(a.home.lerp(tpos, 0.35), 1.05 if big else 1.03, 0.3)
 	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(a, "position", a.home - dir * 28.0, 0.24)
-	t.tween_property(a, "scale", Vector2.ONE * 1.18 * a.board_scale, 0.24)
-	Sfx.play("ambush", 1.3, -8.0)
-	_burst(from, violet, 14, 160.0, 0.5, -40.0)   # the skulls gather in its hand
+	t.tween_property(a, "position", a.home - dir * 26.0, 0.26)
+	t.tween_property(a, "scale", Vector2.ONE * 1.16 * a.board_scale, 0.26)
+	# The circle draws itself on
+	var circle := _fx_rect(FX_RUNES, from, Vector2.ONE * (230.0 if big else 190.0), {"open": 0.0, "life": 1.0, "color": violet, "seed": randf() * 20.0}, fx, 71)
+	var cm: ShaderMaterial = circle.material
+	circle.pivot_offset = circle.size / 2.0
+	circle.rotation = dir.angle()
+	create_tween().tween_method(func(x: float): cm.set_shader_parameter("open", x), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	Sfx.play("riser", 1.2, -6.0)
+	Sfx.play("ambush", 1.3, -10.0)
+	_burst(from, violet, 14, -160.0, 0.4, 0.0)   # (motes drawn into it)
 	await t.finished
 	_clear_attack_line()
 	var n := 3
 	for i in n:
-		var sk := SkullBolt.new()
-		sk.position = from
-		sk.z_index = 72
-		fx.add_child(sk)
-		var to := tpos + side_v * randf_range(-30.0, 30.0)
-		var bend := side_v * (70.0 if i % 2 == 0 else -70.0) * randf_range(0.6, 1.1)
-		var start := sk.position
-		var fly := sk.create_tween()
-		fly.tween_method(func(k: float):
-			var m := start.lerp(to, k) + bend * 4.0 * k * (1.0 - k)
-			sk.trail.push_front(m)
-			if sk.trail.size() > 9:
-				sk.trail.pop_back()
-			sk.position = m
-			sk.rotation = (to - start).angle() + PI / 2 + sin(k * 9.0) * 0.25
-			sk.queue_redraw(), 0.0, 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		fly.tween_callback(func():
-			_burst(to, violet, 12, 260.0, 0.45, -80.0)
-			_sparks(to, dir, Color(0.85, 0.6, 1.0), 10, 50.0)
-			Sfx.play("hit", randf_range(0.8, 1.0), -8.0)
-			shake(4.0)
+		var to := tpos + side_v * randf_range(-34.0, 34.0)
+		var bend := side_v * (80.0 if i % 2 == 0 else -80.0) * randf_range(0.6, 1.1)
+		_skull_fly(from, to, bend, 0.26, 1.0, func():
+			_flame_burst(to, 170.0, hot, violet)
+			_shards(to, dir, 10)
+			_sparks(to, dir, Color(0.88, 0.62, 1.0), 10, 55.0)
+			Sfx.play("hit", randf_range(0.8, 1.0), -7.0)
+			shake(5.0)
 			if d:
-				d.kick(dir, 10.0)
-				d.flash()
-			sk.queue_free())
-		a.kick(-dir, 6.0)
-		await _wait(0.11)
-	await _wait(0.2)
+				d.kick(dir, 11.0))
+		Sfx.play("whoosh", randf_range(1.2, 1.4), -6.0)
+		a.kick(-dir, 7.0)
+		await _wait(0.12)
+	await _wait(0.22)
 	if big:   # a great skull, thrown hard
-		var great := SkullBolt.new()
-		great.position = from
-		great.scale = Vector2.ONE * 2.0
-		great.z_index = 73
-		fx.add_child(great)
-		Sfx.play("laser", 0.6, -4.0)
-		var s0 := great.position
-		var fly2 := great.create_tween()
-		fly2.tween_method(func(k: float):
-			var m := s0.lerp(tpos, k)
-			great.trail.push_front(m)
-			if great.trail.size() > 12:
-				great.trail.pop_back()
-			great.position = m
-			great.rotation = dir.angle() + PI / 2
-			great.queue_redraw(), 0.0, 1.0, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		await fly2.finished
-		great.queue_free()
+		Sfx.play("laser", 0.55, -4.0)
+		await _skull_fly(from, tpos, Vector2.ZERO, 0.2, 2.1, Callable())
+	var fade := create_tween()
+	fade.tween_method(func(x: float): cm.set_shader_parameter("life", x), 1.0, 0.0, 0.3)
+	fade.tween_callback(circle.queue_free)
 	# Impact
 	_strike_at = tpos
 	_strike_time = _game_time
@@ -2583,8 +2740,10 @@ func _skull_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 	shake(22.0 if big else 12.0)
 	_shockwave(tpos, 0.9 if big else 0.5)
 	_post_pulse("aberration", 12.0 if big else 5.0, 0.4)
-	_burst(tpos, violet, 30, 520.0)
-	_burst(tpos, Color(1.0, 0.25, 0.35), 12, 380.0)
+	_flame_burst(tpos, 330.0 if big else 240.0, hot, violet, 0.6)
+	_shards(tpos, dir, 26 if big else 14)
+	_burst(tpos, violet, 26, 520.0)
+	_burst(tpos, Color(1.0, 0.25, 0.35), 10, 360.0)
 	_ring(tpos, violet, 1.5 if big else 1.2)
 	if d:
 		d.flash()
@@ -2597,44 +2756,96 @@ func _skull_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: b
 	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
 
 
-## A tombstone (Underworld's summon): a rounded slab with a cross and a crack, mossy at the foot.
-class GraveStone extends Node2D:
-	func _draw() -> void:
-		var w := 70.0
-		var h := 96.0
-		var stone := Color(0.42, 0.4, 0.46)
-		var pts := PackedVector2Array()
-		pts.append(Vector2(-w / 2, 0))
-		for i in 13:   # the rounded top
-			var ang := PI + i * PI / 12.0
-			pts.append(Vector2(cos(ang) * w / 2, -h + w / 2 + sin(ang) * w / 2))
-		pts.append(Vector2(w / 2, 0))
-		draw_colored_polygon(pts, stone)
-		draw_polyline(pts, Color(0.18, 0.16, 0.22), 3.0, true)
-		draw_line(Vector2(0, -h + 18), Vector2(0, -24), Color(0.22, 0.2, 0.26), 6.0)
-		draw_line(Vector2(-16, -h + 36), Vector2(16, -h + 36), Color(0.22, 0.2, 0.26), 6.0)
-		draw_polyline(PackedVector2Array([Vector2(18, -h + 26), Vector2(10, -h + 44), Vector2(20, -h + 58), Vector2(12, -40)]), Color(0.7, 0.4, 1.0, 0.9), 2.0, true)   # a glowing crack
-		draw_rect(Rect2(-w / 2 - 8, -6, w + 16, 10), Color(0.2, 0.28, 0.16))   # the turned earth
+## One flaming skull flying from -> to along a curve (bend: how far it swings out), hit() when it lands.
+func _skull_fly(from: Vector2, to: Vector2, bend: Vector2, secs: float, size: float, hit: Callable) -> void:
+	var sk := FlameSkull.new()
+	sk.position = from
+	sk.z_index = 72
+	sk.scale = Vector2.ONE * 0.2 * size
+	fx.add_child(sk)
+	sk.build(_add_mat, FX_COMET)
+	sk.create_tween().tween_property(sk, "scale", Vector2.ONE * size, 0.08)
+	var last := from
+	var fly := sk.create_tween()
+	fly.tween_method(func(k: float):
+		var m := from.lerp(to, k) + bend * 4.0 * k * (1.0 - k)
+		if m.distance_to(last) > 0.5:
+			sk.rotation = (m - last).angle() + PI   # (its tail streams out behind)
+		last = m
+		sk.position = m, 0.0, 1.0, secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await fly.finished
+	if hit.is_valid():
+		hit.call()
+	sk.burn_out()
 
 
-## A skull of violet flame (Underworld's attack), with a fading trail.
-class SkullBolt extends Node2D:
-	var trail: Array = []
+## A horned skull wreathed in violet flame (Underworld's attack): the skull off the clan's card back,
+## a comet's tail of fire behind it, a glow round it and embers shed along the way. Its local +x points
+## back along the flight.
+class FlameSkull extends Node2D:
+	var _embers: CPUParticles2D
+	var _tail: ColorRect
 
-	func _draw() -> void:
-		for i in trail.size():
-			var p: Vector2 = (trail[i] - position).rotated(-rotation) / scale.x
-			var k := 1.0 - float(i + 1) / (trail.size() + 1)
-			draw_circle(p, 13.0 * k, Color(0.65, 0.3, 1.0, 0.3 * k))
-		draw_circle(Vector2.ZERO, 22.0, Color(0.6, 0.25, 1.0, 0.25))   # its glow
-		draw_circle(Vector2(0, -3), 14.0, Color(0.93, 0.9, 1.0))       # the cranium
-		draw_rect(Rect2(-8, 6, 16, 9), Color(0.93, 0.9, 1.0))           # the jaw
-		for x in [-5.5, 5.5]:
-			draw_circle(Vector2(x, -3), 4.2, Color(0.35, 0.05, 0.6))    # eye sockets, lit violet inside
-			draw_circle(Vector2(x, -3), 1.8, Color(0.85, 0.5, 1.0))
-		draw_colored_polygon(PackedVector2Array([Vector2(-2, 4), Vector2(2, 4), Vector2(0, 0)]), Color(0.3, 0.1, 0.4))
-		for x in [-5, 0, 5]:
-			draw_line(Vector2(x, 9), Vector2(x, 15), Color(0.3, 0.2, 0.35), 1.2)
+	func build(add_mat: Material, comet: Shader) -> void:
+		var glow := Sprite2D.new()
+		glow.texture = ArenaLife._soft_dot()
+		glow.scale = Vector2.ONE * 2.2
+		glow.modulate = Color(0.6, 0.25, 1.0, 0.4)
+		glow.material = add_mat
+		add_child(glow)
+		_tail = ColorRect.new()
+		_tail.size = Vector2(220, 60)
+		_tail.position = Vector2(10, -30)
+		_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		m.shader = comet
+		m.set_shader_parameter("seed", randf() * 30.0)
+		_tail.material = m
+		add_child(_tail)
+		var skull := Sprite2D.new()
+		if ResourceLoader.exists("res://assets/fx_skull.png"):
+			skull.texture = load("res://assets/fx_skull.png")
+		skull.scale = Vector2.ONE * 0.5
+		skull.rotation = PI / 2   # (jaw first)
+		add_child(skull)
+		var hot := Sprite2D.new()   # its eyes and edges lit from within
+		hot.texture = skull.texture
+		hot.scale = skull.scale
+		hot.rotation = skull.rotation
+		hot.modulate = Color(0.75, 0.35, 1.0, 0.35)
+		hot.material = add_mat
+		add_child(hot)
+		_embers = CPUParticles2D.new()
+		_embers.local_coords = false
+		_embers.amount = 40
+		_embers.lifetime = 0.5
+		_embers.texture = ArenaLife._soft_dot()
+		_embers.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+		_embers.emission_sphere_radius = 14.0
+		_embers.direction = Vector2(1, 0)
+		_embers.spread = 40.0
+		_embers.initial_velocity_min = 30.0
+		_embers.initial_velocity_max = 110.0
+		_embers.gravity = Vector2(0, -60)
+		_embers.scale_amount_min = 0.08
+		_embers.scale_amount_max = 0.18
+		var g := Gradient.new()
+		g.set_color(0, Color(1.0, 0.85, 1.0, 1.0))
+		g.set_color(1, Color(0.55, 0.15, 1.0, 0.0))
+		_embers.color_ramp = g
+		_embers.material = add_mat
+		add_child(_embers)
+
+	## Hit: the skull is gone at once; its embers and tail die away behind it.
+	func burn_out() -> void:
+		for c in get_children():
+			if c is Sprite2D:
+				c.visible = false
+		_embers.emitting = false
+		var t := create_tween()
+		t.tween_property(_tail, "modulate:a", 0.0, 0.15)
+		t.tween_interval(0.45)
+		t.tween_callback(queue_free)
 
 
 ## The Militia targeting reticle: rings and crosshair ticks, turning as it locks on.
@@ -2891,28 +3102,31 @@ func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
 
 ## The Nebula portal: spiral arms turning around a dark centre.
 class WarpPortal extends Node2D:
+	const VORTEX := preload("res://shaders/fx_vortex.gdshader")
 	var glow := Color.PURPLE
 	var radius := 0.0
 	var spin := 3.0
 	var _angle := 0.0
+	var _rect: ColorRect
+	var _mat := ShaderMaterial.new()
+
+	func _ready() -> void:
+		_rect = ColorRect.new()
+		_rect.size = Vector2(240, 240)
+		_rect.position = -_rect.size / 2.0
+		_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mat.shader = VORTEX
+		_mat.set_shader_parameter("glow", glow)
+		_mat.set_shader_parameter("seed", randf() * 20.0)
+		_rect.material = _mat
+		add_child(_rect)
 
 	func _process(delta: float) -> void:
 		_angle += spin * delta
-		queue_redraw()
-
-	func _draw() -> void:
-		if radius < 1.0:
-			return
-		draw_circle(Vector2.ZERO, radius * 1.15, Color(glow, 0.14))
-		draw_circle(Vector2.ZERO, radius * 0.75, Color(0.05, 0.01, 0.1, 0.85))
-		for arm in 5:
-			var pts := PackedVector2Array()
-			for k in 18:
-				var f := k / 17.0
-				var a := _angle + arm * TAU / 5.0 + f * 2.6
-				pts.append(Vector2.from_angle(a) * radius * (0.15 + 0.95 * f))
-			draw_polyline(pts, Color(glow.lightened(0.3), 0.75), 3.0, true)
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(glow.lightened(0.45), 0.9), 2.5, true)
+		_mat.set_shader_parameter("angle", _angle)
+		_rect.scale = Vector2.ONE * maxf(0.001, radius / 104.0)
+		_rect.pivot_offset = _rect.size / 2.0
+		_rect.visible = radius >= 1.0
 
 
 ## Militia: brace, then a burst of gunfire (muzzle flashes, tracers, bullet sparks on the
@@ -2936,6 +3150,8 @@ func _gun_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: boo
 		a.kick(-dir, 6.0)
 		a.position = a.home - dir * (18.0 + randf_range(4.0, 9.0))   # recoil
 		_sparks(hit, -dir, Color(1.0, 0.75, 0.35), 8, 70.0)
+		_flame_burst(hit, 46.0, Color(1.0, 0.95, 0.8), Color(1.0, 0.55, 0.15), 0.12)
+		_casing(a.home + dir * 30.0, dir)
 		if d:
 			d.kick(dir, 4.0)
 		shake(4.0)
@@ -2951,6 +3167,8 @@ func _gun_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: boo
 	_sparks(tpos, dir, Color(1, 0.86, 0.5), 36 if big else 22)
 	_burst(tpos, Color(1, 0.8, 0.4), 22, 480)
 	_ring(tpos, Color.WHITE, 1.4 if big else 1.15)
+	_flame_burst(tpos, 260.0 if big else 190.0, Color(1.0, 0.92, 0.65), Color(1.0, 0.42, 0.08), 0.45)
+	_smoke_puff(tpos, 280.0 if big else 210.0, Color(0.32, 0.3, 0.28))
 	if d:
 		d.flash()
 		d.kick(dir, 28.0 if big else 20.0)
@@ -2976,6 +3194,7 @@ func _muzzle_flash(at: Vector2, dir: Vector2, col: Color) -> void:
 	var t := f.create_tween()
 	t.tween_property(f, "modulate:a", 0.0, 0.07)
 	t.tween_callback(f.queue_free)
+	_flame_burst(at + dir * 16.0, 84.0, Color(1.0, 0.96, 0.75), Color(1.0, 0.5, 0.1), 0.1)   # (the fireball)
 
 
 ## A bullet's tracer: a bright streak from the gun to where it hits, fading fast.
@@ -2990,59 +3209,84 @@ func _tracer(from: Vector2, to: Vector2, col: Color) -> void:
 	l.material = _add_mat
 	l.z_index = 71
 	fx.add_child(l)
+	var halo := Line2D.new()   # (its glow)
+	halo.points = l.points
+	halo.width = 10.0
+	halo.default_color = Color(col, 0.22)
+	halo.material = _add_mat
+	halo.z_index = 70
+	fx.add_child(halo)
 	var t := l.create_tween()
 	t.tween_property(l, "modulate:a", 0.0, 0.08)
-	t.tween_callback(l.queue_free)
+	t.parallel().tween_property(halo, "modulate:a", 0.0, 0.1)
+	t.tween_callback(func():
+		l.queue_free()
+		halo.queue_free())
 
 
 ## A laser beam from `from` to `to` that lasts `secs`, then narrows away.
 func _beam(from: Vector2, to: Vector2, width: float, secs: float) -> void:
-	var b := LaserBeam.new()
-	b.glow = LASER_GLOW
-	b.core = LASER_CORE
-	b.position = from
-	b.target = to - from
-	b.width = width
+	var length := from.distance_to(to)
+	var h := width * 5.0
+	var b := ColorRect.new()
+	b.size = Vector2(length + h * 0.2, h)
+	b.position = from - Vector2(0, h / 2.0)
+	b.pivot_offset = Vector2(0, h / 2.0)
+	b.rotation = (to - from).angle()
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.z_index = 70
+	var m := ShaderMaterial.new()
+	m.shader = FX_BEAM
+	m.set_shader_parameter("glow", LASER_GLOW)
+	m.set_shader_parameter("length_px", length)
+	m.set_shader_parameter("seed", randf() * 20.0)
+	b.material = m
 	fx.add_child(b)
+	var bloom := Sprite2D.new()   # (where it hits)
+	bloom.texture = ArenaLife._soft_dot()
+	bloom.position = to
+	bloom.scale = Vector2.ONE * width / 9.0
+	bloom.modulate = Color(LASER_GLOW.lightened(0.4), 0.9)
+	bloom.material = _add_mat
+	bloom.z_index = 71
+	fx.add_child(bloom)
 	var t := b.create_tween()
 	t.tween_interval(secs)
-	t.tween_property(b, "width", 0.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	t.tween_callback(b.queue_free)
-
-
-## The beam: a wide soft glow, bright violet edges and a dark core, flickering a little.
-class LaserBeam extends Node2D:
-	var glow := Color.PURPLE
-	var core := Color.BLACK
-	var target := Vector2.ZERO
-	var width := 12.0
-
-	func _process(_delta: float) -> void:
-		queue_redraw()
-
-	func _draw() -> void:
-		if width <= 0.2:
-			return
-		var w := width * randf_range(0.85, 1.12)
-		draw_line(Vector2.ZERO, target, Color(glow, 0.14), w * 3.2, true)
-		draw_line(Vector2.ZERO, target, Color(glow, 0.35), w * 1.9, true)
-		draw_line(Vector2.ZERO, target, glow.lightened(0.35), w, true)
-		draw_line(Vector2.ZERO, target, core, w * 0.5, true)
-		draw_line(Vector2.ZERO, target, Color(glow.lightened(0.6), 0.5), maxf(1.0, w * 0.08), true)
-		draw_circle(target, w * 0.9, Color(glow.lightened(0.4), 0.8))
-		draw_circle(target, w * 0.45, core)
-		draw_circle(Vector2.ZERO, w * 0.7, glow.lightened(0.3))
+	t.tween_method(func(x: float): m.set_shader_parameter("width", x), 1.0, 0.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(bloom, "modulate:a", 0.0, 0.12)
+	t.tween_callback(func():
+		b.queue_free()
+		bloom.queue_free())
 
 
 ## The charge at the muzzle: a dark core in a glowing shell.
 class LaserOrb extends Node2D:
+	const FIRE := preload("res://shaders/fx_fire.gdshader")
 	var glow := Color.PURPLE
 	var core := Color.BLACK
+	var _plasma: ColorRect
 	var radius := 11.0:
 		set(v):
 			radius = v
 			queue_redraw()
+			if _plasma:
+				_plasma.size = Vector2.ONE * radius * 5.0
+				_plasma.position = -_plasma.size / 2.0
+
+	func _ready() -> void:   # (a ball of plasma churning round the dark core)
+		_plasma = ColorRect.new()
+		_plasma.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		m.shader = FIRE
+		m.set_shader_parameter("shape", 1)
+		m.set_shader_parameter("speed", 4.0)
+		m.set_shader_parameter("core", Color(0.95, 0.9, 1.0))
+		m.set_shader_parameter("outer", glow)
+		m.set_shader_parameter("gain", 0.9)
+		m.set_shader_parameter("seed", randf() * 20.0)
+		_plasma.material = m
+		add_child(_plasma)
+		radius = radius
 
 	func fade() -> void:
 		var t := create_tween()
@@ -3132,6 +3376,7 @@ func _card_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bo
 			hit.chain().tween_callback(c.queue_free)
 			_sparks(to, dir, Color(1, 0.95, 0.85), 12, 50.0)
 			_burst(to, Color(1, 0.84, 0.4), 8, 260, 0.32, 0.0)
+			_flame_burst(to, 96.0, Color(1.0, 0.97, 0.82), Color(1.0, 0.7, 0.18), 0.25)
 			Sfx.play("hit", randf_range(1.35, 1.55), -9.0)
 			shake(4.0)
 			if d:
@@ -3188,6 +3433,7 @@ func _card_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bo
 	_sparks(tpos, dir, Color(1, 0.88, 0.5), 40 if big else 22)
 	_burst(tpos, Color(1, 0.8, 0.35), 26, 520)
 	_ring(tpos, Color(1, 0.86, 0.45), 1.5 if big else 1.2)
+	_flame_burst(tpos, 290.0 if big else 210.0, Color(1.0, 0.97, 0.82), Color(1.0, 0.68, 0.15), 0.5)
 	if d:
 		d.flash()
 		d.kick(dir, 30.0 if big else 22.0)

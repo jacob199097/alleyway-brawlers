@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.68",
+        "notes": [
+            "Underworld characters now rise from the grave properly: the ground splits in glowing cracks, spectral fire roars up and the character burns into view from its feet up as souls curl away.",
+            "Underworld attacks: a rune circle opens and horned skulls wreathed in violet fire fly out, bursting into flame and bone on the target.",
+            "Nebula: a swirling vortex portal and a flowing plasma beam. Militia: fireball muzzle flashes, glowing tracers, shell casings and a dust plume when the airdrop lands. Wildcard: gold flames and card suits on every hit and deal."
+        ]
+    },
+    {
         "version": "0.9.67",
         "notes": [
             "Tokens can come in several artworks: each one that comes onto the field shows one of them (the same on both players' screens).",

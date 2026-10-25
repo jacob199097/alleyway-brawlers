@@ -71,6 +71,8 @@ var holo_boost := 0.0            # 0..1: a holographic sweep set from outside (a
 var _status_fx := {}             # status -> particle emitter (embers, drips)
 var _sparkle: CPUParticles2D     # golden sparkles around a hovered Legendary
 var _lift := 0.0                 # 0..1: how far above its resting place (scale over home): the shadow falls away
+var reveal := 1.0                # 0..1: the face burning into view from the bottom up (shaders/card.gdshader)
+var reveal_color := Color(0.75, 0.35, 1.0)
 
 
 func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
@@ -371,6 +373,8 @@ func _update_tilt(delta: float) -> void:
 			m.set_shader_parameter("x_rot", _tilt.y)
 			m.set_shader_parameter("glare", clampf(_tilt.length() / 16.0, 0.0, 1.0))
 			m.set_shader_parameter("flash", _flash)
+	_mat.set_shader_parameter("reveal", reveal)
+	_mat.set_shader_parameter("reveal_color", reveal_color)
 
 
 func _draw() -> void:
@@ -378,7 +382,7 @@ func _draw() -> void:
 	# Its shadow: tight under a card at rest, further off and softer the higher it's lifted
 	var off := Vector2(6, 8) * (1.0 + _lift * 2.6)
 	for i in 3:
-		var a := (0.3 if i == 0 else 0.1) * (1.0 - _lift * 0.35)
+		var a := (0.3 if i == 0 else 0.1) * (1.0 - _lift * 0.35) * reveal
 		draw_rect(Rect2(r.position + off, r.size).grow(i * (1.5 + _lift * 5.0)), Color(0, 0, 0, a))
 	if glow > 0.01:
 		var col := glow_color

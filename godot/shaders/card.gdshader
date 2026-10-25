@@ -40,6 +40,8 @@ uniform vec2 roulette_center = vec2(0.0, -0.035);   // the wheel's centre, as uv
 // and the skull's eyes glow. Brighter while hovered (galaxy_glow).
 uniform float hellfire = 0.0;
 uniform vec2 hell_eyes = vec2(0.056, -0.025);   // the skull's eyes: ±x and y, as uv (card centre = 0)
+uniform float reveal = 1.0;   // 0..1: the card burning into view from the bottom up (Underworld's rise), 1 = whole
+uniform vec4 reveal_color : source_color = vec4(0.75, 0.35, 1.0, 1.0);   // the glowing edge of the reveal
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
 
 varying vec2 s;
@@ -266,6 +268,15 @@ void fragment() {
 		col.rgb += vec3(1.0, 0.93, 0.7) * tw2 * step(0.86, rnd2) * sparkle * 0.6 * smoothstep(0.3, 0.0, length(inc));
 	}
 	col.rgb = mix(col.rgb, vec3(1.0), flash);
+	if (reveal < 1.0) {
+		// a ragged line of embers climbs the card; below it the card is there, above it not yet
+		float h = 0.5 - uv.y / aspect;
+		float edge = reveal * 1.25 - 0.12 + (vnoise(vec2(uv.x * 11.0, TIME * 2.0)) - 0.5) * 0.1 + (vnoise(uv * 26.0) - 0.5) * 0.05;
+		float d = edge - h;
+		float band = 1.0 - smoothstep(0.0, 0.07, d);
+		col.rgb = col.rgb * smoothstep(-0.02, 0.09, d) + reveal_color.rgb * band * 2.2 * step(0.0, d);
+		col.a *= smoothstep(0.0, 0.012, d);
+	}
 	col.a *= inside;
 	COLOR = col * vcol;
 }
