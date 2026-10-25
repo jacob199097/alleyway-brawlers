@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.70",
+        "notes": [
+            "New level badges for all 50 levels: a new emblem for every rank title, from Street Prospect to King of the Streets, gaining a chevron each level."
+        ]
+    },
+    {
         "version": "0.9.69",
         "notes": [
             "AlleyWay Brawlers is now on Mac (Apple Silicon and Intel). Mac and Windows players share accounts and play each other online.",
