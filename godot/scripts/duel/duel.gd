@@ -5392,7 +5392,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_stats.text = ""
 		_ui.detail_text.text = "[color=#8a8aa0]Hover a card to see it here. Right-click it to zoom in.[/color]"
 		return
-	var tex := CardDB.art(str(c.get("art_url", c.get("id", ""))))
+	var tex := CardDB.art_for(c)   # (a token shows the same one of its artworks as on the field)
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
 	var back: Texture2D = _back_for(str(c.back_side)) if c.has("back_side") else CardDB.back()
 	_ui.detail_art.texture = tex if tex else back
@@ -5403,12 +5403,14 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	for style in CardDB.BACK_STYLES.values():
 		dm.set_shader_parameter(style, 1.0 if style == _detail_spin else 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
-	var parts: Array = [TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
-	if c.get("subtype") is String:
+	var token: bool = c.get("token", false) or CardDB.get_card(str(c.get("id", ""))).get("token", false)
+	var parts: Array = ["TOKEN" if token else TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
+	if c.get("subtype") is String and not token:
 		parts.append(str(c.subtype).to_upper())
 	if str(c.get("clanName", "")) != "":
 		parts.append(str(c.clanName).to_upper())
-	parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
+	if not token:   # (a token isn't played from the hand: no cost)
+		parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
 	_ui.detail_kind.text = "  ·  ".join(parts)
 	_fit_label(_ui.detail_kind, 15, 10)
 	if c.get("cardType") in ["gang_member", "leader"]:
@@ -6117,6 +6119,8 @@ func _zoom_hovered() -> bool:
 	var base := CardDB.get_card(str(v.card.get("id", "")))
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
 	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
+	if v.card.has("uid"):
+		zc.uid = v.card.uid   # (a token zooms in on the same one of its artworks as on the field)
 	UI.card_zoom($HUD/UI, zc)
 	return true
 

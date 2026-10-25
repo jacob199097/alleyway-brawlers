@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.79",
+        "notes": [
+            "A token's card details and zoom now show the same artwork as the token on the field, and say TOKEN."
+        ]
+    },
+    {
         "version": "0.9.78",
         "notes": [
             "Three new arenas: The Clockwork Tower (a turning gear, flickering lanterns and drifting dust over brass), The Shattered Realm (shimmering mirror shards and drifting rubble in a violet void) and Koi Garden (koi swimming under the water, ripples from the bamboo spout and falling cherry blossom), each with its own board.",
