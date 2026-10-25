@@ -145,7 +145,7 @@ func _card(m: Dictionary, at: Vector2) -> void:
 			p.create_tween().tween_property(p, "scale", Vector2.ONE * 1.03, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			_spread(fan, 1.0))
 		p.mouse_exited.connect(func():
-			if not p.get_global_rect().has_point(p.get_global_mouse_position()):
+			if not p.get_global_rect().has_point(Game.pad.pointer(p)):
 				p.create_tween().tween_property(p, "scale", Vector2.ONE, 0.15)
 				_spread(fan, 0.0))
 

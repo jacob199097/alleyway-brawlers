@@ -95,6 +95,18 @@ func _screen() -> Node:
 	return get_tree().current_scene
 
 
+## A controller button pressed and let go (scripts/pad.gd).
+func _pad(button: int) -> void:
+	for down in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = down
+		Input.parse_input_event(e)
+		await get_tree().process_frame
+		await get_tree().process_frame
+	await get_tree().create_timer(0.3).timeout
+
+
 func _run() -> void:
 	# Screen changes free the current scene, so hand that role to a placeholder and keep going
 	await get_tree().process_frame
@@ -181,6 +193,45 @@ func _run() -> void:
 		d._card_strike(a, dv, tpos, (tpos - a.home).normalized(), true, false)
 		for i in 28:
 			await _shot("w%02d" % i, 0.05)
+		get_tree().quit()
+		return
+	if "--account" in OS.get_cmdline_user_args():   # (Settings → Account, and the login screen's register mode with its links)
+		Game.go("main_menu")
+		await get_tree().create_timer(2.5).timeout
+		SettingsPanel.open(_screen())._show("account")
+		await _shot("acc_settings", 0.8)
+		Game.go("login")
+		await get_tree().create_timer(2.0).timeout
+		_screen()._toggle_mode()
+		await _shot("acc_register", 0.6)
+		get_tree().quit()
+		return
+	if "--pad" in OS.get_cmdline_user_args():   # (the controller's pointer and outline on each screen, after D-pad presses)
+		for s in [["main_menu", [JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_RIGHT]], ["deck_builder", [JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_DOWN]],
+				["shop", [JOY_BUTTON_DPAD_DOWN]], ["card_library", [JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_DPAD_RIGHT]]]:
+			Game.go(s[0])
+			await get_tree().create_timer(2.5).timeout
+			for b in s[1]:
+				await _pad(b)
+			await _shot("pad_" + s[0], 0.4)
+		SettingsPanel.open(_screen())._show("controls")
+		await _shot("pad_settings_controls", 0.8)
+		var deck7 := await Game.load_duel_deck()
+		Game.duel_setup = deck7
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await get_tree().create_timer(5.0).timeout
+		var pd = _screen()
+		if pd._menu:   # (the opening hand: keep it)
+			for bt in pd._menu.find_children("*", "Button", true, false):
+				bt.pressed.emit()
+				break
+		await get_tree().create_timer(2.5).timeout
+		await _pad(JOY_BUTTON_DPAD_DOWN)
+		await _pad(JOY_BUTTON_DPAD_DOWN)
+		await _shot("pad_duel_hand", 0.6)
+		await _pad(JOY_BUTTON_A)
+		await _shot("pad_duel_menu", 0.6)
 		get_tree().quit()
 		return
 	if "--luck-fx" in OS.get_cmdline_user_args():   # (coin flips and die rolls, frame by frame; the menu bar; victory and defeat)

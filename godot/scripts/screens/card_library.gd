@@ -408,9 +408,9 @@ func _process(delta: float) -> void:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
 	var target := Vector2(sin(t * 0.7) * 5.0, cos(t * 0.53) * 3.5)   # (a slow sway)
-	if _detail_panel and _detail_panel.get_global_rect().has_point(get_global_mouse_position()):
+	if _detail_panel and _detail_panel.get_global_rect().has_point(Game.pad.pointer(self)):
 		var c := _hero.get_global_rect().get_center()
-		var m := ((get_global_mouse_position() - c) / (_hero.size * 0.6)).clamp(-Vector2.ONE, Vector2.ONE)
+		var m := ((Game.pad.pointer(self) - c) / (_hero.size * 0.6)).clamp(-Vector2.ONE, Vector2.ONE)
 		target = Vector2(-m.x, m.y) * 14.0
 	_hero_tilt = _hero_tilt.lerp(target, 1.0 - exp(-8.0 * delta))
 	_hero_mat.set_shader_parameter("y_rot", _hero_tilt.x)

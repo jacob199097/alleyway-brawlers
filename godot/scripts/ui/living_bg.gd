@@ -36,7 +36,7 @@ func setup(texture: Texture2D, dim: float) -> Control:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var m := (get_global_mouse_position() / size - Vector2(0.5, 0.5)).clamp(Vector2(-0.5, -0.5), Vector2(0.5, 0.5))
+	var m := (Game.pad.pointer(self) / size - Vector2(0.5, 0.5)).clamp(Vector2(-0.5, -0.5), Vector2(0.5, 0.5))
 	var target := -(_art.size - size) / 2 - m * PARALLAX * 2.0 + Vector2(sin(_t * 0.11), cos(_t * 0.07)) * 6.0
 	_art.position = _art.position.lerp(target, 1.0 - exp(-3.0 * delta))
 	_art.scale = Vector2.ONE * (1.0 + 0.012 * sin(_t * 0.17))

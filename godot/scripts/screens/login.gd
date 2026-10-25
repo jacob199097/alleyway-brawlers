@@ -9,6 +9,7 @@ var _error: Label
 var _submit: Button
 var _toggle: Button
 var _busy := false
+var _agree: Label   # "By registering you agree to …" (shown while registering)
 
 
 func _ready() -> void:
@@ -65,6 +66,22 @@ func _ready() -> void:
 	server.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(server)
 	col.add_child(UI.button("SETTINGS", func(): SettingsPanel.open(self, false), Vector2(640, 48)))
+	# The privacy policy and terms (backend/routes/legal.js); registering agrees to them
+	_agree = UI.label("By registering you agree to the Terms of Service and Privacy Policy.", 18, UI.MUTED)
+	_agree.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_agree.visible = false
+	col.add_child(_agree)
+	var legal := HBoxContainer.new()
+	legal.alignment = BoxContainer.ALIGNMENT_CENTER
+	legal.add_theme_constant_override("separation", 12)
+	col.add_child(legal)
+	for l in [["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"]]:
+		var b := LinkButton.new()
+		b.text = l[0]
+		b.add_theme_font_size_override("font_size", 18)
+		b.add_theme_color_override("font_color", UI.BLUE)
+		b.pressed.connect(func(): OS.shell_open(Api.base_url() + l[1]))
+		legal.add_child(b)
 
 	for e in [_email, _password, _username]:
 		e.text_submitted.connect(func(_t): _do_submit())
@@ -114,6 +131,7 @@ func _field(placeholder: String) -> LineEdit:
 func _toggle_mode() -> void:
 	_register = not _register
 	_username.visible = _register
+	_agree.visible = _register
 	_submit.text = "REGISTER" if _register else "LOGIN"
 	_toggle.text = "Have an account?  LOGIN" if _register else "No account?  REGISTER"
 	_error.text = ""

@@ -18,7 +18,12 @@ when it ships, or delete it if it's dropped.
   $99/yr). `shared/game_version.json` minimum-version checks need to cover each platform.
 - [ ] **Steam release.** `docs/DESKTOP_PLAN.md` still has the useful notes (use GodotSteam instead of
   steamworks.js).
-- [ ] **Controller support** (needed for Steam Deck).
+- [x] **Controller support** (needed for Steam Deck). Done in 0.9.72: Xbox, PlayStation and Steam Deck
+  controllers drive a pointer of their own (`godot/scripts/pad.gd`, made by `game.gd`), so every screen
+  works with it like a mouse. The D-pad jumps between buttons and cards, A clicks or drags, X zooms, B / Start
+  are Esc, Y is next phase, the right stick scrolls; listed in Settings → Controls (test: `tests/pad_smoke.tscn`).
+  - [ ] Still to do: test on a real Steam Deck, and open Steam's on-screen keyboard for the login boxes
+    (needs GodotSteam; for now Steam + X opens it).
 
 ## Game modes & content
 
@@ -43,8 +48,12 @@ when it ships, or delete it if it's dropped.
   service such as Resend, Postmark or Brevo. Then branded templates (logo, colours, card art) for
   account activation, password reset, and season / content-drop news. News emails need an opt-in and
   an unsubscribe link.
-- [ ] **Privacy policy, terms and account deletion.** App stores require them, and they're needed
-  anyway once there's an email list.
+- [x] **Privacy policy, terms and account deletion.** Done in 0.9.72: `/privacy`, `/terms` and
+  `/delete-account` on the server (`backend/routes/legal.js`, contact address from `CONTACT_EMAIL` in
+  `.env`); Settings → Account in the game links to them and deletes the account after the password
+  (`backend/routes/account.js`, test `backend/routes/account.test.cjs`); registering says it agrees to them.
+  - [ ] Still to do: a contact address of our own (`CONTACT_EMAIL`), and a lawyer's read before a store
+    launch or taking payments at scale.
 
 ## Server & reliability
 

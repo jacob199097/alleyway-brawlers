@@ -63,6 +63,9 @@ var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet):
 
 ## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
 var sound: Node
+## Controller support (scripts/pad.gd): Game.pad.pointer(self) is where the mouse, or the controller's pointer, is
+var pad: PadScript
+const PadScript := preload("res://scripts/pad.gd")
 var _errors: ErrorReport   # sends the game's errors to the server (scripts/error_report.gd)
 var _fade: ColorRect
 var _fps: Label
@@ -79,6 +82,9 @@ func _ready() -> void:
 	sound = load("res://scripts/audio/soundscape.gd").new()
 	sound.name = "Soundscape"
 	add_child(sound)
+	pad = PadScript.new()   # (made here, not an autoload: patches can't add autoloads)
+	pad.name = "Pad"
+	add_child(pad)
 
 	var layer := CanvasLayer.new()
 	layer.layer = 100

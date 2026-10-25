@@ -355,7 +355,7 @@ func _update_tilt(delta: float) -> void:
 	var w := Vector2(screen.y, screen.x).rotated(-rotation)
 	var target := Vector2(w.y, w.x) + _kick
 	if hovered and not busy:
-		var m := (to_local(get_global_mouse_position()) / (SIZE / 2.0)).clamp(-Vector2.ONE, Vector2.ONE)
+		var m := (to_local(Game.pad.pointer(self)) / (SIZE / 2.0)).clamp(-Vector2.ONE, Vector2.ONE)
 		target += Vector2(-m.x, m.y) * 14.0
 	target = target.clamp(-Vector2.ONE * MAX_TILT * 1.5, Vector2.ONE * MAX_TILT * 1.5)
 	_tilt = _tilt.lerp(target, 1.0 - exp(-14.0 * delta))

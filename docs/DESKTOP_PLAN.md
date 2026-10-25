@@ -3,6 +3,28 @@
 > removed. Kept for its notes on display settings, Steam and server readiness, which still apply
 > (Steam would use GodotSteam instead of steamworks.js).
 
+## Where it stands (Godot client)
+Ticked when done in the Godot client (`godot/`), however it was done there. The rest stays open.
+- [x] **Phase 1, the desktop app:** the Godot client is the native Windows (and Mac) build, against the
+  public server.
+- [x] **Phase 2, display settings:** window mode (windowed / borderless / exclusive), resolution, V-Sync,
+  FPS cap and show FPS, saved between launches (Settings → Display, `game.gd` apply_settings).
+  - [ ] Still open: render scale, quality presets, choosing the monitor, anti-aliasing, pause when unfocused,
+    and "revert in 10 s" after a display change.
+- [x] **Phase 3, 16:9 layout:** every screen is laid out for 1920×1080 and scales to the window; the duel
+  has the PC layout (detail panel left, plates, flat hand, piles with counts, turn counter).
+- [x] **Phase 4, mouse & keyboard:** hover highlights and details, right-click zoom, Space / Enter next
+  phase, Esc cancel or menu, F11 fullscreen, L battle log, E emotes (listed in Settings → Controls).
+  - [x] Controller support, for Steam Deck (0.9.72, `godot/scripts/pad.gd`).
+  - [ ] Still open: 1–9 to pick a hand card, rebindable keys.
+- [ ] **Phase 5, Steam:** not started (Steam login, Steam purchases, achievements, overlay) — with GodotSteam.
+- [ ] **Phase 6, release readiness:**
+  - [x] Public server address over HTTPS (https://alleywaybrawlers.duckdns.org).
+  - [x] Multiplayer runs on the server (`backend/socket/onlineMatch.js`).
+  - [x] Privacy policy, terms and account deletion (0.9.72, `backend/routes/legal.js`, `account.js`).
+  - [ ] Lock CORS down (`backend/server.js` still allows any origin).
+  - [ ] Code-sign the Windows exe (SmartScreen warnings), and a Steam depot build.
+
 # AlleyWay Brawlers — Desktop (Steam) Plan
 
 ## Context

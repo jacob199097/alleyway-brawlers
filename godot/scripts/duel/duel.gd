@@ -9,7 +9,7 @@ extends Node2D
 ##
 ## Controls: click a hand card for options (or drag it onto a slot), click a ready character in
 ## the Brawl phase then a target, Space/Enter = next phase, right-click/Esc = cancel,
-## Esc = menu, F11 = fullscreen.
+## Esc = menu, F11 = fullscreen. A controller works it like a mouse (scripts/pad.gd, pad_targets).
 
 const CARD := CardView.SIZE
 const HAND_SCALE := 1.2
@@ -932,7 +932,7 @@ func _process(delta: float) -> void:
 	if not _valid.is_empty():
 		queue_redraw()
 	if _dragging and _press:
-		_press.position = _press.position.lerp(get_global_mouse_position(), minf(1.0, delta * 25.0))
+		_press.position = _press.position.lerp(Game.pad.pointer(self), minf(1.0, delta * 25.0))
 	if not _replay.is_empty():
 		_step_replay(delta)
 	elif _online:
@@ -1563,7 +1563,7 @@ func _draw_pile(side: String, pile: String) -> void:
 ## The deck and Hideout wear the side's moving back on top (like a face-down card): it turns
 ## slowly, and speeds up and glows while hovered. Their count and name are drawn over it.
 func _update_pile_backs(delta: float) -> void:
-	var m := get_global_mouse_position()
+	var m := Game.pad.pointer(self)
 	for side in _sides:
 		var style := CardDB.back_style(_back_clan(side))
 		if not CardView.BACK_SPEEDS.has(style):
@@ -4850,7 +4850,7 @@ func _update_aim() -> void:
 		if _arrow.visible and not _playing:
 			_arrow.hide_arrow()
 		return
-	var m := get_global_mouse_position()
+	var m := Game.pad.pointer(self)
 	var end := m
 	var snapped := false
 	var slot := _slot_at("opponent", m)
@@ -6031,7 +6031,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _watching() and not event is InputEventMouseMotion:
 		return   # watching a replay or a friend's match: hovering shows cards, nothing else
 	if event is InputEventMouseMotion:
-		if _press and not _dragging and get_global_mouse_position().distance_to(_press_pos) > 14.0:
+		if _press and not _dragging and Game.pad.pointer(self).distance_to(_press_pos) > 14.0:
 			_start_drag()
 		if not _dragging:
 			_update_hover()
@@ -6060,9 +6060,35 @@ func _unhandled_input(event: InputEvent) -> void:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
+## Controller support (scripts/pad.gd): the cards and spots on the board the D-pad can go to
+## (canvas coordinates). Nothing while a menu is open, so the D-pad stays on its buttons.
+func pad_targets() -> Array:
+	var out: Array = []
+	if _mode in ["menu", "over"]:
+		return out
+	for v in hand.player:
+		if is_instance_valid(v) and not v.busy:
+			out.append(v.get_global_transform() * Rect2(-CARD / 2, CARD))
+	for side in field:
+		for slot in field[side]:
+			if is_instance_valid(field[side][slot]):
+				out.append(field[side][slot].get_global_transform() * Rect2(-CARD / 2, CARD))
+	for side in leaders:
+		if is_instance_valid(leaders[side]):
+			out.append(leaders[side].get_global_transform() * Rect2(-CARD / 2, CARD))
+	for side in _sides:
+		var size := CARD * _sc(side)
+		for pile in (["gutter", "deck", "hideout"] if side == "player" else ["gutter", "deck"]):
+			out.append(Rect2(pile_pos(side, pile) - size / 2, size))
+		for slot in 10:   # empty spots a card can be deployed to or chosen
+			if _valid.has("%s:%d" % [side, slot]) and not field.get(side, {}).has(slot):
+				out.append(Rect2(slot_pos(side, slot) - size / 2, size))
+	return out
+
+
 ## Opens the big view of the card under the mouse (face-up ones, and your own face-down ones).
 func _zoom_hovered() -> bool:
-	var v := _view_at(get_global_mouse_position())
+	var v := _view_at(Game.pad.pointer(self))
 	if v == null or v.card.is_empty() or not (v.face_up or v.side == "player"):
 		return false
 	var base := CardDB.get_card(str(v.card.get("id", "")))
@@ -6105,7 +6131,7 @@ func _hand_view_at(p: Vector2) -> CardView:
 
 
 func _update_hover() -> void:
-	var m := get_global_mouse_position()
+	var m := Game.pad.pointer(self)
 	var v := _view_at(m)
 	if v != _hovered:
 		var old := _hovered
@@ -6150,7 +6176,7 @@ func _update_hover() -> void:
 func _on_press() -> void:
 	if _mode == "over":
 		return
-	var m := get_global_mouse_position()
+	var m := Game.pad.pointer(self)
 	if _mode == "menu":
 		_cancel_and_refresh()
 		return
@@ -6210,7 +6236,7 @@ func _on_release() -> void:
 	if _press:
 		var v := _press
 		_press = null
-		if is_instance_valid(v) and v.hit(get_global_mouse_position()):
+		if is_instance_valid(v) and v.hit(Game.pad.pointer(self)):
 			_open_hand_menu(v)
 
 
@@ -6475,7 +6501,7 @@ func _end_drag() -> void:
 	var v := _press
 	_press = null
 	_dragging = false
-	var m := get_global_mouse_position()
+	var m := Game.pad.pointer(self)
 	var c := v.card
 	var slot := _slot_at("player", m)
 	var done := false
@@ -6512,7 +6538,7 @@ func _ask_hustle(v: CardView, slot: int) -> void:
 	_mode = "menu"
 	_selected = v   # (cancelling puts it back in the hand)
 	var c := v.card
-	var at := get_global_mouse_position()
+	var at := Game.pad.pointer(self)
 	v.move_to(at, 1.0, 0.0, 0.15)
 	var back := slot if slot in DuelState.BACK and duel.can_set("player", c, slot) else -1
 	for s in DuelState.BACK:

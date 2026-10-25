@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends Control
-## Settings overlay (menu gear, or Esc in a duel): Audio, Display, Gameplay and Server tabs.
+## Settings overlay (menu gear, or Esc in a duel): Audio, Display, Gameplay, Controls, Account and Server tabs.
 ## Changes apply and save immediately (Game.set_setting).
 
 const RESOLUTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160"]
@@ -11,6 +11,11 @@ const ANIM_SPEEDS := [1.0, 1.5, 2.0]
 const SHORTCUTS := [["Space / Enter", "Next phase / end turn"], ["Esc", "Cancel, or open the menu"],
 	["Right-click", "Cancel what you're doing"], ["L", "Battle log"], ["E", "Emotes (against players)"],
 	["F11", "Fullscreen"]]
+## Controller buttons (scripts/pad.gd), listed on the Controls tab
+const PAD_BUTTONS := [["Left stick", "Move the pointer"], ["D-pad", "Jump to the next button or card"],
+	["A", "Select (hold and move to drag)"], ["X", "Zoom in on a card"], ["B", "Back / cancel"],
+	["Y", "Next phase / end turn"], ["Start", "Menu"], ["LB / RB", "Pages, Striver levels"],
+	["Right stick", "Scroll"], ["LT", "Emotes"], ["View / Select", "Battle log"]]
 
 var allow_logout := true
 var _tab := "audio"
@@ -46,8 +51,8 @@ func _ready() -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 16)
 	col.add_child(tabs)
-	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["server", "SERVER"]]:
-		var b := UI.button(t[1], _show.bind(t[0]), Vector2(220, 52))
+	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["controls", "CONTROLS"], ["account", "ACCOUNT"], ["server", "SERVER"]]:
+		var b := UI.button(t[1], _show.bind(t[0]), Vector2(176, 52))
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tabs[t[0]] = b
@@ -105,16 +110,36 @@ func _show(tab: String) -> void:
 			note.custom_minimum_size = Vector2(1000, 0)
 			_body.add_child(note)
 			_body.add_child(UI.button("HOW TO PLAY", func(): load("res://scripts/ui/how_to_play.gd").open(self), Vector2(320, 52), UI.GOLD))
-			var keys := GridContainer.new()
-			keys.columns = 2
-			keys.add_theme_constant_override("h_separation", 30)
-			keys.add_theme_constant_override("v_separation", 4)
-			_body.add_child(keys)
-			for k in SHORTCUTS:
-				keys.add_child(UI.label(k[0], 20, UI.GOLD, true))
-				keys.add_child(UI.label(k[1], 20, Color.WHITE))
+		"controls":
+			var cols := HBoxContainer.new()
+			cols.add_theme_constant_override("separation", 60)
+			_body.add_child(cols)
+			cols.add_child(_key_list("KEYBOARD & MOUSE", SHORTCUTS))
+			cols.add_child(_key_list("CONTROLLER", PAD_BUTTONS))
+			var pad_note := UI.label("Xbox, PlayStation and Steam Deck controllers work everywhere in the game: the controller moves a pointer, and the D-pad jumps it between buttons and cards. Move the mouse to switch back. On Steam Deck, Steam + X opens the keyboard for typing.", 20, UI.MUTED)
+			pad_note.autowrap_mode = TextServer.AUTOWRAP_WORD
+			pad_note.custom_minimum_size = Vector2(1000, 0)
+			_body.add_child(pad_note)
+		"account":
+			_account_tab()
 		"server":
 			_server_tab()
+
+
+## A heading over two columns: the key or button, and what it does.
+func _key_list(heading: String, rows: Array) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	box.add_child(UI.label(heading, 24, Color.WHITE, true))
+	var keys := GridContainer.new()
+	keys.columns = 2
+	keys.add_theme_constant_override("h_separation", 24)
+	keys.add_theme_constant_override("v_separation", 4)
+	box.add_child(keys)
+	for k in rows:
+		keys.add_child(UI.label(k[0], 20, UI.GOLD, true))
+		keys.add_child(UI.label(k[1], 20, Color.WHITE))
+	return box
 
 
 func _row(text: String) -> HBoxContainer:
@@ -161,6 +186,52 @@ func _cycle(text: String, values: Array, labels: Array, key: String) -> void:
 			b.text = "◀   %s   ▶" % labels[idx]
 			Sfx.play("click")
 			Game.set_setting(key, values[idx]))
+
+
+## Who's signed in, the privacy policy and terms (pages on the server, backend/routes/legal.js), and
+## deleting the account (backend/routes/account.js).
+func _account_tab() -> void:
+	var signed_in := not Game.player.is_empty() and not Game.offline
+	var who := UI.label("Signed in as %s  ·  %s" % [Game.player.get("username", ""), Game.player.get("email", Game.last_email)] if signed_in
+		else ("Playing offline: nothing is saved on the server." if Game.offline else "Not signed in."), 24, Color.WHITE)
+	_body.add_child(who)
+	var links := HBoxContainer.new()
+	links.add_theme_constant_override("separation", 20)
+	_body.add_child(links)
+	links.add_child(UI.button("PRIVACY POLICY", func(): OS.shell_open(Api.base_url() + "/privacy"), Vector2(300, 52)))
+	links.add_child(UI.button("TERMS OF SERVICE", func(): OS.shell_open(Api.base_url() + "/terms"), Vector2(300, 52)))
+	if not signed_in:
+		return
+	var head := UI.label("DELETE ACCOUNT", 26, UI.RED, true)
+	_body.add_child(head)
+	var warn := UI.label("Deletes your account for good: your cards and packs, decks, Karat, Contraband and Dust, progress, achievements, friends, messages, mail and match recordings. Contraband you bought is lost and isn't refunded. This can't be undone.", 20, UI.MUTED)
+	warn.autowrap_mode = TextServer.AUTOWRAP_WORD
+	warn.custom_minimum_size = Vector2(1000, 0)
+	_body.add_child(warn)
+	var row := _row("Your password")
+	var pw := LineEdit.new()
+	pw.secret = true
+	pw.placeholder_text = "Password"
+	pw.custom_minimum_size = Vector2(420, 52)
+	row.add_child(pw)
+	var status := UI.label("", 22, UI.RED)
+	var go := func():
+		if pw.text == "":
+			status.text = "Enter your password first."
+			return
+		UI.dialog(self, "DELETE YOUR ACCOUNT?", "%s and everything in it will be gone for good." % Game.player.get("username", "Your account"),
+			[["KEEP IT", func(): pass], ["DELETE FOREVER", func():
+				status.text = "Deleting…"
+				status.label_settings.font_color = UI.MUTED
+				var r := await Api.request("POST", "/api/account/delete", {"password": pw.text})
+				if not r.ok:
+					status.text = r.error
+					status.label_settings.font_color = UI.RED
+					return
+				Game.sign_out()
+				Game.go("login"), UI.RED]], UI.RED)
+	row.add_child(UI.button("DELETE ACCOUNT", go, Vector2(300, 52), UI.RED))
+	_body.add_child(status)
 
 
 func _server_tab() -> void:

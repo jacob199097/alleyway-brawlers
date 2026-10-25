@@ -12,7 +12,8 @@
   `alleyway-backend` systemd service, public at https://alleywaybrawlers.duckdns.org (Apache proxy).
   It is the authority for auth, economy, matches (online and CPU) and decks.
   Never move reward/currency/card logic into the client.
-  Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. Database changes go in a `db/migrate_*.sql`
+  Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. The privacy
+  policy and terms are pages on the server (`backend/routes/legal.js`): keep them true to what the server stores. Database changes go in a `db/migrate_*.sql`
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
 - New cards come from the Card Forge: `node tools/import_forge.mjs <zip>`, then on the server
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data

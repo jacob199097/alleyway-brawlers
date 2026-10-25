@@ -84,6 +84,8 @@ app.use('/api/mail',    mailRoutes);
 app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/challenge', require('./routes/challenge'));   // this week's challenge (economy/challenge.js)
+app.use('/api/account', require('./routes/account'));   // account deletion
+app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 

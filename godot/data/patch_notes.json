@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.72",
+        "notes": [
+            "Controller support: Xbox, PlayStation and Steam Deck controllers work everywhere. The left stick moves a pointer and the D-pad jumps between buttons and cards; A selects (hold to drag), X zooms in on a card, B goes back, Y moves to the next phase. Every button is listed in Settings, Controls.",
+            "Settings has a new Account tab: read the privacy policy and terms of service, or delete your account."
+        ]
+    },
+    {
         "version": "0.9.71",
         "notes": [
             "Coin flips and die rolls are now real 3D: the coin spins through the air, glinting, and settles with a wobble; the die tumbles, bounces and lands on its number.",
