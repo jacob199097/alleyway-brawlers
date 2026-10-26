@@ -17,6 +17,8 @@ var builtin := ""   # this full build's version
 
 func _init() -> void:
 	builtin = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
+	if OS.has_feature("steam"):
+		return   # (Steam updates the Steam build: no patches, not even one another install left behind)
 	var info := read_info()
 	_sweep(str(info.get("file", "")))
 	if info.is_empty():

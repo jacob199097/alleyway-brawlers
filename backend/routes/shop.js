@@ -162,38 +162,48 @@ router.post('/contraband/purchase', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Could not verify payment.' });
     }
 
-    const bundle = CONTRABAND_BUNDLES[grantBundleId];
-    const client = await pool.connect();
     try {
-        await client.query('BEGIN');
-        // One grant per PaymentIntent — a replayed id inserts nothing.
-        const { rowCount } = await client.query(
-            `INSERT INTO payment_grants (payment_intent_id, player_id, bundle_id, contraband)
-             VALUES ($1, $2, $3, $4) ON CONFLICT (payment_intent_id) DO NOTHING`,
-            [grantKey, req.playerId, grantBundleId, bundle.contraband]
-        );
-        if (!rowCount) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'This payment has already been redeemed.' });
-        }
-        const { rows } = await client.query(
-            'UPDATE players SET contraband = contraband + $1 WHERE id = $2 RETURNING contraband',
-            [bundle.contraband, req.playerId]
-        );
-        await client.query('COMMIT');
-        res.json({
-            success: true,
-            contrabandGranted: bundle.contraband,
-            newContraband: rows[0].contraband,
-            devMode: grantKey.startsWith('dev_'),
-        });
+        const r = await grantContraband(grantKey, req.playerId, grantBundleId);
+        if (!r) return res.status(409).json({ error: 'This payment has already been redeemed.' });
+        res.json({ success: true, ...r, devMode: grantKey.startsWith('dev_') });
     } catch (err) {
-        await client.query('ROLLBACK');
         console.error('[shop/purchase] grant', err.message);
         res.status(500).json({ error: 'Purchase failed.' });
-    } finally {
-        client.release();
     }
 });
 
+/** Adds a bundle's Contraband once per payment (grantKey: a Stripe PaymentIntent, "steam:<order>"):
+ *  → {contrabandGranted, newContraband}, or null if that payment was already granted. */
+async function grantContraband(grantKey, playerId, bundleId) {
+    const bundle = CONTRABAND_BUNDLES[bundleId];
+    if (!bundle) throw new Error(`No bundle ${bundleId}`);
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // One grant per payment: a replayed id inserts nothing
+        const { rowCount } = await client.query(
+            `INSERT INTO payment_grants (payment_intent_id, player_id, bundle_id, contraband)
+             VALUES ($1, $2, $3, $4) ON CONFLICT (payment_intent_id) DO NOTHING`,
+            [grantKey, playerId, bundleId, bundle.contraband]
+        );
+        if (!rowCount) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+        const { rows } = await client.query(
+            'UPDATE players SET contraband = contraband + $1 WHERE id = $2 RETURNING contraband',
+            [bundle.contraband, playerId]
+        );
+        await client.query('COMMIT');
+        return { contrabandGranted: bundle.contraband, newContraband: rows[0].contraband };
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = router;
+module.exports.CONTRABAND_BUNDLES = CONTRABAND_BUNDLES;
+module.exports.grantContraband = grantContraband;

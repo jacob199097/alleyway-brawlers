@@ -90,6 +90,13 @@ jobs:
           DB_PORT: 5432
           DB_USER: postgres
           DB_PASS: postgres
+      - name: Steam sign-in, linking and purchases
+        run: node backend/routes/steam.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
       - name: Turf Defense rewards
         run: node backend/economy/turf.test.cjs
         env:

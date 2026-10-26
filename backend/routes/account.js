@@ -4,6 +4,7 @@
  * ACCOUNT DELETION
  *
  *   POST /api/account/delete   {password}            signed in (the game: Settings → Account)
+ *                              {confirm: "DELETE"}   signed in, a Steam player with no password
  *                              {email, password}     not signed in (the /delete-account web page)
  *
  * The password is checked, then the player and everything that is theirs goes for good: the
@@ -70,16 +71,30 @@ async function deleteAccount(playerId) {
 }
 
 router.post('/delete', async (req, res) => {
-    const { email, password } = req.body || {};
+    const { email, password, confirm } = req.body || {};
+    const me = signedIn(req);
+    // A Steam player has no password: signed in from the game, typing DELETE confirms it
+    if (me && !password && confirm === 'DELETE') {
+        try {
+            const { rows: [p] } = await pool.query('SELECT id, username, password_hash FROM players WHERE id = $1', [me]);
+            if (!p) return res.status(404).json({ error: 'Account not found.' });
+            if (p.password_hash) return res.status(400).json({ error: 'Enter your password to delete your account.' });
+            await deleteAccount(p.id);
+            console.log(`[Account] Deleted ${p.username} (${p.id}), a Steam account`);
+            return res.json({ deleted: true });
+        } catch (err) {
+            console.error('[Account] Delete:', err.message);
+            return res.status(500).json({ error: 'Could not delete the account. Try again in a moment.' });
+        }
+    }
     if (!password) return res.status(400).json({ error: 'Enter your password to delete your account.' });
     if (tooMany(clientIp(req))) return res.status(429).json({ error: 'Too many tries. Wait 15 minutes and try again.' });
-    const me = signedIn(req);
     if (!me && !email) return res.status(400).json({ error: 'Enter the email and password of the account.' });
     try {
         const { rows } = me
             ? await pool.query('SELECT id, username, password_hash FROM players WHERE id = $1', [me])
             : await pool.query('SELECT id, username, password_hash FROM players WHERE email = $1', [String(email).trim().toLowerCase()]);
-        if (!rows.length || !(await bcrypt.compare(String(password), rows[0].password_hash))) {
+        if (!rows.length || !rows[0].password_hash || !(await bcrypt.compare(String(password), rows[0].password_hash))) {
             return res.status(401).json({ error: me ? 'That password is not right.' : 'That email and password do not match an account.' });
         }
         await deleteAccount(rows[0].id);

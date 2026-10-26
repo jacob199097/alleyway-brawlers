@@ -14,6 +14,7 @@ router.get('/me', requireAuth, async (req, res) => {
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.last_played_at,
                     p.dust, p.title AS title_id, p.card_back, p.free_packs, p.first_win_date,
+                    p.steam_id IS NOT NULL AS steam_linked, p.password_hash IS NOT NULL AS has_password,
                     -- Collection completion %
                     (
                         SELECT COUNT(DISTINCT pi.card_id)::float /

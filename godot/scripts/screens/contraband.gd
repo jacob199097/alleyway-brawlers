@@ -52,6 +52,9 @@ func _refresh() -> void:
 
 
 func _purchase(b: Dictionary) -> void:
+	if Game.steam.active:
+		_steam_purchase(b)
+		return
 	var r := await Api.request("POST", "/api/shop/contraband/purchase", {"bundleId": b.id})
 	if not r.ok:
 		UI.toast(self, r.error, UI.RED)
@@ -60,3 +63,48 @@ func _purchase(b: Dictionary) -> void:
 	_refresh()
 	Sfx.play("promote")
 	UI.toast(self, "+%d Contraband added!" % int(r.data.get("contrabandGranted", 0)), UI.PURPLE)
+
+
+## The Steam build: Steam's wallet (backend/routes/steam.js). The server opens the order, Steam shows
+## it in its overlay, and once the player approves it there the server completes it and adds the
+## Contraband (once).
+func _steam_purchase(b: Dictionary) -> void:
+	if not Game.player.get("steam_linked", false):
+		var why: String = await Game.link_steam()   # (buying through Steam needs the Steam account linked)
+		if why != "":
+			UI.toast(self, why, UI.RED)
+			return
+	var spin := UI.spinner(self, Vector2(960, 960), "OPENING STEAM…")
+	var r := await Api.request("POST", "/api/steam/purchase/init", {"bundleId": b.id, "language": Game.steam.language()})
+	if not r.ok:
+		spin.queue_free()
+		UI.toast(self, r.error, UI.RED)
+		return
+	var order := str(r.data.get("orderId", ""))
+	spin.text = "APPROVE THE PURCHASE IN STEAM…"
+	var answer := {"done": false, "ok": false}
+	var on := func(order_id: String, authorized: bool):
+		if order_id == order:
+			answer.done = true
+			answer.ok = authorized
+	Game.steam.purchase_answered.connect(on)
+	var give_up := Time.get_ticks_msec() + 10 * 60 * 1000
+	while not answer.done and Time.get_ticks_msec() < give_up and is_inside_tree():
+		await get_tree().process_frame
+	Game.steam.purchase_answered.disconnect(on)
+	if not is_inside_tree():
+		return
+	if not answer.ok:
+		spin.queue_free()
+		UI.toast(self, "Purchase cancelled: nothing was charged.", UI.MUTED)
+		return
+	spin.text = "ADDING YOUR CONTRABAND…"
+	var f := await Api.request("POST", "/api/steam/purchase/finalize", {"orderId": order})
+	spin.queue_free()
+	if not f.ok:
+		UI.toast(self, f.error, UI.RED)
+		return
+	Game.player.contraband = f.data.get("newContraband", Game.player.get("contraband", 0))
+	_refresh()
+	Sfx.play("promote")
+	UI.toast(self, "+%d Contraband added!" % int(f.data.get("contrabandGranted", 0)), UI.PURPLE)

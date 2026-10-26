@@ -27,4 +27,6 @@
   The Mac build (`tools/build_mac.mjs`) gets its own patch each update too: `make_patch.mjs <godot> --macos`.
 - Turf Defense (2 players vs a clan boss): bosses, levels, lines and rewards in `godot/data/bosses.json`
   (the server reads it via `shared/turf.js`); matches `backend/socket/coopMatch.js`, rewards `backend/economy/turf.js`.
+- Steam (`docs/STEAM.md`): GodotSteam in `godot/addons/godotsteam`, `godot/scripts/steam.gd` (on only in the "Windows Steam"
+  export, feature `steam`, or with `--steam`); server `backend/routes/steam.js`; `tools/steam_build.mjs` builds and uploads.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

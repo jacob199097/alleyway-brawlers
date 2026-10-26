@@ -287,6 +287,8 @@ func show_achievements(list: Array) -> void:
 	for a in list:
 		if a is Dictionary:
 			_banners.append(a)
+			if not a.has("heading"):   # (an achievement, not a clan mastery level: on Steam too)
+				Game.steam.unlock(str(a.get("id", "")))
 	if idle:
 		_next_banner()
 

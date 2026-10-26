@@ -14,7 +14,8 @@ when it ships, or delete it if it's dropped.
   the game: Android / iOS exports, touch controls (drag to attack, long-press for the right-click
   zoom), layouts that fit phone screens, lighter assets, and store accounts (Google $25 once, Apple
   $99/yr). `shared/game_version.json` minimum-version checks need to cover each platform.
-- [ ] **Steam release.** `docs/DESKTOP_PLAN.md` still has the useful notes (use GodotSteam instead of
+- [ ] **Steam release.** The integration is built (`docs/STEAM.md`): what is left is the Steamworks account,
+  the App ID, achievements and keys there, and uploading. Older notes: `docs/DESKTOP_PLAN.md` (GodotSteam instead of
   steamworks.js). The game ships through Steam, so no Windows code signing or Apple Developer account
   is needed (games installed by Steam don't get the "unrecognised app" warnings).
 - [x] **Controller support** (needed for Steam Deck). Done in 0.9.72: Xbox, PlayStation and Steam Deck
@@ -22,7 +23,7 @@ when it ships, or delete it if it's dropped.
   works with it like a mouse. The D-pad jumps between buttons and cards, A clicks or drags, X zooms, B / Start
   are Esc, Y is next phase, the right stick scrolls; listed in Settings → Controls (test: `tests/pad_smoke.tscn`).
   - [ ] Still to do: test on a real Steam Deck, and open Steam's on-screen keyboard for the login boxes
-    (needs GodotSteam; for now Steam + X opens it).
+    (done: the Steam build brings up the Deck keyboard for text boxes; other builds: Steam + X).
 
 ## Game modes & content
 

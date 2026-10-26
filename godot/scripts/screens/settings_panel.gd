@@ -192,9 +192,25 @@ func _cycle(text: String, values: Array, labels: Array, key: String) -> void:
 ## deleting the account (backend/routes/account.js).
 func _account_tab() -> void:
 	var signed_in := not Game.player.is_empty() and not Game.offline
-	var who := UI.label("Signed in as %s  ·  %s" % [Game.player.get("username", ""), Game.player.get("email", Game.last_email)] if signed_in
+	var mail = Game.player.get("email")
+	var how: String = str(mail) if mail is String and mail != "" else "Steam"
+	var who := UI.label("Signed in as %s  ·  %s" % [Game.player.get("username", ""), how] if signed_in
 		else ("Playing offline: nothing is saved on the server." if Game.offline else "Not signed in."), 24, Color.WHITE)
 	_body.add_child(who)
+	if signed_in and Game.steam.active:   # Steam: link this account so Steam signs you in (and can buy)
+		var srow := _row("Steam")
+		if Game.player.get("steam_linked", false):
+			srow.add_child(UI.label("Linked to %s ✓" % Game.steam.persona, 22, UI.GREEN))
+		else:
+			var sstatus := UI.label("", 20, UI.RED)
+			srow.add_child(UI.button("LINK STEAM ACCOUNT", func():
+				sstatus.text = "Linking…"
+				var why: String = await Game.link_steam()
+				if why == "":
+					_show("account")
+				else:
+					sstatus.text = why, Vector2(320, 52)))
+			srow.add_child(sstatus)
 	var links := HBoxContainer.new()
 	links.add_theme_constant_override("separation", 20)
 	_body.add_child(links)
@@ -208,22 +224,24 @@ func _account_tab() -> void:
 	warn.autowrap_mode = TextServer.AUTOWRAP_WORD
 	warn.custom_minimum_size = Vector2(1000, 0)
 	_body.add_child(warn)
-	var row := _row("Your password")
+	# (a Steam player has no password: typing DELETE confirms it)
+	var no_password: bool = Game.player.get("has_password", true) == false
+	var row := _row("Type DELETE" if no_password else "Your password")
 	var pw := LineEdit.new()
-	pw.secret = true
-	pw.placeholder_text = "Password"
+	pw.secret = not no_password
+	pw.placeholder_text = "DELETE" if no_password else "Password"
 	pw.custom_minimum_size = Vector2(420, 52)
 	row.add_child(pw)
 	var status := UI.label("", 22, UI.RED)
 	var go := func():
-		if pw.text == "":
-			status.text = "Enter your password first."
+		if pw.text == "" or (no_password and pw.text.strip_edges().to_upper() != "DELETE"):
+			status.text = "Type DELETE first." if no_password else "Enter your password first."
 			return
 		UI.dialog(self, "DELETE YOUR ACCOUNT?", "%s and everything in it will be gone for good." % Game.player.get("username", "Your account"),
 			[["KEEP IT", func(): pass], ["DELETE FOREVER", func():
 				status.text = "Deleting…"
 				status.label_settings.font_color = UI.MUTED
-				var r := await Api.request("POST", "/api/account/delete", {"password": pw.text})
+				var r := await Api.request("POST", "/api/account/delete", {"confirm": "DELETE"} if no_password else {"password": pw.text})
 				if not r.ok:
 					status.text = r.error
 					status.label_settings.font_color = UI.RED

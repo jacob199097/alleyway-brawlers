@@ -92,7 +92,8 @@ app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/challenge', require('./routes/challenge'));   // this week's challenge (economy/challenge.js)
 app.use('/api/account', require('./routes/account'));   // account deletion
-app.use('/api/turf', require('./routes/turf'));   // Turf Defense bosses and progress (economy/turf.js)
+app.use('/api/turf', require('./routes/turf'));
+app.use('/api/steam', require('./routes/steam'));   // Steam sign-in, linking and purchases (utils/steam.js)   // Turf Defense bosses and progress (economy/turf.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));

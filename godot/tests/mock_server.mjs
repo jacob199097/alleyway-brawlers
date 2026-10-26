@@ -123,6 +123,25 @@ const routes = {
         return [200, { token: p.token, player: p }];
     },
     'POST /api/auth/register': () => [201, { pending: true, message: 'Account created.' }],
+    // Steam (backend/routes/steam.js): any real-looking ticket is "Steam account 1" (the real server asks Valve).
+    // STEAM_NEW=1: that Steam account has no player until "create"
+    'GET /api/steam/status': () => [200, { appId: '480', login: true, purchases: true, sandbox: true }],
+    'POST /api/steam/login': (b) => {
+        if (!/^[0-9a-f]{16,}$/i.test(String(b.ticket || ''))) return [401, { error: "Steam didn't accept the ticket." }];
+        const known = [...players.values()].find(x => x.steam_linked);
+        if (!known && process.env.STEAM_NEW && !b.create) return [404, { error: 'No player for this Steam account yet.', code: 'no_account' }];
+        const p = known || loginAs('steam-player@steam');
+        p.steam_linked = true;
+        p.has_password = !!known && known.email !== 'steam-player@steam';
+        if (!known) p.chosen_clan = null;
+        console.log('STEAM LOGIN', p.username, 'ticket', String(b.ticket).length / 2, 'bytes');
+        return [known ? 200 : 201, { token: p.token, player: p, created: !known }];
+    },
+    'POST /api/steam/link': (b) => {
+        if (!/^[0-9a-f]{16,}$/i.test(String(b.ticket || ''))) return [401, { error: "Steam didn't accept the ticket." }];
+        player.steam_linked = true;
+        return [200, { linked: true }];
+    },
     'POST /api/auth/forgot-password': () => [200, { success: true }],
     'GET /api/profile/me': () => [200, player],
     'PATCH /api/profile/me': (b) => { if (b.avatarUrl) player.avatar_url = b.avatarUrl; return [200, { success: true }]; },
@@ -326,7 +345,7 @@ const server = http.createServer((req, res) => {
         try { body = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
         const me = players.get(String(req.headers.authorization || '').replace(/^Bearer /, ''));
         if (me) player = me;
-        const authed = path.startsWith('/api/auth') || path === '/health' || !!me;
+        const authed = path.startsWith('/api/auth') || path === '/api/steam/login' || path === '/api/steam/status' || path === '/health' || !!me;
         const [code, data] = !handler ? [404, { error: 'Not found.' }] : !authed ? [401, { error: 'Unauthorized.' }] : handler(body);
         res.writeHead(code, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(data));

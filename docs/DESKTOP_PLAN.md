@@ -17,7 +17,7 @@ Ticked when done in the Godot client (`godot/`), however it was done there. The 
   phase, Esc cancel or menu, F11 fullscreen, L battle log, E emotes (listed in Settings → Controls).
   - [x] Controller support, for Steam Deck (0.9.72, `godot/scripts/pad.gd`).
   - [ ] Still open: 1–9 to pick a hand card, rebindable keys.
-- [ ] **Phase 5, Steam:** not started (Steam login, Steam purchases, achievements, overlay) — with GodotSteam.
+- [x] **Phase 5, Steam:** built with GodotSteam against the test App ID 480 (sign-in and linking, Steam wallet purchases, achievements, overlay, Steam Deck keyboard, the Steam build and upload). What is left needs the Steamworks account: see `docs/STEAM.md`.
 - [ ] **Phase 6, release readiness:**
   - [x] Public server address over HTTPS (https://alleywaybrawlers.duckdns.org).
   - [x] Multiplayer runs on the server (`backend/socket/onlineMatch.js`).

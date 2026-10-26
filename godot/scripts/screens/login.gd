@@ -10,6 +10,7 @@ var _submit: Button
 var _toggle: Button
 var _busy := false
 var _agree: Label   # "By registering you agree to …" (shown while registering)
+const STEAM_BLUE := Color("66c0f4")
 
 
 func _ready() -> void:
@@ -34,6 +35,13 @@ func _ready() -> void:
 	var h := UI.label("WELCOME BACK", 44, UI.GOLD, true)
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(h)
+	if Game.steam.active:   # (the Steam build: Steam signs you in; email accounts sign in once to link it)
+		col.add_child(UI.button("CONTINUE WITH STEAM  ·  %s" % Game.steam.persona.to_upper().left(16), _steam_continue, Vector2(640, 72), STEAM_BLUE))
+		var hint := UI.label("Already play with an email account? Sign in with it below once, and Steam signs you in from then on.", 17, UI.MUTED)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint.custom_minimum_size = Vector2(640, 0)
+		col.add_child(hint)
 	_email = _field("Email")
 	_email.text = Game.last_email
 	col.add_child(_email)
@@ -170,7 +178,26 @@ func _do_submit() -> void:
 			[["CLOSE", func(): pass], ["SEND AGAIN", _resend.bind(email)]], UI.BLUE)
 		return
 	Game.sign_in(str(r.data.token), r.data.player, email)
+	if Game.steam.active:   # (signing in with email in the Steam build links Steam to the account)
+		var why: String = await Game.link_steam()
+		if why != "":
+			UI.toast(self, why, UI.RED)
+			await get_tree().create_timer(2.0).timeout
 	Game.go("main_menu" if r.data.player.get("chosen_clan") else "clan_select")
+
+
+## The Steam build: sign in with the Steam account, making a new player if it hasn't got one.
+func _steam_continue() -> void:
+	if _busy:
+		return
+	_busy = true
+	_error.text = ""
+	var s: Dictionary = await Game.steam_sign_in(true)
+	_busy = false
+	if not s.ok:
+		_error.text = str(s.error)
+		return
+	Game.go("main_menu" if Game.player.get("chosen_clan") else "clan_select")
 
 
 ## A new activation link (backend/routes/auth.js, resend-verification).

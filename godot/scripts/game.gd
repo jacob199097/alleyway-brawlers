@@ -67,6 +67,9 @@ var sound: Node
 ## Controller support (scripts/pad.gd): Game.pad.pointer(self) is where the mouse, or the controller's pointer, is
 var pad: PadScript
 const PadScript := preload("res://scripts/pad.gd")
+## Steam (scripts/steam.gd): on only in the Steam build; otherwise steam.active is false and it does nothing
+var steam: SteamScript
+const SteamScript := preload("res://scripts/steam.gd")
 var _errors: ErrorReport   # sends the game's errors to the server (scripts/error_report.gd)
 var _fade: ColorRect
 var _fps: Label
@@ -86,6 +89,9 @@ func _ready() -> void:
 	pad = PadScript.new()   # (made here, not an autoload: patches can't add autoloads)
 	pad.name = "Pad"
 	add_child(pad)
+	steam = SteamScript.new()
+	steam.name = "Steam"
+	add_child(steam)
 
 	var layer := CanvasLayer.new()
 	layer.layer = 100
@@ -174,8 +180,8 @@ func _exit_tree() -> void:
 ## player and restart into it. A patch installs on the restart (boot screen); a full build
 ## that's required is downloaded.
 func _check_for_update() -> void:
-	if offline or _update_shown or OS.has_feature("editor") or DisplayServer.get_name() == "headless":
-		return
+	if offline or _update_shown or OS.has_feature("editor") or DisplayServer.get_name() == "headless" or SteamScript.build():
+		return   # (Steam updates the Steam build itself)
 	var scene := get_tree().current_scene
 	if scene == null or _going or BUSY_SCREENS.any(func(s): return scene.scene_file_path == SCREENS[s]):
 		return
@@ -255,6 +261,44 @@ func sign_in(token: String, profile: Dictionary, email: String) -> void:
 	last_email = email
 	_save_session()
 	Net.connect_to_server()
+
+
+## Signs in with the Steam account (backend/routes/steam.js). create: make a player if there isn't
+## one yet. → {ok, created} or {ok: false, code: "no_account" | "", error}
+func steam_sign_in(create := false) -> Dictionary:
+	var ticket: String = await steam.web_ticket()
+	if ticket == "":
+		return {"ok": false, "code": "", "error": "Steam didn't give a sign-in ticket. Is Steam running?"}
+	var r := await Api.request("POST", "/api/steam/login", {"ticket": ticket, "create": create})
+	if not r.ok:
+		return {"ok": false, "code": str(r.data.get("code", "")) if r.data is Dictionary else "", "error": r.error}
+	sign_in(str(r.data.token), r.data.player, "")
+	sync_steam_achievements()
+	return {"ok": true, "created": bool(r.data.get("created", false))}
+
+
+## Links the signed-in player to this Steam account: from then on Steam signs them in. → "" or why not
+func link_steam() -> String:
+	var ticket: String = await steam.web_ticket()
+	if ticket == "":
+		return "Steam didn't give a sign-in ticket. Is Steam running?"
+	var r := await Api.request("POST", "/api/steam/link", {"ticket": ticket})
+	if not r.ok:
+		return r.error
+	player.steam_linked = true
+	sync_steam_achievements()
+	return ""
+
+
+## Steam gets every achievement the player has already unlocked (it ignores ones it has).
+func sync_steam_achievements() -> void:
+	if not steam.active or offline:
+		return
+	var r := await Api.request("GET", "/api/achievements")
+	if r.ok and r.data is Dictionary:
+		for a in r.data.get("achievements", []):
+			if a is Dictionary and a.get("unlocked", false):
+				steam.unlock(str(a.get("id", "")))
 
 
 func sign_out() -> void:

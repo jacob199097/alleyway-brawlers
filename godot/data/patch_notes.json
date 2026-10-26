@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.84",
+        "notes": [
+            "Getting ready for Steam: the Steam version will sign you in with your Steam account, unlock achievements on Steam, and sell Contraband through the Steam wallet. Players with an email account can link Steam to it."
+        ]
+    },
+    {
         "version": "0.9.83",
         "notes": [
             "New keyword: BRITTLE. A BRITTLE character is KO'd instead of going Down, so it doesn't sit on the field. Skeleton tokens are now BRITTLE.",

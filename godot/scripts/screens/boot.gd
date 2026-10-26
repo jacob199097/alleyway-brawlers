@@ -49,10 +49,18 @@ func _ready() -> void:
 		return
 	if not await _check_content():
 		return
+	# Steam: its account signs the player in (if it already has one; the login screen offers the rest)
+	if Api.token == "" and Game.steam.active:
+		_status.text = "SIGNING IN WITH STEAM…"
+		var s: Dictionary = await Game.steam_sign_in(false)
+		if s.ok:
+			Game.go("main_menu" if Game.player.get("chosen_clan") else "clan_select")
+			return
 	if Api.token == "":
 		Game.go("login")
 		return
 	if await Game.refresh_player():
+		Game.sync_steam_achievements()
 		Game.go("main_menu" if Game.player.get("chosen_clan") else "clan_select")
 	else:
 		Game.go("login")
@@ -68,11 +76,14 @@ func _check_content() -> bool:
 		var mine := ContentSync.game_version()
 		# A small in-place update when the server has one for this build (scripts/patcher.gd)
 		var p = v.get("patch")
-		if ContentSync.patch_fits(p, mine) and await _apply_patch(p):
+		var steam_build: bool = Game.SteamScript.build()   # (Steam updates it: no patches or download offers)
+		if not steam_build and ContentSync.patch_fits(p, mine) and await _apply_patch(p):
 			return false   # restarting into the new version
 		if ContentSync.compare_versions(mine, str(v.get("minimum", "0"))) < 0:
+			if steam_build:
+				return await _steam_update_required(v, mine)
 			return await _update_required(v, mine)
-		if ContentSync.compare_versions(mine, str(v.get("latest", "0"))) < 0:
+		if not steam_build and ContentSync.compare_versions(mine, str(v.get("latest", "0"))) < 0:
 			await _update_available(v, mine)
 		sync.started.connect(_on_started)
 		sync.progress.connect(_on_progress)
@@ -85,6 +96,23 @@ func _check_content() -> bool:
 			UI.toast(self, "Some new cards couldn't be downloaded. They'll be tried again next time.", UI.RED)
 	_status.text = "CONNECTING…"
 	return true
+
+
+## The Steam build is too old for the server: Steam has the new one (it downloads it when the game
+## isn't running), so quit and let it, or play offline.
+func _steam_update_required(v: Dictionary, mine: String) -> bool:
+	_status.visible = false
+	var choice := [""]
+	UI.dialog(self, "UPDATE REQUIRED", "Version %s is out (you have %s). Close the game and Steam will update it; if it doesn't straight away, restart Steam." % [v.get("latest", "?"), mine],
+		[["QUIT", func(): choice[0] = "quit", UI.GREEN], ["PLAY OFFLINE", func(): choice[0] = "offline"]], UI.GOLD)
+	while choice[0] == "":
+		await get_tree().process_frame
+	if choice[0] == "quit":
+		get_tree().quit()
+		return false
+	Game.play_offline()
+	Game.go("main_menu")
+	return false
 
 
 ## This build is too old for the server: download the new one, or play offline.
