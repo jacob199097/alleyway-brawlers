@@ -655,9 +655,11 @@ export class DuelState {
     }
 
     /** No attacks yet: until everyone has had a turn (turn 1; a free-for-all's whole first round).
+     *  Turf Defense's boss goes last, after both players have had a turn, so it may attack on its first.
      *  Same as no_attacks_yet in duel_state.gd. */
     noAttacksYet() {
-        return this.turn <= (this.ffa ? this.seats.length : 1);
+        const round = this.ffa ? this.seats.length : 1;
+        return this.turn <= (this.rules.boss ? round - 1 : round);
     }
 
     canAttackWith(side, slot) {

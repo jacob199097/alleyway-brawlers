@@ -173,6 +173,12 @@ func _run() -> void:
 			await get_tree().create_timer(3.5).timeout
 			if _screen()._menu:
 				_screen()._menu.visible = false
+			for a in OS.get_cmdline_user_args():   # (--gutter=<card id>: that card on top of both Gutters)
+				if a.begins_with("--gutter="):
+					for side in ["player", "opponent"]:
+						_screen().counts[side]["gutter"] = 5
+						_screen().counts[side]["gutter_top"] = a.trim_prefix("--gutter=")
+					_screen().queue_redraw()
 			await _shot("ar_%s" % arena.id, 1.5)
 			await _shot("ar_%s_b" % arena.id, 0.9)
 		get_tree().quit()

@@ -753,8 +753,10 @@ func statuses(c: Dictionary) -> Array:
 
 
 ## No attacks yet: until everyone has had a turn (turn 1; a free-for-all's whole first round).
+## Turf Defense's boss goes last, after both players have had a turn, so it may attack on its first.
 func no_attacks_yet() -> bool:
-	return turn <= (seats.size() if ffa else 1)
+	var round: int = seats.size() if ffa else 1
+	return turn <= (round - 1 if rules.get("boss") != null else round)
 
 
 func can_attack_with(side: String, slot: int) -> bool:

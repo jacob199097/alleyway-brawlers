@@ -14,17 +14,17 @@
                 "victory": "Silence. As it was before you, and as it will be after."
             },
             "levels": [
-                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
-                    "phases": [{"below": 4500, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemy"}, {"do": "draw", "amount": 1}]}],
+                {"level": 1, "name": "Street", "morale": 11500, "ai": "hard", "draw": 1, "authority": 3,
+                    "phases": [{"below": 5900, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemy"}, {"do": "draw", "amount": 1}]}],
                     "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
-                {"level": 2, "name": "Hard", "morale": 13000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_nebu_041", 2], ["card_nebu_037", 2], ["card_nebu_043", 1]],
-                    "phases": [{"below": 8300, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
-                        {"below": 4200, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemy"}, {"do": "buff", "target": "allies", "atk": 700, "def": 700, "until": "forever"}]}],
+                {"level": 2, "name": "Hard", "morale": 19500, "ai": "hard", "draw": 2, "authority": 3, "add": [["card_nebu_041", 2], ["card_nebu_037", 2], ["card_nebu_043", 1]],
+                    "phases": [{"below": 12500, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
+                        {"below": 6300, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemy"}, {"do": "buff", "target": "allies", "atk": 700, "def": 700, "until": "forever"}]}],
                     "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
-                {"level": 3, "name": "Nightmare", "morale": 17000, "ai": "hard", "draw": 2, "authority": 3, "add": [["card_nebu_041", 2], ["card_nebu_037", 3], ["card_nebu_043", 2], ["card_nebu_048", 2]],
-                    "phases": [{"below": 12000, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
-                        {"below": 7500, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemies"}, {"do": "buff", "target": "allies", "atk": 800, "def": 800, "until": "forever"}]},
-                        {"below": 3000, "label": "SUPERNOVA", "fx": [{"do": "damage", "amount": 1500, "each_foe": true}, {"do": "heal", "amount": 3000}]}],
+                {"level": 3, "name": "Nightmare", "morale": 25500, "ai": "hard", "draw": 2, "authority": 4, "add": [["card_nebu_041", 2], ["card_nebu_037", 3], ["card_nebu_043", 2], ["card_nebu_048", 2]],
+                    "phases": [{"below": 18000, "label": "THE STARS ALIGN", "fx": [{"do": "stasis", "target": "enemies"}, {"do": "draw", "amount": 2}]},
+                        {"below": 11300, "label": "EVENT HORIZON", "fx": [{"do": "bounce", "target": "enemies"}, {"do": "buff", "target": "allies", "atk": 800, "def": 800, "until": "forever"}]},
+                        {"below": 4500, "label": "SUPERNOVA", "fx": [{"do": "damage", "amount": 1500, "each_foe": true}, {"do": "heal", "amount": 3000}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
         },
@@ -40,17 +40,17 @@
                 "victory": "Sector secured. Clean up this mess."
             },
             "levels": [
-                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
-                    "phases": [{"below": 4500, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 1, "max_auth": 4}]}],
+                {"level": 1, "name": "Street", "morale": 11000, "ai": "hard", "draw": 1, "authority": 2,
+                    "phases": [{"below": 5400, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 1, "max_auth": 4}]}],
                     "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
-                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_mili_014", 1], ["card_mili_037", 1]],
-                    "phases": [{"below": 7300, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 4}]},
-                        {"below": 3600, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 500}, {"do": "damage", "amount": 600, "each_foe": true}]}],
+                {"level": 2, "name": "Hard", "morale": 14500, "ai": "hard", "draw": 1, "authority": 3, "add": [["card_mili_014", 1], ["card_mili_037", 1]],
+                    "phases": [{"below": 9500, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 4}]},
+                        {"below": 4700, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 500}, {"do": "damage", "amount": 600, "each_foe": true}]}],
                     "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
-                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_mili_014", 2], ["card_mili_037", 2], ["card_mili_040", 1]],
-                    "phases": [{"below": 9500, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 5}]},
-                        {"below": 5500, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 700}, {"do": "damage", "amount": 800, "each_foe": true}]},
-                        {"below": 2500, "label": "LAST STAND", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "shield", "target": "allies"}]}],
+                {"level": 3, "name": "Nightmare", "morale": 17500, "ai": "hard", "draw": 2, "authority": 3, "add": [["card_mili_014", 2], ["card_mili_037", 2], ["card_mili_040", 1]],
+                    "phases": [{"below": 11900, "label": "REINFORCEMENTS", "fx": [{"do": "call", "amount": 2, "max_auth": 5}]},
+                        {"below": 6900, "label": "DANGER CLOSE", "fx": [{"do": "suppress", "target": "enemies", "amount": 700}, {"do": "damage", "amount": 800, "each_foe": true}]},
+                        {"below": 3100, "label": "LAST STAND", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "shield", "target": "allies"}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
         },
@@ -66,17 +66,17 @@
                 "victory": "Thank you for your contribution to the house."
             },
             "levels": [
-                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
-                    "phases": [{"below": 4500, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1000}, {"do": "draw", "amount": 1}]}],
+                {"level": 1, "name": "Street", "morale": 11000, "ai": "hard", "draw": 1, "authority": 2,
+                    "phases": [{"below": 5400, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1000}, {"do": "draw", "amount": 1}]}],
                     "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
-                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_wild_012", 1], ["card_wild_017", 1]],
-                    "phases": [{"below": 7300, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1500}, {"do": "draw", "amount": 2}]},
-                        {"below": 3600, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]}],
+                {"level": 2, "name": "Hard", "morale": 14500, "ai": "hard", "draw": 1, "authority": 3, "add": [["card_wild_012", 1], ["card_wild_017", 1]],
+                    "phases": [{"below": 9500, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 1500}, {"do": "draw", "amount": 2}]},
+                        {"below": 4700, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 800, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]}],
                     "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
-                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_wild_012", 2], ["card_wild_017", 1], ["card_wild_013", 1]],
-                    "phases": [{"below": 10000, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 2000}, {"do": "draw", "amount": 2}]},
-                        {"below": 6000, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 1000, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]},
-                        {"below": 2500, "label": "JACKPOT", "fx": [{"do": "damage", "amount": 1200, "each_foe": true}, {"do": "authority", "amount": 3}]}],
+                {"level": 3, "name": "Nightmare", "morale": 18000, "ai": "hard", "draw": 2, "authority": 4, "add": [["card_wild_012", 2], ["card_wild_017", 1], ["card_wild_013", 1]],
+                    "phases": [{"below": 13000, "label": "THE HOUSE ALWAYS WINS", "fx": [{"do": "heal", "amount": 2000}, {"do": "draw", "amount": 2}]},
+                        {"below": 7800, "label": "ALL IN", "fx": [{"do": "buff", "target": "allies", "atk": 1000, "until": "forever"}, {"do": "discard", "amount": 1, "each_foe": true}]},
+                        {"below": 3300, "label": "JACKPOT", "fx": [{"do": "damage", "amount": 1200, "each_foe": true}, {"do": "authority", "amount": 3}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
         },
@@ -92,17 +92,17 @@
                 "victory": "Welcome home. Forever."
             },
             "levels": [
-                {"level": 1, "name": "Street", "morale": 9000, "ai": "normal", "draw": 0, "authority": 1,
-                    "phases": [{"below": 4500, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]}],
+                {"level": 1, "name": "Street", "morale": 13500, "ai": "hard", "draw": 2, "authority": 3,
+                    "phases": [{"below": 6800, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]}],
                     "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
-                {"level": 2, "name": "Hard", "morale": 11000, "ai": "hard", "draw": 1, "authority": 1, "add": [["card_unde_011", 1], ["card_unde_026", 1]],
-                    "phases": [{"below": 7300, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]},
-                        {"below": 3600, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 1}, {"do": "give_undead", "target": "allies"}]}],
+                {"level": 2, "name": "Hard", "morale": 16500, "ai": "hard", "draw": 2, "authority": 4, "add": [["card_unde_011", 1], ["card_unde_026", 1]],
+                    "phases": [{"below": 11000, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 2}]},
+                        {"below": 5400, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 1}, {"do": "give_undead", "target": "allies"}]}],
                     "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
-                {"level": 3, "name": "Nightmare", "morale": 14000, "ai": "hard", "draw": 1, "authority": 2, "add": [["card_unde_011", 2], ["card_unde_026", 1], ["card_unde_034", 1]],
-                    "phases": [{"below": 10000, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 3}]},
-                        {"below": 6000, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 2}, {"do": "give_undead", "target": "allies"}]},
-                        {"below": 2500, "label": "HOLLOW THRONE", "fx": [{"do": "drain", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 600, "until": "forever"}]}],
+                {"level": 3, "name": "Nightmare", "morale": 19500, "ai": "hard", "draw": 2, "authority": 4, "add": [["card_unde_011", 2], ["card_unde_026", 1], ["card_unde_034", 1]],
+                    "phases": [{"below": 14000, "label": "RISE", "fx": [{"do": "token", "token": "card_unde_002", "amount": 3}]},
+                        {"below": 8400, "label": "THE DEAD MARCH", "fx": [{"do": "revive", "amount": 2}, {"do": "give_undead", "target": "allies"}]},
+                        {"below": 3500, "label": "HOLLOW THRONE", "fx": [{"do": "drain", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 600, "until": "forever"}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
         }

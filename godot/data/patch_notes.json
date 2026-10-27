@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.88",
+        "notes": [
+            "Turf Defense is harder: every boss has more Morale, more Authority and extra cards each turn, and plays smarter on Street. Hard and Nightmare are tougher too.",
+            "Turf Defense: the boss can now attack on its first turn (it goes after both of you).",
+            "Underworld cards no longer look washed out on bright arenas like the Koi Garden: their frames had see-through gaps."
+        ]
+    },
+    {
         "version": "0.9.87",
         "notes": [
             "The Choose Your Clan screen: each clan's description and card count now fit inside its panel.",
