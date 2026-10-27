@@ -14,7 +14,7 @@
 const router = require('express').Router();
 
 const GAME = 'AlleyWay Brawlers';
-const UPDATED = '25 October 2026';
+const UPDATED = '27 October 2026';
 
 const contact = () => process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
 const contactLink = () => contact()
@@ -60,6 +60,10 @@ Questions: ${contactLink()}.</p>
  <li><b>Your account:</b> your email address, the username you choose, and your password. We never store the
   password itself, only a one-way scrambled version (a bcrypt hash) that can check it but not reveal it. We also keep
   whether your email is confirmed and, for a short time, the links in activation and password-reset emails.</li>
+ <li><b>Steam:</b> if you play the Steam version and sign in with Steam (or link Steam to your account), we keep
+  your Steam ID, the number that identifies your Steam account, so we can sign you in. Steam confirms the sign-in to
+  us; we never get your Steam password. The first time you sign in with Steam, we read your Steam display name once
+  to suggest a username. A Steam account doesn't need an email address or password with us.</li>
  <li><b>Your game:</b> your cards and packs, decks, Karat, Contraband and Dust, level and XP, rank, wins and losses,
   achievements, quests, daily rewards, clan mastery, your chosen clan, title, profile picture and card back, and
   when you last played.</li>
@@ -70,7 +74,9 @@ Questions: ${contactLink()}.</p>
   statistics that are not linked to any account (which clan and cards were in each deck, which were played, who
   won) to balance the cards.</li>
  <li><b>Purchases:</b> if you buy Contraband, the payment is handled by Stripe. We never see or store your card
-  details. We keep the payment reference, the bundle you bought and the Contraband it gave you.</li>
+  details. We keep the payment reference, the bundle you bought and the Contraband it gave you. In the Steam
+  version, you pay through your Steam Wallet and Valve handles the payment: we keep the Steam order number, your
+  Steam ID, the bundle, its price and currency, and whether the purchase went through.</li>
  <li><b>Error reports:</b> when the game hits an error, it sends us the game version, your operating system, the
   error message and where it happened, and your account id, so we can fix it. These are deleted after 30 days.</li>
  <li><b>Connection details:</b> our server sees the IP address your game connects from. We use it to keep the
@@ -89,17 +95,21 @@ phone number, contacts or location.</p>
  <li>To email you about your account: activation and password resets. We will only send news or offers if you
   have chosen to receive them.</li>
  <li>To fix bugs, balance cards, and stop cheating, abuse and attacks on the service.</li>
+ <li>In the Steam version: to unlock the achievements you earn on your Steam account as well.</li>
 </ul>
 
 <h2>What other players can see</h2>
 <p>Your username, profile picture, title, level, rank and win record (on the leaderboard and your profile), the
 cards you play in a match, and replays of matches you played against them. Direct messages are seen only by the
-person you send them to.</p>
+person you send them to. Your email address and Steam ID aren't shown to other players.</p>
 
 <h2>Who we share it with</h2>
 <p>We don't sell or rent your information. We only share what's needed with the services that help run the game:</p>
 <ul>
  <li><b>Stripe</b>, to take payments for Contraband (their privacy policy covers your payment details);</li>
+ <li><b>Valve (Steam)</b>, if you play the Steam version: to confirm your Steam sign-in, to take Steam Wallet
+  payments (we send your Steam ID and the item and its price) and to unlock your achievements on Steam. Valve's
+  privacy policy covers what Steam does with your information;</li>
  <li><b>our email provider</b>, to deliver activation and password-reset emails;</li>
  <li><b>DuckDNS</b>, which points our web address at our server (it doesn't receive your game data).</li>
 </ul>
@@ -108,13 +118,17 @@ person you send them to.</p>
 <h2>How long we keep it</h2>
 <p>We keep your account and game data for as long as your account exists. Error reports are deleted after 30 days,
 and only your 30 most recent match recordings are kept. When you delete your account, everything listed above
-that belongs to it is deleted straight away. The anonymous match statistics are kept, and other players' match
-history keeps the match without your account in it.</p>
+that belongs to it is deleted straight away, except purchase records: a record of each purchase (the Stripe payment
+reference, or the Steam order with your Steam ID; the bundle and what it cost) is kept without your account, so a
+payment can't be claimed twice and so we can handle refunds and keep the accounts we have to. The anonymous match
+statistics are kept, and other players' match history keeps the match without your account in it. Deleting your
+account here doesn't affect your Steam account.</p>
 
 <h2>Deleting your account and your other choices</h2>
 <ul>
  <li><b>Delete your account</b> in the game (Settings → Account → Delete account) or on the
-  <a href="/delete-account">delete your account</a> page. This can't be undone.</li>
+  <a href="/delete-account">delete your account</a> page. If you sign in with Steam and have no password with us,
+  delete it in the game and type DELETE to confirm. This can't be undone.</li>
  <li>You can ask us for a copy of your data, or to correct it, by emailing ${contactLink()}.</li>
  <li>Depending on where you live (for example in the UK, the EU or California), you may have further rights, such
   as to object to how we use your data or to complain to your local data protection authority. Contact us and we'll
@@ -150,8 +164,8 @@ don't play. Questions: ${contactLink()}.</p>
 <ul>
  <li>You must be at least 13 to make an account. If you're under the age where you can agree to these terms where
   you live, a parent or guardian must agree to them for you.</li>
- <li>Use an email address you own, keep your password secret, and don't share, sell or trade your account. You're
-  responsible for what happens on it.</li>
+ <li>Use an email address or Steam account you own, keep your password secret, and don't share, sell or trade your
+  account. You're responsible for what happens on it.</li>
  <li>Pick a username that isn't offensive, hateful or pretending to be someone else. We may change or remove one
   that is.</li>
 </ul>
@@ -169,7 +183,7 @@ may end the service; if we do, we'll give notice in the game first.</p>
   moved outside the game.</li>
  <li>We may change, rebalance or retire cards and items (for example to keep the game fair).</li>
  <li>Contraband bought with real money is delivered to your account straight away, and payments are handled by
-  Stripe. Purchases are final and aren't refundable once delivered, except where the law where you live gives you a
+  Stripe (in the Steam version, by Valve through your Steam Wallet). Purchases are final and aren't refundable once delivered, except where the law where you live gives you a
   right to a refund. If something goes wrong with a purchase, contact us.</li>
 </ul>
 
@@ -214,7 +228,9 @@ achievements, friends, messages, mail and match recordings. Contraband you bough
 can't be undone. See the <a href="/privacy">privacy policy</a> for what's kept.</p>
 
 <h2>In the game</h2>
-<p>Open <b>Settings → Account → Delete account</b>, enter your password and confirm.</p>
+<p>Open <b>Settings → Account → Delete account</b>, enter your password and confirm. If you sign in with Steam and
+have no password with us, type DELETE to confirm instead: that's the only way to delete a Steam account, since this
+page needs an email and password.</p>
 
 <h2>Here</h2>
 <div class="box">
