@@ -4924,7 +4924,7 @@ export const FORGE_CARDS = {
         "clan": "underworld",
         "cardType": "gang_member",
         "authority": 7,
-        "tributeCost": 1,
+        "tributeCost": 2,
         "rarity": 3,
         "clanTag": "underworld",
         "effectKey": "",
@@ -5127,7 +5127,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_015",
         "code": "UNDE-015",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +400 ATK and +250 DEF for each UNDERWORLD character in your Gutter.\nAfter this card attacks 3 times: PROMOTE this card.",
+        "effectText": "This card gains +500 ATK and +250 DEF for each UNDERWORLD character in your Gutter.\nAfter this card attacks 3 times: PROMOTE this card.",
         "effects": [
             {
                 "when": "passive",
@@ -5136,7 +5136,7 @@ export const FORGE_CARDS = {
                 "per": "gutter",
                 "per_clan": "underworld",
                 "per_kind": "gang_member",
-                "atk": 400,
+                "atk": 500,
                 "def": 250
             },
             {
@@ -5167,7 +5167,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_016",
         "code": "UNDE-016",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +500 ATK and +400 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+        "effectText": "This card gains +800 ATK and +400 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
         "effects": [
             {
                 "when": "passive",
@@ -5176,7 +5176,7 @@ export const FORGE_CARDS = {
                 "per": "gutter",
                 "per_clan": "underworld",
                 "per_kind": "gang_member",
-                "atk": 500,
+                "atk": 800,
                 "def": 400
             },
             {
