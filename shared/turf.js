@@ -12,6 +12,18 @@ export const BOSSES = BOSS_DATA.bosses;
 export const SEATS = ['p1', 'p2', 'boss'];
 
 export const findBoss = (id) => BOSSES.find(b => b.id === id) || null;
+
+/** A boss's prize: the card, and (a Striver) the levels it promotes into, so it can promote. */
+export function prizeLine(id) {
+    const out = [];
+    for (let cur = id; cur && CARD_CATALOG[cur] && !out.includes(cur); cur = CARD_CATALOG[cur].promotesTo || '') out.push(cur);
+    return out;
+}
+
+/** Every boss-only card (the prizes and their levels): never in packs, never crafted. */
+export function prizeCardIds() {
+    return new Set(BOSSES.flatMap(b => prizeLine(b.prize)));
+}
 export const bossLevel = (boss, n) => (boss?.levels || []).find(l => l.level === Number(n)) || null;
 
 /** The boss's deck at a level: its clan's starter, with the level's "add" cards in place of its

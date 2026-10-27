@@ -4694,7 +4694,7 @@
   "art_url": "card_unde_002",
   "code": "UNDE-002",
   "flavourText": "I’ve got a bone to pick with the living.",
-  "effectText": "You take no battle damage from brawls involving this card.\nThis card is BRITTLE.",
+  "effectText": "You take no battle damage from brawls involving this card.\nThis card is BRITTLE.\nThis card has REMAINS.",
   "effects": [
    {
     "when": "passive",
@@ -4703,6 +4703,10 @@
    {
     "when": "passive",
     "do": "brittle"
+   },
+   {
+    "when": "passive",
+    "do": "remains"
    }
   ],
   "clanName": "Underworld",
@@ -6007,6 +6011,239 @@
   "clanColor": "#e8ba11",
   "attack": 1600,
   "defense": 1400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_044": {
+  "id": "card_mili_044",
+  "name": "Iron Lieutenant Kessler",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_044",
+  "code": "MILI-044",
+  "flavourText": "Hold the line. Then push it.",
+  "effectText": "When another of your characters is Downed: SUPPRESS the enemy character across from this card for 500.\nAt the start of your turn: The characters next to this card gain +400 ATK until the end of your turn.",
+  "effects": [
+   {
+    "when": "ally_downed",
+    "do": "suppress",
+    "target": "opposite",
+    "amount": 500
+   },
+   {
+    "when": "turn_start",
+    "do": "buff",
+    "target": "neighbors",
+    "until": "turn",
+    "atk": 400
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2600,
+  "defense": 2400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_nebu_053": {
+  "id": "card_nebu_053",
+  "name": "Herald of the Horizon",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 2,
+  "rarity": 5,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_053",
+  "code": "NEBU-053",
+  "flavourText": "When the stars go dark, it is already here.",
+  "effectText": "When deployed: Put the enemy character across from this card in STASIS.\nYour opponent's cards cost 1 more Authority.\nACTIVATE (once per turn): Shuffle up to 3 cards from your Gutter back into your deck. If you do, draw 2 cards.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "stasis",
+    "target": "opposite"
+   },
+   {
+    "when": "passive",
+    "do": "cost_up",
+    "amount": 1
+   },
+   {
+    "when": "activate",
+    "do": "reshuffle",
+    "amount": 3
+   },
+   {
+    "when": "activate",
+    "do": "draw",
+    "amount": 2,
+    "if_done": true
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 3400,
+  "defense": 3000,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_unde_043": {
+  "id": "card_unde_043",
+  "name": "Herald of the Hollow Throne",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_043",
+  "code": "UNDE-043",
+  "flavourText": "The throne is hollow. The army is not.",
+  "effectText": "When this card is Downed: PROMOTE this card.\nWhen deployed: Send the top 2 cards of your deck to your Gutter.",
+  "effects": [
+   {
+    "when": "self_downed",
+    "do": "promote"
+   },
+   {
+    "when": "deploy",
+    "do": "mill_self",
+    "amount": 2
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1200,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_044"
+ },
+ "card_unde_044": {
+  "id": "card_unde_044",
+  "name": "Herald of the Hollow Throne",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_044",
+  "code": "UNDE-044",
+  "flavourText": "The throne is hollow. The army is not.",
+  "effectText": "Once per turn, when another of your characters is Downed: Give the characters next to this card UNDEAD.\nWhen an enemy character is KO'd: If your Gutter has 7 or more UNDERWORLD cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_downed",
+    "do": "give_undead",
+    "target": "neighbors",
+    "once": true
+   },
+   {
+    "when": "foe_ko",
+    "do": "promote",
+    "if": "gutter_ge",
+    "n": 7,
+    "if_clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2600,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_045"
+ },
+ "card_unde_045": {
+  "id": "card_unde_045",
+  "name": "Herald of the Hollow Throne",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_045",
+  "code": "UNDE-045",
+  "flavourText": "The throne is hollow. The army is not.",
+  "effectText": "When deployed: EXILE one enemy character.\nThis card has LIFESTEAL.\nWhen this card is KO'd: Give your other characters UNDEAD.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "exile",
+    "target": "enemy"
+   },
+   {
+    "when": "passive",
+    "do": "lifesteal"
+   },
+   {
+    "when": "self_ko",
+    "do": "give_undead",
+    "target": "allies"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 3400,
+  "defense": 2600,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_046": {
+  "id": "card_wild_046",
+  "name": "Lady Fortune, the House Dealer",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_046",
+  "code": "WILD-046",
+  "flavourText": "The house never loses. I make sure of it.",
+  "effectText": "When deployed: Flip a coin. If heads, TAX 2. If tails, draw 2 cards.\nAt the end of your turn: If you've played 2 or more Hustles this turn, HEAL 500.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "tax",
+    "luck": "coin",
+    "amount": 2
+   },
+   {
+    "when": "deploy",
+    "do": "draw",
+    "if_luck": "lost",
+    "amount": 2
+   },
+   {
+    "when": "turn_end",
+    "do": "heal",
+    "if": "hustles_ge",
+    "amount": 500,
+    "n": 2
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 2200,
+  "defense": 1800,
   "level": 1,
   "subtype": "brawler",
   "promotesTo": null

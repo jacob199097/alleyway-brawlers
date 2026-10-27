@@ -487,7 +487,7 @@ func _pay_box(lv: Dictionary, col: Color) -> Control:
 		var pc: Dictionary = CardDB.get_card(prize_id)
 		var rarity := int(pc.get("rarity", 1))
 		col_v.add_child(UI.label("PRIZE CARD: %s" % str(pc.get("name", "?")).to_upper(), 22, UI.rarity_color(rarity), true))
-		col_v.add_child(UI.label(str(UI.RARITY_LABEL.get(rarity, "")).to_upper() + "  ·  right-click to look", 14, UI.MUTED))
+		col_v.add_child(UI.label(str(UI.RARITY_LABEL.get(rarity, "")).to_upper() + ("  ·  ALL ITS LEVELS" if pc.get("promotesTo") is String else "") + "  ·  right-click to look", 14, UI.MUTED))
 	var bits := []
 	if int(r.get("karat", 0)) > 0:
 		bits.append("%d KARAT" % int(r.karat))

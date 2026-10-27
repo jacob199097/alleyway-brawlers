@@ -24,10 +24,10 @@ let _packs = { at: 0, list: [] };
 async function validPacks() {
     if (Date.now() - _packs.at < 60_000) return _packs.list;
     try {
-        const { gameCardIds } = require('../economy/packOpener');
+        const { packCardIds } = require('../economy/packOpener');
         const { rows } = await pool.query(
             `SELECT clan::text AS clan FROM cards WHERE card_type <> 'leader' AND art_url = ANY($1)
-             GROUP BY clan HAVING COUNT(*) >= 3 ORDER BY MIN(created_at), clan`, [await gameCardIds()]);
+             GROUP BY clan HAVING COUNT(*) >= 3 ORDER BY MIN(created_at), clan`, [await packCardIds()]);
         _packs = { at: Date.now(), list: rows.map(r => r.clan) };
     } catch (err) {
         console.error('[Shop] Could not list packs:', err.message);

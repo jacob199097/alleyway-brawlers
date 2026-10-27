@@ -6,7 +6,7 @@
 import assert from 'node:assert';
 import { DuelState, choose, cpuSetup } from './DuelAI.js';
 import { CARD_CATALOG } from '../cards.js';
-import { BOSSES, bossSetup, turfRules } from '../turf.js';
+import { BOSSES, bossSetup, turfRules, prizeLine, prizeCardIds } from '../turf.js';
 
 const SEATS = ['p1', 'p2', 'boss'];
 const rules = (extra = {}) => ({
@@ -125,6 +125,13 @@ assert.ok(st.sides.p1.out, 'a player with an empty deck is out');
 
 // The real bosses (godot/data/bosses.json): every level's deck is a full deck of real cards, and two
 // normal CPUs can play it through. "node shared/duel/turf.test.mjs --games 20" shows how each one does.
+// Prizes: a Striver comes with every level it promotes to, and no boss plays a prize
+for (const boss of BOSSES) {
+    const line = prizeLine(boss.prize);
+    assert.ok(line.length >= 1 && line[0] === boss.prize, `${boss.id}: its prize line starts with the prize`);
+    for (const id of line.slice(0, -1)) assert.ok(line.includes(CARD_CATALOG[id].promotesTo), `${boss.id}: ${id} promotes within the line`);
+}
+assert.ok(prizeCardIds().size >= BOSSES.length, 'every boss has its own prize');
 const games = Number(process.argv[process.argv.indexOf('--games') + 1]) || 2;
 const clans = ['nebula', 'militia', 'wildcard', 'underworld'];
 for (const boss of BOSSES) {

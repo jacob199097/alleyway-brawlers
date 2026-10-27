@@ -28,6 +28,18 @@ async function gameCardIds() {
     return _gameIds;
 }
 
+let _packIds = null;
+/** The cards packs and crafting can give: every card in the game but the Turf Defense prizes
+ *  (shared/turf.js prizeCardIds), which only a boss gives. */
+async function packCardIds() {
+    if (!_packIds) {
+        const { prizeCardIds } = await import('../../shared/turf.js');
+        const prizes = prizeCardIds();
+        _packIds = (await gameCardIds()).filter(id => !prizes.has(id));
+    }
+    return _packIds;
+}
+
 const PACK_COST = 200;            // karat per pack
 const PACK_COST_CONTRABAND = 100; // contraband per pack
 const CARDS_PER_PACK = 3;
@@ -60,7 +72,7 @@ function weightedPick(table) {
 async function drawPack(clan, client) {
     const selected = [];
     const usedIds  = new Set();
-    const inGame   = await gameCardIds();
+    const inGame   = await packCardIds();   // (not the bosses' prizes)
 
     for (let slot = 0; slot < CARDS_PER_PACK; slot++) {
         const table    = WEIGHT_TABLES[SLOT_TABLES[slot]];
@@ -206,7 +218,7 @@ async function openPack(playerId, packType, currency = 'karat') {
              FROM cards c
              LEFT JOIN player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1 AND pi.quantity > 0
              WHERE c.clan = $2 AND c.art_url = ANY($3)`,
-            [playerId, packType, await gameCardIds()]
+            [playerId, packType, await packCardIds()]
         );
 
         await bump(client, playerId, 'packs', 1);
@@ -303,4 +315,4 @@ function packOdds() {
     return out;
 }
 
-module.exports = { openPack, buyPack, gameCardIds, packOdds };
+module.exports = { openPack, buyPack, gameCardIds, packCardIds, packOdds };

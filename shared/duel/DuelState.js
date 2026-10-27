@@ -525,7 +525,7 @@ export class DuelState {
         switch (String(e.do ?? '')) {
             case 'draw': case 'loot': return s.deck.length > 0;
             case 'search': return s.deck.some(mine);
-            case 'recover': return s.gutter.some(mine);
+            case 'recover': return s.gutter.some(x => !x.token && mine(x));   // (a token has no hand to go to)
             case 'revive': return this._roomFor(side) && (e.from === 'foe' ? foes.some(x => x.gutter.some(mine)) : s.gutter.some(mine));
             case 'exile_gutter': return foes.some(x => x.gutter.length > 0);
             case 'call': return this._roomFor(side) && s.deck.some(mine);
@@ -875,7 +875,7 @@ export class DuelState {
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
-            if (!t.token) this.sides[own].gutter.push(t);   // (tokens vanish)
+            if (!t.token || DuelState.remains(t)) this.sides[own].gutter.push(t);   // (tokens vanish, unless REMAINS)
             const ev = { side, slot: slot_, card: clone(t), for: clone(c) };
             if (!DuelState.needsTribute(c)) ev.replace = true;
             this._emit('tribute', ev);
@@ -1353,6 +1353,11 @@ export class DuelState {
         return 'downed';
     }
 
+    /** REMAINS (a passive printed on a token): KO'd or sacrificed, it goes to the Gutter instead of vanishing. */
+    static remains(c) {
+        return !!c && (c.effects || []).some(e => e && e.when === 'passive' && String(e.do ?? '') === 'remains');
+    }
+
     _ko(side, slot) {
         const c = this.cardAt(side, slot);
         if (c == null) return;
@@ -1364,7 +1369,7 @@ export class DuelState {
         c.downed = false;
         c.mods = [];
         this._clearStatus(c);
-        if (!c.token) this.sides[own].gutter.push(c);   // a token vanishes
+        if (!c.token || DuelState.remains(c)) this.sides[own].gutter.push(c);   // a token vanishes (REMAINS: it goes to the Gutter)
         // UNDEAD: the first time it's KO'd, it rises at the end of the turn
         if (undead) c.rise_turn = this.turn;
         this._emit('ko', { side, slot, card: clone(c) });
@@ -1392,7 +1397,11 @@ export class DuelState {
 
     /** "When this card is milled or discarded": it just went from the deck or hand to its owner's Gutter. */
     _toGutterFx(side, c) {
-        if (this.winner === '' && c && !c.token && (c.effects || []).length) this._runFx(side, NO_SLOT, c, 'self_gutter');
+        if (this.winner === '' && c && !c.token && (c.effects || []).length) {
+            this._takeSelf = true;   // (its own "put it onto the field" may take it from the Gutter)
+            this._runFx(side, NO_SLOT, c, 'self_gutter');
+            this._takeSelf = false;
+        }
     }
 
     /** How many Hustles a side has played this turn. */
@@ -2073,7 +2082,7 @@ export class DuelState {
             t.downed = false;
             t.mods = [];
             this._clearStatus(t);
-            if (!t.token) this.sides[own].gutter.push(t);   // (tokens vanish)
+            if (!t.token || DuelState.remains(t)) this.sides[own].gutter.push(t);   // (tokens vanish, unless REMAINS)
             this._emit('tribute', { side, slot: l, card: clone(t), for: clone(card), replace: true });
             this._effect(side, c, `${c.name}: ${t.name} makes room for ${card.name}`, NO_SLOT);
             place(l);
@@ -3016,7 +3025,9 @@ export class DuelState {
     // shuffled then)
     _fxTake(side, c, e, pile, prompt, take, after = null, left = Math.max(1, toInt(e.amount ?? 1))) {
         const matches = [];
-        for (let i = pile.length - 1; i >= 0; i--) if (pile[i] !== c && this._fxKindOk(pile[i], e)) matches.push(pile[i]);
+        for (let i = pile.length - 1; i >= 0; i--) {
+            if ((pile[i] !== c || this._takeSelf) && this._fxKindOk(pile[i], e) && !(pile[i].token && String(e.do ?? '') === 'recover')) matches.push(pile[i]);
+        }
         if (!matches.length) {
             if (after && left < Math.max(1, toInt(e.amount ?? 1))) after();   // (found some before)
             return false;

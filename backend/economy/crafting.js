@@ -18,7 +18,7 @@
  */
 
 const { pool } = require('../db/pool');
-const { gameCardIds } = require('./packOpener');
+const { packCardIds } = require('./packOpener');
 const { bump } = require('./counters');
 
 const VALUES = {
@@ -66,6 +66,9 @@ async function summary(playerId) {
 /** Scrap `copies` of one card. → { dust, quantity, gained } */
 async function scrap(playerId, gameId, copies = 1) {
     if (!Number.isInteger(copies) || copies < 1 || copies > 99) throw new CraftError('Choose how many copies to scrap.');
+    if ((await import('../../shared/turf.js')).prizeCardIds().has(gameId)) {   // (it couldn't be won back)
+        throw new CraftError("A boss's prize can't be scrapped.");
+    }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -128,7 +131,11 @@ async function scrapExtras(playerId) {
 
 /** Craft one copy of a card. → { dust, quantity, spent } */
 async function craft(playerId, gameId) {
-    if (!(await gameCardIds()).includes(gameId)) throw new CraftError("That card can't be crafted.");
+    if (!(await packCardIds()).includes(gameId)) {   // (a boss's prize: only beating the boss gives it)
+        const { findBoss, BOSSES, prizeLine } = await import('../../shared/turf.js');
+        const boss = BOSSES.find(b => prizeLine(b.prize).includes(gameId));
+        throw new CraftError(boss ? `Only ${findBoss(boss.id).name} gives this card: beat it in Turf Defense.` : "That card can't be crafted.");
+    }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

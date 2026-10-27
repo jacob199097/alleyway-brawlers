@@ -187,6 +187,8 @@ const FX_SAMPLES := [
 	# BRITTLE: KO'd instead of going Down; an effect's Down sets off "when it's Downed"
 	[{"when": "passive", "do": "brittle"}, {"when": "deploy", "do": "down", "target": "enemy"}],
 	[{"when": "self_downed", "do": "draw", "amount": 1}, {"when": "deploy", "do": "shock", "target": "enemies", "amount": 800}],
+	# REMAINS: Skeleton tokens (BRITTLE, REMAINS) go to the Gutter when KO'd; recover never takes a token
+	[{"when": "deploy", "do": "token", "token": "card_unde_002", "amount": 2}, {"when": "turn_start", "do": "recover", "amount": 1}],
 ]
 
 

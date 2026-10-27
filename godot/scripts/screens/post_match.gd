@@ -557,7 +557,7 @@ func _prize_panel(id: String) -> Control:
 	info.add_child(n)
 	info.add_child(UI.label(str(UI.RARITY_LABEL.get(rarity, "")).to_upper(), 18, col, true))
 	info.add_child(_gap_box(10))
-	var note := UI.label("Added to your collection.\nOnly bosses drop it.", 17, UI.MUTED)
+	var note := UI.label("Added to your collection%s.\nOnly bosses drop it." % (",\nwith every level it promotes to" if card.get("promotesTo") is String else ""), 17, UI.MUTED)
 	info.add_child(note)
 	# Face down first; it shakes, flips over in a flash, and the light behind it comes up
 	tile.modulate.a = 0.0

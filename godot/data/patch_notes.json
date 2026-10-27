@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.85",
+        "notes": [
+            "Turf Defense prizes: beat a boss on Street the first time to win its own card. The Archon gives Herald of the Horizon, Graves gives Iron Lieutenant Kessler, Vale gives Lady Fortune, the House Dealer, and Veyr gives Herald of the Hollow Throne, with all three of its levels.",
+            "Boss prizes only come from bosses: they're never in packs and can't be crafted or scrapped. The Card Library shows which boss to beat.",
+            "New keyword: REMAINS. A token with REMAINS goes to the Gutter when it's KO'd or sacrificed, instead of vanishing. Skeleton tokens now have REMAINS, so they fill your Gutter."
+        ]
+    },
+    {
         "version": "0.9.84",
         "notes": [
             "Getting ready for Steam: the Steam version will sign you in with your Steam account, unlock achievements on Steam, and sell Contraband through the Steam wallet. Players with an email account can link Steam to it."

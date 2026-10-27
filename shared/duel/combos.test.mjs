@@ -113,6 +113,16 @@ const handBefore = st.sides.player.hand.length;
 st._discardAt('player', st.sides.player.hand.indexOf(tossed));
 assert.equal(st.sides.player.hand.length, handBefore, 'discarded: one card out, one drawn');
 
+// ...and a milled card can put itself onto the field ("The Gravedigger Herald")
+st = duel();
+const digger = unit(st, [{ when: 'self_gutter', do: 'revive', amount: 1, name: 'Gravedigger', position: 'def' }], 1200, 1000, { name: 'The Gravedigger Herald' });
+st.sides.player.deck.push(unit(st), digger);
+c = put(st, 'player', 0, unit(st));
+st._doFx('player', 0, c, { do: 'mill_self', amount: 1 });
+assert.ok(st.sides.player.field.includes(digger), 'it rose from the Gutter');
+assert.equal(digger.position, 'def');
+assert.ok(!st.sides.player.gutter.includes(digger));
+
 // ally_promoted: a Striver of yours PROMOTES
 st = duel();
 const fan = put(st, 'player', 0, unit(st, [{ when: 'ally_promoted', do: 'draw', amount: 1 }]));
@@ -134,6 +144,22 @@ assert.ok(!st._fxCond('player', 0, { if: 'morale_ahead' }, null));
 assert.ok(st._fxCond('opponent', 0, { if: 'morale_ahead' }, null));
 assert.equal(st._perCount('player', 0, { per: 'lost_1000' }), 2, '2500 lost: 2 thousands');
 
+// REMAINS: a token with it goes to the Gutter when it's KO'd (a plain token vanishes); never back to the hand
+{
+    const st = duel();
+    const g0 = st.sides.player.gutter.length;
+    const bones = put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'brittle' }, { when: 'passive', do: 'remains' }], 500, 0, { token: true }));
+    const plainTok = put(st, 'player', 2, unit(st, [], 500, 0, { token: true }));
+    st._ko('player', 1); st._ko('player', 2);
+    assert.equal(st.sides.player.gutter.length, g0 + 1, 'only the REMAINS token reaches the Gutter');
+    assert.ok(st.sides.player.gutter.includes(bones) && !st.sides.player.gutter.includes(plainTok));
+    const digger = unit(st, [{ when: 'deploy', do: 'recover', amount: 1 }]);
+    const hand0 = st.sides.player.hand.length;
+    st.sides.player.gutter = [bones];
+    assert.equal(st.fxCan('player', 0, digger, digger.effects[0]), false, "recover can't take a token");
+    st._doFx('player', 0, digger, digger.effects[0]);
+    assert.equal(st.sides.player.hand.length, hand0, 'the token stays in the Gutter');
+}
 // BRITTLE: KO'd instead of going Down, from a brawl or an effect (a token just vanishes)
 st = duel();
 const bones = put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'brittle' }], 500, 0, { token: true }));

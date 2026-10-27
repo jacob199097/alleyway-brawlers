@@ -97,19 +97,24 @@ async function resolve({ playerId, bossId, level, won, turns }) {
                     wins = wins + $6, losses = losses + $7
               WHERE id = $1 RETURNING karat`,
             [playerId, karat, newXp, newLevel, packs + lvUp.packsEarned, won ? 1 : 0, won ? 0 : 1]);
-        // The first clear of level 1: the boss's prize card
+        // The first clear of level 1: the boss's prize card (a Striver: with its higher levels, for the Hideout)
         let prize = null;
+        const prizeCards = [];
         if (first && lv.level === 1 && boss.prize) {
-            const { rows: [card] } = await client.query('SELECT id FROM cards WHERE art_url = $1', [boss.prize]);
-            if (card) {
+            const { prizeLine } = await turf;
+            for (const id of prizeLine(boss.prize)) {
+                const { rows: [card] } = await client.query('SELECT id FROM cards WHERE art_url = $1', [id]);
+                if (!card) {
+                    console.error(`[Turf] Prize card ${id} isn't in the cards table`);
+                    continue;
+                }
                 await client.query(
                     `INSERT INTO player_inventory (player_id, card_id, quantity) VALUES ($1, $2, 1)
                      ON CONFLICT (player_id, card_id) DO UPDATE SET quantity = player_inventory.quantity + 1`,
                     [playerId, card.id]);
-                prize = boss.prize;
-            } else {
-                console.error(`[Turf] Prize card ${boss.prize} isn't in the cards table`);
+                prizeCards.push(id);
             }
+            if (prizeCards.length) prize = boss.prize;
         }
         if (won) {
             await bump(client, playerId, 'turf_clears');
@@ -119,7 +124,7 @@ async function resolve({ playerId, bossId, level, won, turns }) {
         await client.query('COMMIT');
         return {
             outcome: won ? 'win' : 'loss', won, first, bossId, level: lv.level,
-            karatEarned: karat, xpEarned: xp, packs, prize,
+            karatEarned: karat, xpEarned: xp, packs, prize, prizeCards,
             newKarat: after.karat, newXp, newLevel, leveledUp: newLevel > p.level, ...lvUp,
             unlockedNext: first && !!bossLevel(boss, lv.level + 1),
         };

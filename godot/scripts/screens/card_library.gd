@@ -420,6 +420,22 @@ func _process(delta: float) -> void:
 
 # ── Crafting ─────────────────────────────────────────────────────────────────
 
+## The boss whose Turf Defense prize this card is (it or a lower level of it), or "".
+static func _prize_of(id: String) -> String:
+	var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/bosses.json"))
+	if not data is Dictionary:
+		return ""
+	for b in data.get("bosses", []):
+		var cur := str(b.get("prize", ""))
+		var seen := 0
+		while cur != "" and seen < 5:
+			if cur == id:
+				return str(b.get("short", b.get("name", "")))
+			var nxt = CardDB.get_card(cur).get("promotesTo")
+			cur = str(nxt) if nxt is String else ""
+			seen += 1
+	return ""
+
 func _build_craft_bar() -> void:
 	var p := UI.panel(UI.PURPLE, Color(0.06, 0.03, 0.09, 0.94))
 	p.position = Vector2(250, 992)
@@ -463,14 +479,20 @@ func _render_bar() -> void:
 		info.text = "%s  ·  %s  ·  OWNED %d / %d" % [str(_pick.get("name", "?")).to_upper(),
 			str(UI.RARITY_LABEL.get(int(_pick.get("rarity", 1)), "")).to_upper(), have, cap]
 		info.add_theme_color_override("font_color", UI.rarity_color(_pick.get("rarity")))
+		var boss := _prize_of(str(_pick.get("id", "")))
 		var scrap := UI.button("SCRAP  +%d" % int(v.get("scrap", 0)), _scrap, Vector2(200, 56), UI.RED)
-		scrap.disabled = have <= 0
-		scrap.tooltip_text = "Turn one copy into Dust." if have > 0 else "You don't own this card."
+		scrap.disabled = have <= 0 or boss != ""
+		scrap.tooltip_text = "A boss's prize can't be scrapped." if boss != "" else ("Turn one copy into Dust." if have > 0 else "You don't own this card.")
 		_bar.add_child(scrap)
-		var make := UI.button("CRAFT  −%d" % int(v.get("craft", 0)), _make, Vector2(200, 56), UI.GREEN)
-		make.disabled = have >= cap or int(_craft.get("dust", 0)) < int(v.get("craft", 0))
-		make.tooltip_text = "You have all a deck can use." if have >= cap else ("Not enough Dust." if make.disabled else "Make a copy from Dust.")
-		_bar.add_child(make)
+		if boss != "":   # (a Turf Defense prize: only beating its boss gives it)
+			var only := UI.label("BOSS PRIZE  ·  BEAT %s" % boss.to_upper(), 20, UI.GOLD, true)
+			only.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			_bar.add_child(only)
+		else:
+			var make := UI.button("CRAFT  −%d" % int(v.get("craft", 0)), _make, Vector2(200, 56), UI.GREEN)
+			make.disabled = have >= cap or int(_craft.get("dust", 0)) < int(v.get("craft", 0))
+			make.tooltip_text = "You have all a deck can use." if have >= cap else ("Not enough Dust." if make.disabled else "Make a copy from Dust.")
+			_bar.add_child(make)
 	var extras := int(_craft.get("extras", 0))
 	var all := UI.button("SCRAP EXTRAS  +%d" % int(_craft.get("extrasDust", 0)), _scrap_extras, Vector2(290, 56), UI.PURPLE)
 	all.disabled = extras <= 0

@@ -73,6 +73,7 @@ var seats: Array = ["player", "opponent"]   # turn order (FFA: p1, p2, ... by na
 var ffa := false             # 3-4 players
 var teams := {}              # Turf Defense: seat -> team (teammates aren't foes; see DuelState.js)
 var _healing := false        # "when you gain Morale" effects are running (they can't set themselves off)
+var _take_self := false      # a card just milled or discarded may take itself from the Gutter (_to_gutter_fx)
 var first_seat := "player"
 var places := {}             # FFA: side -> finishing place (1 = the winner)
 
@@ -567,8 +568,8 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return not s.deck.is_empty()
 		"search":
 			return s.deck.any(mine)
-		"recover":
-			return s.gutter.any(mine)
+		"recover":   # (a token has no hand to go to)
+			return s.gutter.any(func(x): return not x.get("token", false) and mine.call(x))
 		"revive":
 			if e.get("from", "") == "foe":
 				return _room_for(side) and foes.any(func(x): return x.gutter.any(mine))
@@ -1015,7 +1016,7 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 		t.downed = false
 		t.mods = []
 		_clear_status(t)
-		if not t.get("token", false):   # (tokens vanish)
+		if not t.get("token", false) or remains(t):   # (tokens vanish, unless REMAINS)
 			sides[own].gutter.append(t)
 		var ev := {"side": side, "slot": slot_, "card": t.duplicate(true), "for": c.duplicate(true)}
 		if not needs_tribute(c):
@@ -1531,6 +1532,16 @@ func _defeat(side: String, slot: int) -> String:
 ## A character goes Down, from a lost brawl or an effect: it drops to DEF, and its "when it's Downed"
 ## and its allies' "when another of your characters is Downed" effects happen. BRITTLE (Card Forge
 ## passive): it's KO'd instead (tokens like Skeletons don't clog the field). -> "ko" | "downed"
+## REMAINS (a passive printed on a token): KO'd or sacrificed, it goes to the Gutter instead of vanishing.
+static func remains(c) -> bool:
+	if not c is Dictionary:
+		return false
+	for e in c.get("effects", []):
+		if e is Dictionary and str(e.get("when", "")) == "passive" and str(e.get("do", "")) == "remains":
+			return true
+	return false
+
+
 func _go_down(side: String, slot: int, c: Dictionary) -> String:
 	if not _passive(side, slot, c, "brittle").is_empty():
 		_ko(side, slot)
@@ -1556,7 +1567,7 @@ func _ko(side: String, slot: int) -> void:
 	c.downed = false
 	c.mods = []
 	_clear_status(c)
-	if not c.get("token", false):   # a token vanishes
+	if not c.get("token", false) or remains(c):   # a token vanishes (REMAINS: it goes to the Gutter)
 		sides[own].gutter.append(c)
 	# UNDEAD: the first time it's KO'd, it rises at the end of the turn
 	if undead:
@@ -1592,7 +1603,9 @@ func _ally_downed(side: String, slot: int, c: Dictionary) -> void:
 ## "When this card is milled or discarded": it just went from the deck or hand to its owner's Gutter.
 func _to_gutter_fx(side: String, c) -> void:
 	if winner == "" and c is Dictionary and not c.get("token", false) and not c.get("effects", []).is_empty():
+		_take_self = true   # (its own "put it onto the field" may take it from the Gutter)
 		_run_fx(side, NO_SLOT, c, "self_gutter")
+		_take_self = false
 
 
 ## How many Hustles a side has played this turn.
@@ -2377,7 +2390,7 @@ func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable
 			t.downed = false
 			t.mods = []
 			_clear_status(t)
-			if not t.get("token", false):   # (tokens vanish)
+			if not t.get("token", false) or remains(t):   # (tokens vanish, unless REMAINS)
 				sides[own].gutter.append(t)
 			_emit("tribute", {"side": side, "slot": l, "card": t.duplicate(true), "for": card.duplicate(true), "replace": true})
 			_effect(side, c, "%s: %s makes room for %s" % [c.name, t.name, card.name], NO_SLOT)
@@ -3424,7 +3437,8 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 		left = amount
 	var matches: Array = []
 	for i in range(pile.size() - 1, -1, -1):
-		if not is_same(pile[i], c) and _fx_kind_ok(pile[i], e):
+		if (not is_same(pile[i], c) or _take_self) and _fx_kind_ok(pile[i], e) \
+				and not (pile[i].get("token", false) and str(e.get("do", "")) == "recover"):
 			matches.append(pile[i])
 	if matches.is_empty():
 		if after.is_valid() and left < amount:   # (found some before)
