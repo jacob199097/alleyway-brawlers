@@ -21,28 +21,31 @@ const CHARACTER_TARGET = 28;   // a built starter fills up to this many characte
 // Hand-picked starters. Used while every card in the recipe exists; otherwise the clan gets a
 // starter built from its cards.
 const CURATED = {
-    // Every Nebula base card: 30 characters, 10 Hustles/Ambushes. Rouke is strong, so he's in once,
-    // for a Kade and a Lyra Quell; Nix came in for a Marty and a Sprintz: still even with the Militia starter.
+    // 28 characters, 12 Hustles/Ambushes. Retuned 2026-10-27 (tools/deck_test.mjs, starter vs starter):
+    // the old list (Damian, Scout-157 x2, Skully, Ajax, Sarah) won 26% against Militia and 36% overall.
+    // Board control against wide decks (Hull Breach x3, Singularity, Clay x2) and the newer Alysse and
+    // Tycho made it 43% / 53% Underworld / 60% Wildcard, 52% overall. Skully and Atlas are left for packs.
     nebula: {
         // (how it plays, shown when new players choose a clan)
         blurb: 'Control the board: freeze enemies in STASIS, force them into DEF and win with a few strong fighters.',
         leader: 'card_nebu_009',   // Archon of Nebula
         deck: [
-            // Strivers: Kade, Lyra Quell, Marty, Skully, Rouke, Nix
-            ['card_nebu_001', 2], ['card_nebu_012', 2], ['card_nebu_030', 2], ['card_nebu_020', 2],
-            ['card_nebu_015', 1], ['card_nebu_004', 2],
-            // Characters
-            ['card_nebu_011', 2], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_023', 2],
-            ['card_nebu_028', 2], ['card_nebu_034', 2], ['card_nebu_036', 2], ['card_nebu_037', 1],
-            ['card_nebu_033', 1], ['card_nebu_025', 1], ['card_nebu_035', 1], ['card_nebu_024', 1],
-            // Hustles and Ambushes
-            ['card_nebu_007', 3], ['card_nebu_010', 2], ['card_nebu_008', 1], ['card_nebu_026', 1],
-            ['card_nebu_029', 1], ['card_nebu_038', 1], ['card_nebu_027', 1],
+            // Strivers: Kade, Lyra Quell, Marty, Rouke, Nix
+            ['card_nebu_001', 2], ['card_nebu_012', 3], ['card_nebu_030', 2], ['card_nebu_015', 1], ['card_nebu_004', 2],
+            // Characters: Sprintz, Megan, Marty & Mike, Dr. Orion Krell, Adira, Alysse, Tycho, Scout-157;
+            // Heavies Jax, DS-022, Clay
+            ['card_nebu_011', 2], ['card_nebu_018', 2], ['card_nebu_019', 2], ['card_nebu_037', 1], ['card_nebu_033', 1],
+            ['card_nebu_042', 2], ['card_nebu_045', 2], ['card_nebu_034', 1],
+            ['card_nebu_025', 1], ['card_nebu_035', 2], ['card_nebu_024', 2],
+            // Hustles: Supernova Run, Event Horizon, Orbital Strike, Singularity;
+            // Ambushes: Gravity Well, Dark Matter, Hull Breach
+            ['card_nebu_010', 2], ['card_nebu_008', 1], ['card_nebu_027', 1], ['card_nebu_043', 1],
+            ['card_nebu_007', 3], ['card_nebu_026', 1], ['card_nebu_029', 3],
         ],
         hideout: [
             ['card_nebu_002', 3], ['card_nebu_003', 3], ['card_nebu_013', 3], ['card_nebu_014', 3],
-            ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_021', 3], ['card_nebu_022', 3],
-            ['card_nebu_016', 3], ['card_nebu_017', 3], ['card_nebu_005', 3], ['card_nebu_006', 3],
+            ['card_nebu_031', 3], ['card_nebu_032', 3], ['card_nebu_016', 3], ['card_nebu_017', 3],
+            ['card_nebu_005', 3], ['card_nebu_006', 3],
         ],
     },
     // Every Militia base card: 31 characters, 9 Hustles/Ambushes. Even with the Nebula starter
