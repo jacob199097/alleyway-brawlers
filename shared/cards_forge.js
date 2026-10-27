@@ -5167,7 +5167,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_016",
         "code": "UNDE-016",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +800 ATK and +400 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+        "effectText": "This card gains +700 ATK and +300 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
         "effects": [
             {
                 "when": "passive",
@@ -5176,8 +5176,8 @@ export const FORGE_CARDS = {
                 "per": "gutter",
                 "per_clan": "underworld",
                 "per_kind": "gang_member",
-                "atk": 800,
-                "def": 400
+                "atk": 700,
+                "def": 300
             },
             {
                 "when": "down",
