@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILES = ['migrate_progression.sql', 'migrate_retire_classic_back.sql', 'migrate_level_rewards.sql', 'migrate_card_avatars.sql', 'migrate_mastery_challenge.sql', 'migrate_last_played.sql', 'migrate_daily.sql', 'migrate_deck_hideout.sql', 'migrate_account_deletion.sql', 'migrate_turf.sql', 'migrate_steam.sql'];
+const FILES = ['migrate_progression.sql', 'migrate_retire_classic_back.sql', 'migrate_level_rewards.sql', 'migrate_card_avatars.sql', 'migrate_mastery_challenge.sql', 'migrate_last_played.sql', 'migrate_daily.sql', 'migrate_deck_hideout.sql', 'migrate_account_deletion.sql', 'migrate_turf.sql', 'migrate_steam.sql', 'migrate_avatar_gifts.sql'];
 
 async function migrate(pool) {
     for (const f of FILES) {

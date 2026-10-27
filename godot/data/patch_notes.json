@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.87",
+        "notes": [
+            "The Choose Your Clan screen: each clan's description and card count now fit inside its panel.",
+            "New Nebula and Wildcard starter decks, using newer cards: all four starters are now about even with each other. Existing Nebula and Wildcard Starter decks were updated to match, and any cards they needed were added to your collection."
+        ]
+    },
+    {
         "version": "0.9.86",
         "notes": [
             "Cards with \"?\" ATK and DEF (like Malachar) keep the stats their own ability gives them while they're Downed, instead of dropping to 0. Their other abilities still stop while Downed, and SILENCE still takes everything."

@@ -219,8 +219,11 @@ async function cosmetics(playerId, defs, unlocked) {
     for (let n = 5; n <= (lv?.level || 1); n += 5) levelAvatars.push(`level:${n}`);
     const { freeAvatars } = await import('../../shared/clans.js');
     const ms = await mastery.cosmetics(playerId);   // clan mastery pictures and titles
+    // Pictures given to this player by hand (scripts/give_avatar.js)
+    const { rows: gifts } = await pool.query('SELECT avatar FROM player_avatar_gifts WHERE player_id = $1 ORDER BY granted_at', [playerId]);
     return {
-        avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(Boolean), ...ms.avatars])],
+        avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(Boolean), ...ms.avatars,
+            ...gifts.map(g => g.avatar)])],
         titles: [...got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })), ...ms.titles],
         backs: got.map(a => a.reward.back).filter(Boolean),
     };

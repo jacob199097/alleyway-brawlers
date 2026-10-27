@@ -163,6 +163,12 @@ async function rejects(promise, pattern) {
     const pic = nebula.rewards.find(r => r.level === 3).reward.avatar;
     assert.ok(pic && (await achievements.cosmetics(id)).avatars.includes(pic), 'the level 3 picture can be worn');
     assert.deepEqual(await achievements.equip(id, { avatar: pic }), { ok: true });
+    // A picture given by hand (scripts/give_avatar.js) can be worn; before that it can't
+    const gift = 'card:card_nebu_042';
+    assert.ok((await achievements.equip(id, { avatar: gift })).error, 'not given yet');
+    await q('INSERT INTO player_avatar_gifts (player_id, avatar) VALUES ($1, $2)', [id, gift]);
+    assert.deepEqual(await achievements.equip(id, { avatar: gift }), { ok: true });
+    await achievements.equip(id, { avatar: pic });
     // ...and the post-match screen's view of it
     const prog = await mastery.progress(id, 'nebula', 'win');
     assert.equal(prog.xp, 1000);
@@ -191,7 +197,8 @@ async function rejects(promise, pattern) {
     assert.ok(pack.cardsReceived.every(c => c.clan === 'militia'), 'a Militia pack has only Militia cards');
     assert.ok(pack.cardsReceived.every(c => c.isNew && c.owned === 1), 'all new to a new player');
     assert.equal(pack.collection.owned, 3);
-    assert.equal(pack.collection.total, Object.values(CARD_CATALOG).filter(c => c.clan === 'militia' && !c.token).length);
+    const prizes = (await import('../../shared/turf.js')).prizeCardIds();   // (bosses' prizes aren't in packs)
+    assert.equal(pack.collection.total, Object.values(CARD_CATALOG).filter(c => c.clan === 'militia' && !c.token && !prizes.has(c.id)).length);
     assert.equal(pack.newKarat, 200);
 
     // Free-for-all places: 1st a win, 2nd between a win and a loss, the rest a loss

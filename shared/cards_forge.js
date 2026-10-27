@@ -4507,7 +4507,7 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "attack": 4500,
-        "defense": 5000,
+        "defense": 4500,
         "level": 1,
         "subtype": "heavy",
         "promotesTo": null

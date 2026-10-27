@@ -33,8 +33,8 @@ func _ready() -> void:
 	var two := clans.size() > 4
 	var w := minf(600.0, 1820.0 / maxi(1, per_row) - 40.0)
 	var gap := w + 40.0
-	var h := 380.0 if two else 680.0
-	var art_h := 236.0 if two else 448.0
+	var h := 380.0 if two else 780.0   # (the rows end at 950, above CONFIRM)
+	var art_h := 160.0 if two else 400.0
 	for i in clans.size():
 		var c := _clan_info(clans[i])
 		var row := i / per_row
@@ -47,17 +47,28 @@ func _ready() -> void:
 		var art := UI.texture_rect(c.image, Vector2(w - 40, art_h))
 		art.position = Vector2(20, 20)
 		tile.add_child(art)
-		var name := UI.label(c.label, int(minf(48.0, w / 6.0)), c.color, true)
+		var name := UI.label(c.label, int(minf(32.0 if two else 48.0, w / 6.0)), c.color, true)
 		name.size = Vector2(w, 60)
-		name.position = Vector2(0, art_h + 36)
+		name.position = Vector2(0, art_h + (20 if two else 30))
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tile.add_child(name)
+		# The blurb fills the space between the name and the card count, smaller if it has to
+		var top := art_h + (68 if two else 98)
+		var bottom := h - (34 if two else 48)
 		var blurb := UI.label(c.blurb, 17 if two else 22, Color(0.85, 0.85, 0.9))
 		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
-		blurb.size = Vector2(w - 40, 120)
-		blurb.position = Vector2(20, art_h + (92 if two else 112))
+		blurb.size = Vector2(w - 40, bottom - top - 8)
+		blurb.position = Vector2(20, top)
 		blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		blurb.clip_text = true
 		tile.add_child(blurb)
+		_fit(blurb, 17 if two else 22, 12)
+		var count := UI.label(c.count, 14 if two else 18, UI.MUTED)
+		count.size = Vector2(w - 20, 28)
+		count.position = Vector2(10, bottom)
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count.clip_text = true
+		tile.add_child(count)
 		# In its clan's colour: edged on hover, glowing once chosen
 		var col: Color = c.color
 		tile.add_theme_stylebox_override("normal", UI.box(Color(0.04, 0.04, 0.1, 0.82), Color(col, 0.35), 2, 14))
@@ -84,9 +95,18 @@ func _clan_info(c: Dictionary) -> Dictionary:
 		image = CardDB.art(str(c.leader))
 	if image == null:
 		image = CardDB.back(str(c.get("tag", "")))
+	var blurb := str(c.blurb) if str(c.get("blurb", "")) != "" else str(known.get("blurb", ""))
 	return {"id": id, "label": str(c.get("name", id)).to_upper(), "color": CardDB.clan_color(str(c.get("color", "#b388ff"))),
-		"image": image, "blurb": "%s%d cards · 40-card starter deck included" % [
-			str(c.blurb) + "\n\n" if str(c.get("blurb", "")) != "" else str(known.blurb) + "\n" if known.has("blurb") else "", int(c.get("cards", 0))]}
+		"image": image, "blurb": blurb, "count": "%d cards · 40-card starter deck" % int(c.get("cards", 0))}
+
+
+## Shrinks a wrapped label's font (from `size`, down to `smallest`) until its text fits its height.
+## (UI.label sizes its text with LabelSettings, which wins over a theme override)
+func _fit(l: Label, size: int, smallest: int) -> void:
+	l.label_settings.font_size = size
+	while size > smallest and l.get_visible_line_count() < l.get_line_count():
+		size -= 1
+		l.label_settings.font_size = size
 
 
 func _select(id: String) -> void:
