@@ -1940,10 +1940,12 @@ export class DuelState {
         // A Downed character's effects don't work, except as it goes Down or is KO'd, and the ones
         // that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
         const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
+        // ...but a "?" card keeps the ATK and DEF its own passive gives it (Downed isn't SILENCE)
+        const ownStats = (e) => when === 'passive' && !!c.varStats && String(e.do ?? '') === 'buff' && ['', 'self'].includes(String(e.target ?? ''));
         // "*": all of them (Hustles, Ambushes)
         return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
             && !(silenced && String(e.do ?? '') !== 'promote')
-            && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self')));
+            && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self') && !ownStats(e)));
     }
 
     /** A sprung Card Forge Ambush (same as _spring_fx in duel_state.gd). */

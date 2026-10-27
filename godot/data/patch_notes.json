@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.86",
+        "notes": [
+            "Cards with \"?\" ATK and DEF (like Malachar) keep the stats their own ability gives them while they're Downed, instead of dropping to 0. Their other abilities still stop while Downed, and SILENCE still takes everything."
+        ]
+    },
+    {
         "version": "0.9.85",
         "notes": [
             "Turf Defense prizes: beat a boss on Street the first time to win its own card. The Archon gives Herald of the Horizon, Graves gives Iron Lieutenant Kessler, Vale gives Lady Fortune, the House Dealer, and Veyr gives Herald of the Hollow Throne, with all three of its levels.",

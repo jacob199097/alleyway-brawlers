@@ -2232,7 +2232,10 @@ func _fx(c, when: String) -> Array:
 		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
 			if silenced and str(e.get("do", "")) != "promote":
 				continue
-			if downed and not (str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self"):
+			# (...but a "?" card keeps the ATK and DEF its own passive gives it: Downed isn't SILENCE)
+			var own_stats: bool = when == "passive" and c.get("varStats", false) and str(e.get("do", "")) == "buff" \
+				and str(e.get("target", "")) in ["", "self"]
+			if downed and not (str(e.get("do", "")) == "stand" and str(e.get("target", "")) == "self") and not own_stats:
 				continue
 			out.append(e)
 	return out

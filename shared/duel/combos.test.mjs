@@ -160,6 +160,20 @@ assert.equal(st._perCount('player', 0, { per: 'lost_1000' }), 2, '2500 lost: 2 t
     st._doFx('player', 0, digger, digger.effects[0]);
     assert.equal(st.sides.player.hand.length, hand0, 'the token stays in the Gutter');
 }
+// A "?" card keeps the stats its own passive gives it while Downed; other passives stop; SILENCE takes all
+{
+    const st = duel();
+    st.sides.player.gutter = [unit(st), unit(st), unit(st)];
+    const q = put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'buff', target: 'self', per: 'gutter', atk: 400, def: 250 }], 0, 0, { varStats: true }));
+    const plain = put(st, 'player', 2, unit(st, [{ when: 'passive', do: 'buff', target: 'self', atk: 300 }], 1000, 1000));
+    assert.equal(q.attack, 1200);
+    q.downed = true; plain.downed = true; st._recalc();
+    assert.equal(q.attack, 1200, '"?" stats stay while Downed');
+    assert.equal(q.defense, 750);
+    assert.equal(plain.attack, 1000, "a normal card's passive buff stops while Downed");
+    q.silence_until = st.turn; st._recalc();
+    assert.equal(q.attack, 0, 'SILENCE still takes them');
+}
 // BRITTLE: KO'd instead of going Down, from a brawl or an effect (a token just vanishes)
 st = duel();
 const bones = put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'brittle' }], 500, 0, { token: true }));
