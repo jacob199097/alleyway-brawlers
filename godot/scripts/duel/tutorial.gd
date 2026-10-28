@@ -304,15 +304,21 @@ func _panel_rect(side: String) -> Rect2:
 
 # ── Gating and the opponent's script ─────────────────────────────────────────
 
-## May the player make this move right now?
+## May the player make this move right now? (A refused move nudges the coach panel.)
 func allow(a: Dictionary) -> bool:
-	if not active:
-		return true
-	var st: Dictionary = steps[index]
-	if st.type == DO and st.allow.call(a):
+	if permits(a):
 		return true
 	nudge()
 	return false
+
+
+## Would the coach let this move through? No nudge: the duel screen asks this to offer only the
+## move the step is about (its menus, lanes, targets and END TURN button).
+func permits(a: Dictionary) -> bool:
+	if not active:
+		return true
+	var st: Dictionary = steps[index]
+	return st.type == DO and st.allow.call(a)
 
 
 func nudge() -> void:
@@ -420,6 +426,7 @@ func update() -> void:
 		st = steps[index]
 	if _shown != index:
 		_shown = index
+		screen._update_next_btn()   # (END TURN is only lit when it's the move)
 		_body.text = st.text
 		_step_label.text = "%d / %d" % [index + 1, steps.size()]
 		_next.visible = st.type == INFO

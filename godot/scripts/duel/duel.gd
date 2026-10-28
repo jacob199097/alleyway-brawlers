@@ -5634,7 +5634,7 @@ func _update_next_btn() -> void:
 		b.text = "WATCHING" if _spectating else "REPLAY"
 		return
 	var mine := duel.active == "player" and not "player" in ai_sides
-	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting
+	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting or not _tut_ok({"kind": "next"})
 	if b.disabled:
 		_nudge_next(false)
 	if _out.has("player"):
@@ -6322,25 +6322,25 @@ func _on_field_click(slot: int) -> void:
 	var v: CardView = field.player[slot]
 	var c := v.card
 	var opts: Array = []
-	var can_attack := duel.can_attack_with("player", slot)
+	var can_attack := duel.can_attack_with("player", slot) and _tut_attack_ok(slot)
 	if can_attack:
 		opts.append(["ATTACK", true, _begin_target.bind(slot)])
-	if duel.can_change_position("player", slot):
+	if duel.can_change_position("player", slot) and _tut_ok({"kind": "position", "slot": slot}):
 		var to_def: bool = duel.card_at("player", slot).position == "atk"
 		opts.append(["CHANGE TO DEF" if to_def else "CHANGE TO ATK  (FLIP FACE-UP)" if duel.card_at("player", slot).face_down else "CHANGE TO ATK",
 			true, _field_action.bind({"kind": "position", "slot": slot})])
-	if duel.can_promote("player", slot):
+	if duel.can_promote("player", slot) and _tut_ok({"kind": "promote", "slot": slot}):
 		opts.append(["PROMOTE", true, _field_action.bind({"kind": "promote", "slot": slot})])
-	if duel.can_use_ability("player", slot):
+	if duel.can_use_ability("player", slot) and _tut_ok({"kind": "ability", "slot": slot}):
 		opts.append(["BUFF A LIONS ALLY  (+400 / +400)", true, _field_action.bind({"kind": "ability", "slot": slot})])
-	var abilities: Array = duel.activations("player", slot)
+	var abilities: Array = duel.activations("player", slot) if _tut_ok({"kind": "activate", "slot": slot}) else []
 	for k in abilities:
 		opts.append([_activate_label(slot, k, abilities.size() > 1), true, _field_action.bind({"kind": "activate", "slot": slot, "fx": k})])
-	if duel.can_flip("player", slot):   # a Continuous Ambush set on an earlier turn: turn it face-up now
+	if duel.can_flip("player", slot) and _tut_ok({"kind": "flip", "slot": slot}):   # a Continuous Ambush set on an earlier turn: turn it face-up now
 		opts.append(["FLIP %s FACE-UP" % str(c.get("name", "")).to_upper(), true, _field_action.bind({"kind": "flip", "slot": slot})])
 	var reason := ""
 	var set_card = duel.card_at("player", slot)
-	if set_card != null and duel.set_hustle_slot("player", set_card) == slot:
+	if set_card != null and duel.set_hustle_slot("player", set_card) == slot and _tut_ok({"kind": "hustle", "uid": int(set_card.uid)}):
 		# A Hustle you set face-down: activate it, paying for it now
 		var cost: int = duel.cost_of("player", set_card)
 		var ok: bool = duel.can_hustle("player", set_card)
@@ -6352,6 +6352,8 @@ func _on_field_click(slot: int) -> void:
 		opts.append(["ACTIVATE %s%s" % [str(set_card.name).to_upper(), "  (%d AUTHORITY)" % cost if cost > 0 else ""], ok,
 			_field_action.bind({"kind": "hustle", "uid": int(set_card.uid)})])
 	if opts.is_empty():
+		if _tutorial and _tutorial.active:
+			_tutorial.nudge()   # (not the move the coach is asking for)
 		return
 	if opts.size() == 1 and can_attack:
 		_begin_target(slot)
@@ -6362,6 +6364,38 @@ func _on_field_click(slot: int) -> void:
 	v.glow = 1.2
 	opts.append(["CANCEL", true, _cancel_and_refresh])
 	_menu = _make_menu(opts, reason, v.home + Vector2(0, -CARD.y / 2 - 12))
+
+
+# ── The tutorial's strict steps (scripts/duel/tutorial.gd): only the asked-for move is offered ──
+
+## Outside the tutorial's lessons, everything is.
+func _tut_ok(a: Dictionary) -> bool:
+	return _tutorial == null or _tutorial.permits(a)
+
+
+## A hand card the coach is asking for (in this way: "summon_atk", "summon_def" or "set").
+func _tut_place_ok(uid: int, kind: String) -> bool:
+	if _tutorial == null or not _tutorial.active:
+		return true
+	for slot in 10:
+		var a := {"kind": "set", "uid": uid, "slot": slot} if kind == "set" \
+			else {"kind": "summon", "uid": uid, "slot": slot, "position": "def" if kind == "summon_def" else "atk"}
+		if _tutorial.permits(a):
+			return true
+	return false
+
+
+## Any move at all with this hand card.
+func _tut_card_ok(uid: int) -> bool:
+	return _tut_place_ok(uid, "summon_atk") or _tut_place_ok(uid, "summon_def") or _tut_place_ok(uid, "set") \
+		or _tut_ok({"kind": "hustle", "uid": uid})
+
+
+## An attack from this lane the coach is asking for.
+func _tut_attack_ok(slot: int) -> bool:
+	if _tutorial == null or not _tutorial.active:
+		return true
+	return duel.attack_targets("player").any(func(t): return _tutorial.permits({"kind": "attack", "from": slot, "target": t}))
 
 
 func _field_action(action: Dictionary) -> void:
@@ -6379,7 +6413,7 @@ func _begin_target(slot: int) -> void:
 	if _ffa:
 		_begin_target_ffa(slot)
 		return
-	var targets := duel.attack_targets("player")
+	var targets: Array = duel.attack_targets("player").filter(func(t): return _tut_ok({"kind": "attack", "from": slot, "target": t}))
 	for t in targets:
 		if t >= 0:
 			_valid["opponent:%d" % t] = RED
@@ -6402,6 +6436,9 @@ func _begin_target(slot: int) -> void:
 func _open_hand_menu(v: CardView) -> void:
 	if not duel.can_deploy_now("player"):
 		return
+	if not _tut_card_ok(v.uid):
+		_tutorial.nudge()   # (the tutorial isn't asking for this card)
+		return
 	_clear_highlights()
 	_selected = v
 	_mode = "menu"
@@ -6421,22 +6458,27 @@ func _open_hand_menu(v: CardView) -> void:
 			if ok == false and reason == "":
 				reason = ("Needs %d of your characters to sacrifice" % need if need > 1 else "Needs one of your characters to sacrifice") if heavy else "No free front-row slot"
 			var cost := "  ·  SACRIFICE %d" % need if heavy else ""
-			opts.append(["SUMMON  ·  ATK" + cost, ok, func(): _begin_place(v, "summon_atk")])
-			opts.append(["SUMMON  ·  DEF" + cost, ok, func(): _begin_place(v, "summon_def")])
+			if _tut_place_ok(v.uid, "summon_atk"):
+				opts.append(["SUMMON  ·  ATK" + cost, ok, func(): _begin_place(v, "summon_atk")])
+			if _tut_place_ok(v.uid, "summon_def"):
+				opts.append(["SUMMON  ·  DEF" + cost, ok, func(): _begin_place(v, "summon_def")])
 		"ambush":
 			var ok := _playable(c)
 			if ok == false and reason == "":
 				reason = "No free back-row slot"
-			opts.append(["SET AMBUSH", ok, func(): _begin_place(v, "set")])
+			if _tut_place_ok(v.uid, "set"):
+				opts.append(["SET AMBUSH", ok, func(): _begin_place(v, "set")])
 		"hustle":
 			var ok := duel.can_hustle("player", c)
 			if ok == false and reason == "":
 				reason = "Requirements not met"
-			opts.append(["ACTIVATE", ok, func():
-				_cancel_interaction()
-				_act("player", {"kind": "hustle", "uid": v.uid})])
+			if _tut_ok({"kind": "hustle", "uid": v.uid}):
+				opts.append(["ACTIVATE", ok, func():
+					_cancel_interaction()
+					_act("player", {"kind": "hustle", "uid": v.uid})])
 			# Or face-down in the back row, to activate when you choose (paid for then)
-			opts.append(["SET FACE DOWN", _settable(c), func(): _begin_place(v, "set")])
+			if _tut_place_ok(v.uid, "set"):
+				opts.append(["SET FACE DOWN", _settable(c), func(): _begin_place(v, "set")])
 	opts.append(["CANCEL", true, _cancel_and_refresh])
 	_menu = _make_menu(opts, reason, Vector2(v.home.x, HAND_LIFT_Y - CARD.y * HOVER_SCALE / 2 - 12))
 
@@ -6535,6 +6577,10 @@ func _start_drag() -> void:
 	var v := _press
 	if not is_instance_valid(v) or not (_playable(v.card) or _settable(v.card)):
 		_press = null
+		return
+	if not _tut_card_ok(v.uid):
+		_press = null
+		_tutorial.nudge()   # (the tutorial isn't asking for this card)
 		return
 	_cancel_interaction()
 	_press = v
@@ -6645,17 +6691,19 @@ func _ask_position(v: CardView, slot: int) -> void:
 		_player_ready()
 	var over = duel.sides.player.field[slot]   # deployed over: it goes to the Gutter
 	var tributes: Array = [slot] if over != null else []
-	_menu = _make_menu([
-		["SUMMON · ATK", true, func():
+	var opts: Array = []
+	if _tut_place_ok(v.uid, "summon_atk"):
+		opts.append(["SUMMON · ATK", true, func():
 			_cancel_interaction()
 			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "atk", "tributes": tributes}):
-				put_back.call()],
-		["SUMMON · DEF", true, func():
+				put_back.call()])
+	if _tut_place_ok(v.uid, "summon_def"):
+		opts.append(["SUMMON · DEF", true, func():
 			_cancel_interaction()
 			if not _act("player", {"kind": "summon", "uid": v.uid, "slot": slot, "position": "def", "tributes": tributes}):
-				put_back.call()],
-		["CANCEL", true, put_back],
-	], "Replaces %s: it goes to the Gutter" % over.name if over != null else "", slot_pos("player", slot) + Vector2(0, -CARD.y / 2 - 12))
+				put_back.call()])
+	opts.append(["CANCEL", true, put_back])
+	_menu = _make_menu(opts, "Replaces %s: it goes to the Gutter" % over.name if over != null else "", slot_pos("player", slot) + Vector2(0, -CARD.y / 2 - 12))
 
 
 func _show_direct_button(slot: int) -> void:

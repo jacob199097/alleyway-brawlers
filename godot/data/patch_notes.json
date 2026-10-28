@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.89",
+        "notes": [
+            "The tutorial only lets you make the move it asks for: other cards stay in your hand, menus only show the asked-for choice (no DEF or face-down when it asks for ATK), only the right target lights up, and END TURN is greyed out until it is the step."
+        ]
+    },
+    {
         "version": "0.9.88",
         "notes": [
             "Turf Defense is harder: every boss has more Morale, more Authority and extra cards each turn, and plays smarter on Street. Hard and Nightmare are tougher too.",
