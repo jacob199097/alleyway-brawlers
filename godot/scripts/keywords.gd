@@ -27,6 +27,7 @@ const LIST := {
 	"TAX": [Color("ffb36b"), "TAX X: your opponent gets X less Authority on their next turn."],
 	"BRITTLE": [Color("e8dcc0"), "BRITTLE: when it would go Down (losing a brawl, or an effect), it's KO'd instead."],
 	"REMAINS": [Color("b9a98a"), "REMAINS: when this token is KO'd or sacrificed, it goes to the Gutter instead of vanishing."],
+	"MARKED": [Color("ff4d6d"), "MARKED: you can see your opponent's hand and face-down cards. Only you can: they stay hidden from everyone else."],
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
 	"CHARM": [Color("ff6fb5"), "CHARM: you take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner."],
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],

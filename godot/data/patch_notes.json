@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.91",
+        "notes": [
+            "MARKED is now a keyword: it is coloured in card text, and hovering it explains what it does."
+        ]
+    },
+    {
         "version": "0.9.90",
         "notes": [
             "New card effect: MARKED. While you have it face-up, you can see your opponent's hand and face-down cards (shown with a red edge; hover one to read it). The first card with it is Marked Cards."
