@@ -1935,6 +1935,17 @@ export class DuelState {
     // Passives (when "passive"): buff (self / allies / enemies), pierce, untargetable, immune,
     // guard, double_attack, cost_down (amount, clan), no_down.
 
+    /** MARKED (a Card Forge passive "reveal", e.g. Marked Cards): this side sees its opponents' hands and
+     *  face-down cards. Only what's shown changes, never the rules (backend/socket/onlineMatch.js viewFor
+     *  sends them; duel.gd shows them). Same as reveals in duel_state.gd. */
+    reveals(side) {
+        const s = this.sides[side];
+        if (!s) return false;
+        const has = (c, when) => this._fx(c, when).some(e => String(e.do ?? '') === 'reveal');
+        if (s.field.some(c => c != null && !c.face_down && has(c, 'passive'))) return true;
+        return s.leader_state === 'dormant' && s.leader != null && has(s.leader, 'dormant');
+    }
+
     _fx(c, when) {
         if (c == null || this.inStasis(c)) return [];   // STASIS: frozen in time, no effects
         // SILENCED: its effects don't work, except its own PROMOTE (a Striver still levels up)

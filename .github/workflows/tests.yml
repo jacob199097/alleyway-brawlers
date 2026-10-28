@@ -34,6 +34,8 @@ jobs:
         run: node backend/socket/ffa.test.cjs
       - name: Turf Defense quick match and matches
         run: node backend/socket/coop.test.cjs
+      - name: MARKED (reveal) shows only the viewer their opponents' hidden cards
+        run: node backend/socket/reveal.test.cjs
       - name: Card Forge passives do what their text says
         run: node shared/duel/passives.test.mjs
       - name: Free-for-all rules (3-4 players)

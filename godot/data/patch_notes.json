@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.90",
+        "notes": [
+            "New card effect: MARKED. While you have it face-up, you can see your opponent's hand and face-down cards (shown with a red edge; hover one to read it). The first card with it is Marked Cards."
+        ]
+    },
+    {
         "version": "0.9.89",
         "notes": [
             "The tutorial only lets you make the move it asks for: other cards stay in your hand, menus only show the asked-for choice (no DEF or face-down when it asks for ATK), only the right target lights up, and END TURN is greyed out until it is the step."

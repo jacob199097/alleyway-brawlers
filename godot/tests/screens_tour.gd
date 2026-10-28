@@ -179,6 +179,9 @@ func _run() -> void:
 						_screen().counts[side]["gutter"] = 5
 						_screen().counts[side]["gutter_top"] = a.trim_prefix("--gutter=")
 					_screen().queue_redraw()
+			if "--marked" in OS.get_cmdline_user_args():   # (MARKED: the rival's hand shows its faces to you)
+				_screen().duel.sides.player.field[5] = {"uid": 99999, "id": "marked", "name": "Marked Cards", "cardType": "hustle",
+					"effects": [{"when": "passive", "do": "reveal"}], "face_down": false}
 			await _shot("ar_%s" % arena.id, 1.5)
 			await _shot("ar_%s_b" % arena.id, 0.9)
 		get_tree().quit()

@@ -2221,6 +2221,25 @@ static func _fold_if_done(list: Array) -> Array:
 	return out
 
 
+## MARKED (a Card Forge passive "reveal", e.g. Marked Cards): this side sees its opponents' hands and
+## face-down cards. Only what's shown changes, never the rules (duel.gd _update_peek). Same as reveals
+## in DuelState.js (the server sends them then: backend/socket/onlineMatch.js viewFor).
+func reveals(side: String) -> bool:
+	var s = sides.get(side)
+	if s == null:
+		return false
+	for c in s.field:
+		if c != null and not c.get("face_down", false):
+			for e in _fx(c, "passive"):
+				if str(e.get("do", "")) == "reveal":
+					return true
+	if str(s.get("leader_state", "")) == "dormant" and s.get("leader") != null:
+		for e in _fx(s.leader, "dormant"):
+			if str(e.get("do", "")) == "reveal":
+				return true
+	return false
+
+
 func _fx(c, when: String) -> Array:
 	var out: Array = []
 	if c == null or in_stasis(c):   # a character in STASIS is frozen in time: no effects

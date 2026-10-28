@@ -160,13 +160,23 @@ func set_card(c: Dictionary) -> void:
 
 func set_face(up: bool) -> void:
 	face_up = up
-	_front.visible = up and _front.texture != null
-	_back.visible = not up
+	var shown := up or peek
+	_front.visible = shown and _front.texture != null
+	_back.visible = not shown
 	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
-	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if up else 1, fposmod(float(uid) * 0.618, 1.0))
+	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0))
 	if _fallback:
-		_fallback.visible = up and _front.texture == null
+		_fallback.visible = shown and _front.texture == null
 	queue_redraw()
+
+
+## MARKED CARDS: a hidden card its viewer may see anyway (duel.gd _update_peek). Only its look changes:
+## face_up stays false, so nothing that checks it behaves differently. A red edge marks it.
+var peek := false:
+	set(v):
+		if v != peek:
+			peek = v
+			set_face(face_up)
 
 
 ## Turn the card over in 3D (awaitable).
@@ -396,6 +406,8 @@ func _draw() -> void:
 	if face_up and _front.texture == null:
 		draw_rect(r, Color("161a30"))
 		draw_rect(r, Color("b388c9"), false, 2.0)
+	if peek and not face_up:   # (seen through MARKED: still hidden from everyone else)
+		draw_rect(r.grow(2.0), Color("ff4d6d"), false, 4.0)
 
 
 func _fit(s: Sprite2D) -> void:

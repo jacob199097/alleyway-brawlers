@@ -949,6 +949,7 @@ func _process(delta: float) -> void:
 	_update_pile_backs(delta)
 	if _tutorial:
 		_tutorial.update()
+	_update_peek()
 	if _ui.has("detail_art"):
 		# The featured card floats gently, catching the light
 		var tm := Time.get_ticks_msec() / 1000.0
@@ -4648,6 +4649,35 @@ func _finish_match(won: bool) -> void:
 
 # ── View helpers ─────────────────────────────────────────────────────────────
 
+## MARKED CARDS (DuelState.reveals): while you have one, your opponents' hand and face-down cards show
+## you their faces (CardView.peek: only how they look; whether they're face-up, and every rule, stays).
+## Online the server sends what they are (onlineMatch.js viewFor); a card it hasn't sent stays a back.
+func _update_peek() -> void:
+	if duel == null or _watching():
+		return
+	var sees: bool = duel.reveals("player")
+	for foe in duel.foes_of("player"):
+		var s: Dictionary = duel.sides[foe]
+		for v in hand.get(foe, []):
+			_peek(v, sees, s.hand)
+		for slot in field.get(foe, {}):
+			var v = field[foe][slot]
+			var c = s.field[slot]
+			if v != null and is_instance_valid(v) and c != null:
+				_peek(v, sees and c.get("face_down", false), [c])
+
+
+func _peek(v: CardView, on: bool, pool: Array) -> void:
+	if not is_instance_valid(v):
+		return
+	if on and not v.card.has("name"):
+		for c in pool:
+			if c is Dictionary and int(c.get("uid", -1)) == v.uid and c.has("name"):
+				v.set_card(c)
+				break
+	v.peek = on and v.card.has("name")
+
+
 func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
@@ -6154,7 +6184,7 @@ func pad_targets() -> Array:
 ## Opens the big view of the card under the mouse (face-up ones, and your own face-down ones).
 func _zoom_hovered() -> bool:
 	var v := _view_at(Game.pad.pointer(self))
-	if v == null or v.card.is_empty() or not (v.face_up or v.side == "player"):
+	if v == null or v.card.is_empty() or not (v.face_up or v.peek or v.side == "player"):
 		return false
 	var base := CardDB.get_card(str(v.card.get("id", "")))
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
@@ -6214,8 +6244,8 @@ func _update_hover() -> void:
 			v.move_to(Vector2(v.home.x, HAND_LIFT_Y), HOVER_SCALE, 0.0, 0.14)
 			Sfx.play("click", 1.4, -12.0)
 	if v:
-		if not v.face_up and v.side == "player" and not v.card.is_empty():
-			_show_detail(v.card, v.stats(), _live_statuses(v))   # your own face-down card: you know what it is
+		if not v.face_up and (v.side == "player" or v.peek) and not v.card.is_empty():
+			_show_detail(v.card, v.stats(), _live_statuses(v))   # your own face-down card (or one MARKED shows you)
 		elif not v.face_up:
 			_show_detail({"name": "Face-down card", "cardType": "", "uid": -v.uid, "back_side": v.side})
 		else:
