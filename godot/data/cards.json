@@ -390,7 +390,7 @@
  },
  "card_nebu_019": {
   "id": "card_nebu_019",
-  "name": "Marty & Mike",
+  "name": "Matt & Mike",
   "clan": "nebula",
   "cardType": "gang_member",
   "authority": 4,
@@ -677,7 +677,7 @@
   "effectKey": "",
   "art_url": "card_nebu_021",
   "code": "NEBU-021",
-  "flavourText": "Life’s fragile. Good thing I’m stubborn",
+  "flavourText": "Life’s fragile. Good thing I’m stubborn.",
   "effectText": "When this card is Downed: If your opponent controls 3 or more characters, PROMOTE this card.\nAt the start of your turn: One of your other Downed NEBULA characters stands back up.",
   "effects": [
    {
@@ -714,7 +714,7 @@
   "effectKey": "",
   "art_url": "card_nebu_022",
   "code": "NEBU-022",
-  "flavourText": "Life’s fragile. Good thing I’m stubborn",
+  "flavourText": "Life’s fragile. Good thing I’m stubborn.",
   "effectText": "Once per turn, when this card is Downed: It stands back up.\nAt the start of your turn: Your other Downed NEBULA characters stand back up.\nThis card can't be targeted by your opponent's effects.",
   "effects": [
    {
@@ -3750,12 +3750,18 @@
   "art_url": "card_wild_031",
   "code": "WILD-031",
   "flavourText": "Red or black, darling. I own both.",
-  "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, draw 1 card.\nWhen you play a Hustle: If you have 3 or more cards in hand, PROMOTE this card.",
+  "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, draw 2 cards. If tails, draw 1 card.\nWhen you play a Hustle: If you have 3 or more cards in hand, PROMOTE this card.",
   "effects": [
    {
     "when": "activate",
     "do": "draw",
     "luck": "coin",
+    "amount": 2
+   },
+   {
+    "when": "activate",
+    "do": "draw",
+    "if_luck": "lost",
     "amount": 1
    },
    {
@@ -6244,6 +6250,1056 @@
   "clanColor": "#e8ba11",
   "attack": 2200,
   "defense": 1800,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_045": {
+  "id": "card_mili_045",
+  "name": "Sergeant \"Big Iron\" Kowalski",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_045",
+  "code": "MILI-045",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "effectText": "When this card attacks: SUPPRESS one enemy character for 300.\nWhen this card KOs a character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "suppress",
+    "target": "enemy",
+    "amount": 300
+   },
+   {
+    "when": "ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1000,
+  "defense": 700,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_046"
+ },
+ "card_mili_046": {
+  "id": "card_mili_046",
+  "name": "Sergeant \"Big Iron\" Kowalski",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_046",
+  "code": "MILI-046",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "effectText": "Your opponent must attack this card first if it is standing.\nAfter this card KOs 2 characters: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   },
+   {
+    "when": "ko",
+    "do": "promote",
+    "times": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2200,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_047"
+ },
+ "card_mili_047": {
+  "id": "card_mili_047",
+  "name": "Sergeant \"Big Iron\" Kowalski",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_047",
+  "code": "MILI-047",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "effectText": "When this card attacks: It has PIERCE for this attack.\nThis card is immune to POISON, FREEZE, STUN, SUPPRESS and SILENCE.\nACTIVATE (once per turn, pay 2 Authority): Your opponent loses 1000 Morale.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "pierce"
+   },
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "freeze",
+     "stun",
+     "suppress",
+     "silence"
+    ]
+   },
+   {
+    "when": "activate",
+    "do": "damage",
+    "clan": "militia",
+    "cost": "authority",
+    "amount": 1000,
+    "cost_n": 2
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 3300,
+  "defense": 3000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_048": {
+  "id": "card_mili_048",
+  "name": "Wren",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_048",
+  "code": "MILI-048",
+  "flavourText": "One shot. Then gone.",
+  "effectText": "At the start of your turn: If you control 2 or more other MILITIA characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_start",
+    "do": "promote",
+    "if": "allies",
+    "n": 2,
+    "if_clan": "militia"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 500,
+  "defense": 600,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_049"
+ },
+ "card_mili_049": {
+  "id": "card_mili_049",
+  "name": "Wren",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_049",
+  "code": "MILI-049",
+  "flavourText": "One shot. Then gone.",
+  "effectText": "This card has PIERCE.\nWhen this card KOs a character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "pierce"
+   },
+   {
+    "when": "ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1500,
+  "defense": 900,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_050"
+ },
+ "card_mili_050": {
+  "id": "card_mili_050",
+  "name": "Wren",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_050",
+  "code": "MILI-050",
+  "flavourText": "One shot. Then gone.",
+  "effectText": "This card has PIERCE.\nThis card can't be attacked while you control another character that can be.\nAt the end of your turn: SUPPRESS one enemy character for 600.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "pierce"
+   },
+   {
+    "when": "passive",
+    "do": "elusive"
+   },
+   {
+    "when": "turn_end",
+    "do": "suppress",
+    "target": "enemy",
+    "amount": 600
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2600,
+  "defense": 1600,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_052": {
+  "id": "card_mili_052",
+  "name": "Gunship Run",
+  "clan": "militia",
+  "cardType": "hustle",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_052",
+  "code": "MILI-052",
+  "flavourText": "Danger close. Get your heads down.",
+  "effectText": "SUPPRESS all enemy characters for 500.\nDOWN one enemy character.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "suppress",
+    "target": "enemies",
+    "amount": 500
+   },
+   {
+    "when": "deploy",
+    "do": "down",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635"
+ },
+ "card_nebu_054": {
+  "id": "card_nebu_054",
+  "name": "Vael, the Starless",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_054",
+  "code": "NEBU-054",
+  "flavourText": "Where I walk, the stars forget to shine.",
+  "effectText": "When deployed: Switch one enemy character to DEF position.\nAt the end of your turn: If an enemy character has a status, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "force_def",
+    "target": "enemy"
+   },
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "foe_statused"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 900,
+  "defense": 800,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_055"
+ },
+ "card_nebu_055": {
+  "id": "card_nebu_055",
+  "name": "Vael, the Starless",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_055",
+  "code": "NEBU-055",
+  "flavourText": "Where I walk, the stars forget to shine.",
+  "effectText": "When this card attacks: Put one enemy character in STASIS.\nWhen this card KOs a character: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "stasis",
+    "target": "enemy"
+   },
+   {
+    "when": "ko",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1800,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_056"
+ },
+ "card_nebu_056": {
+  "id": "card_nebu_056",
+  "name": "Vael, the Starless",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_056",
+  "code": "NEBU-056",
+  "flavourText": "Where I walk, the stars forget to shine.",
+  "effectText": "When deployed: Put all enemy characters in ATK position in STASIS.\nThis card can't be targeted by your opponent's effects.\nOnce per turn, when this card KOs a character: PROMOTE one of your Strivers.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "stasis",
+    "target": "enemies",
+    "only": "atk"
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   },
+   {
+    "when": "ko",
+    "do": "promote_ally",
+    "target": "ally",
+    "once": true
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 3400,
+  "defense": 2800,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_nebu_057": {
+  "id": "card_nebu_057",
+  "name": "Quarry, the Living Geode",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_057",
+  "code": "NEBU-057",
+  "flavourText": "Hit me again. I like that.",
+  "effectText": "Your opponent must attack this card first if it is standing.\nWhen this card is attacked: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   },
+   {
+    "when": "defend",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 700,
+  "defense": 1400,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_058"
+ },
+ "card_nebu_058": {
+  "id": "card_nebu_058",
+  "name": "Quarry, the Living Geode",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_058",
+  "code": "NEBU-058",
+  "flavourText": "Hit me again. I like that.",
+  "effectText": "Your opponent must attack this card first if it is standing.\nAfter this card is attacked 2 times: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   },
+   {
+    "when": "defend",
+    "do": "promote",
+    "times": 2
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 1500,
+  "defense": 2600,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_nebu_059"
+ },
+ "card_nebu_059": {
+  "id": "card_nebu_059",
+  "name": "Quarry, the Living Geode",
+  "clan": "nebula",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "nebula",
+  "effectKey": "",
+  "art_url": "card_nebu_059",
+  "code": "NEBU-059",
+  "flavourText": "Hit me again. I like that.",
+  "effectText": "Your opponent must attack this card first if it is standing.\nOnce per turn, when this card is attacked: Put the attacker in STASIS.\nACTIVATE (once per turn, pay 700 Morale): Return one enemy character to its owner's hand.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   },
+   {
+    "when": "defend",
+    "do": "stasis",
+    "target": "attacker",
+    "once": true
+   },
+   {
+    "when": "activate",
+    "do": "bounce",
+    "target": "enemy",
+    "cost": "morale",
+    "cost_n": 700
+   }
+  ],
+  "clanName": "Nebula",
+  "clanColor": "#9b7bff",
+  "attack": 3000,
+  "defense": 3400,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_046": {
+  "id": "card_unde_046",
+  "name": "The Pale Conductor",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_046",
+  "code": "UNDE-046",
+  "flavourText": "All aboard. Last stop: the grave.",
+  "effectText": "ACTIVATE (once per turn): If your Gutter has 5 or more cards, return an UNDERWORLD card of your choice from your Gutter to your hand.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "recover",
+    "clan": "underworld",
+    "if": "gutter_ge",
+    "amount": 1,
+    "n": 5,
+    "choose": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1400,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_047": {
+  "id": "card_unde_047",
+  "name": "Mortimer, the Hearse Driver",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 1,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_047",
+  "code": "UNDE-047",
+  "flavourText": "Pickups only. No returns. Well, usually.",
+  "effectText": "When deployed: Put the most recent UNDERWORLD character from your Gutter onto the field in ATK position.\nWhen another of your characters is KO'd: Send the top card of your deck to your Gutter.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "revive",
+    "clan": "underworld",
+    "amount": 1
+   },
+   {
+    "when": "ally_ko",
+    "do": "mill_self",
+    "amount": 1
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 2400,
+  "defense": 2200,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_unde_048": {
+  "id": "card_unde_048",
+  "name": "Widow Thorne",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_048",
+  "code": "UNDE-048",
+  "flavourText": "I wear black for all of them. I keep a little of each.",
+  "effectText": "Once per turn, when another of your characters is KO'd: DRAIN 300.",
+  "effects": [
+   {
+    "when": "ally_ko",
+    "do": "drain",
+    "amount": 300,
+    "once": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 1000,
+  "defense": 1300,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_wild_047": {
+  "id": "card_wild_047",
+  "name": "Johnny Deuce",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_047",
+  "code": "WILD-047",
+  "flavourText": "Pick a card. Any card. It's already flying.",
+  "effectText": "When deployed: Your opponent loses 300 Morale. DOUBLE OR NOTHING.\nWhen you play a Hustle: Flip a coin. If heads, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "damage",
+    "luck": "double",
+    "amount": 300
+   },
+   {
+    "when": "hustle_played",
+    "do": "promote",
+    "luck": "coin"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 900,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_wild_048"
+ },
+ "card_wild_048": {
+  "id": "card_wild_048",
+  "name": "Johnny Deuce",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_048",
+  "code": "WILD-048",
+  "flavourText": "Pick a card. Any card. It's already flying.",
+  "effectText": "When this card attacks: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down. DOUBLE OR NOTHING.\nWhen this card KOs a character: Roll a die. On a 3 or more, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "wreck",
+    "luck": "double",
+    "amount": 1
+   },
+   {
+    "when": "ko",
+    "do": "promote",
+    "luck": "die",
+    "luck_on": 3
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1700,
+  "defense": 1100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_wild_049"
+ },
+ "card_wild_049": {
+  "id": "card_wild_049",
+  "name": "Johnny Deuce",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_049",
+  "code": "WILD-049",
+  "flavourText": "Pick a card. Any card. It's already flying.",
+  "effectText": "When this card attacks: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down. DOUBLE OR NOTHING.\nThis card has LOADED DICE.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "wreck",
+    "luck": "double",
+    "amount": 1
+   },
+   {
+    "when": "passive",
+    "do": "loaded"
+   },
+   {
+    "when": "down",
+    "do": "stun",
+    "target": "enemy",
+    "once": true
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 3200,
+  "defense": 2400,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_050": {
+  "id": "card_wild_050",
+  "name": "Roxy \"Jackpot\" Ramos",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_050",
+  "code": "WILD-050",
+  "flavourText": "Three sevens and a broken jaw. Pay out.",
+  "effectText": "When this card attacks: Roll a die: it gains +100 ATK for each pip rolled for this Brawl.\nAt the end of your turn: If you've played 1 or more Hustle this turn, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "per": "roll",
+    "atk": 100
+   },
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "hustles_ge",
+    "n": 1
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 600,
+  "defense": 600,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_wild_051"
+ },
+ "card_wild_051": {
+  "id": "card_wild_051",
+  "name": "Roxy \"Jackpot\" Ramos",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_051",
+  "code": "WILD-051",
+  "flavourText": "Three sevens and a broken jaw. Pay out.",
+  "effectText": "When this card attacks: Roll a die: it gains +200 ATK for each pip rolled for this Brawl.\nWhen this card KOs a character: Flip a coin. If heads, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "per": "roll",
+    "atk": 200
+   },
+   {
+    "when": "ko",
+    "do": "promote",
+    "luck": "coin"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1600,
+  "defense": 1400,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_wild_052"
+ },
+ "card_wild_052": {
+  "id": "card_wild_052",
+  "name": "Roxy \"Jackpot\" Ramos",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_052",
+  "code": "WILD-052",
+  "flavourText": "Three sevens and a broken jaw. Pay out.",
+  "effectText": "When this card attacks: Roll a die: it gains +300 ATK for each pip rolled for this Brawl.\nWhen this card KOs a character: Draw 1 card. DOUBLE OR NOTHING.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "per": "roll",
+    "atk": 300
+   },
+   {
+    "when": "ko",
+    "do": "draw",
+    "luck": "double",
+    "amount": 1
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 2800,
+  "defense": 2300,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_053": {
+  "id": "card_wild_053",
+  "name": "Monte Silva",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_053",
+  "code": "WILD-053",
+  "flavourText": "Red or black, kid. Either way, I own the table.",
+  "effectText": "When deployed: Flip a coin. If heads, put a BOUNTY 1 on one enemy character.\nAt the start of your turn: Roll a die. On a 4 or more, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "bounty",
+    "target": "enemy",
+    "luck": "coin",
+    "amount": 1
+   },
+   {
+    "when": "turn_start",
+    "do": "promote",
+    "luck": "die",
+    "luck_on": 4
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1000,
+  "defense": 700,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_wild_054"
+ },
+ "card_wild_054": {
+  "id": "card_wild_054",
+  "name": "Monte Silva",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_054",
+  "code": "WILD-054",
+  "flavourText": "Red or black, kid. Either way, I own the table.",
+  "effectText": "Once per turn, when your opponent deploys a character: Flip a coin. If heads, give one enemy character BLEED 500. If tails, you lose 200 Morale.\nAt the start of your turn: Roll a die. On a 5 or more, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "foe_deployed",
+    "do": "bleed",
+    "target": "enemy",
+    "luck": "coin",
+    "amount": 500,
+    "once": true
+   },
+   {
+    "when": "foe_deployed",
+    "do": "damage",
+    "if_luck": "lost",
+    "to": "self",
+    "amount": 200
+   },
+   {
+    "when": "turn_start",
+    "do": "promote",
+    "luck": "die",
+    "luck_on": 5
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 2200,
+  "defense": 1400,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_wild_055"
+ },
+ "card_wild_055": {
+  "id": "card_wild_055",
+  "name": "Monte Silva",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_055",
+  "code": "WILD-055",
+  "flavourText": "Red or black, kid. Either way, I own the table.",
+  "effectText": "This card has LOADED DICE.\nAt the start of your turn: TAX 1. DOUBLE OR NOTHING.\nOnce per turn, when your opponent deploys a character: Flip a coin. If heads, give one enemy character BLEED 800. If tails, you lose 200 Morale.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "loaded"
+   },
+   {
+    "when": "turn_start",
+    "do": "tax",
+    "luck": "double",
+    "amount": 1
+   },
+   {
+    "when": "foe_deployed",
+    "do": "bleed",
+    "target": "enemy",
+    "luck": "coin",
+    "amount": 800,
+    "once": true
+   },
+   {
+    "when": "foe_deployed",
+    "do": "damage",
+    "if_luck": "lost",
+    "to": "self",
+    "amount": 200
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 3300,
+  "defense": 2200,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_wild_056": {
+  "id": "card_wild_056",
+  "name": "Marked Cards",
+  "clan": "wildcard",
+  "cardType": "hustle",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_056",
+  "code": "WILD-056",
+  "flavourText": "We all do it. Mine are red.",
+  "effectText": "Your opponent's cards are MARKED.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "reveal"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "subtype": "continuous"
+ },
+ "card_wild_057": {
+  "id": "card_wild_057",
+  "name": "The Pit",
+  "clan": "wildcard",
+  "cardType": "ambush",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_057",
+  "code": "WILD-057",
+  "flavourText": "The wheel goes round. Somebody goes down.",
+  "effectText": "When an enemy attacks one of your characters: Roll a die: SHOCK all enemy characters for 400 for each pip rolled.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "shock",
+    "target": "enemies",
+    "per": "roll",
+    "amount": 400
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11"
+ },
+ "card_wild_058": {
+  "id": "card_wild_058",
+  "name": "Velvet Valentine",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_058",
+  "code": "WILD-058",
+  "flavourText": "Buy me a drink and I'll tell you a secret. Yours.",
+  "effectText": "When deployed: Flip a coin. If heads, CHARM one enemy character.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "charm",
+    "target": "enemy",
+    "luck": "coin"
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1400,
+  "defense": 1600,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_wild_059": {
+  "id": "card_wild_059",
+  "name": "Jayden",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_059",
+  "code": "WILD-059",
+  "flavourText": "Act like you belong here. That's the trick.",
+  "effectText": "When this card attacks: Give one enemy character BLEED 200. DOUBLE OR NOTHING.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "bleed",
+    "target": "enemy",
+    "luck": "double",
+    "amount": 200
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 900,
+  "defense": 400,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_wild_060": {
+  "id": "card_wild_060",
+  "name": "Molly Molotov",
+  "clan": "wildcard",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "wildcard",
+  "effectKey": "",
+  "art_url": "card_wild_060",
+  "code": "WILD-060",
+  "flavourText": "House special. Shaken, lit, thrown.",
+  "effectText": "At the end of your turn: Give one enemy character BURN 200. DOUBLE OR NOTHING.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "burn",
+    "target": "enemy",
+    "luck": "double",
+    "amount": 200
+   }
+  ],
+  "clanName": "Wildcard",
+  "clanColor": "#e8ba11",
+  "attack": 1200,
+  "defense": 900,
   "level": 1,
   "subtype": "brawler",
   "promotesTo": null
