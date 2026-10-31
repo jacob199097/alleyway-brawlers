@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.92",
+        "notes": [
+            "Fixed: an effect that happens when a character attacks (like Alysse's STASIS) is now chosen before the brawl, so you can't pick a card that's about to be knocked out. Any target choice only offers cards still on the field.",
+            "Fixed: an ACTIVATE ability with a follow-up (like Ruby Reyes: heads draws 2, tails draws 1) is one ACTIVATE, not two.",
+            "Setting an Ambush no longer shows your opponent how much Authority it cost (that gave away which Ambush it was). Your Authority shows as if you hadn't paid until it refills."
+        ]
+    },
+    {
         "version": "0.9.91",
         "notes": [
             "MARKED is now a keyword: it is coloured in card text, and hovering it explains what it does."

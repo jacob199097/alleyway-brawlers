@@ -197,7 +197,7 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 	var s: Dictionary = d.sides[side]
 	for slot in DuelState.FRONT:
 		for k in d.activations(side, slot):
-			var e: Dictionary = d._fx(d.card_at(side, slot), "activate")[k - 1]
+			var e: Dictionary = d.activate_groups(d.card_at(side, slot))[k - 1][0]
 			var n: int = maxi(1, int(e.get("cost_n", 1)))
 			var cost := str(e.get("cost", ""))
 			if not d.fx_has_targets(side, slot, e):

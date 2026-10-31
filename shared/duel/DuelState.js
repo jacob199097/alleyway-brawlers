@@ -720,10 +720,22 @@ export class DuelState {
         if (c == null || c.face_down) return out;
         if ((c.evolved_turn ?? -1) === this.turn) return out;   // a Striver that evolved this turn waits a turn
         let k = 0;
-        for (const e of this._fx(c, 'activate')) {
+        for (const [e] of this.activateGroups(c)) {
             k++;
             if (((c.fx_used ?? {})['activate' + k] ?? -1) !== this.turn && this.fxCan(side, slot, c, e)
                 && this._canPay(side, slot, c, e)) out.push(k);
+        }
+        return out;
+    }
+
+    /** A card's activated abilities, in order: each ACTIVATE effect with the ones right after it that hang
+     *  on how it went (if_luck: "If tails, ..."), so "Flip a coin: heads draw 2, tails draw 1" is one
+     *  ability (ACTIVATE k is group k). Same as activate_groups in duel_state.gd. */
+    activateGroups(c) {
+        const out = [];
+        for (const e of this._fx(c, 'activate')) {
+            if (out.length && String(e.if_luck ?? '') !== '') out[out.length - 1].push(e);
+            else out.push([e]);
         }
         return out;
     }
@@ -745,9 +757,15 @@ export class DuelState {
     _activate(side, slot, k) {
         if (!this.activations(side, slot).includes(k)) return false;
         const c = this.cardAt(side, slot);
-        const e = this._fx(c, 'activate')[k - 1];
+        const group = this.activateGroups(c)[k - 1];
+        const e = group[0];   // (its cost is the first effect's)
         c.fx_used = { ...(c.fx_used ?? {}), ['activate' + k]: this.turn };
-        const go = () => this._doFx(side, slot, c, e);
+        const go = () => {
+            for (const x of group) {
+                if (this.winner !== '') return;
+                this._doFx(side, slot, c, x);
+            }
+        };
         const n = Math.max(1, toInt(e.cost_n ?? 1));
         switch (String(e.cost ?? '')) {
             case 'authority':
@@ -898,7 +916,8 @@ export class DuelState {
         const i = this._handIndex(side, uid);
         if (i < 0 || !this.canSet(side, this.sides[side].hand[i], slot)) return false;
         const c = this.sides[side].hand[i];
-        if (c.cardType !== 'hustle') this._spend(side, this.costOf(side, c));   // (a Hustle is paid for when it's activated)
+        // (a Hustle is paid for when it's activated; an Ambush now, out of its opponents' sight: hidden_spend)
+        if (c.cardType !== 'hustle') this._spend(side, this.costOf(side, c), true);
         this.sides[side].hand.splice(i, 1);
         c.face_down = true;
         c.set_turn = this.turn;
@@ -1055,6 +1074,7 @@ export class DuelState {
         const defNow = target >= 0 ? this.cardAt(foe, target) : null;
         // (at a leader: a Dormant one, or one that has taken the field)
         const atLeader = target === LEADER || (defNow != null && defNow.cardType === 'leader');
+        const asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
         const trig = this._fx(att, 'attack').map((e, i) => ['attack', e, i + 1]);
         if (atLeader) trig.push(...this._fx(att, 'attack_leader').map((e, i) => ['attack_leader', e, i + 1]));
         for (const [when, e, k] of trig) {
@@ -1080,7 +1100,9 @@ export class DuelState {
             this.sides[side].brutus_bonus = 0;
             this._effect(side, att, "Brutus's momentum: +300 ATK", from);
         }
-        this._atkRedirect(ctx);
+        // A choice its triggers ask for (a target, DOUBLE OR NOTHING) is made before the brawl: it waits
+        if (asks.length > queued) asks.push({ kind: 'then', side, cb: () => this._atkRedirect(ctx) });
+        else this._atkRedirect(ctx);
         return true;
     }
 
@@ -2424,7 +2446,7 @@ export class DuelState {
                 if (d <= 0) break;
                 s.authority += d;
                 this._effect(side, c, `${c.name}: +${d} max Authority`, slot);
-                this._emit('authority', { side, value: s.authority, max: s.authority_max, delta: d });
+                this._authEv(side, d);
                 break;
             }
             case 'silence':
@@ -2725,7 +2747,7 @@ export class DuelState {
             case 'authority':
                 s.authority += n;
                 this._effect(side, c, `${c.name}: +${n} Authority this turn`, slot);
-                this._emit('authority', { side, value: s.authority, max: s.authority_max, delta: n });
+                this._authEv(side, n);
                 break;
             case 'promote':
                 if (this.cardAt(side, slot) === c) this._promote(side, slot, c.name);
@@ -3171,15 +3193,16 @@ export class DuelState {
         }
         this._setPhase('upkeep');
         this._emit('turn', { side: this.active, turn: this.turn });
+        s.hidden_spend = 0;   // (its Authority refills: nothing set face-down is still to hide)
         if (s.turns > 1) {   // (every turn but your first)
             s.authority_max = Math.min(MAX_AUTHORITY, s.authority_max + 1);
             s.authority = s.authority_max;
-            this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: 1 });
+            this._authEv(this.active, 1);
         }
         // Going second (or later) is a disadvantage; one extra Authority on that player's first turn
         if (s.turns === 1 && this.active !== this.first && SECOND_PLAYER_AUTHORITY > 0) {
             s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY;
-            this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: SECOND_PLAYER_AUTHORITY });
+            this._authEv(this.active, SECOND_PLAYER_AUTHORITY);
         }
         if (this.turn > 1) this._draw(this.active);
         const boss = this.rules.boss;   // (Turf Defense: the boss draws and gets Authority extra)
@@ -3187,7 +3210,7 @@ export class DuelState {
             for (let i = 0; i < toInt(boss.draw) && this.winner === ''; i++) this._draw(this.active);
             if (toInt(boss.authority) > 0) {
                 s.authority += toInt(boss.authority);
-                this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: toInt(boss.authority) });
+                this._authEv(this.active, toInt(boss.authority));
             }
         }
         if (toInt(s.tax ?? 0) > 0) {   // TAX: this turn's Authority, less what an opponent's card took
@@ -3195,7 +3218,7 @@ export class DuelState {
             s.tax = 0;
             if (t > 0) {
                 s.authority -= t;
-                this._emit('authority', { side: this.active, value: s.authority, max: s.authority_max, delta: -t });
+                this._authEv(this.active, -t);
                 this._emit('notice', { side: this.active, text: `TAX: -${t} AUTHORITY THIS TURN` });
             }
         }
@@ -3338,11 +3361,14 @@ export class DuelState {
             side: sideOf(e), slot: e.slot,
         }));
         if (optional) options.push({ id: 'skip', label: 'SKIP' });
-        this._ask(side, key, prompt, source, options, (choice) => {
+        const ask = this._ask(side, key, prompt, source, options, (choice) => {
             for (const e of entries) {
                 if (idOf(e) === choice && this.cardAt(sideOf(e), e.slot) === e.card) cb(e);
             }
         });
+        // Shown later (after other prompts or a brawl)? Only the cards still there are offered then
+        if (ask) ask.refresh = () => options.filter(o => o.id === 'skip'
+            || entries.some(e => idOf(e) === o.id && this.cardAt(sideOf(e), e.slot) === e.card));
     }
 
     // Opening hand: keep it, or shuffle it back and draw the same number again (once).
@@ -3424,6 +3450,10 @@ export class DuelState {
                 if (ask.cb) this._runAnswer(ask.cb);
                 continue;
             }
+            if (ask.refresh) {   // (a target choice: only the cards still on the field; none left, no prompt)
+                ask.options = ask.refresh();
+                if (!ask.options.some(o => o.id !== 'skip')) continue;
+            }
             this.pending = ask;
             this._emit('prompt', promptEvent(ask));
         }
@@ -3475,11 +3505,24 @@ export class DuelState {
         this._toGutterFx(side, c);
     }
 
-    _spend(side, amount) {
+    _spend(side, amount, hidden = false) {
         if (amount <= 0) return;
         const s = this.sides[side];
-        s.authority = Math.max(0, s.authority - amount);
-        this._emit('authority', { side, value: s.authority, max: s.authority_max, delta: -amount });
+        const paid = Math.min(amount, s.authority);
+        s.authority -= paid;
+        if (hidden) s.hidden_spend = toInt(s.hidden_spend ?? 0) + paid;
+        this._authEv(side, -amount, hidden);
+    }
+
+    /** An Authority change's event. What a card set face-down cost stays hidden from opponents until the
+     *  side's Authority refills (hidden_spend): they're shown "shown", the Authority without it
+     *  (backend/socket/onlineMatch.js; duel.gd). Same as _auth_ev in duel_state.gd. */
+    _authEv(side, delta, hidden = false) {
+        const s = this.sides[side];
+        const ev = { side, value: s.authority, max: s.authority_max, delta };
+        if (toInt(s.hidden_spend ?? 0) > 0) ev.shown = s.authority + toInt(s.hidden_spend);
+        if (hidden) ev.hidden = true;
+        this._emit('authority', ev);
     }
 
     /**
@@ -3593,6 +3636,7 @@ export class DuelState {
                 influence: s.leader ? s.leader.influence : 0,
             };
             if (this.ffa) out[side].out = toInt(s.out);
+            if (toInt(s.hidden_spend ?? 0) > 0) out[side].hidden_spend = toInt(s.hidden_spend);
         }
         return out;
     }
@@ -3608,6 +3652,7 @@ function promptEvent(ask) {
     const ev = { ...ask };
     delete ev.cb;
     delete ev.still;
+    delete ev.refresh;
     return ev;
 }
 

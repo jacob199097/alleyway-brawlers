@@ -206,7 +206,7 @@ function activation(d, side, level = 'normal') {
     const s = d.sides[side];
     for (const slot of FRONT) {
         for (const k of d.activations(side, slot)) {
-            const e = d._fx(d.cardAt(side, slot), 'activate')[k - 1];
+            const e = d.activateGroups(d.cardAt(side, slot))[k - 1][0];
             const n = Math.max(1, Math.trunc(Number(e.cost_n ?? 1)) || 1);
             const cost = String(e.cost ?? '');
             if (!d.fxHasTargets(side, slot, e)) continue;

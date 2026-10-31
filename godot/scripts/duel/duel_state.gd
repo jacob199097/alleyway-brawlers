@@ -844,11 +844,25 @@ func activations(side: String, slot: int) -> Array:
 	if int(c.get("evolved_turn", -1)) == turn:   # a Striver that evolved this turn waits a turn
 		return out
 	var k := 0
-	for e in _fx(c, "activate"):
+	for g in activate_groups(c):
 		k += 1
+		var e: Dictionary = g[0]
 		if int(c.get("fx_used", {}).get("activate%d" % k, -1)) != turn and fx_can(side, slot, c, e) \
 				and _can_pay(side, slot, c, e):
 			out.append(k)
+	return out
+
+
+## A card's activated abilities, in order: each ACTIVATE effect with the ones right after it that hang
+## on how it went (if_luck: "If tails, ..."), so "Flip a coin: heads draw 2, tails draw 1" is one
+## ability (ACTIVATE k is group k). Same as activateGroups in DuelState.js.
+func activate_groups(c) -> Array:
+	var out: Array = []
+	for e in _fx(c, "activate"):
+		if not out.is_empty() and str(e.get("if_luck", "")) != "":
+			out.back().append(e)
+		else:
+			out.append([e])
 	return out
 
 
@@ -875,11 +889,16 @@ func _activate(side: String, slot: int, k: int) -> bool:
 	if not k in activations(side, slot):
 		return false
 	var c: Dictionary = card_at(side, slot)
-	var e: Dictionary = _fx(c, "activate")[k - 1]
+	var group: Array = activate_groups(c)[k - 1]
+	var e: Dictionary = group[0]   # (its cost is the first effect's)
 	var used: Dictionary = c.get("fx_used", {})
 	used["activate%d" % k] = turn
 	c.fx_used = used
-	var go := func(): _do_fx(side, slot, c, e)
+	var go := func():
+		for x in group:
+			if winner != "":
+				return
+			_do_fx(side, slot, c, x)
 	var n: int = maxi(1, int(e.get("cost_n", 1)))
 	match str(e.get("cost", "")):
 		"authority":
@@ -1043,8 +1062,9 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 	if i < 0 or not can_set(side, sides[side].hand[i], slot):
 		return false
 	var c: Dictionary = sides[side].hand[i]
-	if c.get("cardType") != "hustle":   # (a Hustle is paid for when it's activated)
-		_spend(side, cost_of(side, c))
+	# (a Hustle is paid for when it's activated; an Ambush now, out of its opponents' sight: hidden_spend)
+	if c.get("cardType") != "hustle":
+		_spend(side, cost_of(side, c), true)
 	sides[side].hand.remove_at(i)
 	c.face_down = true
 	c.set_turn = turn
@@ -1212,6 +1232,8 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 	var def_now = card_at(foe, target) if target >= 0 else null
 	# (at a leader: a Dormant one, or one that has taken the field)
 	var at_leader: bool = target == LEADER or (def_now != null and def_now.get("cardType") == "leader")
+	var asks: Array = _new_asks if _in_answer else _asks
+	var queued := asks.size()
 	var trig: Array = []
 	var n := 0
 	for e in _fx(att, "attack"):
@@ -1247,7 +1269,11 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		ctx.bonus += sides[side].brutus_bonus
 		sides[side].brutus_bonus = 0
 		_effect(side, att, "Brutus's momentum: +300 ATK", from)
-	_atk_redirect(ctx)
+	# A choice its triggers ask for (a target, DOUBLE OR NOTHING) is made before the brawl: it waits
+	if asks.size() > queued:
+		asks.append({"kind": "then", "side": side, "cb": func(): _atk_redirect(ctx)})
+	else:
+		_atk_redirect(ctx)
 	return true
 
 
@@ -2816,7 +2842,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				return
 			s.authority += d
 			_effect(side, c, "%s: +%d max Authority" % [c.name, d], slot)
-			_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": d})
+			_auth_ev(side, d)
 		"silence":
 			var until_turn: int = FOREVER if str(e.get("until", "turn")) == "forever" else turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
 			var fn := func(x: Dictionary) -> String:
@@ -3102,7 +3128,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 		"authority":
 			s.authority += n
 			_effect(side, c, "%s: +%d Authority this turn" % [c.name, n], slot)
-			_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": n})
+			_auth_ev(side, n)
 		"promote":
 			if card_at(side, slot) == c:
 				_promote(side, slot, c.name)
@@ -3655,16 +3681,17 @@ func _begin_turn() -> void:
 		_emit("barricade", {"side": active, "amount": 0})
 	_set_phase("upkeep")
 	_emit("turn", {"side": active, "turn": turn})
+	s.hidden_spend = 0   # (its Authority refills: nothing set face-down is still to hide)
 	# Authority grows every turn but your first
 	if s.turns > 1:
 		s.authority_max = mini(MAX_AUTHORITY, s.authority_max + 1)
 		s.authority = s.authority_max
-		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": 1})
+		_auth_ev(active, 1)
 	# Going second (or later) is a disadvantage (in CPU mirror matches the first player won ~70%);
 	# one extra Authority on that player's first turn brings it close to even
 	if s.turns == 1 and active != first_seat and SECOND_PLAYER_AUTHORITY > 0:
 		s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY
-		_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": SECOND_PLAYER_AUTHORITY})
+		_auth_ev(active, SECOND_PLAYER_AUTHORITY)
 	if turn > 1:
 		_draw(active)
 	var boss = rules.get("boss")   # (Turf Defense: the boss draws and gets Authority extra)
@@ -3675,13 +3702,13 @@ func _begin_turn() -> void:
 			_draw(active)
 		if int(boss.get("authority", 0)) > 0:
 			s.authority += int(boss.authority)
-			_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": int(boss.authority)})
+			_auth_ev(active, int(boss.authority))
 	if int(s.get("tax", 0)) > 0:   # TAX: this turn's Authority, less what an opponent's card took
 		var t: int = mini(int(s.tax), s.authority)
 		s.tax = 0
 		if t > 0:
 			s.authority -= t
-			_emit("authority", {"side": active, "value": s.authority, "max": s.authority_max, "delta": -t})
+			_auth_ev(active, -t)
 			_emit("notice", {"side": active, "text": "TAX: -%d AUTHORITY THIS TURN" % t})
 	# A Downed character stays down for a full round (the opponent gets one turn to finish it
 	# off), then gets back up in DEF position at the start of its owner's turn. Its owner
@@ -3835,12 +3862,18 @@ func _ask_target(side: String, key: String, prompt: String, source: Dictionary, 
 			"side": on, "slot": e.slot})
 	if optional:
 		options.append({"id": "skip", "label": "SKIP"})
-	_ask(side, key, prompt, source, options, func(choice: String):
+	var ask = _ask(side, key, prompt, source, options, func(choice: String):
 		for e in entries:
 			var on := str(e.get("side", target_side))
 			var id := ("%s:%d" % [on, e.slot]) if multi else str(e.slot)
 			if id == choice and card_at(on, e.slot) == e.card:
 				cb.call(e))
+	# Shown later (after other prompts or a brawl)? Only the cards still there are offered then
+	if ask is Dictionary:
+		ask.refresh = func() -> Array:
+			return options.filter(func(o): return o.id == "skip" or entries.any(func(e):
+				var on := str(e.get("side", target_side))
+				return (("%s:%d" % [on, e.slot]) if multi else str(e.slot)) == o.id and card_at(on, e.slot) == e.card))
 
 
 ## Opening hand: keep it, or shuffle it back and draw the same number again (once).
@@ -3934,6 +3967,10 @@ func _flush_asks() -> void:
 			if ask.cb.is_valid():
 				_run_answer(ask.cb)
 			continue
+		if ask.has("refresh"):   # (a target choice: only the cards still on the field; none left, no prompt)
+			ask.options = ask.refresh.call()
+			if not ask.options.any(func(o): return o.id != "skip"):
+				continue
 		pending = ask
 		_emit("prompt", _prompt_event(ask))
 
@@ -3942,6 +3979,7 @@ static func _prompt_event(ask: Dictionary) -> Dictionary:
 	var ev := ask.duplicate()
 	ev.erase("cb")
 	ev.erase("still")
+	ev.erase("refresh")
 	return ev
 
 
@@ -3994,12 +4032,28 @@ func _discard_at(side: String, i: int) -> void:
 	_to_gutter_fx(side, c)
 
 
-func _spend(side: String, amount: int) -> void:
+func _spend(side: String, amount: int, hidden := false) -> void:
 	if amount <= 0:
 		return
 	var s: Dictionary = sides[side]
-	s.authority = maxi(0, s.authority - amount)
-	_emit("authority", {"side": side, "value": s.authority, "max": s.authority_max, "delta": -amount})
+	var paid: int = mini(amount, s.authority)
+	s.authority -= paid
+	if hidden:
+		s.hidden_spend = int(s.get("hidden_spend", 0)) + paid
+	_auth_ev(side, -amount, hidden)
+
+
+## An Authority change's event. What a card set face-down cost stays hidden from opponents until the
+## side's Authority refills (hidden_spend): they're shown "shown", the Authority without it (duel.gd).
+## Same as _authEv in DuelState.js.
+func _auth_ev(side: String, delta: int, hidden := false) -> void:
+	var s: Dictionary = sides[side]
+	var ev := {"side": side, "value": s.authority, "max": s.authority_max, "delta": delta}
+	if int(s.get("hidden_spend", 0)) > 0:
+		ev.shown = s.authority + int(s.hidden_spend)
+	if hidden:
+		ev.hidden = true
+	_emit("authority", ev)
 
 
 ## Luck (Card Forge, same as _luckGate in DuelState.js): whether an effect happens.
@@ -4180,4 +4234,6 @@ func _counts() -> Dictionary:
 		}
 		if ffa:
 			out[side].out = int(s.get("out", 0))
+		if int(s.get("hidden_spend", 0)) > 0:
+			out[side].hidden_spend = int(s.hidden_spend)
 	return out

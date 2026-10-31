@@ -92,7 +92,29 @@ function redact(c) {
 }
 
 /** What `viewer` may see of one event (still in server seats; swapped afterwards). */
+/** Authority paid for a card set face-down (DuelState hidden_spend) stays secret from the other seats:
+ *  they get the Authority without it. */
+function hideSpend(ev, viewer) {
+    let out = ev;
+    if (ev.type === 'authority' && ev.side !== viewer && ev.shown != null) {
+        const { shown, hidden, ...rest } = ev;
+        out = { ...rest, value: shown, delta: hidden ? 0 : ev.delta };
+    }
+    if (out.counts) {
+        let counts = null;
+        for (const [seat, c] of Object.entries(out.counts)) {
+            if (seat === viewer || !c.hidden_spend) continue;
+            counts = counts || { ...out.counts };
+            const { hidden_spend, ...rest } = c;
+            counts[seat] = { ...rest, authority: c.authority + hidden_spend };
+        }
+        if (counts) out = { ...out, counts };
+    }
+    return out;
+}
+
 function filterEvent(ev, viewer) {
+    ev = hideSpend(ev, viewer);
     if (ev.side === viewer) return ev;
     switch (ev.type) {
         case 'draw': return { ...ev, card: { uid: ev.card.uid } };
@@ -133,7 +155,7 @@ function viewFor(state, viewer) {
         const own = seat === viewer;
         const sees = own || foes.includes(seat);
         sides[seat] = {
-            morale: s.morale, authority: s.authority, authority_max: s.authority_max,
+            morale: s.morale, authority: s.authority + (sees ? 0 : (s.hidden_spend || 0)), authority_max: s.authority_max,
             brutus_bonus: s.brutus_bonus, promoted: s.promoted, mentor_used: s.mentor_used,
             leader_state: s.leader_state, leader: s.leader ? structuredClone(s.leader) : null,
             hand: sees ? structuredClone(s.hand) : s.hand.map(c => ({ uid: c.uid })),
@@ -156,6 +178,8 @@ function viewFor(state, viewer) {
         if (state.pending.side === viewer) {
             pending = { ...state.pending };
             delete pending.cb;
+            delete pending.still;
+            delete pending.refresh;
         } else {
             pending = { kind: state.pending.kind, side: state.pending.side };
         }

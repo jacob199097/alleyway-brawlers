@@ -201,4 +201,53 @@ st._recalc();
 assert.ok(!riser.downed, "its own \"when it's Downed: it stands back up\" happened");
 assert.equal(friend.attack, 1200, '"when another of your characters is Downed" happened');
 
+// ACTIVATE with a follow-up ("Flip a coin. If heads, draw 2 cards. If tails, draw 1 card.") is one ability
+{
+    const st = duel();
+    st.sides.player.deck = [unit(st), unit(st), unit(st), unit(st)];
+    const ruby = put(st, 'player', 0, unit(st, [
+        { when: 'activate', do: 'draw', amount: 2, luck: 'coin' }, { when: 'activate', do: 'draw', amount: 1, if_luck: 'lost' }]));
+    assert.deepEqual(st.activations('player', 0), [1], 'one ability, not ACTIVATE 1 and 2');
+    const before = st.sides.player.hand.length;
+    assert.ok(st.doAction('player', { kind: 'activate', slot: 0, fx: 1 }));
+    answerAll(st);
+    const drew = st.sides.player.hand.length - before;
+    assert.ok(drew === 2 || drew === 1, `heads draws 2, tails 1 (drew ${drew})`);
+    assert.deepEqual(st.activations('player', 0), [], 'once per turn');
+    void ruby;
+}
+
+// "When this card attacks: put an enemy in STASIS": chosen before the brawl, from cards still on the field
+{
+    const st = duel();
+    st.phase = 'brawl';
+    st.turn = 5;
+    const alysse = put(st, 'player', 0, unit(st, [{ when: 'attack', do: 'stasis', target: 'enemy' }], 3000, 1000));
+    const weak = put(st, 'opponent', 1, unit(st, [], 500, 500));
+    const other = put(st, 'opponent', 2, unit(st, [], 1500, 1500));
+    assert.ok(st.doAction('player', { kind: 'attack', from: 0, target: 1 }));
+    assert.equal(st.pending.key !== undefined || st.pending.kind === 'choose', true, 'the attack asks first');
+    assert.equal(st.cardAt('opponent', 1), weak, 'the brawl waits for the choice');
+    // Choose the other one: then the brawl happens
+    assert.ok(st.doAction('player', { kind: 'choose', option: '2' }));
+    assert.ok(st.inStasis(other), 'the chosen card is in STASIS');
+    assert.ok(weak.downed || st.cardAt('opponent', 1) == null, 'then the brawl went ahead');
+    void alysse;
+}
+
+// An Ambush's cost is paid out of the opponent's sight (hidden_spend), until the Authority refills
+{
+    const st = duel();
+    st.phase = 'deployment';
+    st.sides.player.authority = 4;
+    const trap = st.makeCard({ id: 'test_trap', name: 'Trap', cardType: 'ambush', clanTag: 'test', authority: 3, effects: [] });
+    st.sides.player.hand.push(trap);
+    st.takeEvents();
+    assert.ok(st.doAction('player', { kind: 'set', uid: trap.uid, slot: 5 }));
+    const ev = st.takeEvents().find(e => e.type === 'authority');
+    assert.equal(st.sides.player.authority, 1);
+    assert.ok(ev.hidden && ev.shown === 4 && ev.value === 1, 'its event says what the opponent may see');
+    assert.equal(st._counts().player.hidden_spend, 3);
+}
+
 console.log('combos: ok');

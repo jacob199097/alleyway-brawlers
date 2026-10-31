@@ -2005,6 +2005,14 @@ func _ev_phase(ev: Dictionary) -> void:
 
 func _ev_authority(ev: Dictionary) -> void:
 	var p: Dictionary = _panels[ev.side]
+	# An opponent's Authority paid for a card set face-down isn't shown (DuelState hidden_spend)
+	if ev.side != "player" and ev.has("shown") and not duel.reveals("player"):
+		var hidden: bool = ev.get("hidden", false)
+		ev = ev.duplicate()
+		ev.value = ev.shown
+		if hidden:
+			p.auth.text = "AUTHORITY   %d / %d" % [ev.value, maxi(ev.max, ev.value)]
+			return
 	p.auth.text = "AUTHORITY   %d / %d" % [ev.value, maxi(ev.max, ev.value)]   # (going second: 2 / 2, not 2 / 1)
 	var delta: int = ev.delta
 	var at: Vector2 = p.auth.global_position + Vector2(200, 0)
@@ -5612,7 +5620,8 @@ func _refresh_hud() -> void:
 		if c.is_empty():
 			continue
 		var p: Dictionary = _panels[side]
-		p.auth.text = "AUTHORITY   %d / %d" % [c.authority, maxi(c.authority_max, c.authority)]
+		var auth: int = c.authority + (int(c.get("hidden_spend", 0)) if side != "player" and not duel.reveals("player") else 0)
+		p.auth.text = "AUTHORITY   %d / %d" % [auth, maxi(c.authority_max, auth)]
 		p.piles.text = "HAND %d    ·    DECK %d" % [c.hand, c.deck]
 	queue_redraw()
 
@@ -6339,7 +6348,7 @@ func _on_release() -> void:
 
 ## "ACTIVATE  (2 AUTHORITY)": the menu entry for the card's k-th activated ability (Card Forge).
 func _activate_label(slot: int, k: int, numbered: bool) -> String:
-	var e: Dictionary = duel._fx(duel.card_at("player", slot), "activate")[k - 1]
+	var e: Dictionary = duel.activate_groups(duel.card_at("player", slot))[k - 1][0]
 	var n: int = maxi(1, int(e.get("cost_n", 1)))
 	var cost: String = {"authority": "%d AUTHORITY" % n, "morale": "%d MORALE" % n, "discard": "DISCARD %d" % n,
 		"sacrifice": "SACRIFICE AN ALLY", "exhaust": "NO ATTACK THIS TURN"}.get(str(e.get("cost", "")), "")
