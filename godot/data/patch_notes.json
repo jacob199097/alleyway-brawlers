@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.102",
+        "notes": [
+            "Turf Defense: the boss no longer loses by running out of cards on Hard and Nightmare. With nothing left to draw, it just skips the draw."
+        ]
+    },
+    {
         "version": "0.9.101",
         "notes": [
             "Fixed: Herald of the Hollow Throne now promotes when it's Downed (any card that promotes on being Downed does).",

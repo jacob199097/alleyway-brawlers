@@ -160,4 +160,13 @@ for (const boss of BOSSES) {
         if (games > 2) console.log(`  ${boss.id} ${lv.name}: the crew won ${won} of ${games}`);
     }
 }
+// The boss never decks out: with nothing in its deck or Gutter it just doesn't draw (players still do)
+{
+    const st = new DuelState({ p1: Array(10).fill('card_mili_033'), p2: Array(10).fill('card_mili_033'), boss: [] }, {}, {}, 'p1', -1,
+        { order: ['p1', 'p2', 'boss'], teams: { p1: 'crew', p2: 'crew', boss: 'boss' }, boss: { seat: 'boss', name: 'Boss', draw: 2 } });
+    st._draw('boss');
+    assert.equal(st.winner, '', 'an empty boss deck and Gutter: no deck out');
+    assert.ok(!st.sides.boss.out, 'the boss is still in');
+}
+
 console.log('turf bosses: ok');

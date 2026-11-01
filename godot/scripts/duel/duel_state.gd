@@ -4010,6 +4010,11 @@ func _draw(side: String, opening := false) -> void:
 	if s.deck.is_empty():
 		_boss_recycle(side)
 	if s.deck.is_empty():
+		# Turf Defense: the boss never decks out (its extra draws can leave nothing in its deck or
+		# Gutter for a moment, its cards all in hand and on the field): it just doesn't draw
+		var b = rules.get("boss")
+		if b is Dictionary and str(b.get("seat", "")) == side:
+			return
 		# Decked out: a player who has to draw from an empty deck loses
 		if winner == "":
 			_lose(side, "deck_out")

@@ -3482,6 +3482,9 @@ export class DuelState {
         const s = this.sides[side];
         if (!s.deck.length) this._bossRecycle(side);
         if (!s.deck.length) {
+            // Turf Defense: the boss never decks out (its extra draws can leave nothing in its deck or
+            // Gutter for a moment, its cards all in hand and on the field): it just doesn't draw
+            if (this.rules.boss && this.rules.boss.seat === side) return;
             // Decked out: a player who has to draw from an empty deck loses
             if (this.winner === '') this._lose(side, 'deck_out');
             return;
