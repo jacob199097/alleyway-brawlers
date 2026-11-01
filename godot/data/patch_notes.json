@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.93",
+        "notes": [
+            "THE TURF MAP (main menu): the city is split into districts, one per arena. Every match you play wins influence for your deck's clan in the district it's fought in. Each week a district goes to the clan with the most influence there, if it beats the local gang that runs it. When the week ends, everyone who fought for a clan in a district it took earns Karat, and the district's top fighter (its boss) earns more. Open a district to see the standings, or FIGHT HERE for a CPU match in it.",
+            "VETERAN CARDS: the game now counts your wins with each card you play. At 5, 15 and 40 wins a card becomes Seasoned, Battle-Scarred and then a Street Legend. Battle-Scarred cards get a holo foil and Street Legends a gold foil, which your opponent sees too. Your progress shows when you zoom a card in the Card Library.",
+            "New Ranked Brawl rank emblems, from Rookie to Legend."
+        ]
+    },
+    {
         "version": "0.9.92",
         "notes": [
             "Fixed: an effect that happens when a character attacks (like Alysse's STASIS) is now chosen before the brawl, so you can't pick a card that's about to be knocked out. Any target choice only offers cards still on the field.",

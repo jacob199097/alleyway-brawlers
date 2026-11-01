@@ -41,6 +41,48 @@ func _clan_shots() -> void:
 	await _shot("10_shop_scrolled", 0.8)
 
 
+## The turf map (a district opened, last week's Karat claimed), veteran cards in the library and the
+## zoom, a CPU match fought in a district (both sides' marks), and the post-match lines.
+func _turf_map_shots() -> void:
+	Game.go("main_menu")
+	await _shot("t01_main_menu", 2.5)
+	Game.go("territory")
+	await _shot("t02_turf_map", 2.5)
+	var tm = _screen()
+	tm._open(tm._data.districts[0])
+	await _shot("t03_district", 0.8)
+	tm._close()
+	tm._claim()
+	await _shot("t04_claimed", 1.2)
+	Game.go("card_library")
+	await get_tree().create_timer(2.5).timeout
+	var lib = _screen()
+	var best := ""
+	for id in Game.veterans:
+		if best == "" or Game.veteran_tier(id) > Game.veteran_tier(best):
+			best = id
+	if best != "":
+		lib._show_detail(CardDB.get_card(best))
+	await _shot("t05_library", 1.0)
+	if best != "":
+		UI.card_zoom(lib, CardDB.get_card(best), true)
+	await _shot("t06_zoom", 1.0)
+	Game.go("territory")
+	await get_tree().create_timer(2.5).timeout
+	await Game.request_cpu_match(false, "normal", false, str(_screen()._data.districts[11].id))
+	await get_tree().create_timer(6.0).timeout
+	if _screen() and _screen().get("_menu"):
+		_screen()._menu.visible = false
+	await _shot("t07_duel", 0.5)
+	await _shot("t08_duel_later", 4.0)
+	Game.match_result = {"result": "win", "online": true, "mode": "cpu", "turns": 9, "player_morale": 4200, "opponent_morale": 0,
+		"rewards": {"outcome": "win", "karatEarned": 26, "xpEarned": 65, "newXp": int(Game.player.get("xp", 0)) + 65, "newLevel": int(Game.player.get("level", 1))},
+		"veterans": [{"id": best, "tier": 3, "name": "Street Legend"}] if best != "" else [],
+		"turf": {"district": "docks", "name": "The Docks", "clan": str(CardDB.clans()[0].id), "points": 2}}
+	Game.go("post_match")
+	await _shot("t09_post_match", 5.0)
+
+
 ## Frames drawn per second on each screen (V-Sync and the FPS cap off), after it has settled.
 func _fps_run() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -128,6 +170,10 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--turf-map" in OS.get_cmdline_user_args():   # (the turf map, veteran cards, a CPU match in a district)
+		await _turf_map_shots()
 		get_tree().quit()
 		return
 	if "--fps" in OS.get_cmdline_user_args():   # (frames per second on each screen, no shots)

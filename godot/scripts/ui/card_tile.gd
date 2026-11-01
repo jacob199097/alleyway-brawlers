@@ -15,6 +15,7 @@ var count_badge := ""    # bottom-left, e.g. "×2"
 var dimmed := false: set = set_dimmed
 var selected := false: set = set_selected   # outlined in gold (the Card Library's crafting pick)
 var rest_rotation := 0.0: set = set_rest_rotation   # degrees: laid by hand on a table; it straightens on hover
+var veteran := 0         # its veteran tier (Game.veterans): a badge, and foil from tier 2 (set before it's added)
 
 var _art: TextureRect
 var _name: Label
@@ -84,6 +85,7 @@ func _ready() -> void:
 	add_child(_art)
 	if art_tex:
 		_mat = UI.card_material(_art.size, int(card.get("rarity", 1)))
+		UI.veteran_fx(_mat, veteran)
 		_art.material = _mat
 	set_process(false)
 	if art_tex == null:
@@ -236,6 +238,8 @@ func _draw() -> void:
 
 func _draw_overlay() -> void:
 	var f := UI.font()
+	if veteran > 0 and is_visible_in_tree():
+		UI.draw_veteran(_overlay, Rect2(Vector2(4, 4), size - Vector2(8, 8)), veteran)
 	UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
 	if badge != "":   # (on the art's top right corner, just under the name strip, so the name stays readable)
 		var br := Rect2(size.x - 64, size.y * 0.135, 58, 28)

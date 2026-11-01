@@ -70,6 +70,7 @@ func _ready() -> void:
 	else:
 		var spin := UI.spinner(self, Vector2(690, 580))
 		var r := await Api.request("GET", "/api/profile/inventory")
+		await Game.load_veterans()   # (each card's veteran marks)
 		spin.queue_free()
 		if r.ok:
 			for row in r.data:
@@ -235,6 +236,7 @@ func _render() -> void:
 		if not _sub_matches(c):
 			continue
 		var tile := CardTile.make(c, TILE)
+		tile.veteran = Game.veteran_tier(str(c.get("id", "")))
 		var qty := int(c.get("quantity", 0))
 		if qty > 1:
 			tile.count_badge = "×%d" % qty
@@ -288,6 +290,14 @@ func _show_detail(c: Dictionary) -> void:
 		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)))
 		_hero.material = _hero_mat
 	holder.add_child(_hero)
+	var vet := Game.veteran_tier(id)
+	if vet > 0 and _hero.texture:   # its veteran badge and foil
+		var marks := Control.new()
+		marks.size = _hero.size
+		marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marks.draw.connect(func(): UI.draw_veteran(marks, Rect2(Vector2.ZERO, marks.size), vet))
+		_hero.add_child(marks)
+		UI.veteran_fx(_hero_mat, vet)
 	_hero.modulate.a = 0.0
 	_hero.scale = Vector2.ONE * 0.9
 	var tw := _hero.create_tween().set_parallel()
@@ -299,6 +309,12 @@ func _show_detail(c: Dictionary) -> void:
 	var sub = c.get("subtype")
 	var line := "%s%s  ·  %s" % [kind, ("  ·  " + str(sub).to_upper()) if sub is String else "", str(UI.RARITY_LABEL.get(rarity, "")).to_upper()]
 	_detail.add_child(UI.label(line, 17, UI.rarity_color(rarity)))
+	var vet_line := UI.veteran_line(id, vet)
+	if vet_line != "":
+		var vl := UI.label(vet_line, 15, UI.VETERAN_COLORS[mini(vet, 3)] if vet > 0 else UI.MUTED)
+		vl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vl.custom_minimum_size = Vector2(480, 0)
+		_detail.add_child(vl)
 	if c.get("cardType") in ["gang_member", "leader"]:
 		var q: bool = CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false)
 		var st := ("ATK ?   DEF ?" if q else "ATK %d   DEF %d" % [int(c.get("attack", 0)), int(c.get("defense", 0))])

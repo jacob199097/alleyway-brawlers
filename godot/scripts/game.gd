@@ -25,6 +25,7 @@ const SCREENS := {
 	"mailbox": "res://scenes/mailbox.tscn",
 	"achievements": "res://scenes/achievements.tscn",
 	"leaderboard": "res://scenes/leaderboard.tscn",
+	"territory": "res://scenes/territory.tscn",
 }
 const DEFAULT_SETTINGS := {
 	"music_volume": 0.5,
@@ -61,6 +62,10 @@ var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
 var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet): it fills on from there
+## Veteran cards (GET /api/veterans, load_veterans): card id → {wins, plays, tier}, and the tiers
+## [{tier, wins, name}]. A card's marks: UI.draw_veteran.
+var veterans := {}
+var veteran_tiers: Array = []
 
 ## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
 var sound: Node
@@ -418,6 +423,24 @@ func play_menu_music() -> void:
 
 func stop_music() -> void:
 	sound.music("", 0.6)
+
+
+# ── Veteran cards ─────────────────────────────────────────────────────────────
+
+## Fetches the player's veteran cards (on the menu, and after each match).
+func load_veterans() -> void:
+	if offline or Api.token == "":
+		return
+	var r := await Api.request("GET", "/api/veterans")
+	if r.ok and r.data is Dictionary:
+		veterans = r.data.get("cards", {}) if r.data.get("cards") is Dictionary else {}
+		veteran_tiers = r.data.get("tiers", []) if r.data.get("tiers") is Array else []
+
+
+## A card's veteran tier for this player (0: none).
+func veteran_tier(id: String) -> int:
+	var v = veterans.get(id)
+	return int(v.get("tier", 0)) if v is Dictionary else 0
 
 
 # ── Duel decks ───────────────────────────────────────────────────────────────

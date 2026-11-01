@@ -133,6 +133,7 @@ var _replay := {}         # watching a recorded match: {start, updates, over, co
 var _spectating := false  # watching a friend's match live (mp:spectate): their side is "player"
 var _names := {}          # side -> name, for a spectator's texts
 var _chosen_back := {"player": "", "opponent": ""}   # side -> card back the player chose ("" = their clan's)
+var _vets := {}   # side -> that player's veteran cards {card id: tier} (the match's profiles): their marks
 var _replay_next := 0     # next update to play
 var _replay_wait := 0.0
 var _emote_ready_at := 0
@@ -255,6 +256,13 @@ func _ready() -> void:
 			var prof = online_start.get(pair[1], {})
 			var b = prof.get("card_back") if prof is Dictionary else null
 			_chosen_back[pair[0]] = str(b) if b is String else ""
+	# Veteran cards (backend/economy/veterans.js): both players see each other's marks
+	var profs = online_start.get("players") if online_start.get("players") is Dictionary else \
+		({} if online_start.is_empty() else {"player": online_start.get("you", {}), "opponent": online_start.get("opponent", {})})
+	for side in profs:
+		var pv = profs[side].get("vets") if profs[side] is Dictionary else null
+		if pv is Dictionary:
+			_vets[side] = pv
 	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
 		str(me.get("avatar_url", "")),
 		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()], int(me.get("level", 1)))
@@ -4646,6 +4654,8 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.rewards = _over.get("rewards")
 		Game.match_result.achievements = _over.get("achievements", [])
 		Game.match_result.mastery = _over.get("mastery")
+		Game.match_result.veterans = _over.get("veterans", [])   # cards that reached a new veteran tier
+		Game.match_result.turf = _over.get("turf")               # the turf map influence won
 		if _over.has("result"):
 			Game.match_result.result = _over.result
 		if _coop:
@@ -4690,6 +4700,7 @@ func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
 	v.board_scale = _sc(side)
+	v.vets = _vets.get(side, {})
 	v.setup(c, side, up)
 	v.scale = Vector2.ONE * v.board_scale   # (starts at its board's size: FFA opponents' are smaller)
 	v.set_back(_back_for(side), CardDB.back_style(_back_clan(side)))
@@ -6198,6 +6209,7 @@ func _zoom_hovered() -> bool:
 	var base := CardDB.get_card(str(v.card.get("id", "")))
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
 	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
+	zc.veteran = v.veteran   # (its owner's marks, not yours)
 	if v.card.has("uid"):
 		zc.uid = v.card.uid   # (a token zooms in on the same one of its artworks as on the field)
 	UI.card_zoom($HUD/UI, zc)

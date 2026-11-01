@@ -39,6 +39,8 @@ func _init() -> void:
 			continue   # drawn in ChatGPT instead (tools/import_level_icons.gd)
 		_save(_level_svg(lv), root.path_join("levels/level_%02d.png" % lv), 1.0)
 	for r in RANKS:
+		if FileAccess.file_exists(root.path_join("ranks/chatgpt/sheet.png")):
+			break   # drawn in ChatGPT instead (tools/import_rank_icons.gd)
 		_save(_rank_svg(r), root.path_join("ranks/%s.png" % r[0]), 2.0)
 	print("Emblems written to ", root.simplify_path())
 	quit()

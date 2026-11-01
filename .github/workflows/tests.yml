@@ -106,6 +106,13 @@ jobs:
           DB_PORT: 5432
           DB_USER: postgres
           DB_PASS: postgres
+      - name: Veteran cards and the turf map
+        run: node backend/economy/territory.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
 
   godot:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)

@@ -53,6 +53,7 @@ func _ready() -> void:
 	var spin := UI.spinner(self, Vector2(600, 600))
 	var inv := await Api.request("GET", "/api/profile/inventory")
 	var decks := await Api.request("GET", "/api/deck")
+	await Game.load_veterans()   # (each card's veteran marks)
 	spin.queue_free()
 	if not inv.ok or not decks.ok:
 		UI.toast(self, inv.error if not inv.ok else decks.error, UI.RED)
@@ -857,6 +858,7 @@ func _render_collection() -> void:
 		ids += str(item.id) + ","
 		var used := _copies(item.id)
 		var tile := CardTile.make(item, TILE)
+		tile.veteran = Game.veteran_tier(str(item.get("art_url", "")))
 		tile.rest_rotation = (absi(hash(str(item.id))) % 1000) / 1000.0 * 3.6 - 1.8   # (laid by hand on the bench)
 		tile.badge = "%d/%d" % [used, mini(3, int(item.get("quantity", 0)))]
 		tile.count_badge = "×%d" % int(item.get("quantity", 0))

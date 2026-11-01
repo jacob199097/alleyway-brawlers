@@ -23,6 +23,10 @@ const STATUS_STYLE := {
 var card: Dictionary = {}
 var uid := -1
 var side := "player"
+## Its owner's veteran cards (card id → tier, from the match's profiles; set before setup) and this
+## card's tier: its badge (UI.draw_veteran) and foil (UI.veteran_fx)
+var vets: Dictionary = {}
+var veteran := 0
 var face_up := false
 var downed := false: set = set_downed
 var show_badge := false: set = set_show_badge
@@ -140,6 +144,7 @@ func set_back(tex: Texture2D, style := "") -> void:
 func set_card(c: Dictionary) -> void:
 	card = c
 	uid = int(c.get("uid", uid))
+	veteran = int(vets.get(str(c.get("id", "")), 0)) if not c.get("token", false) else 0
 	var tex: Texture2D = null
 	if not c.is_empty():
 		tex = CardDB.art_for(c)   # (a token picks one of its artworks)
@@ -165,9 +170,11 @@ func set_face(up: bool) -> void:
 	_back.visible = not shown
 	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
 	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0))
+	UI.veteran_fx(_mat, veteran if up else 0)
 	if _fallback:
 		_fallback.visible = shown and _front.texture == null
 	queue_redraw()
+	_status_layer.queue_redraw()   # (a veteran's badge shows face-up only)
 
 
 ## MARKED CARDS: a hidden card its viewer may see anyway (duel.gd _update_peek). Only its look changes:
@@ -541,6 +548,8 @@ func _draw_statuses() -> void:
 		_draw_cost_now(r)
 	if downed and face_up:
 		_draw_downed(r)
+	if face_up and veteran > 0:   # (under the statuses and stars)
+		UI.draw_veteran(_status_layer, r, veteran)
 	if face_up:   # a Striver's level stars, across the top edge
 		UI.draw_level_stars(_status_layer, Vector2(0, r.position.y + 1.0), CardDB.striver_stage(card), 6.0)
 	if glow > 0.01 and bool(Game.settings.get("glow_symbols", false)):

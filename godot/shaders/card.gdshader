@@ -16,6 +16,7 @@ uniform float flash = 0.0;     // white hit-flash
 uniform float shine = 0.0;        // Rare and up: a soft glint sweeps across the card every few seconds
 uniform float shine_seed = 0.0;   // 0..1, so cards don't all glint at once
 uniform float sparkle = 0.0;      // Legendary: a few faint twinkles, all the time
+uniform float veteran = 0.0;      // a veteran card's tier (UI.veteran_fx): 2 = holo foil all the time, 3 = gold foil
 // art_fx: the card's art itself moves. 1 = Epic: its glowing parts (neon, eyes, energy, crystals) throb,
 // with energy rippling up through them and a halo that breathes. 2 = Legendary: stronger, the glow
 // shifts colour, the scene drifts gently and sparks rise. Only inside art_rect (the Forge card's art
@@ -251,6 +252,20 @@ void fragment() {
 		float rnd = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 		float tw = pow(max(0.0, sin(TIME * 2.6 + rnd * 40.0)), 22.0);
 		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75;
+	}
+	if (veteran >= 2.0) {
+		// Veteran foil: soft bands that drift and slide as the card tilts, lighting its bright parts most
+		float lumv = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+		float hv = fract(uv.x * 0.7 - uv.y * 0.5 + y_rot / 30.0 + x_rot / 40.0 + TIME * 0.06);
+		if (veteran >= 3.0) {
+			// gold: the highlights warm to gold leaf, and a gold glint rides each band
+			vec3 gold = vec3(1.0, 0.8, 0.36);
+			col.rgb = mix(col.rgb, col.rgb * gold * 1.3, 0.28 * smoothstep(0.2, 0.75, lumv));
+			col.rgb += gold * pow(0.5 + 0.5 * cos(6.28318 * hv), 8.0) * (0.08 + 0.3 * lumv);
+		} else {
+			vec3 rbv = 0.5 + 0.5 * cos(6.28318 * (hv + vec3(0.0, 0.33, 0.67)));
+			col.rgb += rbv * (0.04 + 0.14 * lumv);
+		}
 	}
 	if (shine > 0.0) {
 		// A glint crosses the card in the first ~2 s of every 6.5 s, then rests

@@ -451,6 +451,19 @@ func _build_center() -> void:
 
 
 func _build_right() -> void:
+	# The turf map (screens/territory.gd), under the Card Library: a neon sign once
+	# assets/turf_map_menu.png exists, a button until then
+	var go_map := func(): Game.go("territory")
+	if UI.tex("turf_map_menu.png"):
+		var sign := UI.image_button("turf_map_menu.png", Vector2(420, 112), go_map, "TURF MAP")
+		sign.position = Vector2(1470, 960)
+		sign.disabled = Game.offline
+		add_child(sign)
+	else:
+		var map := UI.button("🗺  TURF MAP", go_map, Vector2(380, 72), UI.RED)
+		map.position = Vector2(1490, 966)
+		map.disabled = Game.offline
+		add_child(map)
 	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar (library_menu: patches skip names starting with c)
 	for i in items.size():
 		var it: Array = items[i]

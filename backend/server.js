@@ -33,6 +33,8 @@ const { createCoopService } = require('./socket/coopMatch');
 const turf = require('./economy/turf');
 const { incrementDailyQuest, recordDailyWin } = require('./routes/quests');
 const achievements = require('./economy/achievements');
+const veterans = require('./economy/veterans');
+const territory = require('./economy/territory');
 const { migrate } = require('./db/migrate');
 
 // ── REST routes ───────────────────────────────────────────────────────────────
@@ -92,8 +94,10 @@ app.use('/api/craft',   craftRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/challenge', require('./routes/challenge'));   // this week's challenge (economy/challenge.js)
 app.use('/api/account', require('./routes/account'));   // account deletion
-app.use('/api/turf', require('./routes/turf'));
-app.use('/api/steam', require('./routes/steam'));   // Steam sign-in, linking and purchases (utils/steam.js)   // Turf Defense bosses and progress (economy/turf.js)
+app.use('/api/turf', require('./routes/turf'));   // Turf Defense bosses and progress (economy/turf.js)
+app.use('/api/steam', require('./routes/steam'));   // Steam sign-in, linking and purchases (utils/steam.js)
+app.use('/api/territory', require('./routes/territory'));   // the turf map (economy/territory.js)
+app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (economy/veterans.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -126,6 +130,9 @@ const online = createOnlineService(io, {
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     resolveMatch,
     resolveCpuMatch,
+    veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    recordVeterans: veterans.record,
+    recordInfluence: territory.record,
     incrementDailyQuest,
     recordDailyWin,
     saveReplay,
@@ -163,6 +170,9 @@ coop = createCoopService(io, {
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     loadClears:  (playerId) => turf.clearsOf(pool, playerId),
     resolveTurf: turf.resolve,
+    veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    recordVeterans: veterans.record,
+    recordInfluence: territory.record,
     isBusyElsewhere: (playerId) => online.isBusyHere(playerId) || ffa.isBusy(playerId),
     leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
     recordMatch: achievements.recordMatch,

@@ -68,6 +68,9 @@ function actionFrom(action, seat) {
  * @param {(playerId) => void} [deps.leaveOtherQueue]
  * @param {(m) => Promise<Array>} [deps.recordMatch]        achievements
  * @param {(playerId, clan, outcome) => Promise} [deps.masteryProgress]
+ * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  veteran cards' tiers {cardId: tier}
+ * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
+ * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the boss's district
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
  * @param {number} [deps.turnSecs] [deps.awaySecs] [deps.reconnectSecs] [deps.botMoveMs] [deps.botEventMs]  (tests)
@@ -86,7 +89,7 @@ function createCoopService(io, deps) {
     function profileOf(e) {
         const p = e.profile || {};
         return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title || null,
-            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot };
+            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {} };
     }
 
     // ── Quick match ──
@@ -164,6 +167,10 @@ function createCoopService(io, deps) {
             boss: { playerId: `cpu:${randomUUID()}`, bot: true, level: lv.ai || 'normal', setup: b,
                 profile: { username: boss.name, level: lv.level, avatar_url: 'cpu' } },
         };
+        for (const e of humans) {
+            const ids = [...(e.setup?.deck || []), ...(e.setup?.hideout || [])].map(c => c?.id).concat(e.setup?.leader).filter(x => typeof x === 'string');
+            e.vets = await deps.veteranTiers?.(e.playerId, ids)?.catch?.(() => ({})) ?? {};
+        }
         const seats = ['p1', 'p2', 'boss'];
         const pick = (k) => Object.fromEntries(seats.map(s => [s, entries[s].setup[k]]));
         const seed = 1 + Math.floor(Math.random() * 2147483646);
@@ -172,7 +179,7 @@ function createCoopService(io, deps) {
             boss, lv, info: bossInfo(boss, lv) };
         for (const s of seats) {
             match.seats[s] = { ...entries[s], seat: s, connected: true, grace: null, idle: 0, kos: 0, promotes: 0, awakens: 0,
-                cardsPlayed: 0, damage: 0, settled: null, watching: !entries[s].bot };
+                cardsPlayed: 0, damage: 0, settled: null, watching: !entries[s].bot, played: new Set() };
         }
         matches.set(match.id, match);
         for (const s of ['p1', 'p2']) byPlayer.set(entries[s].playerId, match);
@@ -211,6 +218,7 @@ function createCoopService(io, deps) {
             const s = match.seats[ev.side];
             if (!s) continue;
             if (['summon', 'set', 'hustle'].includes(ev.type)) s.cardsPlayed += 1;
+            if (ev.card?.id && ['summon', 'set', 'hustle', 'lasting', 'promote', 'awaken'].includes(ev.type)) s.played.add(ev.card.id);
             if (ev.type === 'promote') s.promotes += 1;
             if (ev.type === 'awaken') s.awakens += 1;
         }
@@ -301,7 +309,7 @@ function createCoopService(io, deps) {
         const st = match.state;
         const won = st.winner !== '' && st.winner !== 'boss';
         const outcome = won ? 'win' : 'loss';
-        s.settled = { won, rewards: null, achievements: [], mastery: null };
+        s.settled = { won, rewards: null, achievements: [], mastery: null, veterans: [], turf: null };
         try {
             s.settled.rewards = await deps.resolveTurf({ playerId: s.playerId, bossId: match.boss.id, level: match.lv.level, won, turns: st.turn });
         } catch (err) {
@@ -315,6 +323,8 @@ function createCoopService(io, deps) {
             clan, kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: st.sides[seat].morale,
         })?.catch?.(() => []) || [];
         s.settled.mastery = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
+        s.settled.veterans = await deps.recordVeterans?.(s.playerId, [...(s.played || [])], won)?.catch?.(() => []) ?? [];
+        s.settled.turf = await deps.recordInfluence?.({ playerId: s.playerId, district: match.boss.arena, clan, mode: 'coop', outcome })?.catch?.(() => null) ?? null;
         return s.settled;
     }
 
@@ -331,7 +341,7 @@ function createCoopService(io, deps) {
             if (s.watching) {
                 emitTo(s.playerId, 'coop:over', { matchId: match.id, won: s.settled.won, boss: match.info,
                     players: playersFor(match, seat), rewards: s.settled.rewards, achievements: s.settled.achievements,
-                    mastery: s.settled.mastery, turns: match.state.turn,
+                    mastery: s.settled.mastery, veterans: s.settled.veterans, turf: s.settled.turf, turns: match.state.turn,
                     morale: { player: match.state.sides[seat].morale, ally: match.state.sides[partnerOf(seat)].morale, boss: match.state.sides.boss.morale } });
             }
         }

@@ -208,6 +208,9 @@ function forSeat(v, seat) {
  * @param {number} [deps.botMoveMs] [deps.botEventMs]  the server CPU's pause between moves (tests: none)
  * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
  * @param {(m) => Promise<Array>} [deps.recordMatch]  a player's match for achievements → what it unlocked
+ * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  their veteran cards' tiers {cardId: tier}
+ * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
+ * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the match's district
  *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]  a deck's games and wins
  * @param {(row) => Promise} [deps.recordStats]  a finished match for the balance dashboard (match_stats)
@@ -326,6 +329,10 @@ function createOnlineService(io, deps) {
         const hideouts = { player: a.setup.hideout, opponent: b.setup.hideout };
         const leaders = { player: a.setup.leader, opponent: b.setup.leader };
         const state = new DuelState(decks, hideouts, leaders, first, seed, rules);
+        // Each player's veteran cards in this deck (economy/veterans.js): both players see their marks
+        for (const e of [a, b]) {
+            if (!e.bot) e.vets = await deps.veteranTiers?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
+        }
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena),
             seats: {
@@ -355,7 +362,7 @@ function createOnlineService(io, deps) {
 
     function profileOf(seat) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
-            title: seat.profile.title || null, card_back: seat.profile.card_back || null };
+            title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {} };
     }
 
     // Each player meets every clan's CPU, in a random order, before any comes round again
@@ -559,6 +566,8 @@ function createOnlineService(io, deps) {
         // Achievements: what each player did this match
         const unlocked = {};
         const mastery = {};   // each player's clan mastery after the match (the post-match screen)
+        const veterans = {};  // cards that reached a new veteran tier
+        const turf = {};      // the turf map influence it won
         for (const seat of ['player', 'opponent']) {
             const s = match.seats[seat];
             if (s.bot || !deps.recordMatch) continue;
@@ -570,6 +579,12 @@ function createOnlineService(io, deps) {
                 kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: match.state.sides[seat].morale,
             }).catch(() => []);
             mastery[s.playerId] = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
+            veterans[s.playerId] = await deps.recordVeterans?.(s.playerId, [...s.played], outcome === 'win')?.catch?.(() => []) ?? [];
+            // (a CPU match past the daily reward cap wins no influence either)
+            if (!bot || (rewards[s.playerId] && !rewards[s.playerId].dailyCapReached)) {
+                turf[s.playerId] = await deps.recordInfluence?.({ playerId: s.playerId, district: match.arena, clan,
+                    mode: match.mode, outcome, difficulty: bot?.level || null })?.catch?.(() => null) ?? null;
+            }
             // The weekly challenge: the first win of the week pays (economy/challenge.js)
             if (match.challenge && winnerSeat === seat) {
                 const won = await deps.claimChallenge?.(s.playerId, match.challenge.week)?.catch?.(() => null);
@@ -584,6 +599,8 @@ function createOnlineService(io, deps) {
                 rewards: rewards[s.playerId] || null,
                 achievements: unlocked[s.playerId] || [],
                 mastery: mastery[s.playerId] || null,
+                veterans: veterans[s.playerId] || [],
+                turf: turf[s.playerId] || null,
                 player_morale: match.state.sides[seat].morale,
                 opponent_morale: match.state.sides[other(seat)].morale,
                 turns: match.state.turn,
@@ -855,6 +872,11 @@ function createOnlineService(io, deps) {
     }
 
     return { register, isInMatch: (playerId) => busy(playerId), isBusyHere: busyHere, leaveQueue, notify: emitTo, _matches: matches };
+}
+
+/** A setup's card ids, leader and hideout too (veteran tiers). */
+function deckIds(setup) {
+    return [...new Set([...(setup?.deck || []), ...(setup?.hideout || [])].map(c => c?.id).concat(setup?.leader).filter(x => typeof x === 'string'))];
 }
 
 /** The clan most of a deck's cards belong to (achievements: wins with a clan). */

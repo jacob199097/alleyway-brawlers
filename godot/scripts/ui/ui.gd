@@ -686,6 +686,49 @@ static func draw_level_stars(ci: CanvasItem, at: Vector2, stage: Vector2i, s := 
 			ci.draw_polyline(pts, Color(0.75, 0.72, 0.9, 0.6), 1.0, true)
 
 
+## Veteran cards (backend/economy/veterans.js): a tier's name and its colour.
+const VETERAN_NAMES := ["", "SEASONED", "BATTLE-SCARRED", "STREET LEGEND"]
+const VETERAN_COLORS := [Color.WHITE, Color("d0905a"), Color("dfe8f8"), Color("ffd34d")]
+
+
+## A veteran card's badge on its face `r` (a card image): the tier's emblem (assets/veteran/tier_N.png,
+## made in ChatGPT: tools/import_rank_icons.gd) over the art's bottom-left corner. Nothing until the
+## art is there. Its foil comes from the card shader (veteran_fx).
+static func draw_veteran(ci: CanvasItem, r: Rect2, tier: int) -> void:
+	if tier <= 0:
+		return
+	var badge := tex("veteran/tier_%d.png" % mini(tier, 3))
+	if badge == null:
+		return
+	var s := r.size.x * 0.24
+	var at := r.position + Vector2(0.15, 0.53) * r.size
+	ci.draw_texture_rect(badge, Rect2(at - Vector2(s, s) / 2.0, Vector2(s, s)), false)
+
+
+## A card's veteran foil in the card shader: tier 2 a holo foil all the time, tier 3 gold foil.
+static func veteran_fx(m: ShaderMaterial, tier: int) -> void:
+	if m:
+		m.set_shader_parameter("veteran", float(tier))
+
+
+## A card's veteran standing for the zoom: "VETERAN · SEASONED · 7 wins · 8 more to BATTLE-SCARRED",
+## or "" (never played). `theirs`: a card in a duel, where only its tier is known.
+static func veteran_line(id: String, tier: int, theirs := false) -> String:
+	if theirs:
+		return "VETERAN  ·  %s" % VETERAN_NAMES[mini(tier, 3)] if tier > 0 else ""
+	var row = Game.veterans.get(id)
+	if not row is Dictionary:
+		return ""
+	var wins := int(row.get("wins", 0))
+	var parts: Array = ["VETERAN  ·  %s" % VETERAN_NAMES[mini(tier, 3)] if tier > 0 else "NOT A VETERAN YET"]
+	parts.append("%d win%s with it" % [wins, "" if wins == 1 else "s"])
+	for t in Game.veteran_tiers:
+		if t is Dictionary and int(t.get("wins", 0)) > wins:
+			parts.append("%d more to %s" % [int(t.wins) - wins, str(t.get("name", "")).to_upper()])
+			break
+	return "  ·  ".join(parts)
+
+
 static func rarity_color(r) -> Color:
 	return RARITY_COLOR.get(int(r) if r != null else 1, RARITY_COLOR[1])
 
@@ -732,6 +775,18 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	var swing := art.create_tween()
 	swing.tween_method(func(d: float): mat.set_shader_parameter("y_rot", d), -35.0, 0.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	Sfx.play("flip", 0.9, -4.0)
+	# A veteran card's marks: from the duel (c.veteran: its owner's), else your own
+	var vet_id := str(c.get("id", c.get("cardId", "")))
+	if CardDB.get_card(vet_id).is_empty():
+		vet_id = str(c.get("art_url", c.get("cardId", vet_id)))
+	var vet := int(c.get("veteran", Game.veteran_tier(vet_id)))
+	if vet > 0:
+		var marks := Control.new()
+		marks.size = art.size
+		marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marks.draw.connect(func(): draw_veteran(marks, Rect2(Vector2.ZERO, marks.size), vet))
+		art.add_child(marks)
+		veteran_fx(mat, vet)
 	var info := VBoxContainer.new()
 	info.position = Vector2(980, 230)
 	info.custom_minimum_size = Vector2(560, 0)
@@ -750,6 +805,9 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	kind_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (a long type line wraps, not off the edge)
 	kind_line.custom_minimum_size = Vector2(560, 0)
 	info.add_child(kind_line)
+	var vet_line := veteran_line(vet_id, vet, c.has("veteran"))
+	if vet_line != "":
+		info.add_child(label(vet_line, 19, VETERAN_COLORS[mini(vet, 3)] if vet > 0 else MUTED))
 	if kind in ["gang_member", "leader"] and c.get("attack") != null:
 		var q: bool = c.get("varStats", CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false))
 		info.add_child(label("ATK ?    DEF ?" if q else "ATK %d    DEF %d" % [int(c.attack), int(c.get("defense", 0))], 32, GOLD, true))

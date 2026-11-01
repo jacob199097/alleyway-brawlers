@@ -65,6 +65,12 @@ func _ready() -> void:
 	var side_panel: Control = _prize_panel(prize) if prize != "" else _mvp_panel(d.get("mvp", {}) if d.get("mvp") is Dictionary else {})
 	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), side_panel]
 	_show_mastery(d.get("mastery"))
+	_show_turf(d.get("turf"))
+	for v in (d.get("veterans") if d.get("veterans") is Array else []):
+		if v is Dictionary:
+			_new_veteran(v)
+	if d.get("online", false):
+		Game.load_veterans()   # (the library and the next duel show the new marks)
 	_submit(d)
 	if d.get("online", false) and not str(d.get("mode", "")).begins_with("cpu") and str(d.get("mode", "")) != "" and not d.get("ffa", false) and not d.get("coop", false):
 		_rematch_box()
@@ -1067,6 +1073,54 @@ func _free_pack_button() -> void:
 	var t := b.create_tween()
 	t.tween_interval(1.6 + INTRO)
 	t.tween_property(b, "modulate:a", 1.0, 0.3)
+
+
+## The turf map influence the match won (backend/economy/territory.js), under clan mastery:
+## "+3 INFLUENCE FOR NEBULA IN THE DOCKS".
+func _show_turf(t) -> void:
+	if not (t is Dictionary) or int(t.get("points", 0)) <= 0:
+		return
+	var clan := str(t.get("clan", ""))
+	var name := clan
+	var col := UI.GOLD
+	for c in CardDB.clans():
+		if str(c.get("id", "")) == clan:
+			name = str(c.get("name", clan))
+			col = c.color
+	var l := UI.label("🗺  +%d INFLUENCE FOR %s IN %s" % [int(t.points), name.to_upper(), str(t.get("name", "")).to_upper()], 18, col, true)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.custom_minimum_size = Vector2(560, 0)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mastery_box.add_child(l)
+	l.modulate.a = 0.0
+	l.create_tween().tween_property(l, "modulate:a", 1.0, 0.4).set_delay(1.2 + INTRO)
+
+
+## A card that reached a new veteran tier this match: it pops in with its new marks and the tier's name.
+func _new_veteran(v: Dictionary) -> void:
+	var c := CardDB.get_card(str(v.get("id", "")))
+	if c.is_empty():
+		return
+	var tier := int(v.get("tier", 1))
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 2)
+	var tile := CardTile.make(c, Vector2(78, 110))
+	tile.veteran = tier
+	tile.pivot_offset = Vector2(39, 55)
+	tile.scale = Vector2.ZERO
+	var holder := CenterContainer.new()
+	holder.custom_minimum_size = Vector2(110, 112)
+	holder.add_child(tile)
+	box.add_child(holder)
+	var tag := UI.label(UI.VETERAN_NAMES[mini(tier, 3)] + "!", 15, UI.VETERAN_COLORS[mini(tier, 3)], true)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(tag)
+	_showcase_row().add_child(box)
+	var t := tile.create_tween()
+	t.tween_interval(1.6 + INTRO)
+	t.tween_callback(func(): Sfx.play("promote", 1.15, -4.0))
+	t.tween_property(tile, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## A newly unlocked profile picture, next to the new level's emblem.

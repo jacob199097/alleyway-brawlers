@@ -4,6 +4,7 @@
 // Then set Settings → Server → http://127.0.0.1:3999 and log in with any email/password
 // (each email is its own account). Online matches run on the real backend/socket/onlineMatch.js.
 import http from 'node:http';
+import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { CARD_CATALOG } from '../../shared/cards.js';
@@ -20,6 +21,13 @@ function extraClans() {
 const port = Number(process.argv[2] || 3999);
 const TURF = await import('../../shared/turf.js');
 const turfClears = new Map();   // player id → {bossId: {level: {clears, attempts, best_turns}}}
+// Veteran cards (backend/economy/veterans.js shape): a few of the catalogue's cards at each tier
+const VET_TIERS = [{ tier: 1, wins: 5, name: 'Seasoned' }, { tier: 2, wins: 15, name: 'Battle-Scarred' }, { tier: 3, wins: 40, name: 'Street Legend' }];
+const vetWins = (i) => [42, 17, 16, 6, 5, 3][i] ?? 0;
+const vetTier = (w) => VET_TIERS.filter(t => w >= t.wins).length;
+// The turf map (backend/economy/territory.js overview shape): made-up standings over the real arenas
+const ARENA_LIST = JSON.parse(fs.readFileSync(new URL('../data/arenas.json', import.meta.url), 'utf8'));
+let turfClaimed = false;
 
 const cards = Object.values(CARD_CATALOG).map(c => ({
     id: randomUUID(), name: c.name, clan: c.clan, clan_tag: c.clanTag, card_type: c.cardType,
@@ -203,6 +211,34 @@ const routes = {
                 phases: (l.phases || []).map(p => ({ below: p.below, label: p.label })), first_clear: l.first_clear || {}, clear: l.clear || {},
                 unlocked: open(b.id, l.level), clears: clears[b.id]?.[l.level]?.clears || 0, attempts: clears[b.id]?.[l.level]?.attempts || 0,
                 best_turns: clears[b.id]?.[l.level]?.best_turns ?? null })) })) }];
+    },
+    'GET /api/veterans': () => {
+        const ids = [...deckCards.keys()].map(id => byId.get(id)?.art_url).filter(Boolean);   // (the catalogue's ids, as matches record them)
+        const pool = [...new Set(ids.length ? ids : cards.map(c => c.id))].slice(0, 6);
+        return [200, { tiers: VET_TIERS, cards: Object.fromEntries(pool.map((id, i) => [id, { wins: vetWins(i), plays: vetWins(i) + 4, tier: vetTier(vetWins(i)) }])) }];
+    },
+    'GET /api/territory': () => {
+        const clans = pickableClans();
+        const gangs = ['The Rust Jackals', 'The Neon Saints', 'The Bone Hounds', 'The Glass Vipers', 'The Ash Crows'];
+        const districts = ARENA_LIST.map((a, i) => {
+            const standings = clans.slice(0, 3).map((c, k) => ({ clan: c.id, points: (i * 7 + k * 5) % 13 })).filter(x => x.points > 0).sort((x, y) => y.points - x.points);
+            const strength = 3 + (i * 5) % 6;
+            const holder = standings[0] && standings[0].points > strength && standings[0].points !== standings[1]?.points ? standings[0].clan : '';
+            return { id: a.id, name: a.name, image: a.image, locals: { name: gangs[i % gangs.length], strength }, clans: standings, holder,
+                boss: holder ? { username: i % 2 ? 'AlleyCat' : player.username, points: standings[0].points - 2 } : null,
+                mine: i % 3 === 0 && standings[0] ? { [standings[0].clan]: 3 + (i % 4) } : {}, lastHolder: i % 4 === 0 ? clans[i % clans.length].id : '' };
+        });
+        const ends = new Date(Date.now() + 3 * 86400e3 + 5 * 3600e3).toISOString().slice(0, 19) + 'Z';
+        return [200, { week: '2026-10-26', endsAt: ends, clans: clans.map(c => ({ id: c.id, name: c.name, color: c.color })), districts,
+            reward: turfClaimed ? null : { karat: 150, weeks: [{ week: '2026-10-19', karat: 150, districts: [{ id: districts[0].id, name: districts[0].name, clan: clans[0].id, boss: true }, { id: districts[3].id, name: districts[3].name, clan: clans[0].id, boss: false }] }] },
+            karat: { district: 50, boss: 50 }, points: {} }];
+    },
+    'POST /api/territory/claim': () => {
+        const p = player;
+        const k = turfClaimed ? 0 : 150;
+        turfClaimed = true;
+        p.karat += k;
+        return [200, { karat: k, newKarat: p.karat }];
     },
     'GET /api/daily': () => [200, { day: 3, claimed: true, streak: 3, rewards: [{ karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 }, { karat: 200 }, { dust: 150 }, { karat: 300, free_packs: 1 }] }],
     'POST /api/daily/claim': () => { player.karat += 150; return [200, { day: 3, reward: { karat: 150 }, karat: player.karat, dust: player.dust ?? 0, free_packs: player.free_packs ?? 0 }]; },
@@ -413,6 +449,16 @@ const serviceDeps = {
         }
         console.log('MATCH OVER winner', byPlayerId(winnerId)?.username ?? 'none');
         return out;
+    },
+    async veteranTiers(playerId, ids) {
+        return Object.fromEntries(ids.map((id, i) => [id, [3, 2, 1][i % 3]]));
+    },
+    async recordVeterans(playerId, ids, won) {
+        return won && ids[0] ? [{ id: ids[0], tier: 2, name: 'Battle-Scarred' }] : [];
+    },
+    async recordInfluence({ district, clan, outcome }) {
+        const a = ARENA_LIST.find(x => x.id === district);
+        return a && clan ? { district, name: a.name, clan, points: outcome === 'win' ? 2 : 1 } : null;
     },
     async resolveCpuMatch({ playerId, outcome, ranked }) {
         const p = byPlayerId(playerId);
