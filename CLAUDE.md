@@ -28,8 +28,8 @@
 - Turf Defense (2 players vs a clan boss): bosses, levels, lines and rewards in `godot/data/bosses.json`
   (the server reads it via `shared/turf.js`); matches `backend/socket/coopMatch.js`, rewards `backend/economy/turf.js`.
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
-  veteran cards (wins per card → badge and foil) are `backend/economy/veterans.js`. Rank and veteran badges made in
-  ChatGPT come in with `godot/tools/import_rank_icons.gd`.
+  veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
+  Rank emblems made in ChatGPT come in with `godot/tools/import_rank_icons.gd`.
 - Steam (`docs/STEAM.md`): GodotSteam in `godot/addons/godotsteam`, `godot/scripts/steam.gd` (on only in the "Windows Steam"
   export, feature `steam`, or with `--steam`); server `backend/routes/steam.js`; `tools/steam_build.mjs` builds and uploads.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

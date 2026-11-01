@@ -163,7 +163,7 @@ func _city_backdrop() -> void:
 		fade.position = Vector2(0.0 if side == 0.0 else ts.x - 90.0, 0)
 		fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_world.add_child(fade)
-	var life := ArenaLife.new().setup(tex, Color.WHITE, clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0), ts)
+	var life := ArenaLife.new().setup(tex, Color.WHITE, Game.arena_level(), ts)
 	_world.add_child(life)
 	for e in _city.get("fx", []):
 		if e is Dictionary and ArenaLife.handles(str(e.get("kind", ""))):

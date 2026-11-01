@@ -216,6 +216,38 @@ func _run() -> void:
 			await _shot("s%02d" % i, 1.6)
 		get_tree().quit()
 		return
+	if "--display" in OS.get_cmdline_user_args():   # (Settings → Display: window, resolution, graphics quality)
+		Game.go("main_menu")
+		await get_tree().create_timer(1.5).timeout
+		var panel := SettingsPanel.open(_screen())
+		await get_tree().process_frame
+		panel._show("display")
+		await _shot("d01_display", 1.0)
+		get_tree().quit()
+		return
+	if "--veteran-frames" in OS.get_cmdline_user_args():   # (a character of each clan at each veteran tier: plain, bronze, chrome, gold)
+		Game.go("main_menu")
+		await get_tree().create_timer(1.5).timeout
+		var veil := ColorRect.new()
+		veil.color = Color(0.05, 0.05, 0.08)
+		veil.size = Vector2(1920, 1080)
+		_screen().add_child(veil)
+		var picks := {}
+		for id in CardDB.all():
+			var c: Dictionary = CardDB.all()[id]
+			if c.get("cardType") == "gang_member" and not c.get("token", false) and not picks.has(c.get("clan")):
+				picks[c.get("clan")] = c
+		var row := 0
+		for clan in picks:
+			for i in 4:
+				var tile := CardTile.make(picks[clan], Vector2(176, 249))
+				tile.veteran = i
+				tile.position = Vector2(30 + (row % 2) * 950 + i * 228, 20 + (row / 2) * 262)
+				veil.add_child(tile)
+			row += 1
+		await _shot("v01_frames", 1.5)
+		get_tree().quit()
+		return
 	if "--turf-map" in OS.get_cmdline_user_args():   # (the turf map, veteran cards, a CPU match in a district)
 		await _turf_map_shots()
 		get_tree().quit()

@@ -95,7 +95,16 @@ func _show(tab: String) -> void:
 			_slider("Ambience Volume", "ambience_volume")
 		"display":
 			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode")
-			_cycle("Resolution (windowed)", RESOLUTIONS, RESOLUTIONS.map(func(r): return r.replace("x", " × ")), "resolution")
+			var fits := _fitting_resolutions()
+			_cycle("Resolution (windowed)", fits, fits.map(func(r): return r.replace("x", " × ")), "resolution")
+			var presets := ["high", "medium", "low"]
+			var names := ["HIGH", "MEDIUM", "LOW"]
+			if Game.settings.get("graphics") == "custom":
+				presets.append("custom")
+				names.append("CUSTOM")
+			_cycle("Graphics Quality", presets, names, "graphics", true)
+			_cycle("Arena Effects", [1.0, 0.6, 0.25], ["FULL", "REDUCED", "MINIMAL"], "arena_fx", true)
+			_cycle("Animated Card Art", [true, false], ["ON", "OFF"], "card_motion", true)
 			_cycle("V-Sync", [true, false], ["ON", "OFF"], "vsync")
 			_cycle("FPS Cap", FPS_CAPS, FPS_CAPS.map(func(f): return "UNLIMITED" if f == 0 else str(f)), "fps_cap")
 			_cycle("Show FPS", [true, false], ["ON", "OFF"], "show_fps")
@@ -170,22 +179,48 @@ func _slider(text: String, key: String) -> void:
 			Sfx.play("click"))
 
 
-func _cycle(text: String, values: Array, labels: Array, key: String) -> void:
+## A setting picked from a list: ◀ steps back, ▶ (or the value itself; right-click: back) steps on.
+## `refresh`: the tab is rebuilt after a change (the graphics preset and its parts change each other).
+## A last value "custom" is only shown, never stepped to (it comes from changing the parts).
+func _cycle(text: String, values: Array, labels: Array, key: String, refresh := false) -> void:
 	var row := _row(text)
 	var idx := maxi(0, values.find(Game.settings[key]))
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(480, 52)
-	b.text = "◀   %s   ▶" % labels[idx]
-	row.add_child(b)
-	b.gui_input.connect(func(e):
-		if e is InputEventMouseButton and e.pressed and e.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-			var step := 1 if e.button_index == MOUSE_BUTTON_LEFT else -1
-			if e.button_index == MOUSE_BUTTON_LEFT and e.position.x < b.size.x / 3:
-				step = -1
-			idx = (idx + step + values.size()) % values.size()
-			b.text = "◀   %s   ▶" % labels[idx]
-			Sfx.play("click")
-			Game.set_setting(key, values[idx]))
+	var count := values.size() - (1 if values.back() is String and values.back() == "custom" else 0)
+	var value := Button.new()
+	value.custom_minimum_size = Vector2(360, 52)
+	value.text = labels[idx]
+	var step := func(by: int):
+		idx = posmod(idx + by, count) if idx < count else (0 if by > 0 else count - 1)
+		value.text = labels[idx]
+		Sfx.play("click")
+		Game.set_setting(key, values[idx])
+		if refresh:
+			_show.call_deferred(_tab)
+	var back := Button.new()
+	back.text = "◀"
+	back.custom_minimum_size = Vector2(60, 52)
+	back.pressed.connect(step.bind(-1))
+	var on := Button.new()
+	on.text = "▶"
+	on.custom_minimum_size = Vector2(60, 52)
+	on.pressed.connect(step.bind(1))
+	value.pressed.connect(step.bind(1))
+	value.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+			step.call(-1))
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.add_child(back)
+	box.add_child(value)
+	box.add_child(on)
+	row.add_child(box)
+
+
+## The windowed sizes that fit this screen (with room for the title bar and taskbar), always at least one.
+func _fitting_resolutions() -> Array:
+	var room := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size - Vector2i(0, 40)
+	var out := RESOLUTIONS.filter(func(r): return int(r.split("x")[0]) <= room.x and int(r.split("x")[1]) <= room.y)
+	return out if not out.is_empty() else [RESOLUTIONS[0]]
 
 
 ## Who's signed in, the privacy policy and terms (pages on the server, backend/routes/legal.js), and

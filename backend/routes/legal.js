@@ -67,7 +67,7 @@ Questions: ${contactLink()}.</p>
  <li><b>Your game:</b> your cards and packs, decks, Karat, Contraband and Dust, level and XP, rank, wins and losses,
   achievements, quests, daily rewards, clan mastery, your chosen clan, title, profile picture and card back, and
   when you last played. For each card you have played: how many matches you played it in and how many of those you
-  won (its veteran marks). On the turf map: the influence you won for a clan in each district each week, and the
+  won (its card XP and veteran frame). On the turf map: the influence you won for a clan in each district each week, and the
   weekly rewards you claimed.</li>
  <li><b>Friends and messages:</b> your friends list and friend requests, the direct messages you send and receive,
   and the messages in your in-game mailbox.</li>
@@ -102,7 +102,7 @@ phone number, contacts or location.</p>
 
 <h2>What other players can see</h2>
 <p>Your username, profile picture, title, level, rank and win record (on the leaderboard and your profile), the
-cards you play in a match and their veteran marks, and replays of matches you played against them. On the turf
+cards you play in a match and their veteran frames, and replays of matches you played against them. On the turf
 map, the player who won the most influence in a district for the clan holding it is shown by username. Direct messages are seen only by the
 person you send them to. Your email address and Steam ID aren't shown to other players.</p>
 

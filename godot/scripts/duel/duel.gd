@@ -1257,7 +1257,7 @@ func _style_board(board: Dictionary) -> void:
 ## the crowd, welding sparks, a turning roulette wheel, cigar smoke and glints on chips and glass.
 ## Flames, fog, water, weather, beams, creatures... are made by ArenaLife (scripts/duel/arena_life.gd).
 func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
-	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, _fx_level())
+	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, Game.arena_level())
 	$BackLayer.add_child(life)
 	var ts := tex.get_size()
 	var k := maxf(1920.0 / ts.x, 1080.0 / ts.y)
@@ -6267,7 +6267,8 @@ func _zoom_hovered() -> bool:
 	var base := CardDB.get_card(str(v.card.get("id", "")))
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
 	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
-	zc.veteran = v.veteran   # (its owner's marks, not yours)
+	zc.veteran = v.veteran   # (its owner's frame, not yours)
+	zc.mine = v.side == "player" and _replay.is_empty() and not _spectating   # (yours: the zoom shows its card XP)
 	if v.card.has("uid"):
 		zc.uid = v.card.uid   # (a token zooms in on the same one of its artworks as on the field)
 	UI.card_zoom($HUD/UI, zc)

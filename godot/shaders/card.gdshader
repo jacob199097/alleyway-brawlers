@@ -16,7 +16,7 @@ uniform float flash = 0.0;     // white hit-flash
 uniform float shine = 0.0;        // Rare and up: a soft glint sweeps across the card every few seconds
 uniform float shine_seed = 0.0;   // 0..1, so cards don't all glint at once
 uniform float sparkle = 0.0;      // Legendary: a few faint twinkles, all the time
-uniform float veteran = 0.0;      // a veteran card's tier (UI.veteran_fx): 2 = holo foil all the time, 3 = gold foil
+uniform float veteran = 0.0;      // a veteran card's tier (UI.veteran_fx): its frame turns 1 bronze, 2 chrome, 3 gold (veteran_frame)
 // art_fx: the card's art itself moves. 1 = Epic: its glowing parts (neon, eyes, energy, crystals) throb,
 // with energy rippling up through them and a halo that breathes. 2 = Legendary: stronger, the glow
 // shifts colour, the scene drifts gently and sparks rise. Only inside art_rect (the Forge card's art
@@ -87,6 +87,20 @@ float glowness(vec3 c) {
 // The card's frame, plus a little inside it
 float frame_mask(vec2 p, float asp) {
 	return max(smoothstep(0.395, 0.435, abs(p.x)), smoothstep(0.405, 0.445, abs(p.y / asp)));
+}
+
+// A Forge card's own panels (centred uv: x and y each -0.5..0.5): name, art, type line, text, stats,
+// card code. A veteran's frame is everything else, bar the clan crest (top right).
+float in_rect(vec2 p, vec4 r) {
+	return smoothstep(r.x - 0.004, r.x + 0.004, p.x) * (1.0 - smoothstep(r.z - 0.004, r.z + 0.004, p.x))
+			* smoothstep(r.y - 0.003, r.y + 0.003, p.y) * (1.0 - smoothstep(r.w - 0.003, r.w + 0.003, p.y));
+}
+float veteran_frame(vec2 p, float asp) {
+	float panel = max(max(in_rect(p, vec4(-0.378, -0.453, 0.344, -0.39)), in_rect(p, vec4(-0.461, -0.384, 0.464, 0.079))),
+			max(max(in_rect(p, vec4(-0.333, 0.089, 0.333, 0.124)), in_rect(p, vec4(-0.464, 0.132, 0.464, 0.36))),
+			max(in_rect(p, vec4(-0.461, 0.37, 0.461, 0.446)), in_rect(p, vec4(0.3, 0.459, 0.461, 0.49)))));
+	float crest = 1.0 - smoothstep(0.05, 0.068, length(vec2(p.x - 0.425, (p.y + 0.445) * asp)));
+	return (1.0 - panel) * (1.0 - crest);
 }
 
 void fragment() {
@@ -253,18 +267,35 @@ void fragment() {
 		float tw = pow(max(0.0, sin(TIME * 2.6 + rnd * 40.0)), 22.0);
 		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75;
 	}
-	if (veteran >= 2.0) {
-		// Veteran foil: soft bands that drift and slide as the card tilts, lighting its bright parts most
+	if (veteran >= 1.0) {
+		// A veteran's frame: its grey metal is plated, keeping its own shading: 1 bronze, 2 chrome with
+		// a sheen that slides as the card tilts, 3 gold with a sheen and glints. The clan's own colours
+		// (neon lines, coloured trim, camo, the crest) stay and glow brighter with each tier, so a clan
+		// still reads at a glance. The art and text stay as they are.
+		float fm = veteran_frame(uv, aspect);
 		float lumv = dot(col.rgb, vec3(0.299, 0.587, 0.114));
-		float hv = fract(uv.x * 0.7 - uv.y * 0.5 + y_rot / 30.0 + x_rot / 40.0 + TIME * 0.06);
+		float mxv = max(col.r, max(col.g, col.b));
+		float clan_col = smoothstep(0.2, 0.45, (mxv - min(col.r, min(col.g, col.b))) / max(mxv, 0.001)) * smoothstep(0.08, 0.2, mxv);
+		vec3 metal = veteran >= 3.0 ? vec3(1.0, 0.76, 0.28) : (veteran >= 2.0 ? vec3(0.8, 0.86, 0.96) : vec3(0.82, 0.48, 0.26));
+		float amt = veteran >= 3.0 ? 0.86 : (veteran >= 2.0 ? 0.8 : 0.7);
+		col.rgb = mix(col.rgb, metal * (0.18 + 1.45 * lumv), amt * fm * (1.0 - clan_col));
+		float pulse = veteran >= 2.0 ? 0.75 + 0.25 * sin(TIME * 2.0 + shine_seed * 6.0) : 1.0;
+		col.rgb *= 1.0 + clan_col * fm * 0.14 * veteran * pulse;
+		// ...and a bevelled rim of the tier's metal all round the card's edge: the tier at a glance on any clan
+		float ed = min(0.5 - abs(uv.x), (0.5 - abs(uv.y)) * aspect) / 0.025;   // (0 at the edge, 1 at the rim's inner side)
+		float rim = 1.0 - smoothstep(0.85, 1.15, ed);
+		float bevel = 0.55 + 0.75 * smoothstep(0.0, 0.3, ed) * (1.0 - smoothstep(0.45, 0.9, ed)) - 0.3 * smoothstep(0.85, 1.0, ed);
+		col.rgb = mix(col.rgb, metal * bevel * (0.8 + 0.4 * lumv), rim * 0.92);
+		if (veteran >= 2.0) {
+			float hv = fract(uv.x * 0.7 - uv.y * 0.5 + y_rot / 30.0 + x_rot / 40.0 + TIME * 0.06);
+			col.rgb += mix(vec3(1.0), metal, 0.5) * pow(0.5 + 0.5 * cos(6.28318 * hv), 10.0) * (0.12 + 0.35 * lumv) * fm;
+		}
 		if (veteran >= 3.0) {
-			// gold: the highlights warm to gold leaf, and a gold glint rides each band
-			vec3 gold = vec3(1.0, 0.8, 0.36);
-			col.rgb = mix(col.rgb, col.rgb * gold * 1.3, 0.28 * smoothstep(0.2, 0.75, lumv));
-			col.rgb += gold * pow(0.5 + 0.5 * cos(6.28318 * hv), 8.0) * (0.08 + 0.3 * lumv);
-		} else {
-			vec3 rbv = 0.5 + 0.5 * cos(6.28318 * (hv + vec3(0.0, 0.33, 0.67)));
-			col.rgb += rbv * (0.04 + 0.14 * lumv);
+			vec2 cell = floor((uv + 0.5) * vec2(22.0, 31.0));
+			float rnd = fract(sin(dot(cell, vec2(27.17, 61.3))) * 31718.927);
+			vec2 inc = fract((uv + 0.5) * vec2(22.0, 31.0)) - 0.5;
+			float tw = pow(max(0.0, sin(TIME * 2.1 + rnd * 40.0)), 26.0) * step(0.7, rnd);
+			col.rgb += vec3(1.0, 0.92, 0.65) * tw * smoothstep(0.35, 0.0, length(inc)) * fm * 0.9;
 		}
 	}
 	if (shine > 0.0) {

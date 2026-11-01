@@ -5,28 +5,20 @@ extends SceneTree
 ## the edges inwards; each shape left goes to the emblem whose grid cell holds its centre (so a crown
 ## or wing poking into the next cell stays with its own emblem), then each emblem is trimmed, squared
 ## and resized. make_badges.gd leaves these alone once they exist.
-## The veteran card badges the same way: assets/veteran/chatgpt/sheet.png, 3 side by side (bronze,
-## silver, gold) → assets/veteran/tier_1.png … tier_3.png (256×256; UI.draw_veteran).
-## Each sheet is done only if it's there.
 ## Run:  godot --headless --path godot --script res://tools/import_rank_icons.gd   then tools/sync_assets.
 
 const RANKS := ["rookie", "street_tough", "enforcer", "underboss", "kingpin", "legend"]
-const VETERAN := ["tier_1", "tier_2", "tier_3"]
 const TOLERANCE := 0.03   # tight: the emblems' black ink outlines are only a little darker than the backdrop
 
 
 func _init() -> void:
 	var assets := ProjectSettings.globalize_path("res://").path_join("../assets")
-	var done := 0
-	if FileAccess.file_exists(assets.path_join("ranks/chatgpt/sheet.png")):
-		_import(assets.path_join("ranks"), 3, 2, RANKS, 512)
-		done += 1
-	if FileAccess.file_exists(assets.path_join("veteran/chatgpt/sheet.png")):
-		_import(assets.path_join("veteran"), 3, 1, VETERAN, 256)
-		done += 1
-	if done == 0:
-		push_error("No assets/ranks/chatgpt/sheet.png or assets/veteran/chatgpt/sheet.png")
-	quit(0 if done > 0 else 1)
+	if not FileAccess.file_exists(assets.path_join("ranks/chatgpt/sheet.png")):
+		push_error("No assets/ranks/chatgpt/sheet.png")
+		quit(1)
+		return
+	_import(assets.path_join("ranks"), 3, 2, RANKS, 512)
+	quit(0)
 
 
 ## Cuts dir/chatgpt/sheet.png (cols × rows emblems, in names' order) into dir/<name>.png, size² each.

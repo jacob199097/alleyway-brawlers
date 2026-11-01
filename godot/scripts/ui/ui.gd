@@ -342,11 +342,13 @@ static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 ## glints now and then; Epic's art moves (its glowing parts throb, with a breathing halo) over the
 ## holographic foil; Legendary's art moves more (shifting colours, drifting scene, rising sparks) and
 ## twinkles. seed (0..1) keeps cards out of step with each other.
+## Settings → Animated Card Art off (Low graphics) keeps the art still and drops the sparkles.
 static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
+	var motion: bool = Game.settings.get("card_motion", true)
 	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
 	m.set_shader_parameter("shine", 0.7 if rarity == 3 else 0.0)
-	m.set_shader_parameter("art_fx", 0.0 if rarity < 4 else 1.0 if rarity == 4 else 2.0)
-	m.set_shader_parameter("sparkle", 1.0 if rarity >= 5 else 0.0)
+	m.set_shader_parameter("art_fx", 0.0 if rarity < 4 or not motion else 1.0 if rarity == 4 else 2.0)
+	m.set_shader_parameter("sparkle", 1.0 if rarity >= 5 and motion else 0.0)
 	m.set_shader_parameter("shine_seed", seed)
 
 
@@ -691,42 +693,64 @@ const VETERAN_NAMES := ["", "SEASONED", "BATTLE-SCARRED", "STREET LEGEND"]
 const VETERAN_COLORS := [Color.WHITE, Color("d0905a"), Color("dfe8f8"), Color("ffd34d")]
 
 
-## A veteran card's badge on its face `r` (a card image): the tier's emblem (assets/veteran/tier_N.png,
-## made in ChatGPT: tools/import_rank_icons.gd) over the art's bottom-left corner. Nothing until the
-## art is there. Its foil comes from the card shader (veteran_fx).
-static func draw_veteran(ci: CanvasItem, r: Rect2, tier: int) -> void:
-	if tier <= 0:
-		return
-	var badge := tex("veteran/tier_%d.png" % mini(tier, 3))
-	if badge == null:
-		return
-	var s := r.size.x * 0.24
-	var at := r.position + Vector2(0.15, 0.53) * r.size
-	ci.draw_texture_rect(badge, Rect2(at - Vector2(s, s) / 2.0, Vector2(s, s)), false)
-
-
-## A card's veteran foil in the card shader: tier 2 a holo foil all the time, tier 3 gold foil.
+## A veteran card's frame in the card shader: its frame turns bronze (1), chrome (2) or gold (3).
 static func veteran_fx(m: ShaderMaterial, tier: int) -> void:
 	if m:
 		m.set_shader_parameter("veteran", float(tier))
 
 
-## A card's veteran standing for the zoom: "VETERAN · SEASONED · 7 wins · 8 more to BATTLE-SCARRED",
-## or "" (never played). `theirs`: a card in a duel, where only its tier is known.
-static func veteran_line(id: String, tier: int, theirs := false) -> String:
+## A card's veteran standing for the zoom and the library: its rank, card XP and a bar to the next
+## rank (backend/economy/veterans.js: 1 XP a match, 3 for a win), or null (never played).
+## `theirs`: a card in a duel that isn't yours, where only its rank is known.
+static func veteran_box(id: String, tier: int, theirs := false, width := 560.0) -> Control:
+	var t := mini(tier, 3)
 	if theirs:
-		return "VETERAN  ·  %s" % VETERAN_NAMES[mini(tier, 3)] if tier > 0 else ""
+		return label("VETERAN  ·  %s" % VETERAN_NAMES[t], 19, VETERAN_COLORS[t]) if tier > 0 else null
 	var row = Game.veterans.get(id)
 	if not row is Dictionary:
-		return ""
+		return null
 	var wins := int(row.get("wins", 0))
-	var parts: Array = ["VETERAN  ·  %s" % VETERAN_NAMES[mini(tier, 3)] if tier > 0 else "NOT A VETERAN YET"]
-	parts.append("%d win%s with it" % [wins, "" if wins == 1 else "s"])
-	for t in Game.veteran_tiers:
-		if t is Dictionary and int(t.get("wins", 0)) > wins:
-			parts.append("%d more to %s" % [int(t.wins) - wins, str(t.get("name", "")).to_upper()])
+	var plays := int(row.get("plays", 0))
+	var xp := int(row.get("xp", plays + wins * 2))
+	var floor_xp := 0
+	var next := {}
+	for st in Game.veteran_tiers:
+		if not st is Dictionary:
+			continue
+		var need := int(st.get("xp", st.get("wins", 0)))
+		if need > xp:
+			next = st
 			break
-	return "  ·  ".join(parts)
+		floor_xp = need
+	var col: Color = VETERAN_COLORS[t] if tier > 0 else Color("9fb2c8")
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", box(Color(0, 0, 0, 0.45), Color(col, 0.6), 2, 10))
+	p.custom_minimum_size = Vector2(width, 0)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	var top := HBoxContainer.new()
+	top.add_child(label("CARD XP", 18, MUTED, true))
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(gap)
+	top.add_child(label("VETERAN  ·  %s" % VETERAN_NAMES[t] if tier > 0 else "NOT A VETERAN YET", 18, col, true))
+	v.add_child(top)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 14)
+	bar.max_value = 1.0
+	bar.value = 1.0 if next.is_empty() else float(xp - floor_xp) / maxf(1.0, int(next.get("xp", next.get("wins", 1))) - floor_xp)
+	bar.add_theme_stylebox_override("background", box(Color(1, 1, 1, 0.08), Color(0, 0, 0, 0), 0, 7))
+	bar.add_theme_stylebox_override("fill", box(col, Color(0, 0, 0, 0), 0, 7))
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(bar)
+	var what := "%d XP  ·  %d more to %s" % [xp, int(next.get("xp", next.get("wins", 0))) - xp, str(next.get("name", "")).to_upper()] 			if not next.is_empty() else "%d XP  ·  TOP RANK" % xp
+	var sub := label("%s  ·  %d win%s in %d match%s" % [what, wins, "" if wins == 1 else "s", plays, "" if plays == 1 else "es"], 15, Color(0.85, 0.87, 0.92))
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(sub)
+	return p
 
 
 static func rarity_color(r) -> Color:
@@ -781,11 +805,6 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		vet_id = str(c.get("art_url", c.get("cardId", vet_id)))
 	var vet := int(c.get("veteran", Game.veteran_tier(vet_id)))
 	if vet > 0:
-		var marks := Control.new()
-		marks.size = art.size
-		marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		marks.draw.connect(func(): draw_veteran(marks, Rect2(Vector2.ZERO, marks.size), vet))
-		art.add_child(marks)
 		veteran_fx(mat, vet)
 	var info := VBoxContainer.new()
 	info.position = Vector2(980, 230)
@@ -805,9 +824,9 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	kind_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (a long type line wraps, not off the edge)
 	kind_line.custom_minimum_size = Vector2(560, 0)
 	info.add_child(kind_line)
-	var vet_line := veteran_line(vet_id, vet, c.has("veteran"))
-	if vet_line != "":
-		info.add_child(label(vet_line, 19, VETERAN_COLORS[mini(vet, 3)] if vet > 0 else MUTED))
+	var vet_box := veteran_box(vet_id, vet, c.has("veteran") and not c.get("mine", false))
+	if vet_box:
+		info.add_child(vet_box)
 	if kind in ["gang_member", "leader"] and c.get("attack") != null:
 		var q: bool = c.get("varStats", CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false))
 		info.add_child(label("ATK ?    DEF ?" if q else "ATK %d    DEF %d" % [int(c.attack), int(c.get("defense", 0))], 32, GOLD, true))

@@ -22,9 +22,10 @@ const port = Number(process.argv[2] || 3999);
 const TURF = await import('../../shared/turf.js');
 const turfClears = new Map();   // player id → {bossId: {level: {clears, attempts, best_turns}}}
 // Veteran cards (backend/economy/veterans.js shape): a few of the catalogue's cards at each tier
-const VET_TIERS = [{ tier: 1, wins: 5, name: 'Seasoned' }, { tier: 2, wins: 15, name: 'Battle-Scarred' }, { tier: 3, wins: 40, name: 'Street Legend' }];
+const VET_TIERS = [{ tier: 1, xp: 15, name: 'Seasoned' }, { tier: 2, xp: 45, name: 'Battle-Scarred' }, { tier: 3, xp: 120, name: 'Street Legend' }];
 const vetWins = (i) => [42, 17, 16, 6, 5, 3][i] ?? 0;
-const vetTier = (w) => VET_TIERS.filter(t => w >= t.wins).length;
+const vetXp = (i) => vetWins(i) * 3 + 4;   // (4 losses each)
+const vetTier = (xp) => VET_TIERS.filter(t => xp >= t.xp).length;
 // The turf map (backend/economy/territory.js overview shape): made-up standings over the real arenas
 const ARENA_LIST = JSON.parse(fs.readFileSync(new URL('../data/arenas.json', import.meta.url), 'utf8'));
 let turfClaimed = false;
@@ -215,7 +216,7 @@ const routes = {
     'GET /api/veterans': () => {
         const ids = [...deckCards.keys()].map(id => byId.get(id)?.art_url).filter(Boolean);   // (the catalogue's ids, as matches record them)
         const pool = [...new Set(ids.length ? ids : cards.map(c => c.id))].slice(0, 6);
-        return [200, { tiers: VET_TIERS, cards: Object.fromEntries(pool.map((id, i) => [id, { wins: vetWins(i), plays: vetWins(i) + 4, tier: vetTier(vetWins(i)) }])) }];
+        return [200, { tiers: VET_TIERS, cards: Object.fromEntries(pool.map((id, i) => [id, { wins: vetWins(i), plays: vetWins(i) + 4, xp: vetXp(i), tier: vetTier(vetXp(i)) }])) }];
     },
     'GET /api/territory': () => {
         const clans = pickableClans();

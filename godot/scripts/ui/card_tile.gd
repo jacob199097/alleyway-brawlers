@@ -238,8 +238,6 @@ func _draw() -> void:
 
 func _draw_overlay() -> void:
 	var f := UI.font()
-	if veteran > 0 and is_visible_in_tree():
-		UI.draw_veteran(_overlay, Rect2(Vector2(4, 4), size - Vector2(8, 8)), veteran)
 	UI.draw_level_stars(_overlay, Vector2(size.x / 2, 3.0), CardDB.striver_stage(card), clampf(size.x / 18.0, 6.0, 11.0))
 	if badge != "":   # (on the art's top right corner, just under the name strip, so the name stays readable)
 		var br := Rect2(size.x - 64, size.y * 0.135, 58, 28)

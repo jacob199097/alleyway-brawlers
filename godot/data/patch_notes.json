@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.98",
+        "notes": [
+            "Veteran cards: no more badges. A veteran card now shows in its frame: a bronze, chrome or gold rim, and plated metal (chrome and gold shine), while the clan colours stay.",
+            "Card XP: every match you play a card in earns it XP (a win earns more). Zoom in on a card or open it in the Card Library to see its XP and how far it is from the next veteran rank.",
+            "Settings: the left/right arrows now always go the way they point (the left arrow sometimes went forward).",
+            "Settings: the game now starts at 1920 x 1080 (borderless fullscreen). New Graphics Quality option (High, Medium, Low), plus Arena Effects and Animated Card Art, for slower PCs. Window sizes too big for your screen are no longer offered.",
+            "Main menu: the Turf Map has its own neon sign."
+        ]
+    },
+    {
         "version": "0.9.97",
         "notes": [
             "Fixed: veteran cards now show their bronze, silver or gold badge (the badge art was missing from the game).",

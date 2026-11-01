@@ -30,8 +30,11 @@ const SCREENS := {
 const DEFAULT_SETTINGS := {
 	"music_volume": 0.5,
 	"sfx_volume": 0.8,
-	"window_mode": "windowed",      # windowed | fullscreen (borderless) | exclusive
-	"resolution": "1600x900",
+	"window_mode": "fullscreen",    # windowed | fullscreen (borderless) | exclusive
+	"resolution": "1920x1080",      # the window's size when windowed (fit to the screen: window_size)
+	"graphics": "high",             # high | medium | low | custom: a preset for the two below (GRAPHICS)
+	"arena_fx": 1.0,                # how much moves in the arenas and on the turf map: 1 full, 0.6 reduced, 0.25 minimal
+	"card_motion": true,            # Epic / Legendary art that moves, and Legendary sparkles (UI.rarity_fx)
 	"vsync": true,
 	"fps_cap": 0,                   # 0 = unlimited
 	"show_fps": false,
@@ -45,7 +48,11 @@ const DEFAULT_SETTINGS := {
 	"screen_fx": 1.0,               # screen shake, flashes and impact frames: 1 full, 0.5 reduced, 0 off
 	"ambience_volume": 0.8,         # rain, the crowd, the wind (Game.sound)
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
+	"display_version": 1,           # settings saved before 1 had the old 1600×900 window: moved to the new default once
 }
+## Settings → Display → Graphics Quality: what each preset sets
+const GRAPHICS := {"high": {"arena_fx": 1.0, "card_motion": true}, "medium": {"arena_fx": 0.6, "card_motion": true},
+	"low": {"arena_fx": 0.25, "card_motion": false}}
 const ErrorReport := preload("res://scripts/error_report.gd")
 const ERROR_SEND_SECS := 20.0
 const UPDATE_CHECK_SECS := 300.0   # while the game is open: is there a new version?
@@ -62,8 +69,8 @@ var duel_setup := {}        # fight mode → rock-paper-scissors → duel
 var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
 var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet): it fills on from there
-## Veteran cards (GET /api/veterans, load_veterans): card id → {wins, plays, tier}, and the tiers
-## [{tier, wins, name}]. A card's marks: UI.draw_veteran.
+## Veteran cards (GET /api/veterans, load_veterans): card id → {wins, plays, xp, tier}, and the tiers
+## [{tier, xp, name}]. A card's frame: UI.veteran_fx; its card XP: UI.veteran_box.
 var veterans := {}
 var veteran_tiers: Array = []
 
@@ -364,8 +371,39 @@ func _save_session() -> void:
 
 func set_setting(key: String, value) -> void:
 	settings[key] = value
+	if key == "graphics" and GRAPHICS.has(value):   # a preset sets its parts
+		for k in GRAPHICS[value]:
+			settings[k] = GRAPHICS[value][k]
+	elif key in ["arena_fx", "card_motion"]:   # a part changed by hand: the preset it matches, or custom
+		settings.graphics = "custom"
+		for g in GRAPHICS:
+			if GRAPHICS[g].keys().all(func(k): return settings[k] == GRAPHICS[g][k]):
+				settings.graphics = g
 	apply_settings()
 	_save_settings()
+
+
+## How much moves in an arena (ArenaLife's level): Settings → Arena Effects, thinned further by
+## Screen Shake & Flashes.
+func arena_level() -> float:
+	return clampf(float(settings.get("arena_fx", 1.0)), 0.0, 1.0) * clampf(float(settings.get("screen_fx", 1.0)), 0.0, 1.0)
+
+
+## The windowed size: the setting, or the biggest of SettingsPanel.RESOLUTIONS that fits the screen
+## (with room for the title bar and taskbar) when it doesn't.
+func window_size() -> Vector2i:
+	var parts: PackedStringArray = str(settings.resolution).split("x")
+	var want := Vector2i(int(parts[0]), int(parts[1])) if parts.size() == 2 else Vector2i(1920, 1080)
+	var room := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size - Vector2i(0, 40)
+	if want.x <= room.x and want.y <= room.y:
+		return want
+	var best := Vector2i(1280, 720)
+	for r in SettingsPanel.RESOLUTIONS:
+		var p: PackedStringArray = str(r).split("x")
+		var s := Vector2i(int(p[0]), int(p[1]))
+		if s.x <= room.x and s.y <= room.y and s.x > best.x:
+			best = s
+	return best
 
 
 func apply_settings() -> void:
@@ -385,13 +423,11 @@ func apply_settings() -> void:
 		_:
 			if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-			var parts: PackedStringArray = str(settings.resolution).split("x")
-			if parts.size() == 2:
-				var size := Vector2i(int(parts[0]), int(parts[1]))
-				if DisplayServer.window_get_size() != size:
-					DisplayServer.window_set_size(size)
-					var screen := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
-					DisplayServer.window_set_position(screen.position + (screen.size - size) / 2)
+			var size := window_size()
+			if DisplayServer.window_get_size() != size:
+				DisplayServer.window_set_size(size)
+				var screen := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+				DisplayServer.window_set_position(screen.position + (screen.size - size) / 2)
 
 
 func _set_bus(bus: String, volume: float) -> void:
@@ -406,6 +442,11 @@ func _load_settings() -> void:
 		return
 	for key in DEFAULT_SETTINGS:
 		settings[key] = cfg.get_value("settings", key, DEFAULT_SETTINGS[key])
+	if int(cfg.get_value("settings", "display_version", 0)) < 1:   # (the old default window: to the new default display)
+		settings.window_mode = DEFAULT_SETTINGS.window_mode
+		settings.resolution = DEFAULT_SETTINGS.resolution
+		settings.display_version = DEFAULT_SETTINGS.display_version
+		_save_settings()
 
 
 func _save_settings() -> void:

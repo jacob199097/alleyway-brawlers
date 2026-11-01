@@ -19,7 +19,7 @@ extends Node2D
 ##   lightning      a far-off flash, now and then
 ##   koi            fish swimming under the water, wandering, their tails swishing
 ##   ripples        rings spreading on water: where a spout pours in, and now and then anywhere in "rect"
-## The screen effects setting (Game.settings.screen_fx) thins the particles out.
+## Settings → Arena Effects and Screen Shake & Flashes thin the particles out (Game.arena_level).
 
 const GLOW := preload("res://shaders/arena_glow.gdshader")
 const FOG := preload("res://shaders/arena_fog.gdshader")
