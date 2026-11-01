@@ -32,7 +32,6 @@ const DEFAULT_SETTINGS := {
 	"sfx_volume": 0.8,
 	"window_mode": "fullscreen",    # windowed | fullscreen (borderless) | exclusive
 	"resolution": "1920x1080",      # the window's size when windowed (fit to the screen: window_size)
-	"render_res": "native",         # fullscreen: "native" (the screen's own) or "WxH", drawn at that size and scaled up (render_size)
 	"graphics": "high",             # high | medium | low | custom: a preset for the two below (GRAPHICS)
 	"arena_fx": 1.0,                # how much moves in the arenas and on the turf map: 1 full, 0.6 reduced, 0.25 minimal
 	"card_motion": true,            # Epic / Legendary art that moves, and Legendary sparkles (UI.rarity_fx)
@@ -51,6 +50,10 @@ const DEFAULT_SETTINGS := {
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 	"display_version": 1,           # settings saved before 1 had the old 1600×900 window: moved to the new default once
 }
+## Settings that resize or move the window. Changing the window in the middle of a button's click
+## left the button stuck (the next clicks on it did nothing), so these apply a moment later.
+const DISPLAY_KEYS := ["window_mode", "resolution"]
+var _display_pending := false
 ## Settings → Display → Graphics Quality: what each preset sets
 const GRAPHICS := {"high": {"arena_fx": 1.0, "card_motion": true}, "medium": {"arena_fx": 0.6, "card_motion": true},
 	"low": {"arena_fx": 0.25, "card_motion": false}}
@@ -372,6 +375,14 @@ func _save_session() -> void:
 
 func set_setting(key: String, value) -> void:
 	settings[key] = value
+	if key in DISPLAY_KEYS:   # (the window changes a moment later, not in the middle of the click that asked)
+		_save_settings()
+		if not _display_pending:
+			_display_pending = true
+			await get_tree().create_timer(0.05).timeout
+			_display_pending = false
+			apply_settings()
+		return
 	if key == "graphics" and GRAPHICS.has(value):   # a preset sets its parts
 		for k in GRAPHICS[value]:
 			settings[k] = GRAPHICS[value][k]
@@ -407,16 +418,6 @@ func window_size() -> Vector2i:
 	return best
 
 
-## Fullscreen at a lower resolution: the size the game is drawn at, or ZERO for the screen's own.
-func render_size() -> Vector2i:
-	var parts: PackedStringArray = str(settings.get("render_res", "native")).split("x")
-	if parts.size() != 2:
-		return Vector2i.ZERO
-	var r := Vector2i(int(parts[0]), int(parts[1]))
-	var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
-	return Vector2i.ZERO if r.x >= screen.x or r.y >= screen.y else r
-
-
 func apply_settings() -> void:
 	_set_bus("Music", settings.music_volume)
 	_set_bus("SFX", settings.sfx_volume)
@@ -426,18 +427,6 @@ func apply_settings() -> void:
 		return
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if settings.vsync else DisplayServer.VSYNC_DISABLED)
-	# Fullscreen drawn at a lower resolution: the screen shows a picture that size, scaled up (the
-	# layout stays 1920×1080 wide); otherwise everything is drawn at the window's own size.
-	var root := get_tree().root
-	var low := render_size() if settings.window_mode != "windowed" else Vector2i.ZERO
-	if low != Vector2i.ZERO:
-		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-		root.content_scale_size = low
-		root.content_scale_factor = low.y / 1080.0
-	else:
-		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
-		root.content_scale_size = Vector2i(1920, 1080)
-		root.content_scale_factor = 1.0
 	match settings.window_mode:
 		"fullscreen":
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -474,7 +463,7 @@ func _load_settings() -> void:
 
 func _save_settings() -> void:
 	var cfg := ConfigFile.new()
-	for key in settings:
+	for key in DEFAULT_SETTINGS:   # (not the settings panel's working values)
 		cfg.set_value("settings", key, settings[key])
 	cfg.save(SETTINGS_PATH)
 

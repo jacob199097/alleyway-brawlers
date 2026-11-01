@@ -216,6 +216,51 @@ func _run() -> void:
 			await _shot("s%02d" % i, 1.6)
 		get_tree().quit()
 		return
+	if "--display-click" in OS.get_cmdline_user_args():   # (clicks the Resolution row's arrows like a player, in each window mode)
+		Game.go("main_menu")
+		await get_tree().create_timer(1.5).timeout
+		var panel := SettingsPanel.open(_screen())
+		await get_tree().process_frame
+		panel._show("display")
+		await get_tree().create_timer(0.3).timeout
+		var arrow := func(row_label: String, which: String) -> Button:
+			for row in panel._body.get_children():
+				if row is HBoxContainer and row.get_child_count() > 1 and row.get_child(0) is Label and row.get_child(0).text == row_label:
+					for b in row.get_child(1).get_children():
+						if b is Button and b.text == which:
+							return b
+			return null
+		var click := func(b: Button):
+			var at: Vector2 = get_viewport().get_screen_transform() * b.get_global_rect().get_center()
+			var mv := InputEventMouseMotion.new(); mv.position = at; mv.global_position = at
+			Input.parse_input_event(mv)
+			await get_tree().process_frame
+			var hov := get_viewport().gui_get_hovered_control()
+			print("  click at ", at, " for ", b.get_global_rect(), " screen xf ", get_viewport().get_screen_transform(), " hovered ", hov.get_class() + ":" + (hov.text if hov is Button else "") if hov else "none")
+			for pressed in [true, false]:
+				var e := InputEventMouseButton.new()
+				e.button_index = MOUSE_BUTTON_LEFT; e.pressed = pressed; e.position = at; e.global_position = at
+				Input.parse_input_event(e)
+				await get_tree().process_frame
+			await get_tree().create_timer(0.8).timeout
+		var report := func(what: String):
+			var rb: Button = arrow.call("Resolution", "▶")
+			var lbl := ""
+			if rb: lbl = rb.get_parent().get_child(1).text
+			print("CLICK %s -> mode %s res %s label '%s' window %s drawn %s" % [what, Game.settings.window_mode, Game.settings.resolution,
+				lbl, DisplayServer.window_get_size(), get_viewport().get_texture().get_image().get_size()])
+		await report.call("start")
+		for i in 6:
+			await click.call(arrow.call("Resolution", "▶" if i < 4 else "◀"))
+			await report.call("res " + ("▶" if i < 4 else "◀"))
+		await click.call(arrow.call("Window Mode", "◀"))   # fullscreen -> windowed
+		await get_tree().create_timer(0.5).timeout
+		await report.call("mode ◀")
+		for i in 6:
+			await click.call(arrow.call("Resolution", "▶" if i < 4 else "◀"))
+			await report.call("res " + ("▶" if i < 4 else "◀"))
+		get_tree().quit()
+		return
 	if "--display-steps" in OS.get_cmdline_user_args():   # (window mode / resolution changes: the real window after each)
 		var show := func(what: String):
 			await get_tree().create_timer(0.8).timeout
@@ -225,9 +270,9 @@ func _run() -> void:
 				DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size])
 		await show.call("start (%s %s)" % [Game.settings.window_mode, Game.settings.resolution])
 		Game.go("main_menu")
-		for step in [["window_mode", "fullscreen"], ["render_res", "1280x720"], ["render_res", "native"], ["window_mode", "windowed"],
-				["resolution", "1600x900"], ["resolution", "1280x720"], ["window_mode", "exclusive"], ["render_res", "1920x1080"],
-				["window_mode", "windowed"], ["window_mode", "fullscreen"], ["render_res", "native"]]:
+		for step in [["window_mode", "fullscreen"], ["window_mode", "windowed"],
+				["resolution", "1600x900"], ["resolution", "1280x720"], ["window_mode", "exclusive"],
+				["window_mode", "windowed"], ["window_mode", "fullscreen"]]:
 			Game.set_setting(step[0], step[1])
 			await show.call("%s=%s" % step)
 			print("  drawn at ", get_viewport().get_texture().get_size(), " visible ", get_viewport().get_visible_rect().size)

@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.100",
+        "notes": [
+            "Fixed: the Resolution arrows sometimes stopped responding after a change.",
+            "Fixed: a lower resolution in fullscreen made the whole game look soft and pixelated. Fullscreen is now always drawn at your screen's full resolution.",
+            "Settings: Resolution is one list: your screen's own (NATIVE, fullscreen) and the window sizes that fit your screen. Window Mode follows what you pick."
+        ]
+    },
+    {
         "version": "0.9.99",
         "notes": [
             "Settings: Resolution now works in fullscreen too. It offers your screen's own resolution (NATIVE) and lower ones, which draw the game smaller and stretch it to fill the screen (faster on slower PCs). In windowed mode it sets the window size.",

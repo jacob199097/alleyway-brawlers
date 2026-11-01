@@ -95,18 +95,7 @@ func _show(tab: String) -> void:
 			_slider("Ambience Volume", "ambience_volume")
 		"display":
 			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode", true)
-			# Windowed: the window's size. Fullscreen: the screen's own resolution, or a lower one the
-			# game is drawn at and stretched up from (faster on slow PCs, a little softer).
-			if Game.settings.window_mode == "windowed":
-				var fits := _fitting_resolutions()
-				_cycle("Resolution", fits, fits.map(func(r): return r.replace("x", " × ")), "resolution")
-			else:
-				var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
-				var lower := RESOLUTIONS.filter(func(r): return int(r.split("x")[0]) < screen.x and int(r.split("x")[1]) < screen.y)
-				lower.reverse()
-				if not lower.has(Game.settings.get("render_res", "native")):
-					Game.settings.render_res = "native"
-				_cycle("Resolution", ["native"] + lower, ["%d × %d (NATIVE)" % [screen.x, screen.y]] + lower.map(func(r): return r.replace("x", " × ")), "render_res")
+			_resolution_row()
 			var presets := ["high", "medium", "low"]
 			var names := ["HIGH", "MEDIUM", "LOW"]
 			if Game.settings.get("graphics") == "custom":
@@ -192,7 +181,7 @@ func _slider(text: String, key: String) -> void:
 ## A setting picked from a list: ◀ steps back, ▶ (or the value itself; right-click: back) steps on.
 ## `refresh`: the tab is rebuilt after a change (the graphics preset and its parts change each other).
 ## A last value "custom" is only shown, never stepped to (it comes from changing the parts).
-func _cycle(text: String, values: Array, labels: Array, key: String, refresh := false) -> void:
+func _cycle(text: String, values: Array, labels: Array, key: String, refresh := false, on_pick := Callable()) -> void:
 	var row := _row(text)
 	var idx := maxi(0, values.find(Game.settings[key]))
 	var count := values.size() - (1 if values.back() is String and values.back() == "custom" else 0)
@@ -203,7 +192,11 @@ func _cycle(text: String, values: Array, labels: Array, key: String, refresh := 
 		idx = posmod(idx + by, count) if idx < count else (0 if by > 0 else count - 1)
 		value.text = labels[idx]
 		Sfx.play("click")
-		Game.set_setting(key, values[idx])
+		if on_pick.is_valid():
+			Game.settings[key] = values[idx]
+			on_pick.call(values[idx])
+		else:
+			Game.set_setting(key, values[idx])
 		if refresh:
 			_show.call_deferred(_tab)
 	var back := Button.new()
@@ -224,6 +217,27 @@ func _cycle(text: String, values: Array, labels: Array, key: String, refresh := 
 	box.add_child(value)
 	box.add_child(on)
 	row.add_child(box)
+
+
+## Resolution: the screen's own (NATIVE: fullscreen, always drawn at full sharpness) or a window size
+## that fits the screen. Picking one sets the window mode to match (NATIVE keeps exclusive fullscreen
+## if that's the mode), and the Window Mode row follows.
+func _resolution_row() -> void:
+	var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	var fits := _fitting_resolutions()
+	fits.reverse()
+	var values: Array = ["native"] + fits
+	var labels: Array = ["%d × %d (NATIVE)" % [screen.x, screen.y]] + fits.map(func(r): return r.replace("x", " × "))
+	var now := "native" if Game.settings.window_mode != "windowed" else str(Game.settings.resolution)
+	Game.settings.display_pick = now if values.has(now) else ("native" if now == "native" else fits[0])
+	_cycle("Resolution", values, labels, "display_pick", true, func(v):
+		if v == "native":
+			if Game.settings.window_mode == "windowed":
+				Game.set_setting("window_mode", "fullscreen")
+		else:
+			Game.settings.resolution = v
+			Game.set_setting("window_mode", "windowed")
+			Game.set_setting("resolution", v))
 
 
 ## The windowed sizes that fit this screen (with room for the title bar and taskbar), always at least one.
