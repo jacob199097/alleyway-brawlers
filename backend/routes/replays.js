@@ -31,7 +31,15 @@ const ensureTable = () => (ready ||= pool.query(`
     );
     CREATE INDEX IF NOT EXISTS match_replays_p1 ON match_replays (p1, created_at);
     CREATE INDEX IF NOT EXISTS match_replays_p2 ON match_replays (p2, created_at);
-`).catch((err) => { ready = null; throw err; }));
+`).then(() => pool.query(`
+    -- (once per start: anything past each player's last KEEP, e.g. kept from when KEEP was larger)
+    DELETE FROM match_replays r WHERE NOT EXISTS (
+        SELECT 1 FROM (
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY who ORDER BY created_at DESC) AS n
+            FROM (SELECT id, created_at, p1 AS who FROM match_replays WHERE p1 NOT LIKE 'cpu:%'
+                  UNION ALL SELECT id, created_at, p2 FROM match_replays WHERE p2 NOT LIKE 'cpu:%') x
+        ) k WHERE k.id = r.id AND k.n <= $1)`, [KEEP]))
+.catch((err) => { ready = null; throw err; }));
 
 /** Store a finished match's record (called by the online service). */
 async function saveReplay(rec) {

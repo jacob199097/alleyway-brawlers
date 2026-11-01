@@ -125,9 +125,15 @@ func _city_backdrop() -> void:
 	var tex := UI.tex(str(_city.image))
 	var ts := tex.get_size()
 	var small := tex.get_image()
-	small.resize(int(ts.x / 24), int(ts.y / 24), Image.INTERPOLATE_BILINEAR)
+	if small.is_compressed():   # (an exported game's textures are VRAM-compressed)
+		small.decompress()
 	var blur := TextureRect.new()
-	blur.texture = ImageTexture.create_from_image(small)
+	if not small.is_compressed():
+		small.clear_mipmaps()
+		small.resize(int(ts.x / 24), int(ts.y / 24), Image.INTERPOLATE_BILINEAR)
+		blur.texture = ImageTexture.create_from_image(small)
+	else:   # (couldn't: the picture itself, dark, does the job)
+		blur.texture = tex
 	blur.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	blur.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	blur.size = Vector2(1920, 1080)

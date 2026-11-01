@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.97",
+        "notes": [
+            "Fixed: veteran cards now show their bronze, silver or gold badge (the badge art was missing from the game).",
+            "Fixed: the turf map's blurred city edges, which didn't show in the installed game.",
+            "Profile: OPEN SAVED REPLAY no longer covers your best cards."
+        ]
+    },
+    {
         "version": "0.9.96",
         "notes": [
             "RECONNECTING: if your game crashes or your connection drops mid-match, open the game again (or wait for it to reconnect) and you go straight back into the match. Your seat is kept for 60 seconds, and your clock waits for you. Your opponent sees a countdown: WAITING FOR OPPONENT TO RECONNECT. This works in Turf Defense and free-for-all too.",

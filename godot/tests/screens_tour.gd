@@ -49,6 +49,11 @@ func _turf_map_shots() -> void:
 	Game.go("territory")
 	await _shot("t02_turf_map", 2.5)
 	var tm = _screen()
+	if tm._world and not tm._pins.is_empty():   # (a district hovered: its standings)
+		var m: Control = tm._pins[5].get_child(0)
+		m.mouse_entered.emit()
+		await _shot("t02a_hint", 0.8)
+		m.mouse_exited.emit()
 	if tm._world:   # (the city: zoomed in on the middle, then back out)
 		var ev := InputEventMouseButton.new()
 		ev.button_index = MOUSE_BUTTON_WHEEL_UP
@@ -80,12 +85,30 @@ func _turf_map_shots() -> void:
 	await _shot("t06_zoom", 1.0)
 	Game.go("territory")
 	await get_tree().create_timer(2.5).timeout
-	await Game.request_cpu_match(false, "normal", false, str(_screen()._data.districts[11].id))
-	await get_tree().create_timer(6.0).timeout
+	# FIGHT HERE, as a player does it: open the district, press it, pick NORMAL
+	var map = _screen()
+	map._open(map._data.districts[11])
+	await get_tree().process_frame
+	for b in map.find_children("*", "Button", true, false):
+		if "FIGHT HERE" in b.text:
+			b.pressed.emit()
+			break
+	await get_tree().create_timer(0.6).timeout
+	await _shot("t06b_difficulty", 0.1)
+	for b in map.find_children("*", "Button", true, false):
+		if b.text == "NORMAL":
+			b.pressed.emit()
+			break
+	await _shot("t06c_arena", 1.2)
+	await get_tree().create_timer(5.0).timeout
+	print("fight here: now on ", get_tree().current_scene.scene_file_path, " arena ", Game.duel_setup.get("start", {}).get("arena", "?"), " wanted ", map._data.districts[11].id if is_instance_valid(map) else "(map gone)")
 	if _screen() and _screen().get("_menu"):
 		_screen()._menu.visible = false
 	await _shot("t07_duel", 0.5)
 	await _shot("t08_duel_later", 4.0)
+	_screen()._countdown_box("WAITING FOR OPPONENT TO RECONNECT", "If they don't come back in time, you win.", 60, UI.GOLD)
+	await _shot("t08b_reconnect", 1.5)
+	_screen()._close_countdown()
 	Game.match_result = {"result": "win", "online": true, "mode": "cpu", "turns": 9, "player_morale": 4200, "opponent_morale": 0,
 		"rewards": {"outcome": "win", "karatEarned": 26, "xpEarned": 65, "newXp": int(Game.player.get("xp", 0)) + 65, "newLevel": int(Game.player.get("level", 1))},
 		"veterans": [{"id": best, "tier": 3, "name": "Street Legend"}] if best != "" else [],

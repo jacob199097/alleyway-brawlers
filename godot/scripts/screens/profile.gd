@@ -326,11 +326,11 @@ func _recent_matches(parent: Control) -> void:
 	parent.add_child(head)
 	# The server keeps your last 3: SAVE one to keep it, OPEN to watch a saved one
 	var open := UI.button("OPEN SAVED REPLAY", _open_saved, Vector2(250, 40), UI.GOLD)
-	open.position = Vector2(1538, 698)
+	open.position = Vector2(1538, 1004)   # (under the list: the best cards sit beside the heading)
 	parent.add_child(open)
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(900, 744)
-	scroll.size = Vector2(888, 300)
+	scroll.size = Vector2(888, 250)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	parent.add_child(scroll)
 	var list := VBoxContainer.new()

@@ -236,6 +236,8 @@ func _send_error_reports() -> void:
 	if offline:
 		_errors.give_back(batch)
 		return
+	if OS.has_feature("editor"):   # (run from the editor or a test: not a player's game, nothing to report)
+		return
 	_errors.muted = true
 	var r: Dictionary = await Api.request("POST", "/api/telemetry/errors", {
 		"version": str(ProjectSettings.get_setting("application/config/version", "")),

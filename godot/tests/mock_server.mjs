@@ -240,6 +240,8 @@ const routes = {
         p.karat += k;
         return [200, { karat: k, newKarat: p.karat }];
     },
+    'GET /api/replays': () => [200, [['AlleyCat', 'casual', 'win', 12], ['CPU', 'cpu_ranked', 'loss', 9], ['Brickhouse', 'friendly', 'win', 15]].map(([u, mode, result, turns], i) => ({
+        id: '00000000-0000-4000-8000-00000000000' + i, created_at: new Date(Date.now() - i * 86400e3).toISOString(), mode, opponent: { username: u }, result, reason: 'morale', turns }))],
     'GET /api/daily': () => [200, { day: 3, claimed: true, streak: 3, rewards: [{ karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 }, { karat: 200 }, { dust: 150 }, { karat: 300, free_packs: 1 }] }],
     'POST /api/daily/claim': () => { player.karat += 150; return [200, { day: 3, reward: { karat: 150 }, karat: player.karat, dust: player.dust ?? 0, free_packs: player.free_packs ?? 0 }]; },
     // The leaderboard (backend/economy/leaderboard.js shape): a few rivals around the player
