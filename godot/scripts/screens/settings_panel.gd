@@ -94,9 +94,19 @@ func _show(tab: String) -> void:
 			_slider("Sound Effects Volume", "sfx_volume")
 			_slider("Ambience Volume", "ambience_volume")
 		"display":
-			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode")
-			var fits := _fitting_resolutions()
-			_cycle("Resolution (windowed)", fits, fits.map(func(r): return r.replace("x", " × ")), "resolution")
+			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode", true)
+			# Windowed: the window's size. Fullscreen: the screen's own resolution, or a lower one the
+			# game is drawn at and stretched up from (faster on slow PCs, a little softer).
+			if Game.settings.window_mode == "windowed":
+				var fits := _fitting_resolutions()
+				_cycle("Resolution", fits, fits.map(func(r): return r.replace("x", " × ")), "resolution")
+			else:
+				var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+				var lower := RESOLUTIONS.filter(func(r): return int(r.split("x")[0]) < screen.x and int(r.split("x")[1]) < screen.y)
+				lower.reverse()
+				if not lower.has(Game.settings.get("render_res", "native")):
+					Game.settings.render_res = "native"
+				_cycle("Resolution", ["native"] + lower, ["%d × %d (NATIVE)" % [screen.x, screen.y]] + lower.map(func(r): return r.replace("x", " × ")), "render_res")
 			var presets := ["high", "medium", "low"]
 			var names := ["HIGH", "MEDIUM", "LOW"]
 			if Game.settings.get("graphics") == "custom":

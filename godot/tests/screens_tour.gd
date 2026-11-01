@@ -216,6 +216,25 @@ func _run() -> void:
 			await _shot("s%02d" % i, 1.6)
 		get_tree().quit()
 		return
+	if "--display-steps" in OS.get_cmdline_user_args():   # (window mode / resolution changes: the real window after each)
+		var show := func(what: String):
+			await get_tree().create_timer(0.8).timeout
+			print("DISPLAY %s -> mode %d size %s pos %s screen %s usable %s" % [what, DisplayServer.window_get_mode(),
+				DisplayServer.window_get_size(), DisplayServer.window_get_position(),
+				DisplayServer.screen_get_size(DisplayServer.window_get_current_screen()),
+				DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size])
+		await show.call("start (%s %s)" % [Game.settings.window_mode, Game.settings.resolution])
+		Game.go("main_menu")
+		for step in [["window_mode", "fullscreen"], ["render_res", "1280x720"], ["render_res", "native"], ["window_mode", "windowed"],
+				["resolution", "1600x900"], ["resolution", "1280x720"], ["window_mode", "exclusive"], ["render_res", "1920x1080"],
+				["window_mode", "windowed"], ["window_mode", "fullscreen"], ["render_res", "native"]]:
+			Game.set_setting(step[0], step[1])
+			await show.call("%s=%s" % step)
+			print("  drawn at ", get_viewport().get_texture().get_size(), " visible ", get_viewport().get_visible_rect().size)
+			if step[1] == "1280x720":
+				await _shot("ds_fullscreen_720", 0.5)
+		get_tree().quit()
+		return
 	if "--display" in OS.get_cmdline_user_args():   # (Settings → Display: window, resolution, graphics quality)
 		Game.go("main_menu")
 		await get_tree().create_timer(1.5).timeout

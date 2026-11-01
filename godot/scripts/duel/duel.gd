@@ -6229,8 +6229,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _online and not str(Game.duel_setup.get("start", {}).get("mode", "")).begins_with("cpu"):
 					_toggle_emote_menu()
 			KEY_F11:
-				var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+				Game.set_setting("window_mode", "fullscreen" if Game.settings.window_mode == "windowed" else "windowed")
 
 
 ## Controller support (scripts/pad.gd): the cards and spots on the board the D-pad can go to

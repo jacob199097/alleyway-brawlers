@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.99",
+        "notes": [
+            "Settings: Resolution now works in fullscreen too. It offers your screen's own resolution (NATIVE) and lower ones, which draw the game smaller and stretch it to fill the screen (faster on slower PCs). In windowed mode it sets the window size.",
+            "F11 switches between windowed and fullscreen and remembers it."
+        ]
+    },
+    {
         "version": "0.9.98",
         "notes": [
             "Veteran cards: no more badges. A veteran card now shows in its frame: a bronze, chrome or gold rim, and plated metal (chrome and gold shine), while the clan colours stay.",

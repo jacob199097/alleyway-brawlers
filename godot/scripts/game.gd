@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS := {
 	"sfx_volume": 0.8,
 	"window_mode": "fullscreen",    # windowed | fullscreen (borderless) | exclusive
 	"resolution": "1920x1080",      # the window's size when windowed (fit to the screen: window_size)
+	"render_res": "native",         # fullscreen: "native" (the screen's own) or "WxH", drawn at that size and scaled up (render_size)
 	"graphics": "high",             # high | medium | low | custom: a preset for the two below (GRAPHICS)
 	"arena_fx": 1.0,                # how much moves in the arenas and on the turf map: 1 full, 0.6 reduced, 0.25 minimal
 	"card_motion": true,            # Epic / Legendary art that moves, and Legendary sparkles (UI.rarity_fx)
@@ -406,6 +407,16 @@ func window_size() -> Vector2i:
 	return best
 
 
+## Fullscreen at a lower resolution: the size the game is drawn at, or ZERO for the screen's own.
+func render_size() -> Vector2i:
+	var parts: PackedStringArray = str(settings.get("render_res", "native")).split("x")
+	if parts.size() != 2:
+		return Vector2i.ZERO
+	var r := Vector2i(int(parts[0]), int(parts[1]))
+	var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	return Vector2i.ZERO if r.x >= screen.x or r.y >= screen.y else r
+
+
 func apply_settings() -> void:
 	_set_bus("Music", settings.music_volume)
 	_set_bus("SFX", settings.sfx_volume)
@@ -415,6 +426,18 @@ func apply_settings() -> void:
 		return
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if settings.vsync else DisplayServer.VSYNC_DISABLED)
+	# Fullscreen drawn at a lower resolution: the screen shows a picture that size, scaled up (the
+	# layout stays 1920×1080 wide); otherwise everything is drawn at the window's own size.
+	var root := get_tree().root
+	var low := render_size() if settings.window_mode != "windowed" else Vector2i.ZERO
+	if low != Vector2i.ZERO:
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		root.content_scale_size = low
+		root.content_scale_factor = low.y / 1080.0
+	else:
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		root.content_scale_size = Vector2i(1920, 1080)
+		root.content_scale_factor = 1.0
 	match settings.window_mode:
 		"fullscreen":
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
