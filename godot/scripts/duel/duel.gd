@@ -394,6 +394,8 @@ func _setup_online(start: Dictionary) -> void:
 		_tip_panel("WEEKLY CHALLENGE  ·  %s" % str(start.challenge.get("name", "")).to_upper(), str(start.challenge.get("text", "")), RED)
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
+	if int(start.get("opponentGone", 0)) > 0:   # (back in a match whose opponent has dropped)
+		_countdown_box("WAITING FOR OPPONENT TO RECONNECT", "If they don't come back in time, you win.", int(start.opponentGone), GOLD)
 	if _coop and not start.get("resync", false):
 		_coop_intro(start)
 		return
@@ -883,11 +885,14 @@ func _on_net_event(name: String, data) -> void:
 			var n := int(data.get("count", 0))
 			_ui.watchers.text = "" if n == 0 else "👁 %d WATCHING" % n
 		"mp:opponent":
+			var who := str(data.get("name", ""))   # (Turf Defense and free-for-all name them)
 			if data.get("status") == "disconnected":
-				_show_net_banner("OPPONENT DISCONNECTED — THEY HAVE %ds TO RETURN" % int(data.get("graceSecs", 45)))
+				var title := "WAITING FOR %s TO RECONNECT" % (who.to_upper() if who != "" else "OPPONENT")
+				var sub := "If they don't come back in time, they're out of the fight." if _ffa else "If they don't come back in time, you win."
+				_countdown_box(title, sub, int(data.get("graceSecs", 60)), GOLD)
 			else:
-				_hide_net_banner()
-				UI.toast(overlay, "Your opponent is back.", BLUE)
+				_close_countdown()
+				UI.toast(overlay, ("%s is back." % who) if who != "" else "Your opponent is back.", BLUE)
 
 
 ## The server played a move for whoever has to act (they let their clock run out): from now on
@@ -917,12 +922,65 @@ func on_online_error(message: String) -> void:
 
 func _on_net_opened() -> void:
 	_hide_net_banner()
+	_close_countdown()
 	Net.send("coop:resync" if _coop else "ffa:resync" if _ffa else "mp:resync")
 
 
 func _on_net_closed() -> void:
-	if _mode != "over":
+	if _mode != "over" and not _spectating:   # (the server keeps the seat for 60 seconds: backend/socket/onlineMatch.js)
+		_countdown_box("CONNECTION LOST — RECONNECTING…", "Your seat is kept for a minute. If the game closed, open it again to rejoin.", 60, RED)
+	elif _mode != "over":
 		_show_net_banner("CONNECTION LOST — RECONNECTING…")
+
+
+## A panel at the top of the board counting down: someone dropped and has secs seconds to come back.
+func _countdown_box(title: String, sub: String, secs: int, col: Color) -> void:
+	_close_countdown()
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.95), col, 3, 14))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 40
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	p.add_child(v)
+	var t := _label(26, col, true)
+	t.text = title
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var n := _label(64, Color.WHITE, true)
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(n)
+	var l := _label(18, Color(0.8, 0.8, 0.9))
+	l.text = sub
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(l)
+	overlay.add_child(p)
+	_ui.countdown = p
+	var ends := Time.get_ticks_msec() + secs * 1000
+	var tick := func():
+		var left := maxi(0, ceili((ends - Time.get_ticks_msec()) / 1000.0))
+		n.text = "%d:%02d" % [left / 60, left % 60] if left > 0 else "TIME'S UP"
+		n.modulate = Color(1, 0.45, 0.45) if left <= 10 else Color.WHITE
+		p.reset_size()
+		p.position = Vector2(1080 - p.size.x / 2, 200)
+	tick.call()
+	var timer := Timer.new()
+	timer.wait_time = 0.25
+	timer.autostart = true
+	timer.timeout.connect(tick)
+	p.add_child(timer)
+	p.modulate.a = 0.0
+	p.create_tween().tween_property(p, "modulate:a", 1.0, 0.25)
+	var pulse := t.create_tween().set_loops()
+	pulse.tween_property(t, "modulate:a", 0.55, 0.8).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(t, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _close_countdown() -> void:
+	if _ui.has("countdown") and is_instance_valid(_ui.countdown):
+		_ui.countdown.queue_free()
+	_ui.erase("countdown")
 
 
 func _show_net_banner(text: String) -> void:

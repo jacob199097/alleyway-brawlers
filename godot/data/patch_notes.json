@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.96",
+        "notes": [
+            "RECONNECTING: if your game crashes or your connection drops mid-match, open the game again (or wait for it to reconnect) and you go straight back into the match. Your seat is kept for 60 seconds, and your clock waits for you. Your opponent sees a countdown: WAITING FOR OPPONENT TO RECONNECT. This works in Turf Defense and free-for-all too.",
+            "THE STREET SCHOOL: the tutorial now teaches with real cards. Arrows point at every part of a card, and there is a class on every kind of card (Brawlers, Strivers, Heavies, Leaders, Hustles, Ambushes), every keyword, and how to earn Karat, packs, levels and ranks. Open it any time from How to Play.",
+            "Replays: the server keeps your last 3 matches. Press SAVE on one in your Profile to keep it on your computer (in Downloads), and OPEN SAVED REPLAY to watch it later.",
+            "Turf map: FIGHT HERE no longer freezes, and the match is fought in the district you picked (no arena spin)."
+        ]
+    },
+    {
         "version": "0.9.95",
         "notes": [
             "The turf map is now the city itself: every district sits on its landmark, glowing in the colour of the clan that holds it, with a flickering red ring when it is close to changing hands. The city is alive with rain and lightning, searchlights, neon, traffic, koi, crows and drifting fog. Scroll to zoom in and drag to look around."

@@ -15,6 +15,7 @@ var _pic: TextureRect
 var _name: Label
 var _frame: Panel
 var done := false
+var instant := false   # the arena is known (a turf map district): show it, no spin
 
 
 ## Every 1v1 arena: [{id, name, image}].
@@ -41,9 +42,10 @@ static func random_id() -> String:
 	return str(list.pick_random().id) if not list.is_empty() else ""
 
 
-static func spin(parent: Node, id: String, at: Vector2) -> Control:
+static func spin(parent: Node, id: String, at: Vector2, known := false) -> Control:
 	var r: Control = load("res://scripts/ui/arena_roulette.gd").new()
 	r._final = id
+	r.instant = known
 	r.position = at
 	parent.add_child(r)
 	return r
@@ -92,7 +94,7 @@ func _run() -> void:
 	var final := find(_final)
 	if final.is_empty():
 		final = list[0]
-	var steps := 18 + randi() % 4
+	var steps := 0 if instant else 18 + randi() % 4
 	var at := randi() % list.size()
 	for i in steps:
 		at = (at + 1) % list.size()

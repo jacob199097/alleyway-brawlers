@@ -41,7 +41,7 @@ const TURN_SECS        = 90;    // a player who doesn't act for this long is aut
 // AFK_FORFEIT auto-played moves in a row (any move of their own resets it)
 const AWAY_SECS        = 15;
 const AFK_FORFEIT      = 8;
-const RECONNECT_SECS   = 45;    // a disconnected player loses after this long
+const RECONNECT_SECS   = 60;    // a disconnected player loses after this long (their clock waits meanwhile)
 const REMATCH_SECS     = 60;    // after a match against a player, either can offer a rematch this long
 const CHALLENGE_SECS   = 60;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
@@ -394,6 +394,8 @@ function createOnlineService(io, deps) {
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,
+            // their opponent dropped and has this long to come back (the waiting countdown)
+            opponentGone: match.seats[other(seat)].connected ? 0 : Math.max(0, Math.ceil(((match.seats[other(seat)].goneUntil || 0) - Date.now()) / 1000)),
             challenge: match.challenge ? { name: match.challenge.name, text: match.challenge.text } : null,
         });
     }
@@ -440,6 +442,10 @@ function createOnlineService(io, deps) {
     function armTimer(match) {
         clearTimeout(match.timer);
         const s = match.seats[seatToAct(match.state)];
+        if (!s.bot && !s.connected) {   // (gone: no moves played for them; RECONNECT_SECS decides)
+            match.clockEnds = null;
+            return deps.turnSecs ?? TURN_SECS;
+        }
         if (s.bot) {
             // (after the last move's animations: a CPU that moves at once plays out on screen at double speed)
             const wait = Math.min(BOT_MAX_MS, (deps.botMoveMs ?? BOT_MOVE_MS) + (deps.botEventMs ?? BOT_EVENT_MS) * (match.lastEvents || 0));
@@ -847,8 +853,10 @@ function createOnlineService(io, deps) {
             const s = match.seats[seat];
             if (!s.connected) {
                 s.connected = true;
+                s.goneUntil = 0;
                 clearTimeout(s.grace);
                 emitTo(match.seats[other(seat)].playerId, 'mp:opponent', { status: 'back' });
+                if (seatToAct(match.state) === seat) armTimer(match);   // (their clock starts again)
             }
             sendStart(match, seat, true);
         });
@@ -866,6 +874,8 @@ function createOnlineService(io, deps) {
             const seat = match.seats.player.playerId === me ? 'player' : 'opponent';
             const s = match.seats[seat];
             s.connected = false;
+            s.goneUntil = Date.now() + RECONNECT_SECS * 1000;
+            if (seatToAct(match.state) === seat) armTimer(match);   // (their clock stops: nothing is played for them)
             emitTo(match.seats[other(seat)].playerId, 'mp:opponent', { status: 'disconnected', graceSecs: RECONNECT_SECS });
             s.grace = setTimeout(() => finish(match, other(seat), 'disconnect'), RECONNECT_SECS * 1000);
         });

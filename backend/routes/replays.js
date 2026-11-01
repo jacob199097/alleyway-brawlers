@@ -10,14 +10,15 @@
  *   GET /api/replays          your last matches: [{id, created_at, mode, opponent, result, turns}]
  *   GET /api/replays/:id      {start, updates, over, complete} for the duel screen to play back
  *
- * The last KEEP replays per player are kept.
+ * The last KEEP replays per player are kept; a player can save one as a file (the profile screen)
+ * and watch it from there later.
  */
 
 const express = require('express');
 const { requireAuth } = require('./middleware');
 const { pool } = require('../db/pool');
 
-const KEEP = 30;
+const KEEP = 3;   // (players can save a replay to their own computer from the profile screen)
 let ready = null;
 const ensureTable = () => (ready ||= pool.query(`
     CREATE TABLE IF NOT EXISTS match_replays (

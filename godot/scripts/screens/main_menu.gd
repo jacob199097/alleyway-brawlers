@@ -451,24 +451,25 @@ func _build_center() -> void:
 
 
 func _build_right() -> void:
-	# The turf map (screens/territory.gd), under the Card Library: a neon sign once
-	# assets/turf_map_menu.png exists, a button until then
-	var go_map := func(): Game.go("territory")
-	if UI.tex("turf_map_menu.png"):
-		var sign := UI.image_button("turf_map_menu.png", Vector2(420, 112), go_map, "TURF MAP")
-		sign.position = Vector2(1470, 960)
-		sign.disabled = Game.offline
-		add_child(sign)
+	# The turf map (screens/territory.gd) as a fourth neon sign once assets/turf_map_menu.png exists
+	# (the four packed closer: the signs' frames fill only the middle of their pictures), a button until then
+	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar (library_menu: patches skip names starting with c)
+	var sign := UI.tex("turf_map_menu.png") != null
+	if sign:
+		items.append(["turf_map_menu.png", "TURF MAP", "territory"])
 	else:
-		var map := UI.button("🗺  TURF MAP", go_map, Vector2(380, 72), UI.RED)
+		var map := UI.button("🗺  TURF MAP", func(): Game.go("territory"), Vector2(380, 72), UI.RED)
 		map.position = Vector2(1490, 966)
 		map.disabled = Game.offline
 		add_child(map)
-	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar (library_menu: patches skip names starting with c)
+	var top := 222.0 if sign else 236.0
+	var step := 200.0 if sign else 244.0
 	for i in items.size():
 		var it: Array = items[i]
 		var b := UI.image_button(it[0], Vector2(420, 229), func(): Game.go(it[2]), it[1])
-		b.position = Vector2(1470, 236 + i * 244)
+		b.position = Vector2(1470, top + i * step)
+		if it[2] == "territory":
+			b.disabled = Game.offline
 		add_child(b)
 		var free := int(Game.player.get("free_packs", 0))
 		if it[2] == "shop" and free > 0 and not Game.offline:   # free packs from levelling up, waiting

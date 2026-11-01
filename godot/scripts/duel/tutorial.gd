@@ -7,10 +7,15 @@ extends Node
 ## Cards are picked from whatever is in data/cards.json (cheap level-1 characters), so the
 ## tutorial keeps working when the card set changes. Their effects are switched off here so
 ## only the core rules are on show.
+##
+## Along the way, SCHOOL steps open the Street School (scripts/ui/card_school.gd) over the board:
+## how to read a card, every kind of card, the keywords. How to get stronger comes after the match
+## (post_match.gd).
 
 const INFO := "info"    # read, then press NEXT
 const DO := "do"        # make the highlighted move
 const WAIT := "wait"    # watch the opponent's turn
+const SCHOOL := "school"  # a Street School lesson over the board (its chapters), then on
 
 var screen: Node        # duel.gd
 var d: DuelState
@@ -27,6 +32,7 @@ var _body: RichTextLabel
 var _next: Button
 var _marker: Control
 var _shown := -1
+var _school_open := false
 
 
 # ── Setup ────────────────────────────────────────────────────────────────────
@@ -169,7 +175,8 @@ func _build_steps() -> void:
 	var o1: Dictionary = cards.o1
 	steps = [
 		{"type": INFO, "mark": func(): return _panel_rect("player"),
-			"text": "Welcome to the alley! Each player has [b]Morale[/b] (normally 6000). Knock your rival's Morale down to [b]0[/b] and you win.\n\nThis rival is already roughed up. This quick lesson walks you through a real duel."},
+			"text": "Welcome to the alley! Each player has [b]Morale[/b] (normally 6000). Knock your rival's Morale down to [b]0[/b] and you win.\n\nThis rival is already roughed up. This lesson walks you through a real duel, with a few short classes along the way."},
+		{"type": SCHOOL, "chapters": ["anatomy"], "text": ""},
 		{"type": DO, "allow": func(a): return a.kind == "choose" and a.option == "keep",
 			"done": func(): return d.pending.is_empty() and d.phase == "deployment",
 			"text": "You start with 5 cards. Once per game, at the start, you can [b]shuffle your hand back and draw 5 new ones[/b] (a mulligan).\n\nThis hand is good: press [b]KEEP THIS HAND[/b]."},
@@ -238,11 +245,13 @@ func _build_steps() -> void:
 			"done": func(): return d.phase == "brawl" and not screen._playing and _p3_attacked(),
 			"text": "Their only character is Downed, so nothing protects their Morale. [b]Direct Attack![/b]\n\nClick %s, then the [b]DIRECT ATTACK[/b] button at the top." % _n("p3")},
 		{"type": INFO, "mark": func(): return Rect2(screen.pile_pos("player", "hideout") - screen.CARD / 2, screen.CARD).grow(10),
-			"text": "Every character has a [b]class[/b]:\n• [b]Strivers[/b] start at Lv.1 and [b]PROMOTE[/b] into stronger Lv.2 and Lv.3 forms, waiting in your [b]Hideout[/b].\n• [b]Brawlers[/b] are standalone fighters, usually cheap.\n• [b]Heavies[/b] are powerful and cost a lot of Authority, and you must [b]sacrifice[/b] one of your characters to play one. The Heavy takes its lane."},
+			"text": "Great hit! Now, every character has a [b]class[/b]: [b]Brawlers[/b], [b]Strivers[/b] and [b]Heavies[/b]. This is your [b]Hideout[/b], where your Strivers' stronger levels wait.\n\nPress NEXT for a closer look at each class."},
+		{"type": SCHOOL, "chapters": ["characters"], "text": ""},
 		{"type": INFO, "mark": func(): return _view_rect(screen.leaders.get("player")),
 			"text": "Your own [b]Leader[/b] waits here, Dormant, giving its bonus. When its condition is met (it's written on the card), it [b]AWAKENS[/b]: you choose a lane and it joins the fight as a character.\n\nA Dormant leader can be attacked, like you just did to theirs, so keep it in mind."},
+		{"type": SCHOOL, "chapters": ["leaders", "hustles", "ambushes", "keywords"], "text": ""},
 		{"type": INFO, "last": true,
-			"text": "That's the basics! You'll also meet:\n• [b]Ambush[/b] cards: set face-down in your back row, they spring when you're attacked.\n• [b]Hustles[/b]: one-shot effects (or set them face-down to use when you choose).\n• Card effects of every kind. Hover any card to read it.\n\nNow finish them off!"},
+			"text": "That's the basics! Hover any card to read it, and right-click to zoom in. The Street School is always in [b]How to Play[/b] if you want a refresher.\n\nNow finish them off! After the match: how to get stronger."},
 	]
 
 
@@ -420,10 +429,20 @@ func update() -> void:
 		return
 	var st: Dictionary = steps[index]
 	var idle: bool = not screen._playing and screen._queue.is_empty()
-	if st.type != INFO and idle and st.done.call():
+	if st.type in [DO, WAIT] and idle and st.done.call():
 		index += 1
 		Sfx.play("phase", 1.3, -6.0)
 		st = steps[index]
+	if st.type == SCHOOL:   # (the class opens once the board is still; the coach waits behind it)
+		if not _school_open and idle:
+			_school_open = true
+			_panel.visible = false
+			load("res://scripts/ui/card_school.gd").open(screen.overlay, st.chapters, func():
+				_school_open = false
+				_panel.visible = true
+				index += 1)
+		_marker.queue_redraw()
+		return
 	if _shown != index:
 		_shown = index
 		screen._update_next_btn()   # (END TURN is only lit when it's the move)

@@ -87,6 +87,28 @@ const count = (s, ev) => s.got.filter(([e]) => e === ev).length;
     const overD = last(d, 'mp:over');
     check(overD && overD.result !== over.result, 'one wins, one loses');
 
+    // 4. A player drops mid-match: the other is told how long they have (60 s), their clock waits
+    //    (nothing is played for them), and they come back into the same match
+    const e = fakeSocket(), f = fakeSocket();
+    svc.register(e, { playerId: 'erin', username: 'erin' });
+    svc.register(f, { playerId: 'frank', username: 'frank' });
+    await startPair('erin', 'frank', e, f);   // (erin goes first)
+    const matchId = last(e, 'mp:start').matchId;
+    e.handlers['disconnect']();
+    check(last(f, 'mp:opponent')?.status === 'disconnected' && last(f, 'mp:opponent').graceSecs === 60, 'frank hears erin dropped, with 60 seconds');
+    const updates = count(f, 'mp:update');
+    await wait(900);   // (three move clocks)
+    check(count(f, 'mp:update') === updates, "erin's clock waits: no move is played for her");
+    await f.handlers['mp:resync']();
+    check(last(f, 'mp:start')?.opponentGone > 50, 'frank, rejoining meanwhile, still sees the countdown');
+    const e2 = fakeSocket();
+    svc.register(e2, { playerId: 'erin', username: 'erin' });
+    await e2.handlers['mp:resync']();
+    check(last(e2, 'mp:start')?.matchId === matchId, 'erin reconnects into the same match');
+    check(last(f, 'mp:opponent')?.status === 'back', 'frank hears she is back');
+    check(await until(() => count(f, 'mp:update') > updates, 3000), 'her clock runs again');
+    f.handlers['mp:concede']({ matchId });
+
     console.log(bad ? `${bad} problem(s)` : 'all good');
     process.exit(bad ? 1 : 0);
 })();

@@ -35,6 +35,17 @@ func _run() -> void:
 			continue
 		var st: Dictionary = tut.steps[tut.index]
 		_check_gate(st)
+		if st.type == tut.SCHOOL:   # (a Street School class: page through it to the end)
+			for i in 30:
+				await get_tree().process_frame
+			var school = screen.overlay.get_children().filter(func(n): return n.get_script() == load("res://scripts/ui/card_school.gd"))
+			_check(not school.is_empty() and not school[0]._pages.is_empty(), "step %d opens the Street School with pages" % (tut.index + 1))
+			if not school.is_empty():
+				print("  step %d: school, %d pages" % [tut.index + 1, school[0]._pages.size()])
+				while is_instance_valid(school[0]) and school[0].is_inside_tree() and tut.steps[tut.index].type == tut.SCHOOL:
+					school[0]._go(school[0]._at + 1)
+					await get_tree().process_frame
+			continue
 		if st.type == tut.INFO:
 			print("  step %d: info" % (tut.index + 1))
 			tut._next.pressed.emit()

@@ -716,6 +716,7 @@ func _claim() -> void:
 func _fight(d: Dictionary) -> void:
 	if _starting:
 		return
+	_close()   # (the district panel sits over everything: the questions below go on the map)
 	var difficulty := await _pick_difficulty()
 	if difficulty == "":
 		return
@@ -730,9 +731,8 @@ func _fight(d: Dictionary) -> void:
 			buttons.push_front(["DECK EDITOR", func(): Game.go("deck_builder"), UI.BLUE])
 		UI.dialog(self, "CAN'T START DUEL", deck.error, buttons, UI.RED)
 		return
-	_close()
 	_spin = UI.spinner(self, Vector2(960, 1000), "STARTING MATCH…")
-	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784))
+	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784), true)   # (no spin: it's the district picked)
 	var why := await Game.request_cpu_match(false, difficulty, false, str(d.get("id", "")))
 	if why != "":
 		on_online_error(why)

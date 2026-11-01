@@ -324,6 +324,10 @@ func _recent_matches(parent: Control) -> void:
 	var head := UI.label("RECENT MATCHES", 26, UI.GOLD, true)
 	head.position = Vector2(900, 700)
 	parent.add_child(head)
+	# The server keeps your last 3: SAVE one to keep it, OPEN to watch a saved one
+	var open := UI.button("OPEN SAVED REPLAY", _open_saved, Vector2(250, 40), UI.GOLD)
+	open.position = Vector2(1538, 698)
+	parent.add_child(open)
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(900, 744)
 	scroll.size = Vector2(888, 300)
@@ -359,8 +363,61 @@ func _recent_matches(parent: Control) -> void:
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info)
 		var id := str(m.id)
-		row.add_child(UI.button("WATCH", func(): _watch(id), Vector2(140, 44), UI.BLUE))
+		row.add_child(UI.button("WATCH", func(): _watch(id), Vector2(120, 44), UI.BLUE))
+		var label_text := "vs %s %s" % [str(opp.get("username", "")), str(m.get("created_at", "")).left(10)]
+		row.add_child(UI.button("SAVE", func(): _save(id, label_text), Vector2(100, 44), UI.GREEN))
 		list.add_child(row)
+	var note := UI.label("The server keeps your last 3 matches. SAVE one to keep it on this computer.", 16, UI.MUTED)
+	list.add_child(note)
+
+
+## Where saved replays go: a folder in the player's Downloads.
+static func replay_dir() -> String:
+	var dl := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	if dl == "":
+		dl = OS.get_user_data_dir()
+	return dl.path_join("Alleyway Brawlers Replays")
+
+
+## Saves a replay as a file (the playback the server built, so it plays without the server).
+func _save(id: String, what: String) -> void:
+	var spin := UI.spinner(self, Vector2(960, 1040), "SAVING REPLAY…")
+	var r := await Api.request("GET", "/api/replays/" + id)
+	spin.queue_free()
+	if not r.ok or not (r.data is Dictionary):
+		UI.toast(self, str(r.get("error", "")) if str(r.get("error", "")) != "" else "That replay couldn't be saved.", UI.RED)
+		return
+	var dir := replay_dir()
+	DirAccess.make_dir_recursive_absolute(dir)
+	var name := ("replay %s" % what).validate_filename().replace(" ", "_") + ".json"
+	var f := FileAccess.open(dir.path_join(name), FileAccess.WRITE)
+	if f == null:
+		UI.toast(self, "Couldn't write to %s." % dir, UI.RED)
+		return
+	f.store_string(JSON.stringify({"format": "alleyway-replay", "version": 1, "game": str(ProjectSettings.get_setting("application/config/version", "")),
+		"saved": Time.get_datetime_string_from_system(), "title": what, "replay": r.data}))
+	f.close()
+	UI.toast(self, "Saved to Downloads/Alleyway Brawlers Replays/%s" % name, UI.GREEN)
+
+
+## Pick a saved replay file and watch it.
+func _open_saved() -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.use_native_dialog = true
+	fd.filters = PackedStringArray(["*.json ; Alleyway Brawlers replays"])
+	var dir := replay_dir()
+	fd.current_dir = dir if DirAccess.dir_exists_absolute(dir) else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	fd.file_selected.connect(func(path: String):
+		var f := FileAccess.open(path, FileAccess.READ)
+		var doc = JSON.parse_string(f.get_as_text()) if f else null
+		if not (doc is Dictionary) or doc.get("format") != "alleyway-replay" or not (doc.get("replay") is Dictionary):
+			UI.toast(self, "That file isn't an Alleyway Brawlers replay.", UI.RED)
+			return
+		_play(doc.replay))
+	add_child(fd)
+	fd.popup_centered(Vector2i(1000, 640))
 
 
 func _watch(id: String) -> void:
@@ -370,7 +427,14 @@ func _watch(id: String) -> void:
 	if not r.ok or not (r.data is Dictionary):
 		UI.toast(self, str(r.get("error", "")) if str(r.get("error", "")) != "" else "That replay couldn't be loaded.", UI.RED)
 		return
-	var data: Dictionary = Net.normalize(r.data)   # same number handling as live match messages
+	_play(r.data)
+
+
+func _play(raw: Dictionary) -> void:
+	var data: Dictionary = Net.normalize(raw)   # same number handling as live match messages
+	if not (data.get("start") is Dictionary):
+		UI.toast(self, "That replay couldn't be loaded.", UI.RED)
+		return
 	Game.duel_setup = {"online": true, "start": data.start, "replay": data}
 	Game.go("duel")
 

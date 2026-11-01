@@ -183,6 +183,16 @@ func _run() -> void:
 		await _clan_shots()
 		get_tree().quit()
 		return
+	if "--school" in OS.get_cmdline_user_args():   # (every Street School page)
+		Game.go("main_menu")
+		await get_tree().create_timer(2.5).timeout
+		var school = load("res://scripts/ui/card_school.gd").open(_screen())
+		await get_tree().process_frame
+		for i in school._pages.size():
+			school._go(i)
+			await _shot("s%02d" % i, 1.6)
+		get_tree().quit()
+		return
 	if "--turf-map" in OS.get_cmdline_user_args():   # (the turf map, veteran cards, a CPU match in a district)
 		await _turf_map_shots()
 		get_tree().quit()

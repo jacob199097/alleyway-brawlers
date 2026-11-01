@@ -30,7 +30,7 @@ const { rename } = require('./ffaMatch');
 const TURN_SECS   = 90;
 const AWAY_SECS   = 15;
 const AFK_FORFEIT = 8;
-const RECONNECT_SECS = 45;
+const RECONNECT_SECS = 60;
 const BOT_MOVE_MS  = 450;
 const BOT_EVENT_MS = 160;   // and this much more for each event its last move made (the players' screens animate them)
 const BOT_MAX_MS   = 3200;
@@ -201,6 +201,13 @@ function createCoopService(io, deps) {
     function playersFor(match, seat) {
         const names = namesFor(seat);
         return Object.fromEntries(Object.keys(match.seats).map(s => [names[s], profileOf(match.seats[s])]));
+    }
+
+    /** The other people in a match: a player dropped (or came back), with how long they have. */
+    function tellOthers(match, seat, data) {
+        for (const [k, o] of Object.entries(match.seats)) {
+            if (k !== seat && !o.bot && o.connected) emitTo(o.playerId, 'mp:opponent', data);
+        }
     }
 
     function sendStart(match, seat, resync) {
@@ -410,6 +417,7 @@ function createCoopService(io, deps) {
             if (!s.connected) {
                 s.connected = true;
                 clearTimeout(s.grace);
+                tellOthers(match, seat, { status: 'back', name: s.profile?.username || '' });
             }
             s.watching = true;
             sendStart(match, seat, true);
@@ -425,6 +433,7 @@ function createCoopService(io, deps) {
             const s = match.seats[seat];
             s.connected = false;
             if (match.state.sides[seat].out) return;
+            tellOthers(match, seat, { status: 'disconnected', graceSecs: secs('reconnectSecs', RECONNECT_SECS), name: s.profile?.username || '' });
             s.grace = setTimeout(() => goOut(match, seat, 'disconnect'), secs('reconnectSecs', RECONNECT_SECS) * 1000);
         });
     }

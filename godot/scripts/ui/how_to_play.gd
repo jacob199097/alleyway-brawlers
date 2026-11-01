@@ -63,6 +63,9 @@ func _ready() -> void:
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tabs[n] = b
+	# Every card type explained on real cards, the keywords and how to get stronger (scripts/ui/card_school.gd)
+	var school := UI.button("STREET SCHOOL  ▶", func(): load("res://scripts/ui/card_school.gd").open(self), Vector2(300, 50), UI.GOLD)
+	tabs.add_child(school)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1030, 640)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

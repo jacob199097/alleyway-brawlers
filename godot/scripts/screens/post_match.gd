@@ -66,6 +66,10 @@ func _ready() -> void:
 	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), side_panel]
 	_show_mastery(d.get("mastery"))
 	_show_turf(d.get("turf"))
+	if d.get("tutorial", false):   # the tutorial's last class: how to get stronger (scripts/ui/card_school.gd)
+		get_tree().create_timer(3.2 + INTRO).timeout.connect(func():
+			if is_inside_tree():
+				load("res://scripts/ui/card_school.gd").open(self, ["progress"]))
 	for v in (d.get("veterans") if d.get("veterans") is Array else []):
 		if v is Dictionary:
 			_new_veteran(v)

@@ -71,7 +71,7 @@ Questions: ${contactLink()}.</p>
   weekly rewards you claimed.</li>
  <li><b>Friends and messages:</b> your friends list and friend requests, the direct messages you send and receive,
   and the messages in your in-game mailbox.</li>
- <li><b>Matches:</b> the result of each online match, and recordings of your 30 most recent matches (the decks,
+ <li><b>Matches:</b> the result of each online match, and recordings of your 3 most recent matches (the decks,
   the moves made and the players' names and profile pictures) so you can watch them back. We also keep match
   statistics that are not linked to any account (which clan and cards were in each deck, which were played, who
   won) to balance the cards.</li>
@@ -120,7 +120,7 @@ person you send them to. Your email address and Steam ID aren't shown to other p
 
 <h2>How long we keep it</h2>
 <p>We keep your account and game data for as long as your account exists. Error reports are deleted after 30 days,
-and only your 30 most recent match recordings are kept. When you delete your account, everything listed above
+and only your 3 most recent match recordings are kept (a replay you save to your own computer is yours to keep). When you delete your account, everything listed above
 that belongs to it is deleted straight away, except purchase records: a record of each purchase (the Stripe payment
 reference, or the Steam order with your Steam ID; the bundle and what it cost) is kept without your account, so a
 payment can't be claimed twice and so we can handle refunds and keep the accounts we have to. The anonymous match

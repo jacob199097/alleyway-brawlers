@@ -60,7 +60,7 @@ func disconnect_from_server() -> void:
 
 
 ## Back in a match that's still running (the game was closed or crashed mid-match): the server
-## keeps the seat for 45 seconds, and answers mp:resync with mp:start (which opens the duel) or
+## keeps the seat for 60 seconds, and answers mp:resync with mp:start (which opens the duel) or
 ## mp:none. The main menu calls this.
 func rejoin() -> void:
 	if not send("mp:resync"):
@@ -99,7 +99,7 @@ func _process(delta: float) -> void:
 
 func _retry_later() -> void:
 	_retry_in = _retry_delay
-	_retry_delay = minf(_retry_delay * 2.0, 15.0)
+	_retry_delay = minf(_retry_delay * 2.0, 5.0)   # (often enough to make it back into a match within its minute)
 
 
 ## Engine.IO: "0" open, "2" ping, "4" message. Socket.IO inside "4": "0" connected,
