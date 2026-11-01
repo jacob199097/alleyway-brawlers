@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.94",
+        "notes": [
+            "Veteran cards wear their badge: bronze for Seasoned, silver for Battle-Scarred, gold for Street Legend."
+        ]
+    },
+    {
         "version": "0.9.93",
         "notes": [
             "THE TURF MAP (main menu): the city is split into districts, one per arena. Every match you play wins influence for your deck's clan in the district it's fought in. Each week a district goes to the clan with the most influence there, if it beats the local gang that runs it. When the week ends, everyone who fought for a clan in a district it took earns Karat, and the district's top fighter (its boss) earns more. Open a district to see the standings, or FIGHT HERE for a CPU match in it.",

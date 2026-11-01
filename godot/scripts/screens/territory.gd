@@ -4,7 +4,11 @@ extends Screen
 ## district goes to the clan with the most influence in it, if that beats the local gang running it.
 ## When the week ends, everyone who fought for a clan in a district it took is paid Karat, and the
 ## district's boss (its top fighter) more: CLAIM. A district's FIGHT HERE starts a CPU match in it.
+## Drawn on the city itself once data/turf_city.json and its picture are in the game: each district a
+## marker where it is in the city, glowing in its holder's colour, the city alive around them
+## (ArenaLife fx). Until then, a grid of the arenas.
 
+const CITY_FILE := "res://data/turf_city.json"
 const COLS := 6
 const TILE := Vector2(290, 236)
 const GAP := Vector2(15, 16)
@@ -18,11 +22,27 @@ var _banner: Control = null  # last week's Karat, waiting
 var _starting := false
 var _spin: Label = null
 var _arena: Control = null   # the arena roulette while the match starts
+var _city := {}              # data/turf_city.json, when its picture is in the game ({}: the grid)
+var _k := 1.0                # the city picture's scale on screen (it covers it, cropped)
+var _off := Vector2.ZERO     # ...and where its top-left corner lands
+var _hint: Control = null    # the district under the mouse, in brief
+
+
+## The city map (data/turf_city.json): {image, anchors: {district: [x, y]}, fx: [...]}, positions in
+## the picture's pixels; fx as an arena's (ArenaLife). {} until its picture is in the game.
+static func city() -> Dictionary:
+	var f := FileAccess.open(CITY_FILE, FileAccess.READ)
+	var c = JSON.parse_string(f.get_as_text()) if f else null
+	return c if c is Dictionary and c.get("anchors") is Dictionary and UI.tex(str(c.get("image", ""))) != null else {}
 
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "menu_background.png", 0.66)
+	_city = city()
+	if _city.is_empty():
+		UI.background(self, "menu_background.png", 0.66)
+	else:
+		_city_backdrop()
 	Game.sound.ambience("city_rain")
 	UI.title(self, "TURF MAP")
 	UI.back_button(self, func(): Game.go("main_menu"))
@@ -60,17 +80,230 @@ func _build() -> void:
 	if _data.get("reward") is Dictionary:
 		_reward_banner(_data.reward)
 	var districts: Array = _data.get("districts", [])
+	if not _city.is_empty():
+		_build_city(districts)
+		return
 	for i in districts.size():
 		_tile(districts[i], GRID + Vector2(i % COLS, i / COLS) * (TILE + GAP))
 	var free := districts.size()
 	if free < COLS * 3:   # the spare slot: who holds how much this week
 		_summary(GRID + Vector2(free % COLS, free / COLS) * (TILE + GAP))
-	var k: Dictionary = _data.get("karat", {}) if _data.get("karat") is Dictionary else {}
-	var how := UI.label("Online win +3  ·  online loss +1  ·  Ranked or Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))], 17, UI.MUTED)
+	var how := UI.label(_rules_text(), 17, UI.MUTED)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.size = Vector2(1560, 50)
 	how.position = Vector2(290, 990)
 	add_child(how)
+
+
+## The rules line along the bottom.
+func _rules_text() -> String:
+	var k: Dictionary = _data.get("karat", {}) if _data.get("karat") is Dictionary else {}
+	return "Online win +3  ·  online loss +1  ·  Ranked or Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))]
+
+
+# ── The city ─────────────────────────────────────────────────────────────────
+
+## The city picture covering the screen, alive (its fx: rain, neon, searchlights...), darker at the
+## top and bottom so the title and the panels read.
+func _city_backdrop() -> void:
+	var tex := UI.tex(str(_city.image))
+	_k = maxf(1920.0 / tex.get_width(), 1080.0 / tex.get_height())
+	_off = (Vector2(1920, 1080) - tex.get_size() * _k) / 2.0
+	var bg := TextureRect.new()
+	bg.texture = tex
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.size = Vector2(1920, 1080)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+	var life := ArenaLife.new().setup(tex, Color.WHITE, clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0))
+	add_child(life)
+	for e in _city.get("fx", []):
+		if e is Dictionary and ArenaLife.handles(str(e.get("kind", ""))):
+			life.add(e)
+	for edge in [[0.0, 170.0, 0.0], [1080.0 - 150.0, 150.0, 1.0]]:   # (top and bottom shade)
+		var g := Gradient.new()
+		g.set_color(0, Color(0, 0, 0, 0.82 if edge[2] == 0.0 else 0.0))
+		g.set_color(1, Color(0, 0, 0, 0.0 if edge[2] == 0.0 else 0.85))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill_from = Vector2(0, 0)
+		gt.fill_to = Vector2(0, 1)
+		var shade := TextureRect.new()
+		shade.texture = gt
+		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shade.position = Vector2(0, edge[0])
+		shade.size = Vector2(1920, edge[1])
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(shade)
+
+
+## A point in the city picture's pixels, on screen.
+func _at(p) -> Vector2:
+	return _off + Vector2(float(p[0]), float(p[1])) * _k
+
+
+func _build_city(districts: Array) -> void:
+	var anchors: Dictionary = _city.anchors
+	var i := 0
+	for d in districts:
+		if anchors.get(str(d.get("id", ""))) is Array:
+			_marker(d, _at(anchors[str(d.id)]), i)
+			i += 1
+	# Who holds how much, along the bottom
+	var held := {}
+	var locals := 0
+	for d in districts:
+		var who := str(d.get("holder", ""))
+		if who == "":
+			locals += 1
+		else:
+			held[who] = int(held.get(who, 0)) + 1
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 26)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.position = Vector2(260, 962)
+	row.size = Vector2(1400, 34)
+	add_child(row)
+	var order: Array = held.keys()
+	order.sort_custom(func(a, b): return held[a] > held[b])
+	row.add_child(UI.label("THIS WEEK", 22, UI.GOLD, true))
+	for id in order:
+		row.add_child(UI.label("%s %d" % [_clan_name(id).to_upper(), held[id]], 22, _clan_col(id), true))
+	row.add_child(UI.label("LOCAL GANGS %d" % locals, 22, UI.MUTED, true))
+	var how := UI.label(_rules_text(), 16, Color(0.8, 0.8, 0.9))
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	how.size = Vector2(1400, 44)
+	how.position = Vector2(260, 1004)
+	add_child(how)
+
+
+## A district on the city: its turf glowing in the holder's colour under a round badge (the clan's
+## emblem, or a skull while a local gang runs it), its name, and its standings in a thin bar. A
+## contested district's ring flickers; yours wear a gold star. Hover for the standings, click to open.
+func _marker(d: Dictionary, at: Vector2, n: int) -> void:
+	var holder := str(d.get("holder", ""))
+	var col := _clan_col(holder) if holder != "" else Color(0.6, 0.6, 0.68)
+	var clans: Array = d.get("clans", [])
+	var gang: Dictionary = d.get("locals", {}) if d.get("locals") is Dictionary else {}
+	var top := int(clans[0].get("points", 0)) if not clans.is_empty() else 0
+	var contested := (clans.size() >= 2 and top - int(clans[1].get("points", 0)) <= 2) \
+		or (top > 0 and absi(top - int(gang.get("strength", 0))) <= 2)
+	var mine: Dictionary = d.get("mine", {}) if d.get("mine") is Dictionary else {}
+	# The turf: a soft glow on the city, breathing
+	var zone := Sprite2D.new()
+	zone.texture = ArenaLife._soft_dot()
+	zone.position = at
+	zone.scale = Vector2.ONE * (6.5 if holder != "" else 4.5)
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	zone.material = add
+	zone.modulate = Color(col, 0.0)
+	add_child(zone)
+	var breathe := zone.create_tween().set_loops()
+	breathe.tween_property(zone, "modulate:a", 0.62 if holder != "" else 0.3, 1.6 + randf() * 0.8).set_trans(Tween.TRANS_SINE)
+	breathe.tween_property(zone, "modulate:a", 0.32 if holder != "" else 0.14, 1.6 + randf() * 0.8).set_trans(Tween.TRANS_SINE)
+	# The marker
+	var m := Control.new()
+	m.size = Vector2(150, 118)
+	m.position = at - Vector2(75, 36)
+	m.pivot_offset = Vector2(75, 36)
+	m.mouse_filter = Control.MOUSE_FILTER_STOP
+	m.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	add_child(m)
+	var badge := Control.new()
+	badge.size = Vector2(72, 72)
+	badge.position = Vector2(39, 0)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(badge)
+	var emblem := UI.clan_emblem(holder) if holder != "" else null
+	badge.draw.connect(func():
+		var c := Vector2(36, 36)
+		var t := Time.get_ticks_msec() / 1000.0
+		var ring := col
+		if contested:   # flickering between its colour and alarm red
+			ring = col.lerp(UI.RED, 0.5 + 0.5 * sin(t * 6.0 + n))
+		badge.draw_circle(c + Vector2(2, 3), 34, Color(0, 0, 0, 0.5))
+		badge.draw_circle(c, 33, Color(0.04, 0.035, 0.08, 0.95))
+		badge.draw_arc(c, 32, 0, TAU, 40, ring, 4.0, true)
+		if emblem:
+			badge.draw_texture_rect(emblem, Rect2(c - Vector2(24, 24), Vector2(48, 48)), false)
+		else:
+			badge.draw_string(UI.font(), Vector2(0, 47), "☠", HORIZONTAL_ALIGNMENT_CENTER, 72, 34, Color(0.75, 0.75, 0.82))
+		if not mine.is_empty():
+			badge.draw_string(UI.font(), Vector2(50, 18), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, UI.GOLD))
+	if contested:
+		get_tree().process_frame.connect(badge.queue_redraw)
+	var name := UI.label(str(d.get("name", "")).to_upper(), 16, Color.WHITE, true)
+	name.size = Vector2(150, 22)
+	name.position = Vector2(0, 74)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.label_settings.outline_size = 6
+	name.label_settings.outline_color = Color(0, 0, 0, 0.9)
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(name)
+	var bars := Control.new()
+	bars.position = Vector2(30, 100)
+	bars.size = Vector2(90, 8)
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bars.draw.connect(_draw_bars.bind(bars, d))
+	m.add_child(bars)
+	m.mouse_entered.connect(func():
+		Sfx.play("hover", 1.2, -14.0)
+		m.create_tween().tween_property(m, "scale", Vector2.ONE * 1.15, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		m.z_index = 5
+		_show_hint(d, m))
+	m.mouse_exited.connect(func():
+		m.create_tween().tween_property(m, "scale", Vector2.ONE, 0.14)
+		m.z_index = 0
+		if _hint:
+			_hint.queue_free()
+			_hint = null)
+	m.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
+			Sfx.play("click")
+			_open(d))
+	# Dropped onto the city one after another
+	m.modulate.a = 0.0
+	m.scale = Vector2.ONE * 1.6
+	var drop := m.create_tween().set_parallel()
+	drop.tween_property(m, "modulate:a", 1.0, 0.2).set_delay(0.3 + n * 0.05)
+	drop.tween_property(m, "scale", Vector2.ONE, 0.32).set_delay(0.3 + n * 0.05).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## The standings by a hovered district: who holds it, each clan's influence, the gang's strength.
+func _show_hint(d: Dictionary, m: Control) -> void:
+	if _hint:
+		_hint.queue_free()
+	var holder := str(d.get("holder", ""))
+	var p := UI.panel(_clan_col(holder) if holder != "" else UI.MUTED, Color(0.03, 0.03, 0.07, 0.94))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 20
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	p.add_child(v)
+	var gang: Dictionary = d.get("locals", {}) if d.get("locals") is Dictionary else {}
+	v.add_child(UI.label(("HELD BY %s" % _clan_name(holder).to_upper()) if holder != "" else "RUN BY %s" % str(gang.get("name", "the locals")).to_upper(), 18, _clan_col(holder) if holder != "" else UI.MUTED, true))
+	for c in d.get("clans", []):
+		v.add_child(UI.label("%s  %d" % [_clan_name(str(c.clan)).to_upper(), int(c.get("points", 0))], 16, _clan_col(str(c.clan)), true))
+	v.add_child(UI.label("%s  %d to beat" % [str(gang.get("name", "Locals")), int(gang.get("strength", 0))], 15, UI.MUTED))
+	var boss = d.get("boss")
+	if boss is Dictionary:
+		v.add_child(UI.label("👑 %s" % str(boss.get("username", "")), 15, UI.GOLD))
+	v.add_child(UI.label("Click to open", 14, UI.MUTED))
+	add_child(p)
+	_hint = p
+	p.modulate.a = 0.0
+	await get_tree().process_frame   # (its size, once laid out)
+	if not is_instance_valid(p) or _hint != p:
+		return
+	var at := m.position + Vector2(m.size.x + 6, -6)
+	if at.x + p.size.x > 1900:
+		at.x = m.position.x - p.size.x - 6
+	at.y = clampf(at.y, 120, 940 - p.size.y)
+	p.position = at
+	p.modulate.a = 1.0
 
 
 ## "3d 14h" until the week's map resets (Monday 00:00 UTC).
