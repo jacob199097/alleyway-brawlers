@@ -49,6 +49,17 @@ func _turf_map_shots() -> void:
 	Game.go("territory")
 	await _shot("t02_turf_map", 2.5)
 	var tm = _screen()
+	if tm._world:   # (the city: zoomed in on the middle, then back out)
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_WHEEL_UP
+		ev.pressed = true
+		ev.position = Vector2(960, 560)
+		for i in 5:
+			tm._gui_input(ev)
+		await _shot("t02b_zoomed", 1.5)
+		tm._zoom_to = 1.0
+		tm._pos_to = tm._clamp_pos(tm._pos_to, 1.0)
+		await get_tree().create_timer(1.0).timeout
 	tm._open(tm._data.districts[0])
 	await _shot("t03_district", 0.8)
 	tm._close()

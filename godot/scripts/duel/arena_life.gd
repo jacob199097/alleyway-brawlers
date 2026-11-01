@@ -30,6 +30,7 @@ const WARP_MODES := {"water": 0, "heat": 1, "sway": 2, "glitter": 3}
 
 var _tex: Texture2D
 var _ts := Vector2(1536, 1024)
+var _view := Vector2(1920, 1080)   # the area the picture covers (the screen; the turf map: the picture itself)
 var _k := 1.0
 var _tint := Color.WHITE
 var _level := 1.0
@@ -38,10 +39,11 @@ var _add: CanvasItemMaterial
 static var _textures := {}
 
 
-func setup(tex: Texture2D, tint: Color, level: float) -> ArenaLife:
+func setup(tex: Texture2D, tint: Color, level: float, view := Vector2(1920, 1080)) -> ArenaLife:
 	_tex = tex
 	_ts = tex.get_size()
-	_k = maxf(1920.0 / _ts.x, 1080.0 / _ts.y)
+	_view = view
+	_k = maxf(_view.x / _ts.x, _view.y / _ts.y)
 	_tint = tint
 	_level = level
 	_add = CanvasItemMaterial.new()
@@ -97,7 +99,7 @@ func add(e: Dictionary) -> void:
 # ── Where things are ────────────────────────────────────────────────────────
 
 func _pt(p) -> Vector2:
-	return Vector2(float(p[0]), float(p[1])) * _k - (_ts * _k - Vector2(1920, 1080)) / 2.0
+	return Vector2(float(p[0]), float(p[1])) * _k - (_ts * _k - _view) / 2.0
 
 
 func _rect(r) -> Rect2:
@@ -159,7 +161,7 @@ func _beam(e: Dictionary) -> void:
 
 func _lightning(e: Dictionary) -> void:
 	var flash := ColorRect.new()
-	flash.size = Vector2(1920, 1080)
+	flash.size = _view
 	flash.color = Color(_col(e, "#c9d4ff"), 0.0)
 	flash.material = _add
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE

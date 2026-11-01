@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.95",
+        "notes": [
+            "The turf map is now the city itself: every district sits on its landmark, glowing in the colour of the clan that holds it, with a flickering red ring when it is close to changing hands. The city is alive with rain and lightning, searchlights, neon, traffic, koi, crows and drifting fog. Scroll to zoom in and drag to look around."
+        ]
+    },
+    {
         "version": "0.9.94",
         "notes": [
             "Veteran cards wear their badge: bronze for Seasoned, silver for Battle-Scarred, gold for Street Legend."
