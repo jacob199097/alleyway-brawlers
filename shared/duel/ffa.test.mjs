@@ -166,4 +166,16 @@ for (let g = 0; g < 24; g++) {
     assert.deepEqual(Object.values(game.places).sort(), seats.map((_, i) => i + 1), `game ${g}: places 1..${seats.length}`);
 }
 
+// "At the end of your opponent's turn" (Checkpoint Zero): once a round in FFA, at the end of the
+// turn just before yours
+st = board({ p1: [{ effects: [{ when: 'foe_turn_end', do: 'authority', amount: 1 }] }] });
+st.phase = 'deployment';
+for (const who of ['p2', 'p3', 'p4']) {
+    st.active = who;
+    st._events = [];
+    st._endTurn();
+    const fired = st._events.some(e => e.type === 'effect' && e.side === 'p1');
+    assert.equal(fired, who === 'p4', 'end of ' + who + "'s turn: " + (who === 'p4' ? 'fires (p1 is next)' : 'not yet'));
+}
+
 console.log('FFA rules: all good');

@@ -553,7 +553,7 @@ export class DuelState {
         if (!('target' in e)) return true;
         if (String(e.do ?? '') === 'charm' && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
-            promote_ally: 'promotable', charm: 'charmable', give_undead: 'unrisen', absorb: 'absorbable' }[String(e.do ?? '')] ?? 'any';
+            promote_ally: 'promotable', charm: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -1173,7 +1173,8 @@ export class DuelState {
             const a = this.cardAt(foe, slot);
             if (a != null && !jammed && a.cardType === 'ambush' && (a.effects || []).length && !HAND_AMBUSHES.includes(String(a.effectKey ?? ''))
                 && (String(a.ambushClan ?? '') === '' || def.clanTag === String(a.ambushClan))
-                && (DuelState.isLasting(a) || this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att, attacked: { side: foe, slot: ctx.target, card: def } }, ctx.att))) {
+                && (DuelState.isLasting(a) ? (a.face_down || this._fx(a, 'defend').length > 0)
+                    : this.cardCan(foe, NO_SLOT, a, '*', { side: ctx.side, slot: ctx.from, card: ctx.att, attacked: { side: foe, slot: ctx.target, card: def } }, ctx.att))) {
                 options.push({ id: String(slot), label: `SPRING ${String(a.name).toUpperCase()}`, side: foe, slot });
             }
         }
@@ -1377,6 +1378,17 @@ export class DuelState {
         return 'downed';
     }
 
+    /** Whether a character has UNDEAD now: given, printed, or from a Dormant leader / Continuous card.
+     *  Being Downed doesn't switch it off (a Downed character that's then KO'd still rises). */
+    _undeadNow(side, slot, c) {
+        if (c.undead_given || this._passive(side, slot, c, 'undead') != null) return true;
+        if (!c.downed) return false;
+        c.downed = false;
+        const p = this._passive(side, slot, c, 'undead');
+        c.downed = true;
+        return p != null;
+    }
+
     /** REMAINS (a passive printed on a token): KO'd or sacrificed, it goes to the Gutter instead of vanishing. */
     static remains(c) {
         return !!c && (c.effects || []).some(e => e && e.when === 'passive' && String(e.do ?? '') === 'remains');
@@ -1385,7 +1397,7 @@ export class DuelState {
     _ko(side, slot) {
         const c = this.cardAt(side, slot);
         if (c == null) return;
-        const undead = !c.token && !c.risen && (!!c.undead_given || this._passive(side, slot, c, 'undead') != null);
+        const undead = !c.token && !c.risen && this._undeadNow(side, slot, c);
         this.sides[side].field[slot] = null;
         const bounty = c.bounty;
         const own = this._ownerOf(side, c);
@@ -1771,11 +1783,13 @@ export class DuelState {
             return;
         }
         s.promoted[slot] = true;
+        // ("When this card is Downed: PROMOTE this card": Downed is what promotes it, so that's no reason to stop)
+        const wasDowned = !!old.downed;
         const preview = getCard(toId);
         const ask = this._ask(side, 'position', `Promote to ${preview.name ?? toId}: choose its position`, preview, [
             { id: 'atk', label: 'ATK POSITION' }, { id: 'def', label: 'DEF POSITION' },
         ], (pos) => {
-            if (this.cardAt(side, slot) !== old || old.downed || this.inStasis(old)) return;
+            if (this.cardAt(side, slot) !== old || (old.downed && !wasDowned) || this.inStasis(old)) return;
             let promoted = null;
             const i = s.hideout.findIndex(h => h.id === toId);
             if (i >= 0) promoted = s.hideout.splice(i, 1)[0];
@@ -1813,7 +1827,7 @@ export class DuelState {
             }
         });
         // Downed, KO'd or in STASIS before the player answers (an Ambush mid-attack): it doesn't promote
-        ask.still = () => this.cardAt(side, slot) === old && !old.downed && !this.inStasis(old);
+        ask.still = () => this.cardAt(side, slot) === old && !(old.downed && !wasDowned) && !this.inStasis(old);
     }
 
     /** A Dormant leader whose Awaken condition is met is offered the field (same as _check_awaken in
@@ -2422,7 +2436,7 @@ export class DuelState {
                 }, `${c.name} stuns %s`);
                 break;
             case 'shield':
-                this._fxApply(side, slot, c, e, vs, 'any', 'shield', (x) => {
+                this._fxApply(side, slot, c, e, vs, 'unshielded', 'shield', (x) => {
                     x.card.shield = true;
                     return `${x.card.name} is shielded from the next defeat`;
                 }, `${c.name} shields %s`);
@@ -2945,7 +2959,8 @@ export class DuelState {
                     && !x.card.downed && !x.card.charmed;
                 case 'charmable': return x.card.cardType !== 'leader' && !x.card.charmed;
                 case 'absorbable': return x.card.cardType !== 'leader' && x.card !== c;
-                case 'unrisen': return !x.card.token && !x.card.risen && !x.card.undead_given;
+                case 'unrisen': return !x.card.token && !x.card.risen && !this._undeadNow(x.side, x.slot, x.card);
+                case 'unshielded': return !x.card.shield;
                 case 'changed': {   // REWIND helps: an enemy's net gains, your character's net losses
                     const net = (x.card.mods || []).reduce((t, m) => t + toInt(m.atk) + toInt(m.def), 0);
                     return x.side === side ? net < 0 : net > 0;
@@ -3308,7 +3323,9 @@ export class DuelState {
     _endTurn() {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_end');
         this._runLasting(this.active, 'turn_end');
-        for (const foe of this.foesOf(this.active)) {
+        // (FFA: once a round, for the player whose turn is next, not for every opponent after every turn)
+        for (const foe of this.ffa ? [this._nextSeat(this.active)] : this.foesOf(this.active)) {
+            if (foe === this.active) continue;
             for (const e of this.characters(foe)) this._runFx(foe, e.slot, e.card, 'foe_turn_end');
             this._runLasting(foe, 'foe_turn_end');
         }

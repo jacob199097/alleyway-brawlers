@@ -3891,7 +3891,7 @@ func _ev_bounce(ev: Dictionary) -> void:
 	Sfx.play("whoosh", 1.2)
 	_ring(v.position, BLUE, 1.2)
 	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "BACK TO HAND", BLUE, 30)
-	if side == "opponent" and v.face_up:
+	if side != "player" and v.face_up:   # (any other player's hand: FFA seats too, or it showed as a "?")
 		v.flip(false)
 	elif side == "player" and not v.face_up:
 		v.flip(true)

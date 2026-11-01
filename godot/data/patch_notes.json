@@ -1,5 +1,17 @@
 [
     {
+        "version": "0.9.101",
+        "notes": [
+            "Fixed: Herald of the Hollow Throne now promotes when it's Downed (any card that promotes on being Downed does).",
+            "Fixed: UNDEAD characters rise even if they were Downed before being KO'd.",
+            "FFA: Checkpoint Zero (and anything that happens \"at the end of your opponent's turn\") goes off once a round, at the end of the turn just before yours, not after every opponent's turn.",
+            "Fixed: a face-up Continuous Ambush like Checkpoint Zero is no longer offered to spring again when you're attacked (it played its animation and did nothing).",
+            "UNDEAD and SHIELD can't be given to a character that already has them.",
+            "Fixed: in FFA a card sent back to another player's hand could show face-up as a \"?\".",
+            "Balance: Briar, The Colonel, Bastion, Widow Thorne, Vincent Vale, Lady Fortune and Jayden changed (zoom in on a card to see its new text). New art for Sergeant \"Big Iron\" Kowalski."
+        ]
+    },
+    {
         "version": "0.9.100",
         "notes": [
             "Fixed: the Resolution arrows sometimes stopped responding after a change.",

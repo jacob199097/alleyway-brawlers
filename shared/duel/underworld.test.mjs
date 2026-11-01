@@ -279,4 +279,32 @@ while (st._asks.length) answer(st);
 assert.equal(st.sides.player.field[1], hit, 'its SHIELD took the blow: still on the field');
 assert.equal(hit.downed, false);
 
+// A printed UNDEAD character that's Downed before it's KO'd still rises
+st = duel();
+const ghoul = unit(st, 'Ghoul', 1000, 800, { effects: [{ when: 'passive', do: 'undead' }] });
+st.sides.player.field[1] = ghoul;
+st._goDown('player', 1, ghoul);
+st._ko('player', 1);
+st._turnOver();
+assert.ok(st.sides.player.field.includes(ghoul), "Downed, then KO'd: it still rises");
+
+// "Give UNDEAD" and SHIELD skip a character that already has it (printed UNDEAD counts)
+st = duel();
+st.sides.player.field[1] = unit(st, 'Ghoul', 1000, 800, { effects: [{ when: 'passive', do: 'undead' }] });
+assert.equal(st.fxCan('player', -1, src, { do: 'give_undead', target: 'ally' }), false, 'already UNDEAD (printed)');
+const shielded = unit(st, 'Shielded');
+shielded.shield = true;
+st.sides.player.field[1] = shielded;
+assert.equal(st.fxCan('player', -1, src, { do: 'shield', target: 'ally' }), false, 'already SHIELDED');
+
+// "When this card is Downed: PROMOTE this card" (Herald of the Hollow Throne): Downed is what promotes it
+st = duel();
+const herald = st.makeCard('card_unde_043');
+st.sides.player.field[2] = herald;
+st.sides.player.hideout.push(st.makeCard('card_unde_044'));
+st._goDown('player', 2, herald);
+assert.equal(st._asks.length, 1, 'asked for its position');
+answer(st, 'atk');
+assert.equal(st.cardAt('player', 2).id, 'card_unde_044', 'promoted to LV2');
+
 console.log('underworld: ok');

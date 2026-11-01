@@ -1139,7 +1139,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 1300,
+  "attack": 1100,
   "defense": 0,
   "level": 1,
   "subtype": "brawler",
@@ -1496,7 +1496,7 @@
   "art_url": "card_mili_014",
   "code": "MILI-014",
   "flavourText": "Discipline kept us alive when everything else failed.",
-  "effectText": "Your MILITIA cards cost 1 less Authority.\nACTIVATE (once per turn, this card can't attack this turn): Destroy one of your opponent's face-down cards.\nThis card can't be targeted by your opponent's effects.",
+  "effectText": "Your MILITIA cards cost 1 less Authority.\nACTIVATE (once per turn, this card can't attack this turn): Destroy up to 2 of your opponent's Hustle or Ambush cards, face-up or face-down.\nThis card can't be targeted by your opponent's effects.",
   "effects": [
    {
     "when": "passive",
@@ -1506,9 +1506,9 @@
    },
    {
     "when": "activate",
-    "do": "break_ambush",
+    "do": "wreck",
     "cost": "exhaust",
-    "amount": 1
+    "amount": 2
    },
    {
     "when": "passive",
@@ -1999,7 +1999,7 @@
   "art_url": "card_mili_028",
   "code": "MILI-028",
   "flavourText": "I used to run from the fighting. Now the fighting runs into them.",
-  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhen your opponent deploys a character: If your opponent controls 2 or more characters, PROMOTE this card.",
+  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhen your opponent deploys a character: If your opponent controls 4 or more characters, PROMOTE this card.",
   "effects": [
    {
     "when": "activate",
@@ -2010,7 +2010,7 @@
     "when": "foe_deployed",
     "do": "promote",
     "if": "enemies_ge",
-    "n": 2
+    "n": 4
    }
   ],
   "clanName": "Militia",
@@ -2034,7 +2034,7 @@
   "art_url": "card_mili_029",
   "code": "MILI-029",
   "flavourText": "I used to run from the fighting. Now the fighting runs into them.",
-  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhile this card is next to another MILITIA character, your opponent must attack this card first if it is standing.\nOnce per turn, when this card is attacked: It gains SHIELD.",
+  "effectText": "ACTIVATE (once per turn): Switch one enemy character to ATK position.\nWhile this card is next to another MILITIA character, your opponent must attack this card first if it is standing.\nOnce per turn, when this card is attacked: If you control a Downed MILITIA character, it gains SHIELD.",
   "effects": [
    {
     "when": "activate",
@@ -2051,7 +2051,9 @@
     "when": "defend",
     "do": "shield",
     "target": "self",
-    "once": true
+    "if": "ally_downed",
+    "once": true,
+    "if_clan": "militia"
    }
   ],
   "clanName": "Militia",
@@ -2760,7 +2762,7 @@
   "art_url": "card_wild_001",
   "code": "WILD-001",
   "flavourText": "You can cheat fate, son. You can even cheat death. But you never cheat the house.",
-  "effectText": "While this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 10 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
+  "effectText": "While this leader is Dormant: Your WILDCARD cards cost 1 less Authority.\nAWAKEN: When you've won 7 or more coin flips or die rolls this game, this leader may take the field.\nWhen this leader Awakens: Return one enemy character to its owner's hand. DOUBLE OR NOTHING.",
   "effects": [
    {
     "when": "dormant",
@@ -2783,7 +2785,7 @@
   "subtype": "brawler",
   "promotesTo": null,
   "awakenCondition": {
-   "luck": 10
+   "luck": 7
   },
   "influence": 3500
  },
@@ -6224,7 +6226,7 @@
   "art_url": "card_wild_046",
   "code": "WILD-046",
   "flavourText": "The house never loses. I make sure of it.",
-  "effectText": "When deployed: Flip a coin. If heads, TAX 2. If tails, draw 2 cards.\nAt the end of your turn: If you've played 2 or more Hustles this turn, HEAL 500.",
+  "effectText": "When deployed: Flip a coin. If heads, TAX 2. If tails, draw 2 cards.\nAt the end of your turn: If you control 2 or more other WILDCARD characters, BARRICADE 700.",
   "effects": [
    {
     "when": "deploy",
@@ -6240,10 +6242,11 @@
    },
    {
     "when": "turn_end",
-    "do": "heal",
-    "if": "hustles_ge",
-    "amount": 500,
-    "n": 2
+    "do": "barricade",
+    "if": "allies",
+    "amount": 700,
+    "n": 2,
+    "if_clan": "wildcard"
    }
   ],
   "clanName": "Wildcard",
@@ -6266,7 +6269,7 @@
   "effectKey": "",
   "art_url": "card_mili_045",
   "code": "MILI-045",
-  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
   "effectText": "When this card attacks: SUPPRESS one enemy character for 300.\nWhen this card KOs a character: PROMOTE this card.",
   "effects": [
    {
@@ -6300,7 +6303,7 @@
   "effectKey": "",
   "art_url": "card_mili_046",
   "code": "MILI-046",
-  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
   "effectText": "Your opponent must attack this card first if it is standing.\nAfter this card KOs 2 characters: PROMOTE this card.",
   "effects": [
    {
@@ -6333,7 +6336,7 @@
   "effectKey": "",
   "art_url": "card_mili_047",
   "code": "MILI-047",
-  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit on me.",
+  "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
   "effectText": "When this card attacks: It has PIERCE for this attack.\nThis card is immune to POISON, FREEZE, STUN, SUPPRESS and SILENCE.\nACTIVATE (once per turn, pay 2 Authority): Your opponent loses 1000 Morale.",
   "effects": [
    {
@@ -6793,19 +6796,22 @@
   "art_url": "card_unde_048",
   "code": "UNDE-048",
   "flavourText": "I wear black for all of them. I keep a little of each.",
-  "effectText": "Once per turn, when another of your characters is KO'd: DRAIN 300.",
+  "effectText": "Once per turn, when another of your characters is KO'd: DRAIN 200 for each UNDERWORLD card in your Gutter (up to 8).",
   "effects": [
    {
     "when": "ally_ko",
     "do": "drain",
-    "amount": 300,
+    "per": "gutter",
+    "per_clan": "underworld",
+    "amount": 200,
+    "per_max": 8,
     "once": true
    }
   ],
   "clanName": "Underworld",
   "clanColor": "#4f1c5e",
   "attack": 1000,
-  "defense": 1300,
+  "defense": 1800,
   "level": 1,
   "subtype": "brawler",
   "promotesTo": null
@@ -7255,14 +7261,19 @@
   "art_url": "card_wild_059",
   "code": "WILD-059",
   "flavourText": "Act like you belong here. That's the trick.",
-  "effectText": "When this card attacks: Give one enemy character BLEED 200. DOUBLE OR NOTHING.",
+  "effectText": "When this card attacks: Flip a coin. If heads, your opponent discards 1 card. If tails, draw 1 card.",
   "effects": [
    {
     "when": "attack",
-    "do": "bleed",
-    "target": "enemy",
-    "luck": "double",
-    "amount": 200
+    "do": "discard",
+    "luck": "coin",
+    "amount": 1
+   },
+   {
+    "when": "attack",
+    "do": "draw",
+    "if_luck": "lost",
+    "amount": 1
    }
   ],
   "clanName": "Wildcard",

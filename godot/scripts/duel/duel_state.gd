@@ -618,7 +618,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 	if str(e.get("do", "")) == "charm" and _empty_lane(side) < 0:   # (no lane to take it to)
 		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen", "absorb": "absorbable"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -1340,7 +1340,8 @@ func _atk_ambush(ctx: Dictionary) -> void:
 		if a != null and not jammed and a.get("cardType") == "ambush" and not a.get("effects", []).is_empty() \
 				and not str(a.get("effectKey", "")) in HAND_AMBUSHES \
 				and (str(a.get("ambushClan", "")) == "" or def.get("clanTag") == str(a.get("ambushClan", ""))) \
-				and (is_lasting(a) or card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att, "attacked": {"side": foe, "slot": ctx.target, "card": def}}, ctx.att)):
+				and ((a.get("face_down", false) or not _fx(a, "defend").is_empty()) if is_lasting(a) \
+					else card_can(foe, NO_SLOT, a, "*", {"side": ctx.side, "slot": ctx.from, "card": ctx.att, "attacked": {"side": foe, "slot": ctx.target, "card": def}}, ctx.att)):
 			options.append({"id": str(slot), "label": "SPRING %s" % str(a.name).to_upper(), "side": foe, "slot": slot})
 	if options.is_empty():
 		_atk_resolve(ctx)
@@ -1570,6 +1571,19 @@ static func remains(c) -> bool:
 	return false
 
 
+## Whether a character has UNDEAD now: given, printed, or from a Dormant leader / Continuous card.
+## Being Downed doesn't switch it off (a Downed character that's then KO'd still rises).
+func _undead_now(side: String, slot: int, c: Dictionary) -> bool:
+	if c.get("undead_given", false) or not _passive(side, slot, c, "undead").is_empty():
+		return true
+	if not c.get("downed", false):
+		return false
+	c.downed = false
+	var p := _passive(side, slot, c, "undead")
+	c.downed = true
+	return not p.is_empty()
+
+
 func _go_down(side: String, slot: int, c: Dictionary) -> String:
 	if not _passive(side, slot, c, "brittle").is_empty():
 		_ko(side, slot)
@@ -1586,8 +1600,7 @@ func _ko(side: String, slot: int) -> void:
 	if card_at(side, slot) == null:
 		return
 	var c: Dictionary = card_at(side, slot)
-	var undead: bool = not c.get("token", false) and not c.get("risen", false) \
-		and (c.get("undead_given", false) or not _passive(side, slot, c, "undead").is_empty())
+	var undead: bool = not c.get("token", false) and not c.get("risen", false) and _undead_now(side, slot, c)
 	sides[side].field[slot] = null
 	var bounty = c.get("bounty")
 	var own := _owner_of(side, c)
@@ -1980,11 +1993,13 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		_emit("notice", {"side": side, "text": "%s CAN'T PROMOTE AGAIN THIS TURN" % str(old.name).to_upper()})
 		return
 	s.promoted[slot] = true
+	# ("When this card is Downed: PROMOTE this card": Downed is what promotes it, so that's no reason to stop)
+	var was_downed: bool = old.get("downed", false)
 	var preview := CardDB.get_card(to_id)
 	var ask := _ask(side, "position", "Promote to %s: choose its position" % preview.get("name", to_id), preview, [
 		{"id": "atk", "label": "ATK POSITION"}, {"id": "def", "label": "DEF POSITION"},
 	], func(pos: String):
-		if card_at(side, slot) != old or old.get("downed", false) or in_stasis(old):
+		if card_at(side, slot) != old or (old.get("downed", false) and not was_downed) or in_stasis(old):
 			return
 		var promoted = null
 		for i in s.hideout.size():
@@ -2027,7 +2042,7 @@ func _promote(side: String, slot: int, reason: String) -> void:
 					_draw(side)
 					break)
 	# Downed, KO'd or in STASIS before the player answers (an Ambush mid-attack): it doesn't promote
-	ask.still = func() -> bool: return card_at(side, slot) == old and not old.get("downed", false) and not in_stasis(old)
+	ask.still = func() -> bool: return card_at(side, slot) == old and not (old.get("downed", false) and not was_downed) and not in_stasis(old)
 
 
 ## King Roan awakens at the start of your turn once you control 4+ LIONS characters or have
@@ -2821,7 +2836,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			var fn := func(x: Dictionary) -> String:
 				x.card.shield = true
 				return "%s is shielded from the next defeat" % x.card.name
-			_fx_apply(side, slot, c, e, vs, "any", "shield", fn, "%s shields %%s" % c.name)
+			_fx_apply(side, slot, c, e, vs, "unshielded", "shield", fn, "%s shields %%s" % c.name)
 		"influence":
 			# A Dormant leader regains Influence, up to what it started with
 			var l = s.leader
@@ -3354,7 +3369,9 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 			"absorbable":
 				return x.card.get("cardType") != "leader" and not is_same(x.card, c)
 			"unrisen":
-				return not x.card.get("token", false) and not x.card.get("risen", false) and not x.card.get("undead_given", false)
+				return not x.card.get("token", false) and not x.card.get("risen", false) and not _undead_now(x.side, x.slot, x.card)
+			"unshielded":
+				return not x.card.get("shield", false)
 			"changed":   # REWIND helps: an enemy's net gains, your character's net losses
 				var net := 0
 				for m in x.card.get("mods", []):
@@ -3797,7 +3814,10 @@ func _end_turn() -> void:
 	for e in characters(active):
 		_run_fx(active, e.slot, e.card, "turn_end")
 	_run_lasting(active, "turn_end")
-	for foe in foes_of(active):
+	# (FFA: once a round, for the player whose turn is next, not for every opponent after every turn)
+	for foe in ([_next_seat(active)] if ffa else foes_of(active)):
+		if foe == active:
+			continue
 		for e in characters(foe):
 			_run_fx(foe, e.slot, e.card, "foe_turn_end")
 		_run_lasting(foe, "foe_turn_end")
