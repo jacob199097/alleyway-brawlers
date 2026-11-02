@@ -15,7 +15,7 @@ var _balance: Label
 
 func _ready() -> void:
 	back_to = "shop"
-	UI.background(self, "menu_background.png", 0.7)
+	UI.background(self, "menu_background.jpg", 0.7)
 	UI.title(self, "PURCHASE CONTRABAND", UI.PURPLE)
 	_balance = UI.label("", 26, UI.PURPLE, true)
 	_balance.size = Vector2(1920, 34)

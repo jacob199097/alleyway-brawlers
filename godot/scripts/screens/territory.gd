@@ -38,7 +38,7 @@ func _ready() -> void:
 	back_to = "main_menu"
 	_city = city()
 	if _city.is_empty():
-		UI.background(self, "menu_background.png", 0.66)
+		UI.background(self, "menu_background.jpg", 0.66)
 	else:
 		_city_backdrop()
 	Game.sound.ambience("city_rain")

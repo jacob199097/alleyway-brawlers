@@ -18,7 +18,7 @@ const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "arena_rooftop.png" if UI.tex("arena_rooftop.png") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.png") else 0.62)
+	UI.background(self, "arena_rooftop.jpg" if UI.tex("arena_rooftop.jpg") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.jpg") else 0.62)
 	Game.sound.ambience("rooftop")   # (the rooftop over the city)
 	UI.title(self, "SELECT BATTLE MODE")
 	if Game.player.get("first_win_ready", false) and not Game.offline:

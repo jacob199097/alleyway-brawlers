@@ -21,4 +21,12 @@ done
 for f in "$src"/*.png "$src"/*.mp3; do
     [ "$(basename "$f")" = "Cropped_Frame.png" ] || cp "$f" "$dst/"
 done
+# The big backdrops (arenas, turf map) are .jpg, imported lossy (WebP) rather than VRAM-compressed:
+# a few MB each in the game and its patches instead of ~13
+for f in "$src"/*.jpg; do
+    [ -e "$f" ] || continue
+    cp "$f" "$dst/"
+    imp="$dst/$(basename "$f").import"
+    [ -e "$imp" ] || printf '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=1\ncompress/lossy_quality=0.9\nmipmaps/generate=true\n' > "$imp"
+done
 echo "Assets synced to $dst"

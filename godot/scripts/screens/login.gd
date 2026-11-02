@@ -14,7 +14,7 @@ const STEAM_BLUE := Color("66c0f4")
 
 
 func _ready() -> void:
-	UI.background(self, "menu_background.png", 0.35)
+	UI.background(self, "menu_background.jpg", 0.35)
 	Game.play_menu_music()
 	_card_fan()
 	var logo := UI.texture_rect(UI.tex("title_alleyway.png"), Vector2(840, 458))

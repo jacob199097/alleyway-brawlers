@@ -1,5 +1,5 @@
 [
-    {"id": "alley", "name": "Back Alley", "image": "arena_1v1.png",
+    {"id": "alley", "name": "Back Alley", "image": "arena_1v1.jpg",
         "alive": {"rain": 0.3, "sheen": 0.16, "haze": 0.06, "neon": 0.5},
         "fx": [
             {"kind": "glow", "mode": "pulse", "speed": 0.7, "r": 190, "strength": 0.2, "color": "#3fd8ff", "points": [[120, 250], [1390, 660], [190, 790]]},
@@ -14,7 +14,7 @@
             {"kind": "scurry", "path": [[230, 985], [700, 992], [1250, 965]], "every": 24, "size": 1.3},
             {"kind": "scurry", "path": [[118, 880], [150, 620], [118, 250]], "every": 30, "size": 1.2}
         ]},
-    {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.png",
+    {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.jpg",
         "alive": {"rain": 0.35, "sheen": 0.18, "haze": 0.05, "neon": 0.5},
         "fx": [
             {"kind": "spin", "at": [420, 72], "r": 27, "speed": 3.2},
@@ -31,7 +31,7 @@
             {"kind": "rain", "amount": 230, "wind": 0.3, "alpha": 0.26},
             {"kind": "lightning", "every": 15, "strength": 0.24, "color": "#c9c2ff"}
         ]},
-    {"id": "pit", "ambience": "crowd", "stutter": false, "name": "The Pit", "image": "arena_1v1_pit.png",
+    {"id": "pit", "ambience": "crowd", "stutter": false, "name": "The Pit", "image": "arena_1v1_pit.jpg",
         "board": {"style": "paint", "tint": "#efe6cf"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.3},
         "fx": [
@@ -49,7 +49,7 @@
             {"kind": "glow", "mode": "breathe", "speed": 0.5, "r": 120, "strength": 0.18, "color": "#ffe0a0", "points": [[380, 60], [1110, 55], [140, 850], [1340, 870]]},
             {"kind": "smoke", "at": [1420, 250]}
         ]},
-    {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.png",
+    {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.jpg",
         "board": {"style": "neon", "color": "#b388ff"},
         "alive": {"rain": 0.0, "sheen": 0.08, "haze": 0.03, "neon": 0.5},
         "fx": [
@@ -63,7 +63,7 @@
             {"kind": "water", "rect": [170, 160, 1200, 720], "amp": 0.8, "speed": 0.4, "sparkle": 0.3, "color": "#e0d2ff", "feather": 90},
             {"kind": "shooting", "rect": [260, 200, 1000, 560]}
         ]},
-    {"id": "junkyard", "ambience": "", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.png",
+    {"id": "junkyard", "ambience": "", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.jpg",
         "board": {"style": "paint", "tint": "#e8873e"},
         "alive": {"rain": 0.1, "sheen": 0.12, "haze": 0.06, "neon": 0.4},
         "fx": [
@@ -79,7 +79,7 @@
             {"kind": "embers", "rect": [1200, 760, 160, 140], "color": "#ff9a3c"},
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#6b5a4a", "density": 0.25, "frame": 1.0, "drift": [0.03, -0.012]}
         ]},
-    {"id": "casino", "ambience": "crowd", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.png",
+    {"id": "casino", "ambience": "crowd", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.jpg",
         "board": {"style": "felt", "color": "#d9a944"},
         "alive": {"rain": 0.0, "sheen": 0.05, "haze": 0.04, "neon": 0.3},
         "fx": [
@@ -93,7 +93,7 @@
             {"kind": "smoke", "at": [1500, 748]},
             {"kind": "glow", "mode": "blink", "speed": 0.6, "r": 46, "strength": 0.3, "color": "#ffe6a8", "points": [[380, 40], [1160, 80], [632, 922], [1505, 625], [145, 150]]}
         ]},
-    {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.png",
+    {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.jpg",
         "board": {"style": "neon", "color": "#b06bff"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.1, "neon": 0.45},
         "fx": [
@@ -110,7 +110,7 @@
             {"kind": "sway", "rect": [1420, 80, 116, 520], "amp": 1.8, "speed": 0.5},
             {"kind": "scurry", "path": [[1350, 960], [900, 990], [560, 985]], "every": 36, "size": 1.1, "color": "#1a0f14"}
         ]},
-    {"id": "base", "ambience": "", "stutter": false, "name": "Militia Outpost", "image": "arena_1v1_base.png",
+    {"id": "base", "ambience": "", "stutter": false, "name": "Militia Outpost", "image": "arena_1v1_base.jpg",
         "board": {"style": "paint", "tint": "#ffd23a"},
         "alive": {"rain": 0.12, "sheen": 0.12, "haze": 0.05, "neon": 0.35},
         "fx": [
@@ -124,7 +124,7 @@
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#55604a", "density": 0.34, "frame": 1.0, "drift": [0.028, -0.006]},
             {"kind": "dust", "rect": [220, 160, 1100, 700], "color": "#e6f2c8"}
         ]},
-    {"id": "graveyard", "ambience": "", "stutter": false, "name": "The Graveyard", "image": "arena_1v1_graveyard.png",
+    {"id": "graveyard", "ambience": "", "stutter": false, "name": "The Graveyard", "image": "arena_1v1_graveyard.jpg",
         "board": {"style": "neon", "color": "#a9ffd6"},
         "alive": {"rain": 0.0, "sheen": 0.03, "haze": 0.06, "neon": 0.2},
         "fx": [
@@ -141,7 +141,7 @@
             {"kind": "sway", "rect": [0, 560, 330, 260], "amp": 2, "speed": 0.65},
             {"kind": "scurry", "path": [[300, 1010], [760, 1012], [1180, 1000]], "every": 34, "size": 1.2}
         ]},
-    {"id": "grove", "ambience": "", "stutter": false, "name": "Glowshroom Grove", "image": "arena_1v1_grove.png",
+    {"id": "grove", "ambience": "", "stutter": false, "name": "Glowshroom Grove", "image": "arena_1v1_grove.jpg",
         "board": {"style": "neon", "color": "#62f2ff"},
         "alive": {"rain": 0.0, "sheen": 0.06, "haze": 0.04, "neon": 0.4},
         "fx": [
@@ -159,7 +159,7 @@
             {"kind": "motes", "rect": [120, 100, 1300, 820], "amount": 34, "color": "#e6ff8a", "size": 0.1, "life": 4.5, "speed": 24},
             {"kind": "motes", "rect": [120, 100, 1300, 820], "amount": 22, "color": "#c58bff", "size": 0.08, "life": 7, "speed": 8, "rise": 10}
         ]},
-    {"id": "lab", "ambience": "", "stutter": false, "name": "The Lab", "image": "arena_1v1_lab.png",
+    {"id": "lab", "ambience": "", "stutter": false, "name": "The Lab", "image": "arena_1v1_lab.jpg",
         "board": {"style": "holo", "color": "#5cffa0"},
         "alive": {"rain": 0.0, "sheen": 0.14, "haze": 0.02, "neon": 0.4},
         "fx": [
@@ -177,7 +177,7 @@
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#1f6b47", "density": 0.3, "frame": 1.0, "drift": [0.02, 0.004]},
             {"kind": "motes", "rect": [230, 140, 1080, 720], "amount": 14, "color": "#a6ffcf", "size": 0.06, "life": 6, "speed": 8, "rise": 6}
         ]},
-    {"id": "docks", "ambience": "city_rain", "stutter": false, "name": "The Docks", "image": "arena_1v1_docks.png",
+    {"id": "docks", "ambience": "city_rain", "stutter": false, "name": "The Docks", "image": "arena_1v1_docks.jpg",
         "board": {"style": "felt", "color": "#d9a35a"},
         "alive": {"rain": 0.28, "sheen": 0.16, "haze": 0.04, "neon": 0.2},
         "fx": [
@@ -192,7 +192,7 @@
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#7d8fa3", "density": 0.42, "frame": 1.0, "drift": [0.03, 0.006]},
             {"kind": "rain", "amount": 140, "wind": 0.2, "alpha": 0.2}
         ]},
-    {"id": "frozen", "ambience": "", "stutter": false, "name": "Frozen Lake", "image": "arena_1v1_frozen.png",
+    {"id": "frozen", "ambience": "", "stutter": false, "name": "Frozen Lake", "image": "arena_1v1_frozen.jpg",
         "board": {"style": "frost", "color": "#cfeeff"},
         "alive": {"rain": 0.0, "sheen": 0.14, "haze": 0.03, "neon": 0.15},
         "fx": [
@@ -208,7 +208,7 @@
             {"kind": "ripples", "points": [[880, 40], [1060, 55]], "r": 30, "every": 2.4, "color": "#e8f8ff"},
             {"kind": "glow", "mode": "breathe", "speed": 0.25, "r": 520, "strength": 0.06, "color": "#9fd8ff", "at": [768, 500]}
         ]},
-    {"id": "canyon", "ambience": "", "stutter": false, "name": "Dust Bowl", "image": "arena_1v1_canyon.png",
+    {"id": "canyon", "ambience": "", "stutter": false, "name": "Dust Bowl", "image": "arena_1v1_canyon.jpg",
         "board": {"style": "paint", "tint": "#3a1606"},
         "alive": {"rain": 0.0, "sheen": 0.0, "haze": 0.0, "neon": 0.1},
         "fx": [
@@ -225,7 +225,7 @@
             {"kind": "sand", "amount": 55, "color": "#f6d7a0", "alpha": 0.32},
             {"kind": "dust", "rect": [200, 110, 1150, 780], "color": "#ffe2b0"}
         ]},
-    {"id": "clocktower", "ambience": "", "stutter": false, "name": "The Clockwork Tower", "image": "arena_1v1_clocktower.png",
+    {"id": "clocktower", "ambience": "", "stutter": false, "name": "The Clockwork Tower", "image": "arena_1v1_clocktower.jpg",
         "board": {"style": "brass", "color": "#ffcf6b"},
         "alive": {"rain": 0.0, "sheen": 0.1, "haze": 0.04, "neon": 0.2},
         "fx": [
@@ -243,7 +243,7 @@
             {"kind": "dust", "rect": [200, 120, 1150, 760], "color": "#ffe2a8"},
             {"kind": "motes", "rect": [180, 100, 1180, 800], "amount": 10, "color": "#ffd28a", "size": 0.06, "life": 7, "speed": 6, "rise": 3}
         ]},
-    {"id": "mirror", "ambience": "", "stutter": false, "name": "The Shattered Realm", "image": "arena_1v1_mirror.png",
+    {"id": "mirror", "ambience": "", "stutter": false, "name": "The Shattered Realm", "image": "arena_1v1_mirror.jpg",
         "board": {"style": "shard", "color": "#c99bff"},
         "alive": {"rain": 0.0, "sheen": 0.06, "haze": 0.03, "neon": 0.45},
         "fx": [
@@ -265,7 +265,7 @@
             {"kind": "glints", "points": [[210, 520], [480, 840], [690, 870], [1000, 880], [1320, 640], [100, 250], [1400, 100], [1440, 540], [40, 860]]},
             {"kind": "lightning", "every": 18, "strength": 0.2, "color": "#c08bff"}
         ]},
-    {"id": "koi", "ambience": "", "stutter": false, "name": "Koi Garden", "image": "arena_1v1_koi.png",
+    {"id": "koi", "ambience": "", "stutter": false, "name": "Koi Garden", "image": "arena_1v1_koi.jpg",
         "board": {"style": "water", "color": "#f4fffb"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.02, "neon": 0.1},
         "fx": [

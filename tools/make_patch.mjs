@@ -16,7 +16,7 @@
 //
 // A patch can't change project settings, the autoload list or add class_name scripts (use
 // preload); those need a full build, with "minimum" and "patchBase" raised to its version.
-import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,7 +64,14 @@ try {
     process.exit(1);
 }
 if (!existsSync(out)) throw new Error('Godot did not write the patch.');
-const removed = deletedFiles(out);
+// A file the patch deletes is fine when its source is gone from the project on purpose (art replaced,
+// e.g. arena_*.png by arena_*.jpg in 0.9.104); one whose source is still there means the Patch preset
+// left it out
+const sources = projectFiles(join(ROOT, 'godot'));
+const sourceOf = (p) => p.replace(/^\.godot\/imported\//, '').replace(/-[0-9a-f]{32}\..*$/, '').replace(/\.(import|remap)$/, '').split('/').pop();
+const gone = deletedFiles(out).filter(p => !sources.has(sourceOf(p)));
+const removed = deletedFiles(out).filter(p => sources.has(sourceOf(p)));
+if (gone.length) console.log(`\nThe patch removes ${gone.length} file(s) whose source is gone from the project, e.g. ${sourceOf(gone[0])}.`);
 if (removed.length) {
     console.error(`\nThe patch deletes ${removed.length} file(s) from the full build, e.g.\n  ${removed.slice(0, 5).join('\n  ')}\n` +
         'The Patch preset (godot/export_presets.cfg) must export everything the Windows Desktop preset does.');
@@ -75,6 +82,16 @@ console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for $
 console.log(`Next: push, then  node tools/deploy.mjs --patch  (it copies the Windows and Mac patches; or by hand):\n` +
     `  scp "${out}" jacob199097@192.168.0.200:/opt/Turf_War/downloads/\n` +
     `  (on the server) cd /opt/Turf_War && git pull && sudo systemctl restart alleyway-backend`);
+
+// The names of the files in the Godot project (not its .godot cache)
+function projectFiles(dir, out = new Set()) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === '.godot') continue;
+        if (e.isDirectory()) projectFiles(join(dir, e.name), out);
+        else out.add(e.name);
+    }
+    return out;
+}
 
 // The files a .pck marks as removed (Godot's PCK directory: path, offset, size, md5, flags; bit 2 = removed).
 function deletedFiles(file) {

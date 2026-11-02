@@ -11,7 +11,7 @@ var _quest_box: Control
 
 
 func _ready() -> void:
-	UI.background(self, "menu_background.png", 0.35)
+	UI.background(self, "menu_background.jpg", 0.35)
 	Game.play_menu_music()
 	if not Game.offline and not await Game.refresh_player():
 		Game.sign_out()

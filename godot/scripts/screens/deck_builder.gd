@@ -43,7 +43,7 @@ var _curve_was: Array = [0, 0, 0, 0, 0, 0, 0]
 
 
 func _ready() -> void:
-	UI.background(self, "menu_background.png", 0.72)
+	UI.background(self, "menu_background.jpg", 0.72)
 	Game.play_menu_music()
 	_build_header()
 	if not needs_server("The deck editor"):

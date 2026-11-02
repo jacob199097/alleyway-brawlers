@@ -25,6 +25,9 @@ const Keywords := preload("res://scripts/keywords.gd")
 static var _font: SystemFont
 static var _theme: Theme
 static var _tex := {}
+## The big backdrops (arenas, turf map) are .jpg upscales, drawn in their pictures' original pixels
+## (1536 wide): arena fx, slots and turf markers are placed in those
+const BACKDROP_W := 1536
 
 
 static func font() -> SystemFont:
@@ -276,13 +279,20 @@ static func panel(accent := Color(1, 1, 1, 0.12), bg := INK) -> PanelContainer:
 	return p
 
 
-## A texture from res://assets, or null if it isn't synced yet.
+## A texture from res://assets, or null if it isn't synced yet. A .jpg backdrop keeps all its detail
+## but reports its original size (BACKDROP_W wide).
 static func tex(path: String) -> Texture2D:
 	if not path.begins_with("res://"):
 		path = "res://assets/%s" % path
 	if _tex.has(path):
 		return _tex[path]
 	var t: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if t != null and path.ends_with(".jpg"):
+		var img := t.get_image()
+		if img != null and not img.is_empty():   # (headless: no image, the texture as it is)
+			var sharp := ImageTexture.create_from_image(img)
+			sharp.set_size_override(Vector2i(BACKDROP_W, roundi(BACKDROP_W * float(img.get_height()) / img.get_width())))
+			t = sharp
 	_tex[path] = t
 	return t
 
@@ -367,11 +377,14 @@ static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> Texture
 
 
 ## Full-screen background art with a dark veil, brought to life (see living_bg.gd).
-static func background(parent: Control, path := "menu_background.png", dim := 0.55) -> void:
-	# A screen's own background once it has one (assets/bg_<screen>.png, e.g. bg_shop.png), else the alley
+static func background(parent: Control, path := "menu_background.jpg", dim := 0.55) -> void:
+	# A screen's own background once it has one (assets/bg_<screen>.jpg or .png, e.g. bg_shop.jpg), else the alley
 	var own: Texture2D = null
-	if path == "menu_background.png" and parent.scene_file_path != "":
-		own = tex("bg_%s.png" % parent.scene_file_path.get_file().get_basename())
+	if path == "menu_background.jpg" and parent.scene_file_path != "":
+		var screen := parent.scene_file_path.get_file().get_basename()
+		own = tex("bg_%s.jpg" % screen)
+		if own == null:
+			own = tex("bg_%s.png" % screen)
 	if own:   # (its own scene stays in view: the panels over it are glass, see glass())
 		dim = minf(dim, 0.3)
 	parent.add_child(LivingBackground.new().setup(own if own else tex(path), dim))

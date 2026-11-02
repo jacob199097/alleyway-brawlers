@@ -25,7 +25,7 @@ const HAND_LIFT_Y := 872.0
 const HAND_CX := 1080.0
 const HAND_SPAN := 900.0
 const OPP_HAND_Y := -22.0
-## Free-for-all: the crossroads (arena_ffa.png) fills the screen with its manhole at FFA_MID, and the
+## Free-for-all: the crossroads (arena_ffa.jpg) fills the screen with its manhole at FFA_MID, and the
 ## four boards sit close round it (their slots painted by the game, like the 1v1 mat's). The two on top
 ## are the 1v1 opponent's layout (centred on OPP_C); yours and the one beside it (below) are your
 ## layout (centred on PLAYER_C), facing up. Plates (name, Morale) face each other across the middle.
@@ -193,7 +193,7 @@ func _ready() -> void:
 	ui.theme = _make_theme()
 	# The floor: the match's 1v1 arena (data/arenas.json; the server's pick online, the roulette's
 	# offline; the slots are painted on it in _draw), or the old backdrop
-	var bg := "res://assets/arena_1v1.png" if not _paint.is_empty() else "res://assets/duel_background.png"
+	var bg := "res://assets/arena_1v1.jpg" if not _paint.is_empty() else "res://assets/duel_background.png"
 	var arena := {}
 	var ffa_start: bool = Game.duel_setup.get("start") is Dictionary and str(Game.duel_setup.start.get("mode", "")) == "ffa"
 	if not _paint.is_empty() and not ffa_start:
@@ -209,7 +209,7 @@ func _ready() -> void:
 			bg = "res://assets/" + str(arena.image)
 			_ambience = str(arena.get("ambience", "city_rain"))   # (rain only where it rains)
 	if ResourceLoader.exists(bg):
-		$BackLayer/Background.texture = load(bg)
+		$BackLayer/Background.texture = UI.tex(bg)
 		if not _paint.is_empty():
 			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
 			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
@@ -226,9 +226,9 @@ func _ready() -> void:
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
 	if str(online_start.get("mode", "")) == "ffa":
 		_setup_ffa_sides(online_start)
-		if ResourceLoader.exists("res://assets/arena_ffa.png"):   # the crossroads, covering the screen
+		if ResourceLoader.exists("res://assets/arena_ffa.jpg"):   # the crossroads, covering the screen
 			var mat := TextureRect.new()
-			mat.texture = load("res://assets/arena_ffa.png")
+			mat.texture = UI.tex("arena_ffa.jpg")
 			var px := mat.texture.get_size()
 			# Scaled so it covers the screen with its manhole at FFA_MID
 			var k := maxf(maxf(FFA_MID.x / FFA_MANHOLE.x, (1920.0 - FFA_MID.x) / (px.x - FFA_MANHOLE.x)),
@@ -1556,6 +1556,9 @@ func _find_neon(tex: Texture2D, to_screen: Callable) -> Array:
 		return []   # (headless)
 	if img.is_compressed():
 		img.decompress()
+	var ts := Vector2i(tex.get_size())
+	if img.get_size() != ts:   # (a backdrop sharper than the pixels it's drawn in: UI.tex)
+		img.resize(ts.x, ts.y, Image.INTERPOLATE_BILINEAR)
 	var out: Array = []
 	var zone := 160
 	for zy in range(0, img.get_height(), zone):
@@ -5870,7 +5873,7 @@ func _make_resources() -> void:
 	_slot_box_back = _box(Color(0.4, 0.55, 0.85, 0.06), Color(0.5, 0.66, 0.95, 0.32), 2, 8)
 	_pile_box = _box(Color(0, 0, 0, 0.3), Color(1, 1, 1, 0.16), 2, 8)
 	# On the alley mat the slots are painted lines like its parking bays (one bay's paint, nine-sliced)
-	if ResourceLoader.exists("res://assets/arena_paint.png") and ResourceLoader.exists("res://assets/arena_1v1.png"):
+	if ResourceLoader.exists("res://assets/arena_paint.png") and ResourceLoader.exists("res://assets/arena_1v1.jpg"):
 		var paint: Texture2D = load("res://assets/arena_paint.png")
 		for kind in ["front", "back", "pile"]:
 			var sb := StyleBoxTexture.new()

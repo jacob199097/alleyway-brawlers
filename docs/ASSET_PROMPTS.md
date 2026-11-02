@@ -66,6 +66,12 @@ A locked achievement icon: a heavy steel padlock with a chain wrapped around it,
 Each screen has panels over most of it, so the art needs a calm, darker middle and edges, no
 characters in front and no words. The game darkens it and adds rain and embers.
 
+Full-screen art (these, `menu_background`, the arenas and the turf map) is upscaled 4x with
+Real-ESRGAN (`realesrgan-x4plus`), shrunk to 3840 wide (the turf map 4608) and saved as a .jpg
+(quality 92), so it stays sharp up to 4K: a .png that size would be ~15 MB. A screen background
+works as either `bg_<screen>.png` or `.jpg`. The game draws a .jpg backdrop in 1536-wide
+coordinates (`UI.tex`), so arena fx and turf markers keep their positions.
+
 | File | Screen | Idea |
 |---|---|---|
 | `bg_shop.png` | Card packs | a back-alley black-market stall |

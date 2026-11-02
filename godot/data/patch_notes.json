@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.104",
+        "notes": [
+            "Sharper arenas, turf map and menu backgrounds: every arena, the FFA crossroads, the lobbies, the turf map and the menu backgrounds were upscaled to 2.5 times their size (the turf map 3 times), so they stay crisp on big screens and when you zoom into the turf map."
+        ]
+    },
+    {
         "version": "0.9.103",
         "notes": [
             "New: Photosensitive Mode (Settings > Gameplay). It turns off flashing, flickering and strobing across the game: a Striver promotes with one slow change instead of flickering between its forms, and there are no screen flashes, impact frames or white hit-flashes on cards, no twinkling glints, no lightning or blinking lights in the arenas, and no flickering faces or neon signs.",

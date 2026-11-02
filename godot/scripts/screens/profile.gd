@@ -14,7 +14,7 @@ func _ready() -> void:
 	Game.view_player_id = ""
 	_friend = id != ""
 	back_to = "social" if _friend else "main_menu"
-	UI.background(self, "menu_background.png", 0.62)
+	UI.background(self, "menu_background.jpg", 0.62)
 	Game.play_menu_music()
 	UI.back_button(self, func(): Game.go(back_to))
 	if not _friend:

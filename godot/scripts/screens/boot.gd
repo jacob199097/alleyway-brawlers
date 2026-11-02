@@ -31,7 +31,7 @@ var _tip_order: Array = []
 
 
 func _ready() -> void:
-	UI.background(self, "menu_background.png", 0.4)
+	UI.background(self, "menu_background.jpg", 0.4)
 	var logo := UI.texture_rect(UI.tex("title_alleyway.png"), Vector2(1000, 545))
 	logo.position = Vector2(460, 120)
 	add_child(logo)

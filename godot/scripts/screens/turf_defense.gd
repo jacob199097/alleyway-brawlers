@@ -271,7 +271,7 @@ func _select(b: Dictionary, level: int) -> void:
 
 func _show_arena(id: String) -> void:
 	var arena: Dictionary = preload("res://scripts/ui/arena_roulette.gd").find(id)
-	var path := "res://assets/" + str(arena.get("image", "arena_1v1.png"))
+	var path := "res://assets/" + str(arena.get("image", "arena_1v1.jpg"))
 	if not ResourceLoader.exists(path):
 		return
 	_bg_front = 1 - _bg_front

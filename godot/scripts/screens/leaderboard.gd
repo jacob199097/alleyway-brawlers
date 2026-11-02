@@ -13,7 +13,7 @@ var _me_id := ""
 
 func _ready() -> void:
 	back_to = "fight_mode"
-	UI.background(self, "menu_background.png", 0.62)
+	UI.background(self, "menu_background.jpg", 0.62)
 	Game.play_menu_music()
 	UI.title(self, "LEADERBOARD")
 	UI.back_button(self, func(): Game.go(back_to))

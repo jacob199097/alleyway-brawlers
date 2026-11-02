@@ -9,7 +9,7 @@ var _chat: Control
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "menu_background.png", 0.62)
+	UI.background(self, "menu_background.jpg", 0.62)
 	Game.play_menu_music()
 	UI.title(self, "SOCIAL CLUB")
 	UI.back_button(self, func(): Game.go("main_menu"))

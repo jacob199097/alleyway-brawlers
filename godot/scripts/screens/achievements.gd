@@ -14,7 +14,7 @@ var _chips := {}
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "menu_background.png", 0.75)
+	UI.background(self, "menu_background.jpg", 0.75)
 	Game.play_menu_music()
 	UI.title(self, "ACHIEVEMENTS")
 	UI.back_button(self, func(): Game.go(back_to))

@@ -27,7 +27,7 @@ const PACK_SOUNDS := ["tear", "charge", "burst", "shimmer", "reveal_rare", "reve
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "menu_background.png", 0.6)
+	UI.background(self, "menu_background.jpg", 0.6)
 	Game.play_menu_music()
 	UI.title(self, "CARD PACKS")
 	_balance = UI.label("", 26, UI.GOLD, true)
