@@ -42,6 +42,9 @@ uniform vec2 roulette_center = vec2(0.0, -0.035);   // the wheel's centre, as uv
 // and the skull's eyes glow. Brighter while hovered (galaxy_glow).
 uniform float hellfire = 0.0;
 uniform vec2 hell_eyes = vec2(0.056, -0.025);   // the skull's eyes: ±x and y, as uv (card centre = 0)
+// embers: the Arsonists back: sparks drift up past the Molotov, swaying, each fading slowly in and out,
+// and the fire in the art breathes. Brighter while hovered (galaxy_glow). Slow on purpose: no flicker.
+uniform float embers = 0.0;
 uniform float reveal = 1.0;   // 0..1: the card burning into view from the bottom up (Underworld's rise), 1 = whole
 uniform vec4 reveal_color : source_color = vec4(0.75, 0.35, 1.0, 1.0);   // the glowing edge of the reveal
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
@@ -244,6 +247,25 @@ void fragment() {
 			vec2 e = vec2((i == 0 ? -1.0 : 1.0) * hell_eyes.x, hell_eyes.y * aspect);
 			float g = exp(-pow(length(p - e) / 0.03, 2.0));
 			col.rgb += vec3(0.85, 0.45, 1.0) * g * (0.55 + 0.45 * sin(TIME * 3.0 + float(i) * 0.7)) * hellfire * (1.0 + 1.2 * galaxy_glow);
+		}
+	}
+
+	if (embers > 0.0) {
+		vec2 p = vec2(uv.x, uv.y * aspect);
+		// The fire in the art (its hot orange and yellow) swells and settles, unevenly
+		float fire = clamp((col.r - col.b) * 1.6 - 0.35, 0.0, 1.0) * smoothstep(0.35, 0.8, col.r);
+		float breathe = 0.5 + 0.5 * sin(TIME * 1.7 + vnoise(p * 5.0 + vec2(0.0, TIME * 0.4)) * 4.0);
+		col.rgb += vec3(1.0, 0.45, 0.1) * fire * breathe * 0.35 * embers * (1.0 + 0.8 * galaxy_glow);
+		// Sparks drifting up: one to a cell of a grid that rises, two layers (near: bigger and faster)
+		for (int l = 0; l < 2; l++) {
+			float sc = l == 0 ? 9.0 : 15.0;
+			vec2 q = p * sc + vec2(0.0, TIME * (l == 0 ? 0.8 : 0.9));
+			vec2 cell = floor(q);
+			float rnd = fract(sin(dot(cell, vec2(12.9898, 78.233)) + float(l) * 7.1) * 43758.5453);
+			vec2 c = vec2(0.5 + 0.3 * sin(TIME * 1.3 + rnd * 20.0 + q.y * 0.7), 0.5 + 0.35 * (fract(rnd * 7.3) - 0.5));
+			float spark = smoothstep(l == 0 ? 0.09 : 0.07, 0.0, length(fract(q) - c)) * step(0.72, rnd);
+			float glow = 0.5 + 0.5 * sin(TIME * 0.9 + rnd * 30.0);
+			col.rgb += vec3(1.0, 0.55, 0.15) * spark * glow * embers * (0.55 + 0.4 * galaxy_glow);
 		}
 	}
 

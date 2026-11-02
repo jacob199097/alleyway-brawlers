@@ -545,6 +545,51 @@ func _run() -> void:
 		await _shot("u_back", 0.5)
 		get_tree().quit()
 		return
+	if "--arsonists-only" in OS.get_cmdline_user_args():   # (Arsonists' firewall summon, Molotov attack (big), ash KO and back)
+		var deck6 := await Game.load_duel_deck()
+		Game.duel_setup = deck6
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var ars = _screen()
+		if ars._menu:
+			ars._menu.visible = false
+		var rids: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		var rc: Dictionary = CardDB.get_card(rids[0]).duplicate()
+		rc.clanTag = "arsonists"
+		var rback = ars._new_view(rc, "player", false)
+		rback.set_back(CardDB.back("arsonists"), CardDB.back_style("arsonists"))
+		rback.position = Vector2(1650, 700)
+		rback.scale = Vector2.ONE * 1.6
+		var at: Vector2 = ars.slot_pos("player", 1)
+		var f = ars._new_view(rc, "player", true)
+		f.position = at
+		f.z_index = 420   # (as in a real summon)
+		ars._firewall_in(f, at, true)
+		for i in 14:
+			await _shot("r%02d_firewall" % i, 0.1)
+		await get_tree().create_timer(1.0).timeout
+		f.home = at
+		var rd = ars._new_view(CardDB.get_card(rids[2]).duplicate(), "opponent", true)
+		rd.position = ars.slot_pos("opponent", 2)
+		rd.home = rd.position
+		var rt: Vector2 = rd.home
+		ars._molotov_strike(f, rd, rt, (rt - f.home).normalized(), true, false)
+		for i in 22:
+			await _shot("r%02d_molotov" % i, 0.08)
+		await get_tree().create_timer(1.2).timeout
+		var kc: Dictionary = CardDB.get_card(rids[1]).duplicate()
+		kc.clanTag = "arsonists"
+		var kv = ars._new_view(kc, "opponent", true)
+		kv.position = ars.slot_pos("opponent", 3)
+		kv.z_index = 440
+		ars._ash_ko(kv)
+		for i in 14:
+			await _shot("r%02d_ash" % i, 0.1)
+		await _shot("r_back", 0.6)
+		get_tree().quit()
+		return
 	if "--deck-only" in OS.get_cmdline_user_args():   # (the deck editor's Hideout list, a Striver's zoom, the active deck while matchmaking)
 		Game.go("deck_builder")
 		await get_tree().create_timer(2.0).timeout

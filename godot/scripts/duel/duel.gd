@@ -71,8 +71,12 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## summon "deal": dealt in from the dealer's side of the table, spinning, landing in a burst of chips.
 ## attack "skulls": glowing purple skulls hurled at the target, a great skull to finish (Underworld);
 ## summon "grave": a tombstone bursts up out of the cracked ground and the character climbs out of the grave.
+## attack "molotov": a lit Molotov lobbed across the board, smashing into burning fuel (Arsonists);
+## summon "firewall": a wall of fire sweeps across the slot and the character walks out through it;
+## ko "ash": the card catches fire and burns away from the top down, cinders and ash drifting off it.
 const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"},
-	"wildcard": {"attack": "cards", "summon": "deal"}, "underworld": {"attack": "skulls", "summon": "grave"}}
+	"wildcard": {"attack": "cards", "summon": "deal"}, "underworld": {"attack": "skulls", "summon": "grave"},
+	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}}
 const FX_RIFT := preload("res://shaders/fx_rift.gdshader")
 const FX_FIRE := preload("res://shaders/fx_fire.gdshader")
 const FX_COMET := preload("res://shaders/fx_comet.gdshader")
@@ -2151,6 +2155,8 @@ func _ev_summon(ev: Dictionary) -> void:
 			await _grave_rise(v, target, heavy)
 		elif _clan_style(c, "summon") == "deal":
 			await _deal_in(v, target, heavy)
+		elif _clan_style(c, "summon") == "firewall":
+			await _firewall_in(v, target, heavy)
 		else:
 			var rise := Vector2(0, -70 if side == "player" else 70)
 			await v.move_to(target + rise, 1.75, v.home_rot, 0.3 if heavy else 0.24).finished
@@ -2381,6 +2387,8 @@ func _ev_clash(ev: Dictionary) -> void:
 		await _card_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "skulls":
 		await _skull_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "molotov":
+		await _molotov_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
 		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
@@ -2700,8 +2708,9 @@ func _souls(at: Vector2, col: Color, amount: int) -> void:
 	get_tree().create_timer(2.0).timeout.connect(p.queue_free)
 
 
-## Bone shards flying apart (a skull breaking on impact).
-func _shards(at: Vector2, dir: Vector2, amount: int) -> void:
+## Bone shards flying apart (a skull breaking on impact); palette: other colours (start, middle, end),
+## e.g. a bottle's glass.
+func _shards(at: Vector2, dir: Vector2, amount: int, palette: Array = []) -> void:
 	var p := CPUParticles2D.new()
 	p.position = at
 	p.one_shot = true
@@ -2719,10 +2728,12 @@ func _shards(at: Vector2, dir: Vector2, amount: int) -> void:
 	p.angle_max = 360.0
 	p.scale_amount_min = 0.35
 	p.scale_amount_max = 0.7
+	if palette.is_empty():
+		palette = [Color(0.92, 0.88, 0.95, 1.0), Color(0.78, 0.7, 0.85, 0.8), Color(0.6, 0.5, 0.7, 0.0)]
 	var g := Gradient.new()
-	g.set_color(0, Color(0.92, 0.88, 0.95, 1.0))
-	g.add_point(0.7, Color(0.78, 0.7, 0.85, 0.8))
-	g.set_color(g.get_point_count() - 1, Color(0.6, 0.5, 0.7, 0.0))
+	g.set_color(0, palette[0])
+	g.add_point(0.7, palette[1])
+	g.set_color(g.get_point_count() - 1, palette[2])
 	p.color_ramp = g
 	p.z_index = 82
 	fx.add_child(p)
@@ -3005,6 +3016,323 @@ class TargetReticle extends Node2D:
 			var d := Vector2.from_angle(turn + i * PI / 2)
 			draw_line(d * (radius - 18.0), d * (radius + 16.0), c, 3.0, true)
 		draw_circle(Vector2.ZERO, 4.0, c)
+
+
+## Arsonists' attack: the attacker rears back as the rag catches and lobs a lit Molotov high across
+## the board, spinning and shedding embers; it smashes on the target (_splash). A big hit lobs a
+## second bottle first, a little wide.
+func _molotov_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var ember := Color(1.0, 0.42, 0.08)
+	var hot := Color(1.0, 0.9, 0.55)
+	var from := a.home + dir * 70.0
+	_cam_focus(a.home.lerp(tpos, 0.4), 1.05 if big else 1.03, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 44.0, 0.3)
+	t.tween_property(a, "scale", Vector2.ONE * 1.16 * a.board_scale, 0.3)
+	Sfx.play("ignite", 1.0, -4.0)
+	_flame_burst(from, 90.0, hot, ember, 0.35)   # (the rag catches)
+	await t.finished
+	_clear_attack_line()
+	if big:
+		var wide := tpos + dir.orthogonal() * 46.0
+		Sfx.play("whoosh", 0.9, -6.0)
+		_molotov_fly(from, wide, 0.42, 0.85, func(): _splash(wide, dir, 0.6, null))
+		a.kick(-dir, 8.0)
+		await _wait(0.22)
+	Sfx.play("whoosh", 0.8, -3.0)
+	a.create_tween().tween_property(a, "position", a.home + dir * 16.0, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await _molotov_fly(from, tpos, 0.5, 1.15 if big else 1.0, Callable())
+	# Impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("glass_smash", 1.0, -2.0)
+	Sfx.play("hit", 0.85 if direct else 1.0, -4.0)
+	Sfx.play("boom", 0.9 if big else 1.15, 0.0 if big else -5.0)
+	shake(22.0 if big else 12.0)
+	_shockwave(tpos, 0.9 if big else 0.5)
+	_post_pulse("aberration", 10.0 if big else 5.0, 0.4)
+	_splash(tpos, dir, 1.3 if big else 1.0, d)
+	_ring(tpos, ember, 1.5 if big else 1.2)
+	if d:
+		d.flash()
+		d.kick(dir, 30.0 if big else 22.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (30.0 if big else 18.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
+
+
+## One Molotov lobbed from -> to (high in the middle: it swells as it comes up toward the view),
+## hit() when it lands.
+func _molotov_fly(from: Vector2, to: Vector2, secs: float, size: float, hit: Callable) -> void:
+	var m := Molotov.new()
+	m.position = from
+	m.z_index = 72
+	m.spin = randf_range(9.0, 12.0) * (1.0 if to.x >= from.x else -1.0)
+	fx.add_child(m)
+	m.build(_add_mat, FX_FIRE)
+	m.scale = Vector2.ONE * 0.8 * size
+	var lob := maxf(120.0, from.distance_to(to) * 0.35)
+	var fly := m.create_tween()
+	fly.tween_method(func(k: float):
+		var arc := 4.0 * k * (1.0 - k)
+		m.position = from.lerp(to, k) + Vector2(0, -lob * arc)
+		m.scale = Vector2.ONE * size * (1.35 + 0.55 * arc), 0.0, 1.0, secs)
+	await fly.finished
+	if hit.is_valid():
+		hit.call()
+	m.smash()
+
+
+## A Molotov breaking: a bloom of fire, glass glinting as it flies, and the burning fuel licking up
+## over the card it hit (or the spot) in ragged tongues, the card still showing through, before it
+## dies down to smoke.
+func _splash(at: Vector2, dir: Vector2, k: float, d: CardView) -> void:
+	var ember := Color(1.0, 0.42, 0.08)
+	_flame_burst(at, 220.0 * k, Color(1.0, 0.78, 0.4), ember, 0.5)
+	_shards(at, dir, int(10 * k), [Color(1.0, 0.92, 0.75, 0.9), Color(0.95, 0.6, 0.25, 0.6), Color(0.7, 0.35, 0.1, 0.0)])
+	_burst(at, ember, int(22 * k), 420.0, 0.8, -120.0)   # (embers thrown up)
+	_sparks(at, dir, Color(1.0, 0.7, 0.3), int(14 * k), 70.0)
+	var foot := (d.home + Vector2(0, CardView.SIZE.y * 0.4 * d.scale.y)) if d else at + Vector2(0, 60)
+	var row := _flame_row(foot, 170.0 * k, 200.0 * k, 4, cards_layer, d.z_index + 1 if d else 75, Color(1.0, 0.8, 0.45), ember, 0.5)
+	var burn := create_tween()
+	burn.tween_method(_row_life.bind(row), 0.0, 1.0, 0.12)
+	burn.tween_interval(0.55 * k)
+	burn.tween_method(_row_life.bind(row), 1.0, 0.0, 0.6)
+	burn.tween_callback(_row_free.bind(row))
+	get_tree().create_timer(0.5).timeout.connect(func(): _smoke_puff(at + Vector2(0, -50), 280.0 * k, Color(0.12, 0.1, 0.09)))
+
+
+## A row of flames: n tongues of fire side by side across width, standing on foot (the middle of their
+## base), taller in the middle and each its own height, so the top is ragged. Lit by _row_life.
+func _flame_row(foot: Vector2, width: float, height: float, n: int, parent: Node, z: int, core: Color, outer: Color, gain := 0.7) -> Array:
+	var row := []
+	var w := width / n * 1.9
+	for i in n:
+		var middle := 1.0 - absf(i / maxf(n - 1.0, 1.0) - 0.5) * 0.5
+		var h := height * randf_range(0.72, 1.0) * middle
+		var x := foot.x - width / 2.0 + (i + 0.5) * width / n + randf_range(-6.0, 6.0)
+		var f := _fx_rect(FX_FIRE, Vector2(x, foot.y - h / 2.0), Vector2(w, h),
+			{"core": core, "outer": outer, "life": 0.0, "seed": randf() * 50.0, "gain": gain, "speed": randf_range(1.8, 2.6)}, parent, z)
+		f.pivot_offset = Vector2(w / 2.0, h)   # (they grow up from their foot)
+		row.append(f)
+	return row
+
+
+func _row_life(x: float, row: Array) -> void:
+	for f in row:
+		if is_instance_valid(f):
+			(f.material as ShaderMaterial).set_shader_parameter("life", x)
+
+
+func _row_free(row: Array) -> void:
+	for f in row:
+		if is_instance_valid(f):
+			f.queue_free()
+
+
+## A lit Molotov (Arsonists' attack): an amber bottle with a burning rag in its neck, a glow round it
+## and embers shed as it flies. The bottle spins; its flame keeps burning upward.
+class Molotov extends Node2D:
+	var spin := 0.0
+	var _bottle: Node2D
+	var _flame: ColorRect
+	var _glow: Sprite2D
+	var _embers: CPUParticles2D
+
+	func build(add_mat: Material, fire: Shader) -> void:
+		_glow = Sprite2D.new()
+		_glow.texture = ArenaLife._soft_dot()
+		_glow.scale = Vector2.ONE * 1.8
+		_glow.modulate = Color(1.0, 0.45, 0.1, 0.45)
+		_glow.material = add_mat
+		add_child(_glow)
+		_bottle = Node2D.new()
+		_bottle.draw.connect(_draw_bottle)
+		add_child(_bottle)
+		_flame = ColorRect.new()
+		_flame.size = Vector2(46, 46)
+		_flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		m.shader = fire
+		m.set_shader_parameter("shape", 1)   # (a ball of flame round the rag)
+		m.set_shader_parameter("core", Color(1.0, 0.92, 0.6))
+		m.set_shader_parameter("outer", Color(1.0, 0.4, 0.06))
+		m.set_shader_parameter("seed", randf() * 30.0)
+		m.set_shader_parameter("speed", 2.6)
+		m.set_shader_parameter("gain", 0.9)
+		_flame.material = m
+		add_child(_flame)
+		_embers = CPUParticles2D.new()
+		_embers.local_coords = false
+		_embers.amount = 36
+		_embers.lifetime = 0.5
+		_embers.texture = ArenaLife._soft_dot()
+		_embers.direction = Vector2.UP
+		_embers.spread = 50.0
+		_embers.initial_velocity_min = 20.0
+		_embers.initial_velocity_max = 80.0
+		_embers.gravity = Vector2(0, -80)
+		_embers.scale_amount_min = 0.08
+		_embers.scale_amount_max = 0.18
+		var g := Gradient.new()
+		g.set_color(0, Color(1.0, 0.85, 0.5, 1.0))
+		g.set_color(1, Color(0.9, 0.25, 0.05, 0.0))
+		_embers.color_ramp = g
+		_embers.material = add_mat
+		add_child(_embers)
+		_place_flame()
+
+	func _draw_bottle() -> void:
+		var body := PackedVector2Array([Vector2(-12, 22), Vector2(12, 22), Vector2(12, -2), Vector2(5, -10),
+			Vector2(5, -22), Vector2(-5, -22), Vector2(-5, -10), Vector2(-12, -2)])
+		_bottle.draw_colored_polygon(body, Color(0.78, 0.42, 0.1, 0.95))
+		var edge := body.duplicate()
+		edge.append(body[0])
+		_bottle.draw_polyline(edge, Color(0.25, 0.1, 0.03), 2.0, true)
+		_bottle.draw_rect(Rect2(-10, 3, 20, 8), Color(0.85, 0.2, 0.08))   # (its label)
+		_bottle.draw_line(Vector2(-7, 18), Vector2(-7, -1), Color(1.0, 0.85, 0.55, 0.7), 2.5)   # (light on the glass)
+		_bottle.draw_colored_polygon(PackedVector2Array([Vector2(-5, -22), Vector2(5, -22), Vector2(7, -30), Vector2(-3, -33)]), Color(0.85, 0.78, 0.62))   # (the rag)
+
+	## The flame sits on the rag wherever the spinning bottle has it.
+	func _place_flame() -> void:
+		var tip := Vector2(0, -30).rotated(_bottle.rotation)
+		_flame.position = tip - _flame.size / 2.0 + Vector2(0, -6)
+		_embers.position = tip
+
+	func _process(delta: float) -> void:
+		_bottle.rotation += spin * delta
+		_place_flame()
+
+	## It breaks: the bottle and its flame are gone at once; its embers die away behind it.
+	func smash() -> void:
+		_bottle.visible = false
+		_flame.visible = false
+		_glow.visible = false
+		_embers.emitting = false
+		get_tree().create_timer(0.6).timeout.connect(queue_free)
+
+
+## Arsonists' summon: a wall of fire sweeps across the slot and roars up, and the character walks out
+## through it, a dark shape at first and lit as it steps clear, while the wall dies down.
+func _firewall_in(v: CardView, target: Vector2, heavy: bool) -> void:
+	var ember := Color(1.0, 0.42, 0.08)
+	var hot := Color(1.0, 0.88, 0.5)
+	var k := 1.25 if heavy else 1.0
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	v.modulate.a = 0.0
+	var foot := target + Vector2(0, CardView.SIZE.y * 0.42 * v.board_scale)
+	var width := 330.0 * k
+	var wall := _flame_row(foot, width, 290.0 * k, 7, cards_layer, v.z_index + 1, hot, ember, 0.75)
+	Sfx.play("fire_roar", 1.0, -3.0)
+	Sfx.play("whoosh", 0.7, -4.0)
+	shake(6.0 if heavy else 4.0)
+	# It sweeps in from the left: each flame shoots up from the ground in turn, embers kicked up at its foot
+	_row_life(1.0, wall)
+	for i in wall.size():
+		var f: ColorRect = wall[i]
+		f.scale = Vector2(1.0, 0.0)
+		f.create_tween().tween_property(f, "scale:y", 1.0, 0.24).set_delay(i * 0.045).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var at := Vector2(f.position.x + f.size.x / 2.0, foot.y)
+		get_tree().create_timer(i * 0.045).timeout.connect(func(): _burst(at, ember, 5, 240.0, 0.7, -140.0))
+	await _wait(0.045 * wall.size() + 0.2)
+	# The character walks out through it: a shape in the fire, lit as it steps clear
+	v.position = target + Vector2(0, -34.0 * k)
+	v.rotation = v.home_rot
+	v.scale = Vector2.ONE * 0.86 * v.board_scale
+	v.modulate = Color(0.08, 0.04, 0.02, 0.0)
+	var walk := create_tween().set_parallel()
+	walk.tween_property(v, "modulate:a", 1.0, 0.18)
+	walk.tween_property(v, "position", target + Vector2(0, 10), 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	walk.tween_property(v, "scale", Vector2.ONE * 1.05 * v.board_scale, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	walk.tween_property(v, "modulate", Color.WHITE, 0.4).set_delay(0.18)
+	walk.tween_callback(func():   # (through it: the fire's behind now)
+		for f in wall:
+			f.z_index = v.z_index - 1).set_delay(0.3)
+	await walk.finished
+	var die := create_tween()
+	die.tween_method(_row_life.bind(wall), 1.0, 0.0, 0.5)
+	die.tween_callback(_row_free.bind(wall))
+	var land := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	land.tween_property(v, "position", target, 0.18)
+	land.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.22)
+	_burst(target, ember, 18 if heavy else 12, 300.0, 0.9, -160.0)
+	_ring(target, ember, 1.5 if heavy else 1.15)
+	await _impact(target, heavy)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Arsonists KO: the card catches fire, chars, and burns away from the top down, cinders and ash
+## drifting up off it, then a last curl of smoke.
+func _ash_ko(v: CardView) -> void:
+	var ember := Color(1.0, 0.42, 0.08)
+	var hot := Color(1.0, 0.88, 0.5)
+	Sfx.play("ko", 0.95)
+	Sfx.play("fire_roar", 1.25, -5.0)
+	shake(10)
+	_post_pulse("aberration", 6.0, 0.35)
+	_stamp(v.position, "K.O.", Color(1.0, 0.5, 0.15))
+	var size := CardView.SIZE * v.scale
+	var fire := _flame_row(v.position + Vector2(0, size.y * 0.45), size.x * 1.1, size.y * 1.15, 4, v.get_parent(), v.z_index + 1, hot, ember, 0.55)
+	var roar := create_tween()
+	roar.tween_method(_row_life.bind(fire), 0.0, 1.0, 0.15)
+	roar.tween_interval(0.55)
+	roar.tween_method(_row_life.bind(fire), 1.0, 0.0, 0.5)
+	roar.tween_callback(_row_free.bind(fire))
+	_cinders(v.position, size)
+	v.reveal_color = ember
+	var burn := create_tween().set_parallel()
+	burn.tween_property(v, "modulate", Color(0.6, 0.42, 0.34), 0.35)   # (scorched)
+	burn.tween_property(v, "reveal", 0.0, 0.95).set_delay(0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await burn.finished
+	_smoke_puff(v.position + Vector2(0, -size.y * 0.3), size.x * 1.6, Color(0.14, 0.12, 0.12))
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.2)
+
+
+## Cinders and ash coming off a burning card (size: the card's), drifting up and swaying.
+func _cinders(at: Vector2, size: Vector2) -> void:
+	for ash in [false, true]:
+		var p := CPUParticles2D.new()
+		p.position = at
+		p.amount = 40 if ash else 60
+		p.lifetime = 1.6
+		p.texture = ArenaLife._leaf() if ash else ArenaLife._soft_dot()
+		p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		p.emission_rect_extents = size / 2.0
+		p.direction = Vector2.UP
+		p.spread = 30.0
+		p.initial_velocity_min = 30.0
+		p.initial_velocity_max = 110.0
+		p.gravity = Vector2(0, -50)
+		p.tangential_accel_min = -40.0
+		p.tangential_accel_max = 40.0
+		p.angular_velocity_min = -180.0
+		p.angular_velocity_max = 180.0
+		p.scale_amount_min = 0.25 if ash else 0.08
+		p.scale_amount_max = 0.45 if ash else 0.2
+		var g := Gradient.new()
+		if ash:   # (grey flakes, normal blend: they're darker than what's behind)
+			g.set_color(0, Color(0.32, 0.28, 0.26, 0.9))
+			g.set_color(1, Color(0.2, 0.18, 0.17, 0.0))
+		else:
+			g.set_color(0, Color(1.0, 0.85, 0.5, 1.0))
+			g.add_point(0.5, Color(1.0, 0.42, 0.08, 0.8))
+			g.set_color(g.get_point_count() - 1, Color(0.5, 0.1, 0.02, 0.0))
+			p.material = _add_mat
+		p.color_ramp = g
+		p.z_index = 450
+		fx.add_child(p)
+		p.emitting = true
+		get_tree().create_timer(0.9).timeout.connect(func(): p.emitting = false)
+		get_tree().create_timer(2.8).timeout.connect(p.queue_free)
 
 
 ## Nebula KO: the card shatters into stardust that drifts up and away.
@@ -3761,6 +4089,9 @@ func _ev_ko(ev: Dictionary) -> void:
 		return
 	if _clan_style(v.card, "ko") == "stardust" and v.face_up:
 		await _stardust(v, _clan_color(v.card))
+		return
+	if _clan_style(v.card, "ko") == "ash" and v.face_up:
+		await _ash_ko(v)
 		return
 	v.flash()
 	Sfx.play("ko")

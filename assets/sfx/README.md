@@ -78,6 +78,9 @@ matched to what they replaced), with silence trimmed off the start; the .m4a mus
 | `dice_land` | Luck: the die stops on its number | **wanted** (uses a near sound until then) |
 | `cleanse` | CLEANSE: a character's statuses fall away | **wanted** (uses a near sound until then) |
 | `legendary` | A Legendary card lands (after its entrance) | **wanted** (uses a near sound until then) |
+| `ignite` | Arsonists: a Molotov's rag catches as it's lit | **wanted** (uses a near sound until then) |
+| `glass_smash` | Arsonists: the Molotov smashes on its target | **wanted** (uses a near sound until then) |
+| `fire_roar` | Arsonists: the wall of fire roars up (summon); a card bursts into flame (KO) | **wanted** (uses a near sound until then) |
 | `friend_online` | A friend comes online (the pop-up) | **wanted** (uses a near sound until then) |
 | `level_up` | Your level or clan mastery goes up (results screen) | **wanted** (uses a near sound until then) |
 | `achievement` | An achievement unlocks (the banner) | **wanted** (uses a near sound until then) |

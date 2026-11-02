@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.105",
+        "notes": [
+            "Behind the scenes: a new clan is on its way. Its card back, emblem and battle animations are in the game, ready for when its cards arrive."
+        ]
+    },
+    {
         "version": "0.9.104",
         "notes": [
             "Sharper arenas, turf map and menu backgrounds: every arena, the FFA crossroads, the lobbies, the turf map and the menu backgrounds were upscaled to 2.5 times their size (the turf map 3 times), so they stay crisp on big screens and when you zoom into the turf map."
