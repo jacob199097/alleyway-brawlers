@@ -74,8 +74,11 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## attack "molotov": a lit Molotov lobbed across the board, smashing into burning fuel (Arsonists);
 ## summon "firewall": a wall of fire sweeps across the slot and the character walks out through it;
 ## ko "ash": the card catches fire and burns away from the top down, cinders and ash drifting off it.
-const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop"},
-	"wildcard": {"attack": "cards", "summon": "deal"}, "underworld": {"attack": "skulls", "summon": "grave"},
+## ko "blast": blown up, the card thrown spinning and blackened, a smoking scorch mark left (Militia);
+## ko "fold": the card bursts into a hand of playing cards that fan out and scatter (Wildcard);
+## ko "rift": the ground cracks open under the card and it's pulled down into it, souls escaping (Underworld).
+const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop", "ko": "blast"},
+	"wildcard": {"attack": "cards", "summon": "deal", "ko": "fold"}, "underworld": {"attack": "skulls", "summon": "grave", "ko": "rift"},
 	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}}
 const FX_RIFT := preload("res://shaders/fx_rift.gdshader")
 const FX_FIRE := preload("res://shaders/fx_fire.gdshader")
@@ -3297,6 +3300,147 @@ func _ash_ko(v: CardView) -> void:
 	await _wait(0.2)
 
 
+## Militia KO: an explosion under the card throws it up, spinning and blackened, debris and smoke
+## flying, and leaves a scorch mark on the ground, smoking.
+func _blast_ko(v: CardView) -> void:
+	var at := v.position
+	var size := CardView.SIZE * v.scale
+	Sfx.play("ko", 0.9)
+	Sfx.play("boom", 0.75)
+	shake(20)
+	_shockwave(at, 0.8)
+	_post_pulse("aberration", 10.0, 0.35)
+	_stamp(at, "K.O.", Color(0.75, 1.0, 0.35))
+	_flame_burst(at + Vector2(0, size.y * 0.15), size.x * 2.2, Color(1.0, 0.85, 0.5), Color(1.0, 0.4, 0.08), 0.5)
+	_shards(at, Vector2.UP, 18, [Color(0.45, 0.42, 0.36, 1.0), Color(0.3, 0.28, 0.24, 0.9), Color(0.2, 0.18, 0.16, 0.0)])   # (debris)
+	_sparks(at, Vector2.UP, Color(1.0, 0.7, 0.3), 26, 150.0)
+	_smoke_puff(at, size.x * 2.4, Color(0.16, 0.15, 0.13))
+	# The scorch mark, left smoking
+	var mark := Sprite2D.new()
+	mark.texture = ArenaLife._soft_dot()
+	mark.position = at + Vector2(0, size.y * 0.2)
+	mark.scale = Vector2(2.6, 1.3) * size.x / 64.0
+	mark.modulate = Color(0.0, 0.0, 0.0, 0.75)
+	mark.z_index = 5
+	cards_layer.add_child(mark)
+	var fade := mark.create_tween()
+	fade.tween_interval(0.9)
+	fade.tween_property(mark, "modulate:a", 0.0, 1.0)
+	fade.tween_callback(mark.queue_free)
+	get_tree().create_timer(0.5).timeout.connect(func(): _smoke_puff(mark.position + Vector2(0, -30), size.x * 1.4, Color(0.2, 0.19, 0.17)))
+	# The card thrown up, spinning, blackened, and gone
+	var side := 1.0 if randf() < 0.5 else -1.0
+	var t := create_tween().set_parallel()
+	t.tween_property(v, "modulate", Color(0.3, 0.28, 0.24, 1.0), 0.15)
+	t.tween_property(v, "position", at + Vector2(side * 70.0, -140.0), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(v, "rotation", v.rotation + side * 2.6, 0.6)
+	t.tween_property(v, "scale", v.scale * 0.6, 0.6)
+	t.tween_property(v, "modulate:a", 0.0, 0.3).set_delay(0.3)
+	await t.finished
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.2)
+
+
+## Wildcard KO: the card turns away and bursts into a hand of playing cards that fan out, then
+## scatter, spinning, with a spill of chips.
+func _fold_ko(v: CardView) -> void:
+	var gold := Color(1.0, 0.82, 0.35)
+	var at := v.position
+	Sfx.play("ko", 1.1)
+	Sfx.play("shuffle", 1.3, -2.0)
+	shake(12)
+	_post_pulse("aberration", 6.0, 0.35)
+	_stamp(at, "K.O.", gold)
+	var turn := create_tween().set_parallel()
+	turn.tween_property(v, "scale:x", 0.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	turn.tween_property(v, "modulate:a", 0.0, 0.16).set_delay(0.06)
+	for col in [Color(0.85, 0.1, 0.12), Color(0.1, 0.08, 0.1), gold]:   # (chips)
+		_burst(at, col, 7, 360.0, 0.6, 600.0)
+	var n := 7
+	for i in n:
+		var c := _playing_card(i)
+		c.position = at - c.pivot_offset
+		c.rotation = v.home_rot
+		var fan := (i - (n - 1) / 2.0) * 0.28
+		var out := at + Vector2.from_angle(-PI / 2 + fan * 1.6) * randf_range(170.0, 240.0) + Vector2(0, 60) - c.pivot_offset
+		var t := c.create_tween()
+		t.tween_property(c, "rotation", fan, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # (a hand, fanned)
+		t.tween_interval(0.12)
+		t.tween_property(c, "position", out, 0.6).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)   # (then scattered)
+		t.parallel().tween_property(c, "rotation", fan + randf_range(-4.0, 4.0), 0.6)
+		t.parallel().tween_property(c, "modulate:a", 0.0, 0.3).set_delay(0.35)
+		t.tween_callback(c.queue_free)
+	_ring(at, gold, 1.3)
+	await _wait(0.7)
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+
+
+## A small playing card (Wildcard's KO): white with a gold edge, a suit in the middle.
+func _playing_card(i: int) -> Control:
+	var c := Panel.new()
+	c.size = Vector2(56, 80)
+	c.pivot_offset = Vector2(28, 70)   # (it fans from near its foot, like a hand)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.97, 0.95, 0.9)
+	sb.border_color = Color(1.0, 0.82, 0.35)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(6)
+	c.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.text = ["♠", "♥", "♣", "♦"][i % 4]
+	l.add_theme_font_size_override("font_size", 34)
+	l.add_theme_color_override("font_color", Color(0.85, 0.1, 0.12) if i % 2 == 1 else Color(0.1, 0.08, 0.1))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size = c.size
+	c.add_child(l)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.z_index = 450
+	fx.add_child(c)
+	return c
+
+
+## Underworld KO: the ground cracks open under the card in violet light and it's pulled down into the
+## rift, darkening as it sinks; souls escape as the cracks close.
+func _rift_ko(v: CardView) -> void:
+	var violet := Color(0.72, 0.32, 1.0)
+	var at := v.position
+	var size := CardView.SIZE * v.scale
+	Sfx.play("ko", 0.8)
+	Sfx.play("slam", 0.55, -3.0)
+	Sfx.play("riser", 0.5, -8.0)
+	shake(12)
+	_post_pulse("aberration", 8.0, 0.35)
+	_stamp(at, "K.O.", violet.lightened(0.3))
+	var rift := _fx_rect(FX_RIFT, at + Vector2(0, size.y * 0.3), Vector2(size.x * 2.0, size.y * 1.0), {"color": violet, "seed": randf() * 50.0, "gain": 0.85}, cards_layer, v.z_index - 1)
+	var rm: ShaderMaterial = rift.material
+	create_tween().tween_method(func(x: float): rm.set_shader_parameter("open", x), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	_burst(at + Vector2(0, size.y * 0.3), violet, 14, 240.0, 0.6, -80.0)
+	await _wait(0.15)
+	# Pulled down: it lurches, then sinks into the light, shrinking and darkening
+	var t := create_tween()
+	t.tween_property(v, "position", at + Vector2(0, -12), 0.08)
+	t.set_parallel()
+	t.chain().tween_property(v, "position", at + Vector2(0, size.y * 0.32), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(v, "scale", Vector2(v.scale.x * 0.55, v.scale.y * 0.3), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(v, "modulate", Color(0.45, 0.25, 0.7, 0.0), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await t.finished
+	_souls(at + Vector2(0, size.y * 0.2), violet, 14)
+	_flame_burst(at + Vector2(0, size.y * 0.3), size.x * 1.2, Color(1.0, 0.82, 1.0), violet, 0.4)
+	var close := create_tween()
+	close.tween_method(func(x: float): rm.set_shader_parameter("heat", x), 1.0, 0.0, 0.7)
+	close.tween_callback(rift.queue_free)
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.2)
+
+
 ## Cinders and ash coming off a burning card (size: the card's), drifting up and swaying.
 func _cinders(at: Vector2, size: Vector2) -> void:
 	for ash in [false, true]:
@@ -4087,11 +4231,13 @@ func _ev_ko(ev: Dictionary) -> void:
 			_hovered = null
 		v.queue_free()
 		return
-	if _clan_style(v.card, "ko") == "stardust" and v.face_up:
-		await _stardust(v, _clan_color(v.card))
-		return
-	if _clan_style(v.card, "ko") == "ash" and v.face_up:
-		await _ash_ko(v)
+	if v.face_up and _clan_style(v.card, "ko") != "":
+		match _clan_style(v.card, "ko"):
+			"stardust": await _stardust(v, _clan_color(v.card))
+			"ash": await _ash_ko(v)
+			"blast": await _blast_ko(v)
+			"fold": await _fold_ko(v)
+			"rift": await _rift_ko(v)
 		return
 	v.flash()
 	Sfx.play("ko")

@@ -545,6 +545,35 @@ func _run() -> void:
 		await _shot("u_back", 0.5)
 		get_tree().quit()
 		return
+	if "--ko-only" in OS.get_cmdline_user_args():   # (each clan's KO, one after another: shots every 0.1 s)
+		var deck7 := await Game.load_duel_deck()
+		Game.duel_setup = deck7
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var ko = _screen()
+		if ko._menu:
+			ko._menu.visible = false
+		var kids: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		var styles := {"nebula": "_stardust", "militia": "_blast_ko", "wildcard": "_fold_ko", "underworld": "_rift_ko", "arsonists": "_ash_ko"}
+		var slot := 1
+		for clan in styles:
+			var kc: Dictionary = CardDB.get_card(kids[slot]).duplicate()
+			kc.clanTag = clan
+			var kv = ko._new_view(kc, "opponent", true)
+			kv.position = ko.slot_pos("opponent", slot)
+			kv.z_index = 440
+			if clan == "nebula":
+				ko._stardust(kv, Color(0.7, 0.35, 1.0))
+			else:
+				ko.call(styles[clan], kv)
+			for i in 9:
+				await _shot("k_%s_%02d" % [clan, i], 0.1)
+			await get_tree().create_timer(0.6).timeout
+			slot += 1
+		get_tree().quit()
+		return
 	if "--arsonists-only" in OS.get_cmdline_user_args():   # (Arsonists' firewall summon, Molotov attack (big), ash KO and back)
 		var deck6 := await Game.load_duel_deck()
 		Game.duel_setup = deck6

@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.106",
+        "notes": [
+            "Every clan now has its own K.O.: Militia cards are blown up, leaving a smoking scorch mark; Wildcard cards burst into a hand of playing cards that scatters; Underworld cards are pulled down into a violet rift."
+        ]
+    },
+    {
         "version": "0.9.105",
         "notes": [
             "Behind the scenes: a new clan is on its way. Its card back, emblem and battle animations are in the game, ready for when its cards arrive."
