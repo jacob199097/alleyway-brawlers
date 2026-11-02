@@ -4084,6 +4084,7 @@ func _ev_promote(ev: Dictionary) -> void:
 	var col := _clan_color(c)
 	var bright := col.lerp(Color.WHITE, 0.45)
 	var fxk := _fx_level()
+	var calm := Game.photosafe()   # (Photosensitive mode: no flicker between the forms, no white-out)
 	var stage := FFA_MID if _ffa else Vector2(1080, DIVIDER_Y)
 	var big := 2.7 / maxf(v.board_scale, 0.01)
 	var card_size := CARD * 2.7
@@ -4121,31 +4122,35 @@ func _ev_promote(ev: Dictionary) -> void:
 			r.create_tween().tween_property(r, "modulate:a", 1.0, 0.5).set_delay(0.15 * i)
 			rings.append(r)
 	_converge(stage, col, 60, 0.85)
-	create_tween().tween_property(v, "_flash", 0.7, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	create_tween().tween_property(v, "_flash", 0.25 if calm else 0.7, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	for i in 8:
 		v.kick(Vector2(randf_range(-1, 1), randf_range(-1, 1)), 3.0 + i * 1.7)
 		if i % 3 == 0:
 			_sparks(stage, Vector2.UP, bright, 6, 170.0)
 		await _wait(0.09)
 	# 2. The cocoon: light, the art glowing through it, morphing between the forms on a quickening heartbeat, swelling
-	var beats := [0.24, 0.2, 0.16, 0.13, 0.105, 0.085, 0.07, 0.058, 0.048, 0.04, 0.036]
-	for i in beats.size():
-		var t := float(i) / (beats.size() - 1)
-		if not old.is_empty():
-			v.set_card(c if i % 2 == 0 else old)
-			v.set_face(true)
-		v._flash = lerpf(0.66, 0.84, t) if i % 2 == 0 else lerpf(0.86, 0.95, t)   # (the new form shows through a little more)
-		var swell := big * lerpf(0.96, 1.1, t)
-		v.scale = Vector2.ONE * swell * v.board_scale * 1.07
-		v.create_tween().tween_property(v, "scale", Vector2.ONE * swell * v.board_scale, beats[i] * 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		aura.pulse = 1.0
-		aura.create_tween().tween_property(aura, "pulse", 0.0, beats[i])
-		for r in rings:
-			r.speed *= 1.13
-		Sfx.play("hover", 0.7 + t * 0.9, -8.0 + t * 4.0)
-		if fxk > 0.0 and i % 2 == 0:
-			shake((1.0 + t * 4.0) * fxk)
-		await _wait(beats[i])
+	if calm:   # one slow swell; the new form shows when the light breaks
+		v.create_tween().tween_property(v, "scale", Vector2.ONE * big * 1.06 * v.board_scale, 0.9).set_trans(Tween.TRANS_SINE)
+		await _wait(0.9)
+	else:
+		var beats := [0.24, 0.2, 0.16, 0.13, 0.105, 0.085, 0.07, 0.058, 0.048, 0.04, 0.036]
+		for i in beats.size():
+			var t := float(i) / (beats.size() - 1)
+			if not old.is_empty():
+				v.set_card(c if i % 2 == 0 else old)
+				v.set_face(true)
+			v._flash = lerpf(0.66, 0.84, t) if i % 2 == 0 else lerpf(0.86, 0.95, t)   # (the new form shows through a little more)
+			var swell := big * lerpf(0.96, 1.1, t)
+			v.scale = Vector2.ONE * swell * v.board_scale * 1.07
+			v.create_tween().tween_property(v, "scale", Vector2.ONE * swell * v.board_scale, beats[i] * 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			aura.pulse = 1.0
+			aura.create_tween().tween_property(aura, "pulse", 0.0, beats[i])
+			for r in rings:
+				r.speed *= 1.13
+			Sfx.play("hover", 0.7 + t * 0.9, -8.0 + t * 4.0)
+			if fxk > 0.0 and i % 2 == 0:
+				shake((1.0 + t * 4.0) * fxk)
+			await _wait(beats[i])
 	# 3. The break
 	v.set_card(c)
 	v.set_face(true)
@@ -4170,10 +4175,11 @@ func _ev_promote(ev: Dictionary) -> void:
 		shake(18 * fxk)
 		_post_pulse("aberration", 12.0, 0.6)
 	_evo_shards(stage, bright, card_size)
-	_shockwave(stage, 1.0)
-	_ring(stage, Color.WHITE, 2.8)
+	if not calm:
+		_shockwave(stage, 1.0)
+		_ring(stage, Color.WHITE, 2.8)
 	_ring(stage, bright, 1.9)
-	_burst(stage, bright, 70, 760, 1.2, -120.0)
+	_burst(stage, bright, 25 if calm else 70, 760, 1.2, -120.0)
 	Sfx.play("boom", 1.1, -2.0)
 	Sfx.play("promote")
 	Sfx.play("legendary", 1.2, -6.0)
@@ -4181,12 +4187,13 @@ func _ev_promote(ev: Dictionary) -> void:
 	# The new form spins in (two quick half-turns, settling), the light draining off it, foil sweeping across
 	create_tween().tween_property(v, "_flash", 0.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	v.move_to(stage, big, 0.0, 0.5, Tween.TRANS_BACK)
-	var spin := create_tween()
-	spin.tween_property(v, "_flip_deg", 90.0, 0.09)
-	spin.tween_callback(func(): v._flip_deg = -90.0)
-	spin.tween_property(v, "_flip_deg", 90.0, 0.16)
-	spin.tween_callback(func(): v._flip_deg = -90.0)
-	spin.tween_property(v, "_flip_deg", 0.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not calm:   # (two quick half-turns flash the card back past: not in Photosensitive mode)
+		var spin := create_tween()
+		spin.tween_property(v, "_flip_deg", 90.0, 0.09)
+		spin.tween_callback(func(): v._flip_deg = -90.0)
+		spin.tween_property(v, "_flip_deg", 90.0, 0.16)
+		spin.tween_callback(func(): v._flip_deg = -90.0)
+		spin.tween_property(v, "_flip_deg", 0.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	v.holo_boost = 1.0
 	v.create_tween().tween_property(v, "holo_boost", 0.0, 1.6).set_delay(0.3).set_trans(Tween.TRANS_SINE)
 	_show_detail(c)
@@ -4855,9 +4862,9 @@ func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount * _fx_level())
 
 
-## Settings → Screen Shake & Flashes: 1 full, 0.5 reduced, 0 off.
+## Settings → Screen Shake & Flashes: 1 full, 0.5 reduced, 0 off (0 in Photosensitive mode).
 func _fx_level() -> float:
-	return clampf(float(Game.settings.get("screen_fx", 1.0)), 0.0, 1.0)
+	return Game.flash_level()
 
 
 func _wait(seconds: float) -> void:

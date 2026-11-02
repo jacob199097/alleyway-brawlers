@@ -330,7 +330,7 @@ func _process(delta: float) -> void:
 	var rare := int(card.get("rarity", 1))
 	var shine := hovered and face_up and rare >= 4
 	_holo = lerpf(_holo, 1.0 if shine else 0.0, 1.0 - exp(-8.0 * delta))
-	_mat.set_shader_parameter("holo", maxf(_holo, holo_boost))
+	_mat.set_shader_parameter("holo", 0.0 if Game.photosafe() else maxf(_holo, holo_boost))
 	if shine and rare >= 5 and _sparkle == null:
 		_sparkle = CPUParticles2D.new()
 		_sparkle.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
@@ -389,7 +389,7 @@ func _update_tilt(delta: float) -> void:
 			m.set_shader_parameter("y_rot", _tilt.x + _flip_deg)
 			m.set_shader_parameter("x_rot", _tilt.y)
 			m.set_shader_parameter("glare", clampf(_tilt.length() / 16.0, 0.0, 1.0))
-			m.set_shader_parameter("flash", _flash)
+			m.set_shader_parameter("flash", minf(_flash, 0.2) if Game.photosafe() else _flash)   # (Photosensitive mode: a soft glow at most)
 	_mat.set_shader_parameter("reveal", reveal)
 	_mat.set_shader_parameter("reveal_color", reveal_color)
 

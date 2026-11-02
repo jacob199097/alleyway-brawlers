@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.103",
+        "notes": [
+            "New: Photosensitive Mode (Settings > Gameplay). It turns off flashing, flickering and strobing across the game: a Striver promotes with one slow change instead of flickering between its forms, and there are no screen flashes, impact frames or white hit-flashes on cards, no twinkling glints, no lightning or blinking lights in the arenas, and no flickering faces or neon signs.",
+            "Screen Shake & Flashes set to Off now also covers the after-match screen."
+        ]
+    },
+    {
         "version": "0.9.102",
         "notes": [
             "Turf Defense: the boss no longer loses by running out of cards on Hard and Nightmare. With nothing left to draw, it just skips the draw."

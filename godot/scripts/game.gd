@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS := {
 	"rival_emotes": true,           # show the opponent's emotes
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
 	"screen_fx": 1.0,               # screen shake, flashes and impact frames: 1 full, 0.5 reduced, 0 off
+	"photosensitive": false,        # Photosensitive mode: no flashes, flickers or quick changes in brightness (photosafe)
 	"ambience_volume": 0.8,         # rain, the crowd, the wind (Game.sound)
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 	"display_version": 1,           # settings saved before 1 had the old 1600×900 window: moved to the new default once
@@ -393,6 +394,20 @@ func set_setting(key: String, value) -> void:
 				settings.graphics = g
 	apply_settings()
 	_save_settings()
+
+
+## Settings → Gameplay → Photosensitive Mode: no flashing anywhere. Screen flashes, impact frames,
+## colour splits and shake are off, a Striver's promotion changes form once slowly instead of
+## flickering between its forms, cards don't flash white when hit, glints and twinkles are off,
+## arena lightning and blinking lights stop, flickering faces and neon signs hold still.
+func photosafe() -> bool:
+	return bool(settings.get("photosensitive", false))
+
+
+## How strong screen flashes, shake and post effects are: Screen Shake & Flashes, and none at all in
+## Photosensitive mode.
+func flash_level() -> float:
+	return 0.0 if photosafe() else clampf(float(settings.get("screen_fx", 1.0)), 0.0, 1.0)
 
 
 ## How much moves in an arena (ArenaLife's level): Settings → Arena Effects, thinned further by

@@ -371,8 +371,8 @@ func _marker(d: Dictionary, anchor: Array, n: int) -> void:
 		var c := Vector2(36, 36)
 		var t := Time.get_ticks_msec() / 1000.0
 		var ring := col
-		if contested:   # flickering between its colour and alarm red
-			ring = col.lerp(UI.RED, 0.5 + 0.5 * sin(t * 6.0 + n))
+		if contested:   # flickering between its colour and alarm red (Photosensitive mode: a steady red)
+			ring = col.lerp(UI.RED, 0.6 if Game.photosafe() else 0.5 + 0.5 * sin(t * 6.0 + n))
 		badge.draw_circle(c + Vector2(2, 3), 34, Color(0, 0, 0, 0.5))
 		badge.draw_circle(c, 33, Color(0.04, 0.035, 0.08, 0.95))
 		badge.draw_arc(c, 32, 0, TAU, 40, ring, 4.0, true)

@@ -16,6 +16,7 @@ uniform float flash = 0.0;     // white hit-flash
 uniform float shine = 0.0;        // Rare and up: a soft glint sweeps across the card every few seconds
 uniform float shine_seed = 0.0;   // 0..1, so cards don't all glint at once
 uniform float sparkle = 0.0;      // Legendary: a few faint twinkles, all the time
+uniform float calm = 0.0;         // Photosensitive mode (UI.rarity_fx): no glints, twinkles or sweeping shine
 uniform float veteran = 0.0;      // a veteran card's tier (UI.veteran_fx): its frame turns 1 bronze, 2 chrome, 3 gold (veteran_frame)
 // art_fx: the card's art itself moves. 1 = Epic: its glowing parts (neon, eyes, energy, crystals) throb,
 // with energy rippling up through them and a halo that breathes. 2 = Legendary: stronger, the glow
@@ -265,7 +266,7 @@ void fragment() {
 		vec2 cell = floor((uv + 0.5) * vec2(16.0, 23.0));
 		float rnd = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 		float tw = pow(max(0.0, sin(TIME * 2.6 + rnd * 40.0)), 22.0);
-		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75;
+		col.rgb += vec3(1.0, 0.97, 0.9) * tw * step(0.8, rnd) * holo * 0.75 * (1.0 - calm);
 	}
 	if (veteran >= 1.0) {
 		// A veteran's frame: its grey metal is plated, keeping its own shading: 1 bronze, 2 chrome with
@@ -295,10 +296,10 @@ void fragment() {
 			float rnd = fract(sin(dot(cell, vec2(27.17, 61.3))) * 31718.927);
 			vec2 inc = fract((uv + 0.5) * vec2(22.0, 31.0)) - 0.5;
 			float tw = pow(max(0.0, sin(TIME * 2.1 + rnd * 40.0)), 26.0) * step(0.7, rnd);
-			col.rgb += vec3(1.0, 0.92, 0.65) * tw * smoothstep(0.35, 0.0, length(inc)) * fm * 0.9;
+			col.rgb += vec3(1.0, 0.92, 0.65) * tw * smoothstep(0.35, 0.0, length(inc)) * fm * 0.9 * (1.0 - calm);
 		}
 	}
-	if (shine > 0.0) {
+	if (shine > 0.0 && calm < 0.5) {
 		// A glint crosses the card in the first ~2 s of every 6.5 s, then rests
 		float t = fract(TIME / 6.5 + shine_seed);
 		float pos = mix(-1.4, 1.4, smoothstep(0.0, 0.32, t));

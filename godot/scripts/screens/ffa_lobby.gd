@@ -74,7 +74,7 @@ var _flick := 0.0
 
 func _process(delta: float) -> void:
 	_flick += delta
-	if _flick > 0.11:
+	if _flick > (2.0 if Game.photosafe() else 0.11):
 		_flick = 0.0
 		if _faces.is_empty():
 			for id in CardDB.all():
@@ -86,7 +86,7 @@ func _process(delta: float) -> void:
 		for seat in _seats:
 			if seat is Dictionary and not seat.get("filled", true) and not _faces.is_empty():
 				seat.avatar.texture = _faces[randi() % _faces.size()]
-				seat.avatar.modulate = Color(ACCENT.lightened(0.3), randf_range(0.18, 0.4))
+				seat.avatar.modulate = Color(ACCENT.lightened(0.3), 0.28 if Game.photosafe() else randf_range(0.18, 0.4))
 	if Net.is_open and not _sent:
 		_sent = true
 		Net.send("ffa:queue")

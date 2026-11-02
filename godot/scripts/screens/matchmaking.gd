@@ -74,10 +74,10 @@ func _process(delta: float) -> void:
 	_cpu.visible = _waited > 20.0
 	# The opponent's frame flickers through faces, faster than you can read them
 	_scan_at += delta
-	if _scan and not _scan_faces.is_empty() and _scan_at > 0.09:
+	if _scan and not _scan_faces.is_empty() and _scan_at > (2.0 if Game.photosafe() else 0.09):
 		_scan_at = 0.0
 		_scan.texture = _scan_faces[randi() % _scan_faces.size()]
-		_scan.modulate = Color(0.55, 0.75, 1.0, randf_range(0.45, 0.8))
+		_scan.modulate = Color(0.55, 0.75, 1.0, 0.6 if Game.photosafe() else randf_range(0.45, 0.8))
 
 
 ## You and an unknown rival in frames either side of a pulsing VS.

@@ -136,7 +136,7 @@ func _glow(e: Dictionary, mode: String) -> void:
 		var m := ShaderMaterial.new()
 		m.shader = GLOW
 		m.set_shader_parameter("color", col)
-		m.set_shader_parameter("mode", int(GLOW_MODES.get(mode, 0)))
+		m.set_shader_parameter("mode", 0 if Game.photosafe() else int(GLOW_MODES.get(mode, 0)))   # (Photosensitive mode: they only breathe)
 		m.set_shader_parameter("strength", float(e.get("strength", 0.42 if mode == "flame" else 0.3)))
 		m.set_shader_parameter("speed", float(e.get("speed", 1.0)) * randf_range(0.85, 1.15))
 		m.set_shader_parameter("seed", randf() * 100.0)
@@ -160,6 +160,8 @@ func _beam(e: Dictionary) -> void:
 
 
 func _lightning(e: Dictionary) -> void:
+	if Game.photosafe():   # (Photosensitive mode: no lightning)
+		return
 	var flash := ColorRect.new()
 	flash.size = _view
 	flash.color = Color(_col(e, "#c9d4ff"), 0.0)

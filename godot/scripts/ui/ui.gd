@@ -250,6 +250,8 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 		on_press.call())
 	# Neon signs flicker now and then, each on its own rhythm (the glow dips with them, and now and
 	# then the tube buzzes)
+	if Game.photosafe():   # (Photosensitive mode: the signs stay lit)
+		return b
 	var flicker := b.create_tween().set_loops()
 	flicker.tween_interval(randf_range(4.0, 11.0))
 	flicker.tween_callback(func():
@@ -344,7 +346,8 @@ static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 ## twinkles. seed (0..1) keeps cards out of step with each other.
 ## Settings → Animated Card Art off (Low graphics) keeps the art still and drops the sparkles.
 static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
-	var motion: bool = Game.settings.get("card_motion", true)
+	var motion: bool = Game.settings.get("card_motion", true) and not Game.photosafe()
+	m.set_shader_parameter("calm", 1.0 if Game.photosafe() else 0.0)   # (no glints or twinkles)
 	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
 	m.set_shader_parameter("shine", 0.7 if rarity == 3 else 0.0)
 	m.set_shader_parameter("art_fx", 0.0 if rarity < 4 or not motion else 1.0 if rarity == 4 else 2.0)

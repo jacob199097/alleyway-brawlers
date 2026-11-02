@@ -213,6 +213,8 @@ func _build_fx() -> void:
 
 
 func _shockwave(at: Vector2) -> void:
+	if Game.flash_level() <= 0.0:   # (Screen Shake & Flashes off, or Photosensitive mode)
+		return
 	_fx.set_shader_parameter("wave_center", at / Vector2(1920, 1080))
 	var t := create_tween().set_parallel()
 	t.tween_method(func(v): _fx.set_shader_parameter("wave_radius", v), 0.0, 1.5, 0.9).set_ease(Tween.EASE_OUT)
@@ -228,6 +230,9 @@ func _shockwave(at: Vector2) -> void:
 ## Defeat: the screen's edges throb red, lub-dub, and fade between beats.
 func _heartbeat() -> void:
 	var set_danger := func(v): _fx.set_shader_parameter("danger", v)
+	if Game.photosafe():   # (Photosensitive mode: the red edge just stays, no throbbing)
+		set_danger.call(0.2)
+		return
 	var t := create_tween().set_loops()
 	t.tween_method(set_danger, 0.0, 0.42, 0.1)
 	t.tween_method(set_danger, 0.42, 0.12, 0.16)
@@ -237,8 +242,10 @@ func _heartbeat() -> void:
 
 
 func _flash(c: Color) -> void:
+	if Game.flash_level() <= 0.0:
+		return
 	var f := ColorRect.new()
-	f.color = c
+	f.color = Color(c, c.a * Game.flash_level())
 	f.size = Vector2(1920, 1080)
 	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(f)
@@ -1033,12 +1040,13 @@ func _rank_up(rank: String) -> void:
 	t.tween_callback(func():
 		Sfx.play("boom", 0.9)
 		Sfx.play("level_up")
-		var flash := ColorRect.new()
-		flash.size = layer.size
-		flash.color = Color(col.lightened(0.5), 0.7)
-		flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(flash)
-		flash.create_tween().tween_property(flash, "color:a", 0.0, 0.5)
+		if Game.flash_level() > 0.0:
+			var flash := ColorRect.new()
+			flash.size = layer.size
+			flash.color = Color(col.lightened(0.5), 0.7 * Game.flash_level())
+			flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			layer.add_child(flash)
+			flash.create_tween().tween_property(flash, "color:a", 0.0, 0.5)
 		_shake_screen(14.0))
 	t.tween_property(name, "modulate:a", 1.0, 0.3)
 	# A slow float while it's up
