@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.109",
+        "notes": [
+            "Decks can now have 40 to 60 cards (still up to 3 copies of a card).",
+            "Turf Defense: you can see your teammate's hand and face-down cards.",
+            "Turf Defense: the boss no longer shuffles its Gutter back into its deck. Bosses now have 60-card decks and draw fewer extra cards (none on Street, 1 on Hard and Nightmare).",
+            "New card effects can pick out characters with any status (only POISONED ones, for each STUNNED enemy, and so on)."
+        ]
+    },
+    {
         "version": "0.9.108",
         "notes": [
             "Cards can now target several enemies or allies of your choice (\"up to 2 enemy characters\"): you pick them one after another, and can stop early."

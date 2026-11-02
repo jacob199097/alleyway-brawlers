@@ -338,7 +338,7 @@ static func active_deck_plate(parent: Control, at: Vector2) -> void:
 	col.add_child(label("ACTIVE DECK", 16, GOLD, true))
 	col.add_child(label(str(d.get("name", "Deck")).left(22), 28, Color.WHITE, true))
 	var games := int(d.get("games", 0))
-	col.add_child(label(("%d/40 cards" % int(d.get("card_count", 0))) + ("   ·   %d W / %d L" % [int(d.get("wins", 0)), games - int(d.get("wins", 0))] if games > 0 else ""), 18, MUTED))
+	col.add_child(label(("%d cards" % int(d.get("card_count", 0))) + ("   ·   %d W / %d L" % [int(d.get("wins", 0)), games - int(d.get("wins", 0))] if games > 0 else ""), 18, MUTED))
 
 
 static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:

@@ -237,9 +237,10 @@ function createCoopService(io, deps) {
             const s = match.seats[seat];
             if (!s.watching) continue;
             const names = namesFor(seat);
+            const allies = ['p1', 'p2'].filter(x => x !== seat);   // (your teammate: you see their hand and face-down cards)
             emitTo(s.playerId, 'coop:update', {
                 matchId: match.id, clock, away,
-                events: rename(events.map(ev => statsFilter(filterEvent(ev, seat), seat)), names),
+                events: rename(events.map(ev => statsFilter(filterEvent(ev, seat, allies), seat, allies)), names),
                 view: rename(viewFor(st, seat), names),
             });
         }

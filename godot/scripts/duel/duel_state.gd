@@ -2390,7 +2390,11 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 		"lost_1000":
 			n = maxi(0, int(s.get("max_morale", START_MORALE)) - int(s.morale)) / 1000
 		_:
-			return 1
+			var per := str(e.get("per", ""))
+			if not per.begins_with("st_"):
+				return 1
+			var st := per.substr(3)   # for each enemy with that status ("st_poison")
+			n = _enemy_chars(side).filter(func(x): return st in statuses(x.card)).size()
 	if e.get("per_max") != null:
 		n = mini(n, int(e.per_max))
 	return n
@@ -3359,6 +3363,9 @@ func _only_fits(c: Dictionary, only: String) -> bool:
 			return not c.downed
 		"burning":
 			return c.has("burn")
+		_:
+			if only.begins_with("st_"):   # ("st_poison": POISONED ones)
+				return only.substr(3) in statuses(c)
 	return true
 
 
@@ -4045,10 +4052,8 @@ static func _prompt_event(ask: Dictionary) -> Dictionary:
 func _draw(side: String, opening := false) -> void:
 	var s: Dictionary = sides[side]
 	if s.deck.is_empty():
-		_boss_recycle(side)
-	if s.deck.is_empty():
-		# Turf Defense: the boss never decks out (its extra draws can leave nothing in its deck or
-		# Gutter for a moment, its cards all in hand and on the field): it just doesn't draw
+		# Turf Defense: the boss never decks out: with its 60-card deck spent it just doesn't draw
+		# (its Gutter stays its Gutter)
 		var b = rules.get("boss")
 		if b is Dictionary and str(b.get("seat", "")) == side:
 			return
@@ -4059,32 +4064,6 @@ func _draw(side: String, opening := false) -> void:
 	var c: Dictionary = s.deck.pop_back()
 	s.hand.append(c)
 	_emit("draw", {"side": side, "card": c.duplicate(true), "opening": opening})
-
-
-## Turf Defense: the boss never runs out of cards: when its deck is empty, its Gutter (not tokens)
-## is shuffled back into it ("recycle" event).
-func _boss_recycle(side: String) -> void:
-	var b = rules.get("boss")
-	if not b is Dictionary or str(b.get("seat", "")) != side:
-		return
-	var s: Dictionary = sides[side]
-	var back: Array = s.gutter.filter(func(c): return not c.get("token", false))
-	if back.is_empty():
-		return
-	var keep: Array = s.gutter.filter(func(c): return c.get("token", false))
-	s.gutter.clear()
-	s.gutter.append_array(keep)
-	for c in back:
-		c.mods = []
-		c.downed = false
-		_clear_status(c)
-		c.erase("fx_count")
-		c.erase("rise_turn")
-		c.has_attacked = false
-		c.face_down = false
-		s.deck.append(c)
-	_emit("recycle", {"side": side, "count": back.size()})
-	_shuffle_deck(side)
 
 
 func _discard_at(side: String, i: int) -> void:

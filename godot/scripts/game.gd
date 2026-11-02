@@ -530,9 +530,9 @@ func load_duel_deck() -> Dictionary:
 	if active == null and not decks.is_empty():
 		active = decks[0]
 	if active == null or int(active.get("card_count", 0)) < 40:
-		var msg := "No active deck. Open the Deck Editor and build a 40-card deck first."
+		var msg := "No active deck. Open the Deck Editor and build a deck of 40 to 60 cards first."
 		if active != null:
-			msg = "Active deck \"%s\" has %d/40 cards. Edit your deck before starting." % [active.name, int(active.card_count)]
+			msg = "Active deck \"%s\" has %d cards (it needs 40 to 60). Edit your deck before starting." % [active.name, int(active.card_count)]
 		return {"error": msg, "gate": true}
 
 	var dr := await Api.request("GET", "/api/deck/%s" % active.id)

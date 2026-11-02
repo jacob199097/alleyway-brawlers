@@ -112,14 +112,15 @@ st._damage('boss', 1500);
 assert.equal(st.sides.p1.morale, 5300);
 assert.equal(st.sides.p2.morale, 5300, 'both players took it');
 
-// The boss never decks out: its Gutter goes back into its deck (a player still loses on an empty deck)
+// The boss never decks out, and its Gutter stays its Gutter: it just doesn't draw (a player still
+// loses on an empty deck)
 st = new DuelState({ p1: [], p2: [], boss: [] }, {}, {}, 'p1', 5, rules());
 st.sides.boss.gutter.push(st.makeCard(card('x')), st.makeCard(card('y')));
 st._draw('boss');
 assert.equal(st.winner, '');
-assert.equal(st.sides.boss.hand.length, 1);
-assert.equal(st.sides.boss.deck.length + st.sides.boss.gutter.length, 1);
-assert.ok(st.takeEvents().some(e => e.type === 'recycle' && e.count === 2));
+assert.equal(st.sides.boss.hand.length, 0, 'nothing drawn');
+assert.equal(st.sides.boss.gutter.length, 2, 'its Gutter untouched');
+assert.ok(!st.takeEvents().some(e => e.type === 'recycle'));
 st._draw('p1');
 assert.ok(st.sides.p1.out, 'a player with an empty deck is out');
 
@@ -137,7 +138,7 @@ const clans = ['nebula', 'militia', 'wildcard', 'underworld'];
 for (const boss of BOSSES) {
     for (const lv of boss.levels) {
         const b = bossSetup(boss, lv);
-        assert.equal(b.deck.length, 40, `${boss.id} ${lv.level}: 40 cards`);
+        assert.equal(b.deck.length, 60, `${boss.id} ${lv.level}: 60 cards`);
         for (const id of [...b.deck, ...b.hideout, b.leader, boss.prize]) assert.ok(CARD_CATALOG[id], `${boss.id}: ${id} is a card`);
         for (const [id, n] of lv.add || []) assert.ok(b.deck.filter(x => x === id).length >= n, `${boss.id} ${lv.level}: ${id} in the deck`);
         let won = 0;

@@ -1,7 +1,7 @@
 'use strict';
 // MARKED (Card Forge passive "reveal", e.g. Marked Cards): while a player has it face-up, the server's
 // view shows them their opponent's hand and face-down cards. Nobody else sees more, and an ally (Turf
-// Defense) isn't an opponent.
+// Defense) isn't an opponent: teammates see each other's hand and face-down cards anyway.
 //   node backend/socket/reveal.test.cjs
 const path = require('path');
 const assert = require('assert');
@@ -47,15 +47,22 @@ const { viewFor } = require(path.join(__dirname, 'onlineMatch.js'));
     st.sides.player.leader_state = 'awake';
     assert.ok(!st.reveals('player'), '(only while it is Dormant)');
 
-    // Turf Defense: it shows the boss's hand, not the ally's
+    // Turf Defense: your teammate's hand and face-down cards are always shown; the boss's only with it
     const co = new DuelState({ p1: [], p2: [], boss: [] }, {}, {}, 'p1', -1,
         { order: ['p1', 'p2', 'boss'], teams: { p1: 'crew', p2: 'crew', boss: 'boss' } });
     co.sides.p2.hand = [card(co, { name: 'Ally Card' })];
+    const allyTrap = card(co, { name: 'Ally Trap', cardType: 'ambush' });
+    allyTrap.face_down = true;
+    co.sides.p2.field[6] = allyTrap;
     co.sides.boss.hand = [card(co, { name: 'Boss Card' })];
+    v = viewFor(co, 'p1');
+    assert.equal(v.sides.p2.hand[0].name, 'Ally Card', "your teammate's hand is shown");
+    assert.equal(v.sides.p2.field[6].name, 'Ally Trap', "...and their face-down cards");
+    assert.equal(v.sides.boss.hand[0].name, undefined, "the boss's hand stays hidden");
+    assert.equal(viewFor(co, 'spectator').sides.p2.hand[0].name, undefined, 'a spectator sees nothing hidden');
     co.sides.p1.field[5] = marked(co);
     v = viewFor(co, 'p1');
-    assert.equal(v.sides.boss.hand[0].name, 'Boss Card', "the boss's hand is shown");
-    assert.equal(v.sides.p2.hand[0].name, undefined, "the ally's hand stays hidden");
+    assert.equal(v.sides.boss.hand[0].name, 'Boss Card', "with MARKED, the boss's hand is shown");
     // Setting an Ambush: what it cost isn't shown to the opponent (it would give away which one it is)
     const { filterEvent } = require(path.join(__dirname, 'onlineMatch.js'));
     const amb = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1);

@@ -121,6 +121,8 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "burn", "target": "enemies", "amount": 200}, {"when": "attack", "do": "stoke", "target": "enemy", "amount": 200}],
 	[{"when": "deploy", "do": "stoke", "target": "enemy", "amount": 200, "count": 2}, {"when": "turn_end", "do": "buff", "target": "ally", "atk": 200, "count": 2}],
 	[{"when": "deploy", "do": "down", "target": "enemy", "count": 3}],
+	[{"when": "deploy", "do": "poison", "target": "enemies", "amount": 100}, {"when": "attack", "do": "down", "target": "enemy", "only": "st_poison"}],
+	[{"when": "deploy", "do": "stun", "target": "enemies"}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "per": "st_stun"}, {"when": "turn_end", "do": "damage", "amount": 200, "per": "st_poison"}],
 	[{"when": "turn_start", "do": "stoke", "target": "enemies", "amount": 100}, {"when": "attack", "do": "buff", "target": "self", "atk": 200, "per": "burning"}],
 	[{"when": "deploy", "do": "damage", "amount": 300, "per": "burning", "per_max": 3}, {"when": "attack", "do": "down", "target": "enemy", "only": "burning"}],
 	[{"when": "defend", "do": "bleed", "target": "attacker", "amount": 200}, {"when": "attack", "do": "poison", "target": "enemies", "amount": 100}],

@@ -113,9 +113,10 @@ function hideSpend(ev, viewer) {
     return out;
 }
 
-function filterEvent(ev, viewer) {
+function filterEvent(ev, viewer, allies = []) {
     ev = hideSpend(ev, viewer);
     if (ev.side === viewer) return ev;
+    if (allies.includes(ev.side) && ['draw', 'summon', 'set', 'bounce', 'effect'].includes(ev.type)) return ev;   // (a teammate's: shown)
     switch (ev.type) {
         case 'draw': return { ...ev, card: { uid: ev.card.uid } };
         case 'summon': return ev.card.face_down ? { ...ev, card: redact(ev.card) } : ev;
@@ -133,11 +134,11 @@ function filterEvent(ev, viewer) {
 }
 
 /** Stats for the other side's face-down cards stay hidden. */
-function statsFilter(ev, viewer) {
+function statsFilter(ev, viewer, allies = []) {
     if (ev.type !== 'stats') return ev;
     const values = {};
     for (const [seat, slots] of Object.entries(ev.values)) {
-        values[seat] = seat === viewer ? slots : Object.fromEntries(Object.entries(slots).filter(([, v]) => !v[4]));
+        values[seat] = seat === viewer || allies.includes(seat) ? slots : Object.fromEntries(Object.entries(slots).filter(([, v]) => !v[4]));
     }
     return { ...ev, values };
 }
@@ -153,7 +154,9 @@ function viewFor(state, viewer) {
     for (const seat of state.ffa ? state.seats : ['player', 'opponent']) {
         const s = state.sides[seat];
         const own = seat === viewer;
-        const sees = own || foes.includes(seat);
+        // Turf Defense: teammates see each other's hand and face-down cards (not their deck or Hideout)
+        const ally = viewer !== 'spectator' && !own && typeof state._teammates === 'function' && state._teammates(viewer, seat);
+        const sees = own || ally || foes.includes(seat);
         sides[seat] = {
             morale: s.morale, authority: s.authority + (sees ? 0 : (s.hidden_spend || 0)), authority_max: s.authority_max,
             brutus_bonus: s.brutus_bonus, promoted: s.promoted, mentor_used: s.mentor_used,
@@ -912,7 +915,7 @@ async function loadSetupFromDb(pool, playerId) {
     const { rows: decks } = await pool.query(
         `SELECT id, leader_card_id, hideout_set FROM decks WHERE player_id = $1
          ORDER BY is_active DESC, updated_at DESC LIMIT 1`, [playerId]);
-    if (!decks.length) return { error: 'You need a complete 40-card deck to play online.' };
+    if (!decks.length) return { error: 'You need a complete deck (40 to 60 cards) to play online.' };
     const { rows } = await pool.query(
         `SELECT c.id, c.name, c.card_type, c.authority, c.attack, c.defense, c.rarity, c.art_url,
                 LEAST(dc.copies, pi.quantity) AS copies
@@ -921,7 +924,7 @@ async function loadSetupFromDb(pool, playerId) {
          JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = $2
          WHERE  dc.deck_id = $1`, [decks[0].id, playerId]);
     const total = rows.reduce((s, r) => s + r.copies, 0);
-    if (total !== 40) return { error: 'You need a complete 40-card deck to play online.' };
+    if (total < 40 || total > 60) return { error: 'You need a complete deck (40 to 60 cards) to play online.' };
     const spec = (r) => {
         const out = { id: r.art_url };
         for (const k of ['name', 'authority', 'attack', 'defense', 'rarity']) if (r[k] != null) out[k] = r[k];

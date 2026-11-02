@@ -5219,6 +5219,18 @@ func _update_peek() -> void:
 	if duel == null or _watching():
 		return
 	var sees: bool = duel.reveals("player")
+	# Turf Defense: your teammate's hand and face-down cards always show you their faces
+	for ally in duel.sides:
+		if ally == "player" or not duel._teammates("player", ally):
+			continue
+		var t: Dictionary = duel.sides[ally]
+		for v in hand.get(ally, []):
+			_peek(v, true, t.hand)
+		for slot in field.get(ally, {}):
+			var v = field[ally][slot]
+			var c = t.field[slot]
+			if v != null and is_instance_valid(v) and c != null:
+				_peek(v, c.get("face_down", false), [c])
 	for foe in duel.foes_of("player"):
 		var s: Dictionary = duel.sides[foe]
 		for v in hand.get(foe, []):

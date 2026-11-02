@@ -26,12 +26,16 @@ export function prizeCardIds() {
 }
 export const bossLevel = (boss, n) => (boss?.levels || []).find(l => l.level === Number(n)) || null;
 
-/** The boss's deck at a level: its clan's starter, with the level's "add" cards in place of its
- *  cheapest characters (lowest Authority, then ATK), so it stays the same size. */
+export const BOSS_DECK = 60;
+
+/** The boss's deck at a level: its clan's starter topped up to BOSS_DECK cards (another copy of each
+ *  of its cards, in the starter's order), with the level's "add" cards in place of its cheapest
+ *  characters (lowest Authority, then ATK), so it stays the same size. */
 export function bossSetup(boss, level) {
     const recipe = starterRecipe(boss.clan);
     if (!recipe) throw new Error(`No starter deck for ${boss.clan}`);
     const deck = expand(recipe.deck);
+    for (let k = 0; deck.length < BOSS_DECK && k < recipe.deck.length * 3; k++) deck.push(recipe.deck[k % recipe.deck.length][0]);
     const lv = typeof level === 'object' ? level : bossLevel(boss, level);
     const added = new Set();
     for (const [id, n] of lv?.add || []) {

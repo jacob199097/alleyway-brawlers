@@ -2089,7 +2089,13 @@ export class DuelState {
             case 'statused': n = this._enemyChars(side).filter(x => this._afflicted(x.card)).length; break;
             case 'burning': n = this._enemyChars(side).filter(x => x.card.burn !== undefined).length; break;   // BURNING enemies
             case 'lost_1000': n = Math.floor(Math.max(0, toInt(s.max_morale ?? START_MORALE) - s.morale) / 1000); break;
-            default: return 1;
+            default:
+                if (String(e.per ?? '').startsWith('st_')) {   // for each enemy with that status ("st_poison")
+                    const st = String(e.per).slice(3);
+                    n = this._enemyChars(side).filter(x => this.statuses(x.card).includes(st)).length;
+                    break;
+                }
+                return 1;
         }
         if (e.per_max != null) n = Math.min(n, toInt(e.per_max));
         return n;
@@ -2955,6 +2961,7 @@ export class DuelState {
             case 'downed': return !!c.downed;
             case 'standing': return !c.downed;
             case 'burning': return c.burn !== undefined;
+            default: if (only.startsWith('st_')) return this.statuses(c).includes(only.slice(3));   // ("st_poison": POISONED ones)
         }
         return true;
     }
@@ -3510,10 +3517,9 @@ export class DuelState {
 
     _draw(side, opening = false) {
         const s = this.sides[side];
-        if (!s.deck.length) this._bossRecycle(side);
         if (!s.deck.length) {
-            // Turf Defense: the boss never decks out (its extra draws can leave nothing in its deck or
-            // Gutter for a moment, its cards all in hand and on the field): it just doesn't draw
+            // Turf Defense: the boss never decks out: with its 60-card deck spent it just doesn't draw
+            // (its Gutter stays its Gutter)
             if (this.rules.boss && this.rules.boss.seat === side) return;
             // Decked out: a player who has to draw from an empty deck loses
             if (this.winner === '') this._lose(side, 'deck_out');
@@ -3522,30 +3528,6 @@ export class DuelState {
         const c = s.deck.pop();
         s.hand.push(c);
         this._emit('draw', { side, card: clone(c), opening });
-    }
-
-    /** Turf Defense: the boss never runs out of cards: when its deck is empty, its Gutter (not
-     *  tokens) is shuffled back into it ("recycle" event). */
-    _bossRecycle(side) {
-        const b = this.rules.boss;
-        const s = this.sides[side];
-        if (!b || b.seat !== side) return;
-        const back = s.gutter.filter(c => !c.token);
-        if (!back.length) return;
-        const keep = s.gutter.filter(c => c.token);
-        s.gutter.splice(0, s.gutter.length, ...keep);
-        for (const c of back) {
-            c.mods = [];
-            c.downed = false;
-            this._clearStatus(c);
-            delete c.fx_count;
-            delete c.rise_turn;
-            c.has_attacked = false;
-            c.face_down = false;
-            s.deck.push(c);
-        }
-        this._emit('recycle', { side, count: back.length });
-        this._shuffleDeck(side);
     }
 
     _discardAt(side, i) {

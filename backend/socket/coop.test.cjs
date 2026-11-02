@@ -68,7 +68,8 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check(Object.keys(st.view.sides).sort().join() === 'ally,boss,player' && st.view.seats.length === 3, 'every board and the turn order');
     check(st.view.sides.boss.max_morale === street && st.view.sides.player.max_morale === 6000, "each side's most Morale");
     check(st.view.teams.player === st.view.teams.ally && st.view.teams.boss !== st.view.teams.player, 'the teams');
-    check(st.view.sides.ally.hand.every(x => Object.keys(x).join() === 'uid'), "your ally's hand is hidden");
+    check(st.view.sides.ally.hand.length > 0 && st.view.sides.ally.hand.every(x => x.id), "your ally's hand is shown (teammates see each other's cards)");
+    check(st.view.sides.boss.hand.every(x => Object.keys(x).join() === 'uid'), "the boss's hand is hidden");
     check(st.view.sides.player.hand.every(x => x.id), 'your own hand is shown');
 
     // 3. Partner emotes: only to your partner, only from the list

@@ -100,7 +100,7 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
         hidden.set(entry.cardId, (hidden.get(entry.cardId) || 0) + copies);
     }
     const totalCopies = [...wanted.values()].reduce((s, n) => s + n, 0);
-    if (totalCopies !== 40) return res.status(400).json({ error: `Deck must be exactly 40 cards (currently ${totalCopies}).` });
+    if (totalCopies < 40 || totalCopies > 60) return res.status(400).json({ error: `A deck has 40 to 60 cards (this one has ${totalCopies}).` });
 
     // Every card must be a non-leader card the player owns enough copies of (max 3), and a
     // character's first level: its promoted forms wait in the Hideout by themselves

@@ -15,6 +15,9 @@ const KINDS := [["all", "ANY TYPE"], ["gang_member", "ALL UNITS"], ["striver", "
 	["heavy", "HEAVIES"], ["effect", "ALL EFFECTS"], ["hustle", "HUSTLES"], ["ambush", "AMBUSHES"]]
 const COSTS := [["all", "ANY AUTHORITY"], ["1-2", "AUTHORITY 1–2"], ["3-4", "AUTHORITY 3–4"], ["5-6", "AUTHORITY 5–6"], ["7-99", "AUTHORITY 7+"]]
 
+const DECK_MIN := 40   # a deck has 40 to 60 cards (the server checks the same: backend/routes/deck.js)
+const DECK_MAX := 60
+
 var _inventory: Array = []
 var _decks: Array = []
 var _deck_idx := 0
@@ -84,7 +87,7 @@ func _build_header() -> void:
 	t.position = Vector2(0, 18)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(t)
-	_count = UI.label("0/40", 34, UI.RED, true)
+	_count = UI.label("0 / 40", 34, UI.RED, true)
 	_count.position = Vector2(1560, 26)
 	add_child(_count)
 	var save := UI.button("SAVE", _save, Vector2(180, 56), UI.GREEN)
@@ -236,7 +239,7 @@ func _build_deck_panel() -> void:
 	tools.add_theme_constant_override("separation", 10)
 	col.add_child(tools)
 	var fill := UI.button("AUTO-FILL", _auto_fill, Vector2(160, 52), UI.GREEN)
-	fill.tooltip_text = "Top the deck up to 40 with cards from your collection"
+	fill.tooltip_text = "Top the deck up to %d with cards from your collection" % DECK_MIN
 	tools.add_child(fill)
 	tools.add_child(UI.button("CLEAR", func():
 		if _deck.is_empty():
@@ -436,8 +439,8 @@ func _add(item: Dictionary, from: Control = null) -> void:
 	if have >= int(item.get("quantity", 0)):
 		UI.toast(self, "You only own %d" % int(item.quantity), UI.RED)
 		return
-	if _deck.size() >= 40:
-		UI.toast(self, "Deck full (40 cards)", UI.RED)
+	if _deck.size() >= DECK_MAX:
+		UI.toast(self, "Deck full (%d cards)" % DECK_MAX, UI.RED)
 		return
 	_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 	_dirty = true
@@ -452,7 +455,7 @@ func _add(item: Dictionary, from: Control = null) -> void:
 	var start := from.get_global_rect() if from and is_instance_valid(from) else Rect2()
 	_render_all()
 	_fly_in(item, start)
-	if _deck.size() == 40:
+	if _deck.size() == DECK_MIN:
 		_complete()
 
 
@@ -556,7 +559,7 @@ func _complete() -> void:
 	t.tween_property(_count, "scale", Vector2.ONE * 1.35, 0.12)
 	t.tween_property(_count, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(_count, "modulate", Color.WHITE, 0.8)
-	UI.toast(self, "Deck complete: 40 cards", UI.GOLD)
+	UI.toast(self, "Deck ready: %d cards (you can add up to %d)" % [DECK_MIN, DECK_MAX], UI.GOLD)
 
 
 # ── Auto-fill and deck codes ─────────────────────────────────────────────────
@@ -574,8 +577,8 @@ func _auto_fill() -> void:
 	if _deck_id == null:
 		UI.toast(self, "Make a deck first (+ NEW)", UI.RED)
 		return
-	if _deck.size() >= 40:
-		UI.toast(self, "The deck is already full", UI.GOLD)
+	if _deck.size() >= DECK_MIN:
+		UI.toast(self, "The deck already has %d or more cards" % DECK_MIN, UI.GOLD)
 		return
 	var pool := _inventory.filter(func(i):
 		return i.get("card_type") != "leader" and not CardDB.get_card(str(i.get("art_url", ""))).is_empty() \
@@ -591,11 +594,11 @@ func _auto_fill() -> void:
 	var before := _deck.size()
 	var unit_count := _deck.filter(func(c): return _item_for(c.cardId).get("card_type") == "gang_member").size()
 	for item in units:
-		while unit_count < 28 and _deck.size() < 40 and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
+		while unit_count < 28 and _deck.size() < DECK_MIN and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
 			_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 			unit_count += 1
 	for item in effects + units:
-		while _deck.size() < 40 and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
+		while _deck.size() < DECK_MIN and _copies(item.id) < mini(3, int(item.get("quantity", 0))):
 			_deck.append({"cardId": item.id, "name": item.name, "rarity": item.rarity, "art_url": item.get("art_url", "")})
 	var added := _deck.size() - before
 	if added == 0:
@@ -605,8 +608,8 @@ func _auto_fill() -> void:
 	_dirty = true
 	Sfx.play("draw", 1.2)
 	_render_all()
-	UI.toast(self, "Added %d card(s)%s" % [added, "" if _deck.size() == 40 else " — your collection ran out at %d/40" % _deck.size()],
-		UI.GREEN if _deck.size() == 40 else UI.GOLD)
+	UI.toast(self, "Added %d card(s)%s" % [added, "" if _deck.size() >= DECK_MIN else " — your collection ran out at %d/%d" % [_deck.size(), DECK_MIN]],
+		UI.GREEN if _deck.size() >= DECK_MIN else UI.GOLD)
 
 
 ## The deck as text: AWB1:<base64 of "leader|card*copies,...|hideout card*copies,...">, by card ID,
@@ -678,7 +681,7 @@ func _load_code(code: String) -> void:
 		if have < want:
 			var name := str(item.get("name", CardDB.get_card(bits[0]).get("name", bits[0])))
 			missing.append("%s ×%d" % [name, want - have])
-	_deck = deck.slice(0, 40)
+	_deck = deck.slice(0, DECK_MAX)
 	_hideout = []
 	if halves.size() > 2:
 		for part in halves[2].split(",", false):
@@ -706,15 +709,15 @@ func _load_code(code: String) -> void:
 		UI.toast(self, "Deck loaded (%d cards)" % _deck.size(), UI.GREEN)
 	else:
 		UI.dialog(self, "DECK LOADED — SOME CARDS MISSING", "You don't own enough of:\n" + "\n".join(missing) \
-			+ "\n\nThe deck has %d/40. AUTO-FILL can top it up." % _deck.size(), [["OK", func(): pass]])
+			+ "\n\nThe deck has %d cards (it needs %d to %d). AUTO-FILL can top it up." % [_deck.size(), DECK_MIN, DECK_MAX], [["OK", func(): pass]])
 
 
 func _save(after := Callable()) -> void:
 	if _deck_id == null:
 		UI.toast(self, "No deck selected", UI.RED)
 		return
-	if _deck.size() != 40:
-		UI.toast(self, "Need 40 cards (have %d)" % _deck.size(), UI.RED)
+	if not _deck_ok():
+		UI.toast(self, "A deck needs %d to %d cards (have %d)" % [DECK_MIN, DECK_MAX, _deck.size()], UI.RED)
 		return
 	var grouped := {}
 	for c in _deck:
@@ -732,7 +735,7 @@ func _save(after := Callable()) -> void:
 		{"cards": cards, "leaderCardId": _leader.id if _leader is Dictionary else null, "hideout": hideout})
 	if r.ok:
 		_dirty = false
-		_decks[_deck_idx].card_count = 40
+		_decks[_deck_idx].card_count = _deck.size()
 		UI.toast(self, "Deck saved!", UI.GREEN)
 		if not _decks[_deck_idx].get("is_active", false):   # (the one you play with: ask)
 			var go_on := func(make_active: bool) -> void:
@@ -797,10 +800,10 @@ func _exit() -> void:
 	if not _dirty:
 		Game.go("main_menu")
 		return
-	var text := "Save your changes before leaving?" if _deck.size() == 40 \
-		else "Your deck has %d cards — it must be 40 to save. Leave without saving?" % _deck.size()
+	var text := "Save your changes before leaving?" if _deck_ok() \
+		else "Your deck has %d cards — it needs %d to %d to save. Leave without saving?" % [_deck.size(), DECK_MIN, DECK_MAX]
 	var buttons := [["QUIT", func(): Game.go("main_menu"), UI.RED], ["CANCEL", func(): pass]]
-	if _deck.size() == 40:
+	if _deck_ok():
 		buttons.push_front(["SAVE & EXIT", func(): _save(func(): Game.go("main_menu")), UI.GREEN])
 	UI.dialog(self, "UNSAVED CHANGES", text, buttons)
 
@@ -901,8 +904,8 @@ func _render_deck() -> void:
 		_rows[id] = _deck_row(grouped[id])
 		_list.add_child(_rows[id])
 	_render_hideout(order.map(func(id): return str(grouped[id].art_url)))
-	_count.text = "%d/40" % _deck.size()
-	_count.label_settings.font_color = UI.BLUE if _deck.size() == 40 else UI.RED
+	_count.text = "%d / %d" % [_deck.size(), DECK_MIN if _deck.size() < DECK_MIN else DECK_MAX]
+	_count.label_settings.font_color = UI.BLUE if _deck_ok() else UI.RED
 	_render_stats()
 
 
@@ -1069,3 +1072,7 @@ func _pick_leader() -> void:
 	var p: Control = dlg.get_child(0)
 	p.reset_size()
 	p.position = (Vector2(1920, 1080) - p.size) / 2
+
+
+func _deck_ok() -> bool:
+	return _deck.size() >= DECK_MIN and _deck.size() <= DECK_MAX

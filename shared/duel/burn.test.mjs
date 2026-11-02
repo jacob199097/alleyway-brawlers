@@ -107,4 +107,13 @@ st._runAnswer(() => a1.cb('skip'));
 assert.equal([0, 1, 2].filter(i => st.cardAt('opponent', i).burn).length, 0, 'SKIP: none');
 assert.ok(!st._asks.some(a => a.side === 'player' && a !== a1), 'and nothing more asked');
 
+// Any status: "only POISONED ones", "for each STUNNED enemy"
+st = board([], [{ poison: { amt: 100, left: 2 } }, {}]);
+st._doFx('player', -1, src, { do: 'down', target: 'enemies', only: 'st_poison' });
+assert.ok(st.cardAt('opponent', 0).downed && !st.cardAt('opponent', 1).downed, 'only the POISONED one is Downed');
+st = board([], [{ stun_until: 99 }, { stun_until: 99 }, {}]);
+morale = st.sides.opponent.morale;
+st._doFx('player', -1, src, { do: 'damage', amount: 100, per: 'st_stun' });
+assert.equal(st.sides.opponent.morale, morale - 200, '100 for each of 2 STUNNED enemies');
+
 console.log('burn: ok');
