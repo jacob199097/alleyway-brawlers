@@ -5,29 +5,32 @@ their own keyword, like STASIS for Nebula), and cash in with cards that count ev
 only hit BURNING ones. Leader: **Cinder** (ARSO-001), who sets a fire at the end of every turn while
 Dormant and STOKEs every enemy when it Awakens.
 
-All of these are in the Card Forge (ARSO-002 to ARSO-032, tagged In progress until their art is in). Every effect below is built from the Card Forge's blocks (the **Forge** line says which). Stats follow
-the other clans' curve; press **Test this card in 200 CPU games** on each one and adjust.
+All of these are in the Card Forge (ARSO-002 to ARSO-032, tagged In progress until their art is in).
+Every effect is built from the Forge's blocks. Stats follow the other clans' curve; press **Test this
+card in 200 CPU games** on each one and adjust.
 
 **The deck (40):** 5 Striver lines (LV1 ×2 each; LV2 and LV3 ×3 each in the Hideout), 9 characters,
 1 Heavy, 6 Hustles and Ambushes. 30 characters, 10 Hustles/Ambushes, like the other starters.
 
 ## Using the prompts (ChatGPT)
 
-- Attach a reference image with every prompt: Cinder's artwork, or the Arsonists booster pack.
-- For a Striver's LV2 and LV3, also attach that character's LV1 picture, so it's clearly the same person.
+- **The reference image is for the art style only.** Don't attach Cinder: ChatGPT copies his coat,
+  gas mask and Molotovs. Attach one or two finished cards from another clan (any Underworld or
+  Militia character works), and later, finished Arsonists cards other than Cinder.
+- **LV2 and LV3:** attach only that character's LV1 picture (it's in the same style), so the face and
+  build carry over and nothing else does.
 - Every picture is square (1024 × 1024): the Forge crops it into the card's art window.
-- The look of the clan, in every prompt: scorched firefighter turnout coats with yellow reflective
-  stripes, gas masks, Molotov bandoliers, soot and burn scars, against a rain-soaked neon city at night.
+- Each character has its own look, weapon, pose and setting on purpose. Only Haze wears firefighter
+  gear; nobody but Cinder carries a Molotov bandolier.
 
 ---
 
 ## Leader
 
-**Cinder** (ARSO-001, Epic, 10 Authority, 2800 / 2000, Influence 5000). Already in the Forge with art.
+**Cinder** (ARSO-001, Epic, 10 Authority, 2800 / 2000, Influence 5000). In the Forge with art.
 - While Dormant, at the end of your turn: give one enemy character BURN 200.
 - AWAKEN: when your opponent's Morale is 3000 or less.
-- When it Awakens: give all enemy characters STOKE 300. *(Changed from "200 Morale damage for each other
-  Arsonists character": now it builds on the fires Cinder set while Dormant and works with an empty board.)*
+- When it Awakens: give all enemy characters STOKE 300.
 - Flavour: "Every city's got a fuse. I just find it."
 
 ---
@@ -35,106 +38,105 @@ the other clans' curve; press **Test this card in 200 CPU games** on each one an
 ## Strivers
 
 ### 1. Kindle (Common)
-A street kid who collects lighters and learned everything from Cinder.
+A skater kid who collects lighters, and grows into the crew's flare-slinging hothead.
 
 **LV1** · 1 Authority · 400 / 200
 - At the end of your turn, if an enemy has a status: PROMOTE.
-- *Forge: When "At the end of your turn" · Do "PROMOTE" · Only if "An enemy has a status".*
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Kindle", an Arsonists clan character: a scrawny street kid of about fourteen in an oversized scorched firefighter coat with yellow reflective stripes, sleeves rolled up, soot on his cheeks, flicking open a battered brass lighter with a grin, a belt hung with a dozen mismatched lighters. Background: a rain-soaked back alley behind a gas station at night, a dumpster fire glowing orange behind him, neon violet signs blurred in the rain. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Kindle": a skinny skater kid of about fourteen in a baggy red hoodie and ripped jeans, sitting on the curb with his skateboard across his knees, a string of a dozen mismatched lighters hanging from his neck like a necklace, lighting one with a cheeky sideways grin. Seen from slightly above. Background: a skate park at night, a single trash can burning, graffiti walls, rain glittering under a sodium streetlight. Palette: deep black and charcoal, warm orange firelight, red hoodie, cool blue night shadows. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 4 Authority · 1500 / 700
-- When this card attacks: give one enemy character (you choose) BURN 200.
+- When this card attacks: give one enemy character BURN 200.
 - When this card KOs a character: PROMOTE.
 
-> Using the same artstyle as the reference image, draw Kindle again, the same kid as in the attached Kindle LV1 picture (same face, hair, build and coat), now older and bolder at level 2: a teenager in the same scorched turnout coat, now fitted, a gas mask pushed up on his head, a lit Molotov in one hand and his brass lighter in the other, mid-stride toward the viewer. Background: a burning car on a rainy street, flames reflected in puddles, neon city towers in violet haze behind. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now a fast, cocky teenager: the red hoodie sleeves torn off, his skateboard deck scorched black, grinding along a railing at full speed while dragging a lit road flare in each hand, two ribbons of red fire trailing behind him. Side-on action shot. Background: a multi-storey car park at night, rain blowing in through the open sides, a parked car starting to burn. Palette: deep black, flare-red and hot pink fire, wet concrete grey. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 7 Authority · 2500 / 1400
-- When this card attacks: give one enemy character (you choose) STOKE 300.
+- When this card attacks: give one enemy character STOKE 300.
 - +100 ATK for each BURNING enemy (Always).
 
-> Using the same artstyle as the reference image, draw Kindle at level 3, the same person as the attached Kindle pictures (same face and signature coat), now a young man and a feared Arsonists lieutenant: tall and confident, the turnout coat torn and smouldering at the hem, a bandolier of Molotovs across his chest, fire curling around one raised fist like a glove. Background: a rooftop at night overlooking a city block in flames, smoke columns lit orange from below, violet neon skyline. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now a young man and a feared lieutenant: undercut hair with singed tips, a cropped bomber jacket covered in burn patches, chains of road flares wound around both forearms, swinging a burning chain whip in a wide arc of red fire. Low camera angle looking up at him, mid-swing. Background: the top of a highway overpass at night, cars stopped and burning on the road below, red flare smoke drifting across the neon skyline. Palette: deep black, flare-red and crimson fire, neon magenta city glow. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 2. Flint (Common)
-A gas-station attendant who stopped putting fires out.
+A gas-station attendant who stopped putting fires out. Her fire burns gas-blue.
 
 **LV1** · 1 Authority · 600 / 0
 - When this card is KO'd: give one enemy character BURN 200.
 - When this card goes Down: PROMOTE.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Flint", an Arsonists clan character: a wiry woman in her twenties in a grease-stained gas-station uniform shirt with a name patch, short spiky bleached hair, striking a flint lighter with her thumb, a fuel nozzle hooked into her belt like a holstered gun. Background: a night-time gas station forecourt in the rain, its canopy lights flickering, one pump leaking a trail of fuel that's just caught fire. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Flint": a wiry woman in her twenties in a teal gas-station uniform shirt with a name patch and a peaked cap, short bleached hair, leaning on a fuel pump with arms crossed, a striker flint in one hand throwing a shower of white sparks. Background: an empty all-night gas station forecourt in the rain, buzzing fluorescent canopy lights, a puddle of spilled fuel with a thin blue flame creeping across it. Palette: deep black, gas-blue flame, cold fluorescent white, teal. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 4 Authority · 1800 / 400
-- When this card attacks: give one enemy character (you choose) BURN 200.
+- When this card attacks: give one enemy character BURN 200.
 - When this card attacks: PROMOTE.
 
-> Using the same artstyle as the reference image, draw Flint again, the same woman as in the attached Flint LV1 picture (same face, bleached spiky hair and build), now at level 2: the uniform shirt swapped for a scorched firefighter coat with yellow stripes worn open, a fuel nozzle in one hand spraying a jet of burning fuel like a flamethrower, her flint lighter clenched in her teeth. Background: a gas station canopy engulfed in flames behind her, rain hissing into steam. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now armed: the uniform shirt soaked and torn, a pump's fuel hose slung over her shoulder, the nozzle in both hands spraying a roaring jet of blue-and-orange flame like a flamethrower, her cap blown off. Three-quarter view, braced against the recoil. Background: the gas station's shop window exploding outward behind her, glass and snack wrappers flying, rain turning to steam. Palette: deep black, gas-blue flame with orange tips, teal and white. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 7 Authority · 2700 / 800
 - When this card KOs a character: 300 Morale damage for each BURNING enemy (up to 3).
 
-> Using the same artstyle as the reference image, draw Flint at level 3, the same woman as the attached Flint pictures, now the queen of the forecourt: standing on the roof of an overturned tanker truck, a modified fuel-pump flamethrower on her back with hoses to her hands, coat burning at the edges, eyes glowing orange behind cracked goggles. Background: the tanker's spilled fuel burning in a river of fire across a rainy highway at night, neon city in violet haze. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now the queen of the highway: riding on top of a speeding fuel tanker truck, crouched, one hand on the hatch, her hair whipping back, the tanker's valves venting long blue flames down both sides like wings. Seen from the front at road level as it bears down. Background: a rain-soaked highway at night, the road behind the tanker a river of blue fire. Palette: deep black, intense gas-blue flame, chrome highlights, teal. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 3. Haze (Uncommon)
-An ex-smokejumper who knows exactly how a fire moves.
+An ex-smokejumper who knows exactly how a fire moves. Smoke more than flame.
 
 **LV1** · 1 Authority · 300 / 500
 - When this card is attacked: give the attacker BURN 200.
 - At the end of your turn: PROMOTE.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Haze", an Arsonists clan character: a heavy-set man in his forties in a battered smokejumper jumpsuit with yellow reflective stripes, a full gas mask with round lenses, a fire axe resting on his shoulder, thick grey smoke rolling off him. Background: a smoke-filled stairwell of a burning tenement, orange light through the haze, a cracked neon exit sign. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Haze": a broad, grizzled man in his fifties in a faded green wildland-firefighter shirt and a hard hat, grey beard, a coiled rope over his chest, leaning on a long pulaski axe and calmly watching smoke rise, eyes narrowed. Background: a forest ridge at dusk above the city, a wildfire's smoke column climbing into a bruised orange sky. Palette: smoky greys and olive green, dull orange sunset glow. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 4 Authority · 1200 / 2000
 - When this card is attacked: give the attacker STOKE 300.
 - When one of your characters is attacked: PROMOTE.
 
-> Using the same artstyle as the reference image, draw Haze again, the same man as in the attached Haze LV1 picture (same gas mask, build and jumpsuit), now at level 2: braced in a doorway like a wall, the fire axe held across his body, smoke pouring from his mask filters, embers clinging to his shoulders. Background: a burning warehouse doorway, rain outside, the fire roaring behind him. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now a living wall of smoke: standing square in a narrow alley, a full-face respirator with a single round lens, thick grey smoke pouring off his shoulders and filling the alley in front of him, the pulaski held low. Shot from the attacker's point of view, looking into the smoke at him. Background: the alley's walls vanishing into smoke, faint orange glow from somewhere behind. Palette: layered greys and charcoal, one orange glow, olive green. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 7 Authority · 1800 / 3200
 - When this card is attacked: give the attacker STOKE 400.
 - At the start of your turn: gain 200 Morale for each BURNING enemy (up to 3).
 
-> Using the same artstyle as the reference image, draw Haze at level 3, the same man as the attached Haze pictures, now a towering smoke-wreathed guardian: armoured in scorched firefighter plating, his gas mask fused into a smoking iron helm, the fire axe glowing red-hot, a wall of smoke and flame rising behind him like a cape. Background: a collapsing burning factory at night, girders glowing, rain turning to steam. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now a towering figure made half of smoke: his lower body dissolving into a rolling smoke cloud, the respirator glowing ember-orange at the lens, arms spread wide as two firestorms swirl around him like he's conducting them. Seen from far below, small figures fleeing at his feet. Background: a city block hidden under a vast dome of smoke, lit orange from within. Palette: charcoal and ash grey, deep ember orange inside the smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 4. Blaze Maddox (Uncommon)
-A hothead brawler who wraps his fists in burning rags.
+A hothead pit fighter who wraps his fists in burning rags.
 
 **LV1** · 2 Authority · 900 / 300
 - When this card attacks, if an enemy has a status: PROMOTE.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Blaze Maddox", an Arsonists clan character: a muscular young man with a shaved head and burn scars down one arm, tank top under a sleeveless scorched turnout vest, fists wrapped in fuel-soaked rags that are just catching fire, a wild grin. Background: an underground fight pit lit by burning oil drums, a rowdy crowd in silhouette, rain dripping through a grate above. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Blaze Maddox": a stocky young boxer with a shaved head and a burn scar across one eye, shirtless with boxing shorts and taped hands, bouncing on his toes in a fighting stance, one taped fist just catching fire. Ringside view. Background: an underground fight club in a flooded basement, a crowd of silhouettes behind chain-link, lit by oil drums. Palette: deep black, sweaty skin tones, oil-drum orange, dirty yellow bulbs. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 5 Authority · 2000 / 600
-- When this card attacks: give one enemy character (you choose) BURN 300.
+- When this card attacks: give one enemy character BURN 300.
 
-> Using the same artstyle as the reference image, draw Blaze Maddox again, the same man as in the attached Blaze Maddox LV1 picture (same face, shaved head and burn scars), now at level 2: mid-punch toward the viewer, both fists blazing, the rag wraps now steel knuckle-dusters glowing red-hot, sweat and sparks flying. Background: the fight pit's cage torn open, burning drums knocked over, fire spreading across the floor. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now throwing a haymaker straight at the viewer: the fist huge in the foreground, wrapped in burning rags, a comet's tail of fire behind it, his face snarling over his shoulder. Extreme foreshortened punch toward the camera. Background: the chain-link cage bent and torn, sparks and the crowd's raised arms. Palette: deep black, blazing orange fist, sweat highlights. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 8 Authority · 3000 / 1000
-- When this card attacks: give one enemy character (you choose) STOKE 400.
+- When this card attacks: give one enemy character STOKE 400.
 - PIERCE (Always).
 
-> Using the same artstyle as the reference image, draw Blaze Maddox at level 3, the same man as the attached Blaze Maddox pictures, now a living furnace: his arms burning from fist to shoulder without hurting him, cracks of molten light in his scarred skin, a champion's belt of blackened steel around his waist, roaring. Background: the ruins of the fight pit in an inferno, a broken neon sign hanging above, rain evaporating before it reaches him. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now a champion: wearing a battered red boxing robe with the hood up, a heavy blackened championship belt over his shoulder, both arms burning from fist to elbow, walking out through a tunnel toward the ring, calm and menacing. Seen from behind and to the side, the robe catching the light. Background: a packed illegal arena ahead of him, spotlights through smoke, the ring ropes on fire. Palette: deep black, robe red, white spotlights, fire orange. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 5. Fuse (Rare)
-The demolition expert who plans every fire like a heist.
+The demolition expert who plans every fire like a heist. Cold and precise.
 
 **LV1** · 2 Authority · 800 / 400
 - When deployed: 100 Morale damage for each BURNING enemy.
 - At the end of your turn, if an enemy has a status: PROMOTE.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Fuse", an Arsonists clan character: a lean, calm woman in her thirties with goggles on her forehead and a long braid, a scorched leather apron over a turnout coat, a vest of dynamite sticks and wires, holding a pocket watch and a coiled fuse. Background: a dim basement workshop full of blueprints, jerry cans and crates, a single bare bulb and a fuse burning along the floor toward the viewer. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Fuse": a calm woman in her thirties with a long dark braid and round wire glasses, a crisp grey work shirt with rolled sleeves, sitting at a workbench soldering wires into a small explosive charge, a pencil behind her ear. Close, quiet portrait framing. Background: a tidy basement workshop, a city blueprint pinned to the wall with buildings circled in red, one desk lamp. Palette: muted greys and steel blue, one warm lamp, small red details. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 5 Authority · 1900 / 900
-- ACTIVATE (once per turn, exhaust): give all enemy characters STOKE 100.
+- ACTIVATE (once per turn, this card can't attack this turn): give all enemy characters STOKE 100.
 - When an enemy is KO'd: PROMOTE.
 
-> Using the same artstyle as the reference image, draw Fuse again, the same woman as in the attached Fuse LV1 picture (same face, braid and goggles), now at level 2: goggles down, holding up a detonator with her thumb over the button, a city block behind her rigged with glowing charges. Background: a rainy street at night seen from an overpass, small orange explosions starting along a row of buildings. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now on the job: in a black utility jumpsuit with a harness of tools, rappelling down the side of a skyscraper at night on a single rope, placing a glowing charge on a window ledge, her braid swinging. Seen from above, the drop to the street dizzying below. Background: the neon city far below in the rain, other charges blinking red down the building face. Palette: deep black, steel blue, blinking red lights, neon reflections. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 8 Authority · 2800 / 1800
 - At the end of your turn: give all enemy characters STOKE 200.
 - When an enemy is KO'd: 400 Morale damage.
 
-> Using the same artstyle as the reference image, draw Fuse at level 3, the same woman as the attached Fuse pictures, now the Arsonists' master of demolition: standing calm and unhurried as a skyscraper collapses in flames behind her, coat billowing in the blast wind, detonator dropped at her feet, her braid singed, a faint smile. Background: a downtown tower falling in a slow-motion wave of fire and smoke, violet neon signs shattering. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now the master of demolition: standing calmly on a rooftop with her back to the viewer, a detonator held loosely at her side, glasses reflecting the blast, as a whole row of towers across the river erupts in a chain of fireballs. Wide cinematic shot. Background: the skyline in flames reflected in the river, debris and smoke rolling up into the night. Palette: deep black, steel blue, huge white-orange explosions. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ---
 
@@ -144,56 +146,55 @@ The demolition expert who plans every fire like a heist.
 1 Authority · 500 / 300
 - When deployed: give one enemy character BURN 100.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Matchstick Molly", an Arsonists clan character: a small, sharp-eyed girl in a too-big yellow rain mac, selling matchboxes from a tray around her neck, one match lit between her fingers and a mischievous look. Background: a rainy street corner under a flickering violet neon sign, a trash can smouldering behind her. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Matchstick Molly": a small, sharp-eyed girl of about ten in a too-big yellow rain mac and wellies, a tray of matchboxes on a strap around her neck, holding one lit match up to the viewer with a sly smile, its light on her face. Close portrait at her eye level. Background: a rainy street corner outside a closed pawn shop, a neon sign reflected in the puddles. Palette: rain-blue night, bright yellow mac, a single warm match flame. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 7. Gasoline Gus (Common)
 2 Authority · 700 / 700
 - When this card is KO'd: give all enemy characters BURN 100.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Gasoline Gus", an Arsonists clan character: a big, bearded, cheerful man in overalls and a scorched turnout coat, carrying a red jerry can in each hand, fuel sloshing out, a cigarette dangling dangerously from his lip. Background: a junkyard at night stacked with leaking fuel drums, puddles of rainbow fuel in the rain. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Gasoline Gus": a big, jolly, bearded trucker in a sleeveless plaid shirt and a baseball cap, a red jerry can in each hand, fuel sloshing out of both, grinning with a toothpick in his mouth, his trucker belly and arms covered in faded tattoos. Full body, slightly low angle. Background: a truck stop at night, a big rig behind him with its headlights on, rain, a trail of spilled fuel leading off-frame. Palette: night blue and black, plaid red, headlight white, fuel rainbow sheen. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 8. Soot (Common)
 2 Authority · 900 / 200
 - When deployed, if an enemy has a status: draw 1 card.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Soot", an Arsonists clan character: a nimble chimney-sweep thief covered head to toe in black soot, a top hat, a sweep's brush over one shoulder and a stolen wallet in his teeth, crouched on a smoking chimney. Background: rooftops at night with chimneys pouring orange-lit smoke, the neon city below in the rain. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Soot": a nimble young thief covered head to toe in black soot, a battered top hat and a long scarf, a chimney-sweep brush over one shoulder and a stolen pearl necklace in his teeth, crouched on the lip of a smoking chimney, ready to drop in. Seen from the rooftop beside him. Background: a sea of rooftops and chimneys under a full moon, smoke drifting across it. Palette: inky black and soot grey, moonlit silver, one warm window glow. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 9. The Pyre Twins (Uncommon)
 3 Authority · 1300 / 900
 - When deployed: give one enemy character STOKE 200.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "The Pyre Twins", an Arsonists clan pair: identical twin sisters back to back in matching scorched turnout coats, one with a lit road flare, one with a Molotov, mirror-image grins, braids tipped with embers. Background: a burning carnival at night, a Ferris wheel silhouetted against the flames, rain falling. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, both characters centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan pair for the card "The Pyre Twins": identical twin sisters in matching striped circus leotards and torn fishnets, one breathing a huge fireball, the other spinning two flaming poi in circles of fire, back to back, mirror-image poses. Background: a run-down travelling carnival at night, a half-lit Ferris wheel and striped tents, rain. Palette: black, circus red and white stripes, swirling orange fire trails. Square 1024x1024, both characters centred with space around the edges. No text, no border, no card frame.
 
 ### 10. Cinderblock (Common)
 3 Authority · 1100 / 1500
 - When this card is attacked: give the attacker BURN 200.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Cinderblock", an Arsonists clan character: a huge, slow, stone-faced bruiser built like a wall, in a scorched firefighter coat with yellow stripes stretched over his shoulders, carrying a cinderblock in one hand, embers smouldering in the cracks of the block. Background: a burned-out construction site at night, scaffolding glowing orange, rain streaking the floodlights. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Cinderblock": a huge, slow, stone-faced construction worker in a hi-vis vest and a dented hard hat, sleeves rolled over massive forearms, carrying two cinderblocks like weights, embers glowing in the cracks of the blocks. Straight-on, filling the frame like a wall. Background: a half-built tower at night, scaffolding and a crane, a burning brazier. Palette: concrete grey, hi-vis orange and yellow, ember glow. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 11. Tinder (Uncommon)
 3 Authority · 1400 / 600
-- When this card attacks: give one enemy character (you choose) BURN 200.
+- When this card attacks: give one enemy character BURN 200.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Tinder", an Arsonists clan character: a fast, lanky street runner in a cropped scorched turnout jacket and a bandana mask, leaping forward with a flaming road flare in each hand, a trail of fire behind her feet. Background: a narrow rainy alley lined with neon signs, a line of fire running along a gutter. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Tinder": a lanky parkour runner in a cropped windbreaker, cargo trousers and a bandana over her face, mid-leap between two rooftops, a trail of fire ignited from her heels across the gap. Dynamic side view mid-air. Background: a long drop to a neon alley below, rain streaks, a water tower. Palette: night blue and black, neon green and violet signs, a bright orange fire trail. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 12. Sparks McGee (Uncommon)
 4 Authority · 1600 / 700
 - When deployed: 200 Morale damage for each BURNING enemy (up to 3).
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Sparks McGee", an Arsonists clan character: a grinning electrician gone bad in a hard hat and scorched coveralls, tool belt of pliers and wire, holding two live cables that throw a shower of orange sparks onto a pool of fuel. Background: an electrical substation at night in the rain, transformers sparking, a fire starting below. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Sparks McGee": a grinning, wild-haired electrician in yellow rubber gloves, a utility belt of pliers and fuses and a hard hat with a headlamp, holding two live cables together so they throw a fountain of white-gold sparks. Low angle, sparks raining toward the viewer. Background: an electrical substation at night, transformers arcing, a fire starting in a puddle of oil. Palette: black, electric white-gold sparks, safety yellow, a hint of electric blue. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 13. Flashpoint (Rare)
 5 Authority · 1600 / 400
 - When deployed: KO one BURNING enemy character.
-- *Forge: When "When deployed" · Do "KO" · Who "one enemy" · Only "Only BURNING ones".*
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Flashpoint", an Arsonists clan character: a cold-eyed woman in a sleek black fire-resistant suit with orange piping, a gas mask with glowing orange lenses, stepping out of a sudden fireball that's just bloomed behind her, debris flying. Background: a nightclub doorway at night blasting out flames, neon violet sign shattering, rain on the street. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Flashpoint": an elegant, cold-eyed woman in a tailored black suit and leather gloves, slicked-back silver hair, snapping her fingers as a car behind her erupts into a fireball, not even looking back. Cinematic medium shot. Background: a valet parking ramp outside a high-end club at night, the blast throwing debris and light across the wet ground. Palette: black and silver, a blinding white-orange explosion, rich red club lights. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 14. Smokestack (Uncommon)
 5 Authority · 2200 / 800
 - At the end of your turn: give all enemy characters BURN 100.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Smokestack", an Arsonists clan character: a tall, gaunt man in a long scorched overcoat and a factory worker's respirator, a cast-iron stove-pipe hat billowing black smoke from the top, his footprints left smouldering. Background: a rusted industrial district at night, factory chimneys belching orange-lit smoke into a violet sky, rain. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Smokestack": a tall, gaunt old factory hand in a long patched overcoat and a soot-stained flat cap, a brass breathing tube over his mouth, a small stove-pipe chimney strapped to his back belching thick black smoke, footprints smouldering behind him. Walking toward the viewer through smoke. Background: a rusted industrial district at dawn, factory chimneys, a sickly orange sky. Palette: rust brown, soot black, dirty orange sky, brass. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ---
 
@@ -203,7 +204,7 @@ The demolition expert who plans every fire like a heist.
 7 Authority · 2700 / 2600 · sacrifices 1
 - When deployed: give all enemy characters STOKE 300.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "The Furnace", an Arsonists clan heavy: a hulking giant in riveted iron firefighter armour like a walking boiler, a furnace door in his chest glowing white-orange, steam venting from his shoulders, dragging a burning chain. Background: a steel foundry at night, molten metal pouring, sparks raining down. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan heavy for the card "The Furnace": a hulking giant whose whole torso is a riveted iron boiler with a grated furnace door in his chest blazing white-hot, a welder's mask for a face, steam venting from pipes on his shoulders, dragging a red-hot iron chain. Seen from very low, towering. Background: a steel foundry at night, molten metal pouring from a ladle, sparks raining down. Palette: black iron, white-hot core fading to orange, steam white. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ---
 
@@ -213,37 +214,37 @@ The demolition expert who plans every fire like a heist.
 1 Authority
 - Give one enemy character BURN 300.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Molotov", an Arsonists clan scene: a close-up of a gloved hand in a scorched turnout-coat sleeve hurling a lit Molotov cocktail, the rag blazing, the bottle mid-spin, fuel droplets catching fire. Background: a rainy street at night with a car's windshield about to be hit, neon violet signs reflected in puddles. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Molotov": a lit Molotov cocktail tumbling through the air in slow motion, the burning rag streaming fire, droplets of fuel catching light, just before it hits the windshield of a parked police car. No person in frame. Background: a rainy street at night, blue and red lights reflected in puddles. Palette: black, amber glass, bright orange flame, police blue and red. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ### 17. Fan the Flames (Hustle, Common) ×2
 2 Authority
 - Give all enemy characters STOKE 100.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Fan the Flames", an Arsonists clan scene: a hooded figure in a scorched turnout coat working a huge blacksmith's bellows at the base of a burning building, the fire roaring higher and brighter with every push, sparks swirling upward. Background: a tenement street at night, flames climbing the walls floor by floor, rain lit orange. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Fan the Flames": a giant industrial fan on a rooftop blasting wind into a burning building next door, the fire roaring sideways and climbing higher, a shadowy figure leaning on the fan's switch. Wide shot. Background: a tenement street at night, fire racing up the building floor by floor. Palette: black, sideways-blown orange fire, cool blue night. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ### 18. Gas Leak (Hustle, Rare) ×1
 3 Authority
 - 300 Morale damage for each BURNING enemy (up to 3).
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Gas Leak", an Arsonists clan scene: a hissing yellow gas main burst open in a flooded basement, a shimmering cloud of gas spreading toward a single dropped cigarette, the first spark just catching. Background: a dark tenement basement, pipes and water heaters, an orange glow about to explode. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Gas Leak": a hissing yellow gas main burst open in a dark basement, a shimmering cloud of gas spreading across the ceiling toward a dropped cigarette on the floor, the very first spark catching. No person in frame. Background: a cramped tenement basement of pipes, boilers and old crates. Palette: sickly green-yellow gas shimmer, darkness, one tiny orange spark. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ### 19. Burn Notice (Hustle, Uncommon) ×1
 2 Authority
 - Draw 1 card for each BURNING enemy (up to 2).
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Burn Notice", an Arsonists clan scene: a wanted poster nailed to a brick wall, its edges curling and burning, a silhouette photo on it half turned to ash, a lighter held up to its corner by a sooty hand. Background: a rainy alley at night, more posters along the wall, orange firelight. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame. (No readable words on the poster.)
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Burn Notice": a wall of wanted posters in an alley, one in the middle curling and burning from the corner, the photo of a face half turned to ash, embers lifting off it. No readable words on the posters. Close-up. Background: wet brick, a drainpipe, rain. Palette: brick red and black, warm burning paper, grey ash. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ### 20. Backdraft (Ambush, Common) ×2
 2 Authority
 - When an enemy attacks one of your characters: give the attacker STOKE 300.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Backdraft", an Arsonists clan scene: a heavy steel door kicked open by an intruder and a blast of fire exploding out of the room straight at him, the fireball curling around the door frame, his silhouette thrown back. Background: a burning warehouse corridor at night, smoke pouring along the ceiling. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Backdraft": a thug in a leather jacket kicking open a steel door and a huge blast of fire exploding out of the room straight into him, throwing him backwards, the fireball curling around the door frame. Side view. Background: a dark warehouse corridor, smoke pouring along the ceiling. Palette: black, explosive orange-white fireball, the thug's silhouette. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ### 21. Up in Smoke (Ambush, Uncommon) ×1
 3 Authority
 - When an enemy attacks one of your characters: STUN the attacker and give it BURN 200.
 
-> Using the same artstyle as the reference image, draw a new illustration for the Alleyway Brawlers card "Up in Smoke", an Arsonists clan scene: a smoke grenade bursting in a dark alley, thick orange-lit smoke swallowing a charging thug who stumbles blind and coughing, embers glowing inside the cloud. Background: a narrow alley at night lined with neon signs dimmed by the smoke, rain falling through it. Palette: deep black and charcoal, blazing orange and ember-red fire, molten-yellow highlights, drifting sparks and smoke. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new illustration for the Arsonists clan card "Up in Smoke": a gang of thugs charging down an alley, swallowed by a sudden wall of thick grey smoke, one stumbling and coughing with his arm over his face, embers glowing inside the cloud. Background: a narrow neon alley half-hidden by the smoke, rain falling through it. Palette: smoke grey, dim violet neon, small ember glows. Square 1024x1024, centred with space around the edges. No text, no border, no card frame.
 
 ---
 
@@ -274,5 +275,5 @@ The demolition expert who plans every fire like a heist.
 | Up in Smoke | Ambush | Uncommon | 1 | 3 | |
 
 Deck: 10 Striver LV1s + 19 characters + 1 Heavy = 30 characters, and 10 Hustles/Ambushes. Hideout:
-the LV2s and LV3s (3 each). Once they're in the Forge, `shared/clans.js` can get a hand-picked
-Arsonists starter like the other clans (until then the game builds one from the clan's cards).
+the LV2s and LV3s (3 each). Once their art is in, `shared/clans.js` gets a hand-picked Arsonists
+starter like the other clans (until then the game builds one from the clan's cards).
