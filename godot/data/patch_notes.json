@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.108",
+        "notes": [
+            "Cards can now target several enemies or allies of your choice (\"up to 2 enemy characters\"): you pick them one after another, and can stop early."
+        ]
+    },
+    {
         "version": "0.9.107",
         "notes": [
             "New rules for an upcoming clan: STOKE, a BURN that builds on a burn already there, and effects that count or only hit BURNING characters."

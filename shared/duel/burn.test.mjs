@@ -88,4 +88,23 @@ const pick = st._asks.find(a => a.side === 'player');   // (asked even with one 
 st._runAnswer(() => pick.cb(pick.options[0].id));
 assert.deepEqual(st.cardAt('opponent', 0).burn, { amt: 200, left: 3 }, 'Dormant: BURN an enemy');
 
+// "Choose 2": two different enemies, one after the other; SKIP stops
+st = board([], [{}, {}, {}]);
+st._doFx('player', -1, src, { do: 'burn', target: 'enemy', amount: 200, count: 2 });
+let a1 = st._asks.find(a => a.side === 'player');
+assert.ok(a1 && /1 of 2/.test(a1.prompt), 'asked for the first of 2');
+const first = a1.options[0];
+st._runAnswer(() => a1.cb(first.id));
+let a2 = st._asks.find(a => a.side === 'player' && a !== a1);
+assert.ok(a2 && /2 of 2/.test(a2.prompt), 'then the second');
+assert.ok(!a2.options.some(o => o.slot === first.slot), 'not the same one again');
+st._runAnswer(() => a2.cb(a2.options[0].id));
+assert.equal([0, 1, 2].filter(i => st.cardAt('opponent', i).burn).length, 2, 'two enemies burning');
+st = board([], [{}, {}, {}]);
+st._doFx('player', -1, src, { do: 'burn', target: 'enemy', amount: 200, count: 2 });
+a1 = st._asks.find(a => a.side === 'player');
+st._runAnswer(() => a1.cb('skip'));
+assert.equal([0, 1, 2].filter(i => st.cardAt('opponent', i).burn).length, 0, 'SKIP: none');
+assert.ok(!st._asks.some(a => a.side === 'player' && a !== a1), 'and nothing more asked');
+
 console.log('burn: ok');

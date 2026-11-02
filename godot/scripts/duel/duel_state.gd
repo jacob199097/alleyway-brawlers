@@ -3284,6 +3284,20 @@ func _status_ticks(side: String) -> void:
 
 ## Apply a targeted effect. \`pool_kind\`: any | standing | downed | attackers (in ATK, standing).
 ## \`fn\` changes one character and returns its callout; \`all_text\` has a %s for "N enemies" etc.
+## "Choose N" (count): up to N different ones, one at a time; each happens before the next is asked,
+## and SKIP stops (same as _fxPick in DuelState.js).
+func _fx_pick(side: String, slot: int, c: Dictionary, target: String, what: String, fn: Callable, entries: Array,
+		on: String, many: int, done: Array) -> void:
+	var rest := entries.filter(func(x): return not done.any(func(d): return is_same(d, x.card)) and is_same(card_at(x.side, x.slot), x.card))
+	if rest.is_empty() or done.size() >= many or winner != "":
+		return
+	var cb := func(x: Dictionary):
+		_effect(side, c, fn.call(x), slot)
+		_fx_pick(side, slot, c, target, what, fn, entries, on, many, done + [x.card])
+	_ask_target(side, "fx", "%s: choose %s %d of %d (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", done.size() + 1, many, what], c,
+		rest, on, cb, true)
+
+
 func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String,
 		what: String, fn: Callable, all_text: String) -> void:
 	var target := str(e.get("target", "self"))
@@ -3304,9 +3318,13 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		var on := side
 		if target != "ally":
 			on = foes_of(side)[0] if not foes_of(side).is_empty() else side
-		var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
-		_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
-			entries, on, cb, true)
+		var many := maxi(1, int(e.get("count", 1)))
+		if many > 1:
+			_fx_pick(side, slot, c, target, what, fn, entries, on, many, [])
+		else:
+			var cb := func(x: Dictionary): _effect(side, c, fn.call(x), slot)
+			_ask_target(side, "fx", "%s: choose %s (%s)" % [c.name, "an ally" if target == "ally" else "an enemy", what], c,
+				entries, on, cb, true)
 	elif target == "allies" or target == "enemies" or target == "all":
 		var count := 0
 		for x in entries:   # (one a chained trigger already removed is skipped)

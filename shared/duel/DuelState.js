@@ -2912,7 +2912,9 @@ export class DuelState {
                 return va !== vb ? vb - va : (this.seats.indexOf(a.side) - this.seats.indexOf(b.side)) || a.slot - b.slot;
             });
             const on = target === 'ally' ? side : (this.foesOf(side)[0] ?? side);
-            this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
+            const many = Math.max(1, toInt(e.count ?? 1));
+            if (many > 1) this._fxPick(side, slot, c, target, what, fn, entries, on, many, []);
+            else this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} (${what})`, c,
                 entries, on, (x) => this._effect(side, c, fn(x), slot), true);
         } else if (target === 'allies' || target === 'enemies' || target === 'all') {
             let count = 0;
@@ -2929,6 +2931,18 @@ export class DuelState {
         } else {
             for (const x of entries) this._effect(side, c, fn(x), slot);
         }
+    }
+
+    /** "Choose N" (count): up to N different ones, one at a time; each happens before the next is
+     *  asked, and SKIP stops (same as _fx_pick in duel_state.gd). */
+    _fxPick(side, slot, c, target, what, fn, entries, on, many, done) {
+        const rest = entries.filter(x => !done.includes(x.card) && this.cardAt(x.side, x.slot) === x.card);
+        if (!rest.length || done.length >= many || this.winner !== '') return;
+        this._askTarget(side, 'fx', `${c.name}: choose ${target === 'ally' ? 'an ally' : 'an enemy'} ${done.length + 1} of ${many} (${what})`, c,
+            rest, on, (x) => {
+                this._effect(side, c, fn(x), slot);
+                this._fxPick(side, slot, c, target, what, fn, entries, on, many, [...done, x.card]);
+            }, true);
     }
 
     // The characters effect e of card c would affect, before choosing one (same as _fx_targets)
