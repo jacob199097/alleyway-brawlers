@@ -5,6 +5,7 @@ extends RefCounted
 const LIST := {
 	"POISON": [Color("6ee26a"), "POISON X: at the start of its owner's next 3 turns, it loses X ATK. The loss lasts until it leaves the field."],
 	"BURN": [Color("ff6a4a"), "BURN X: at the start of its owner's next 3 turns, its owner loses X Morale."],
+	"STOKE": [Color("ff8a3a"), "STOKE X (Arsonists): BURN X. On a character that's already BURNING, its burn grows by X instead, and lasts another 3 turns."],
 	"BLEED": [Color("ff4a6e"), "BLEED X: after every brawl it is in, it loses X ATK and X DEF until it leaves the field."],
 	"SHOCK": [Color("4fc3ff"), "SHOCK X: if X is at least its DEF, it goes Down. Otherwise it loses X DEF this turn."],
 	"FREEZE": [Color("a6ecff"), "FREEZE: it switches to DEF and can't attack or change position until the end of its owner's next turn."],

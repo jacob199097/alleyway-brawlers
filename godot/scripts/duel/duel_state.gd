@@ -2385,6 +2385,8 @@ func _per_count(side: String, slot: int, e: Dictionary) -> int:
 			n = _hustles_this_turn(side)
 		"statused":
 			n = _enemy_chars(side).filter(func(x): return _afflicted(x.card)).size()
+		"burning":   # BURNING enemies
+			n = _enemy_chars(side).filter(func(x): return x.card.has("burn")).size()
 		"lost_1000":
 			n = maxi(0, int(s.get("max_morale", START_MORALE)) - int(s.morale)) / 1000
 		_:
@@ -3164,6 +3166,16 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				return "%s is BURNING: its owner loses %d Morale each turn" % [x.card.name, n]
 			_fx_apply(side, slot, c, e, vs, "any", kind.to_upper(), fn,
 				"%s %s %%s" % [c.name, "poisons" if kind == "poison" else "burns"])
+		"stoke":   # STOKE (Arsonists): BURN that builds: on a character already burning it adds to the burn
+			var fn := func(x: Dictionary) -> String:
+				var burning: bool = x.card.has("burn")
+				var amt := int(x.card.burn.get("amt", 0)) + n if burning else n
+				x.card["burn"] = {"amt": amt, "left": STATUS_TICKS}
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "burn", "card": x.card.duplicate(true)})
+				if burning:
+					return "%s STOKES the fire on %s: its owner loses %d Morale each turn" % [c.name, x.card.name, amt]
+				return "%s is BURNING: its owner loses %d Morale each turn" % [x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", "STOKE", fn, "%s stokes %%s" % c.name)
 		"bleed":
 			var fn := func(x: Dictionary) -> String:
 				x.card.bleed = maxi(n, int(x.card.get("bleed", 0)))
@@ -3327,6 +3339,8 @@ func _only_fits(c: Dictionary, only: String) -> bool:
 			return c.downed
 		"standing":
 			return not c.downed
+		"burning":
+			return c.has("burn")
 	return true
 
 
@@ -3428,10 +3442,11 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	entries = entries.filter(func(x): return pick.call(x) and not (x.card.get("cardType") == "leader" and what_ in ["bounce", "topdeck", "exile"]) \
 		and (what_ == "cleanse" or not in_stasis(x.card)))
 	# immune: to the statuses it lists (none listed: all of them)
+	var status := "burn" if what_ == "stoke" else what_   # (STOKE is BURN: immunity to BURN covers it)
 	var covers := func(im: Dictionary) -> bool:
 		var list = im.get("statuses")
-		return not (list is Array) or list.is_empty() or what_ in list
-	if what_ in IMMUNE_TO:
+		return not (list is Array) or list.is_empty() or status in list
+	if status in IMMUNE_TO:
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune", covers).is_empty())
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
@@ -3463,6 +3478,10 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 			if c.has("burn"):
 				return int(c.get("defense", 0)) - 50000
 			return (0 if c.downed else 10000) + int(c.get("defense", 0))   # one that will stay around
+		"stoke":   # the hottest fire first: it builds on what's there
+			if c.has("burn"):
+				return 100000 + int(c.burn.get("amt", 0)) + int(c.get("defense", 0))
+			return (0 if c.downed else 10000) + int(c.get("defense", 0))
 		"freeze", "stun":
 			var key := "freeze_until" if str(e.do) == "freeze" else "stun_until"
 			if int(c.get(key, 0)) >= turn:

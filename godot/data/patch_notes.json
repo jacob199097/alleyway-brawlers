@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.107",
+        "notes": [
+            "New rules for an upcoming clan: STOKE, a BURN that builds on a burn already there, and effects that count or only hit BURNING characters."
+        ]
+    },
+    {
         "version": "0.9.106",
         "notes": [
             "Every clan now has its own K.O.: Militia cards are blown up, leaving a smoking scorch mark; Wildcard cards burst into a hand of playing cards that scatters; Underworld cards are pulled down into a violet rift."

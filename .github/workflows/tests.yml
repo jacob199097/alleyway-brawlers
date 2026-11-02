@@ -46,6 +46,8 @@ jobs:
         run: node shared/duel/luck.test.mjs
       - name: Loot, top of the deck, exile, swap, BOUNTY, LIFESTEAL
         run: node shared/duel/blocks.test.mjs
+      - name: Burn (STOKE, for each / only BURNING, a Dormant leader's burn)
+        run: node shared/duel/burn.test.mjs
       - name: CHARM, UNDEAD, promoting a Striver, tribute damage, flipping Continuous Ambushes
         run: node shared/duel/charm.test.mjs
       - name: Underworld effects (give UNDEAD, raise from the enemy Gutter, exile Gutter cards, fill your own Gutter)

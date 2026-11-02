@@ -2087,6 +2087,7 @@ export class DuelState {
             case 'roll': n = Math.max(1, toInt(this._roll)); break;   // the die just rolled (_luckGate)
             case 'hustles_turn': n = this._hustlesThisTurn(side); break;   // Hustles you've played this turn
             case 'statused': n = this._enemyChars(side).filter(x => this._afflicted(x.card)).length; break;
+            case 'burning': n = this._enemyChars(side).filter(x => x.card.burn !== undefined).length; break;   // BURNING enemies
             case 'lost_1000': n = Math.floor(Math.max(0, toInt(s.max_morale ?? START_MORALE) - s.morale) / 1000); break;
             default: return 1;
         }
@@ -2785,6 +2786,16 @@ export class DuelState {
                 }, `${c.name} ${kind === 'poison' ? 'poisons' : 'burns'} %s`);
                 break;
             }
+            case 'stoke':   // STOKE (Arsonists): BURN that builds: on a character already burning it adds to the burn
+                this._fxApply(side, slot, c, e, vs, 'any', 'STOKE', (x) => {
+                    const cur = x.card.burn;
+                    const amt = cur !== undefined ? toInt(cur.amt ?? 0) + n : n;
+                    x.card.burn = { amt, left: STATUS_TICKS };
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'burn', card: clone(x.card) });
+                    return cur !== undefined ? `${c.name} STOKES the fire on ${x.card.name}: its owner loses ${amt} Morale each turn`
+                        : `${x.card.name} is BURNING: its owner loses ${n} Morale each turn`;
+                }, `${c.name} stokes %s`);
+                break;
             case 'bleed':
                 this._fxApply(side, slot, c, e, vs, 'any', 'BLEED', (x) => {
                     x.card.bleed = Math.max(n, toInt(x.card.bleed ?? 0));
@@ -2929,6 +2940,7 @@ export class DuelState {
             case 'atk': return c.position === 'atk' && !c.downed;
             case 'downed': return !!c.downed;
             case 'standing': return !c.downed;
+            case 'burning': return c.burn !== undefined;
         }
         return true;
     }
@@ -3019,8 +3031,9 @@ export class DuelState {
         entries = entries.filter(x => pick(x) && !(x.card.cardType === 'leader' && ['bounce', 'topdeck', 'exile'].includes(what_))
             && (what_ === 'cleanse' || !this.inStasis(x.card)));
         // immune: to the statuses it lists (none listed: all of them)
-        const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(what_);
-        if (IMMUNE_TO.includes(what_)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
+        const status = what_ === 'stoke' ? 'burn' : what_;   // (STOKE is BURN: immunity to BURN covers it)
+        const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(status);
+        if (IMMUNE_TO.includes(status)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
         if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._passive(x.side, x.slot, x.card, 'untargetable'));
         return entries;
@@ -3044,6 +3057,9 @@ export class DuelState {
                 break;
             case 'burn':
                 if (c.burn !== undefined) return toInt(c.defense ?? 0) - 50000;
+                return (c.downed ? 0 : 10000) + toInt(c.defense ?? 0);
+            case 'stoke':   // the hottest fire first: it builds on what's there
+                if (c.burn !== undefined) return 100000 + toInt(c.burn.amt ?? 0) + toInt(c.defense ?? 0);
                 return (c.downed ? 0 : 10000) + toInt(c.defense ?? 0);
             case 'freeze': case 'stun': {
                 const key = e.do === 'freeze' ? 'freeze_until' : 'stun_until';
