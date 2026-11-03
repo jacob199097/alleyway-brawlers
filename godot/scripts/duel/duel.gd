@@ -77,9 +77,12 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## ko "blast": blown up, the card thrown spinning and blackened, a smoking scorch mark left (Militia);
 ## ko "fold": the card bursts into a hand of playing cards that fan out and scatter (Wildcard);
 ## ko "rift": the ground cracks open under the card and it's pulled down into it, souls escaping (Underworld).
+## Neutral cards (any deck) fight like the street: summon "spotlight" (a streetlamp flickers on and the card
+## drops into its light), attack "brawl" (a charging haymaker, a comic-book POW! on contact), ko "knockout"
+## (K.O.!, sent spinning, cartoon stars circling where it stood).
 const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop", "ko": "blast"},
 	"wildcard": {"attack": "cards", "summon": "deal", "ko": "fold"}, "underworld": {"attack": "skulls", "summon": "grave", "ko": "rift"},
-	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}}
+	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}, "neutral": {"attack": "brawl", "summon": "spotlight", "ko": "knockout"}}
 const FX_RIFT := preload("res://shaders/fx_rift.gdshader")
 const FX_FIRE := preload("res://shaders/fx_fire.gdshader")
 const FX_COMET := preload("res://shaders/fx_comet.gdshader")
@@ -2233,6 +2236,8 @@ func _ev_summon(ev: Dictionary) -> void:
 			await _deal_in(v, target, heavy)
 		elif _clan_style(c, "summon") == "firewall":
 			await _firewall_in(v, target, heavy)
+		elif _clan_style(c, "summon") == "spotlight":
+			await _spotlight_in(v, target, heavy)
 		else:
 			var rise := Vector2(0, -70 if side == "player" else 70)
 			await v.move_to(target + rise, 1.75, v.home_rot, 0.3 if heavy else 0.24).finished
@@ -2465,6 +2470,8 @@ func _ev_clash(ev: Dictionary) -> void:
 		await _skull_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "molotov":
 		await _molotov_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "brawl":
+		await _brawl_strike(a, d, tpos, dir, big, direct)
 	else:
 		# Wind-up: rear back toward the camera while the view leans in
 		Sfx.play("riser", 1.0 if big else 1.15, -4.0)
@@ -3519,6 +3526,268 @@ func _blast_ko(v: CardView) -> void:
 	await _wait(0.2)
 
 
+## Neutral summon: a streetlamp flickers on over the spot, the card drops into its light and lands in
+## a puff of alley dust, and the lamp dims again.
+func _spotlight_in(v: CardView, target: Vector2, heavy: bool) -> void:
+	var warm := Color(1.0, 0.86, 0.55)
+	var k := 1.25 if heavy else 1.0
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	v.modulate.a = 0.0
+	var size := CardView.SIZE * v.board_scale
+	var top := target + Vector2(0, -size.y * 1.3 * k)
+	var foot_y := target.y + size.y * 0.55
+	var half_top := 24.0 * k
+	var half_foot := size.x * 0.85 * k
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var cone := Polygon2D.new()
+	cone.polygon = PackedVector2Array([top + Vector2(-half_top, 0), top + Vector2(half_top, 0),
+		Vector2(target.x + half_foot, foot_y), Vector2(target.x - half_foot, foot_y)])
+	cone.vertex_colors = PackedColorArray([Color(warm, 0.5), Color(warm, 0.5), Color(warm, 0.0), Color(warm, 0.0)])
+	cone.material = add
+	cone.z_index = v.z_index + 1
+	cone.modulate.a = 0.0
+	cards_layer.add_child(cone)
+	var pool := Sprite2D.new()   # (the pool of light on the ground)
+	pool.texture = ArenaLife._soft_dot()
+	pool.position = Vector2(target.x, foot_y - size.y * 0.12)
+	pool.scale = Vector2(half_foot * 2.0, half_foot * 0.7) / 64.0
+	pool.modulate = Color(warm, 0.0)
+	pool.material = add
+	pool.z_index = 5
+	cards_layer.add_child(pool)
+	# It stutters on: a buzz, two flickers, then steady
+	Sfx.play("neon_buzz", 1.0, -6.0)
+	var on := create_tween()
+	for a in [0.9, 0.1, 0.7, 0.0, 1.0]:
+		on.tween_property(cone, "modulate:a", a, 0.05)
+		on.parallel().tween_property(pool, "modulate:a", a * 0.55, 0.05)
+		on.tween_interval(0.04)
+	await on.finished
+	# The card drops into the light from above
+	v.position = target + Vector2(0, -size.y * 0.9)
+	v.rotation = v.home_rot + randf_range(-0.12, 0.12)
+	v.scale = Vector2.ONE * 1.12 * v.board_scale
+	Sfx.play("whoosh", 1.2, -4.0)
+	var drop := create_tween().set_parallel()
+	drop.tween_property(v, "modulate:a", 1.0, 0.08)
+	drop.tween_property(v, "position", target, 0.2 if heavy else 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	drop.tween_property(v, "rotation", v.home_rot, 0.2)
+	drop.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.2)
+	await drop.finished
+	cone.z_index = v.z_index - 1
+	Sfx.play("slam", 1.0 if heavy else 1.15)
+	v.kick(Vector2(0, 1), 14.0)
+	var dust := Color(0.42, 0.4, 0.37)
+	_smoke_puff(Vector2(target.x - size.x * 0.45, foot_y - 20.0), size.x * 1.1 * k, dust)
+	_smoke_puff(Vector2(target.x + size.x * 0.45, foot_y - 20.0), size.x * 1.1 * k, dust)
+	_burst(Vector2(target.x, foot_y - 10.0), Color(0.62, 0.58, 0.5), 14 if heavy else 9, 260.0, 0.5, 600.0)   # (grit)
+	_ring(target, warm, 1.4 if heavy else 1.1)
+	await _impact(target, heavy)
+	var off := create_tween().set_parallel()
+	off.tween_property(cone, "modulate:a", 0.0, 0.45)
+	off.tween_property(pool, "modulate:a", 0.0, 0.45)
+	off.chain().tween_callback(cone.queue_free)
+	off.chain().tween_callback(pool.queue_free)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Neutral attack: a street fight. The card coils back and charges in for a haymaker behind a blur of
+## speed lines; on contact a comic-book word bursts out (POW! WHAM! CRACK!), action lines all round,
+## and the target reels back.
+func _brawl_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	Sfx.play("riser", 1.1 if big else 1.25, -6.0)
+	_cam_focus(a.home.lerp(tpos, 0.5), 1.08 if big else 1.04, 0.3)
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 70.0, 0.26)
+	t.tween_property(a, "rotation", a.home_rot - 0.22, 0.26)
+	t.tween_property(a, "scale", Vector2.ONE * 1.28 * a.board_scale, 0.26)
+	await t.finished
+	a.kick(dir.orthogonal(), 6.0)
+	await _wait(0.06)
+	_clear_attack_line()
+	# The charge
+	Sfx.play("whoosh", 1.15)
+	_speed_lines(a.position, dir, 10 if big else 7)
+	t = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	t.tween_property(a, "position", a.home.lerp(tpos, 0.82), 0.1)
+	t.tween_property(a, "rotation", a.home_rot + 0.16, 0.1)
+	t.tween_property(a, "scale", Vector2.ONE * 1.1 * a.board_scale, 0.1)
+	await t.finished
+	# Contact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("slam", 0.9 if big else 1.05)
+	Sfx.play("hit", 0.85 if direct else 1.0)
+	if big:
+		Sfx.play("boom", 1.1, -3.0)
+	shake(24.0 if big else 13.0)
+	_shockwave(tpos, 0.9 if big else 0.5)
+	_post_pulse("aberration", 12.0 if big else 5.0, 0.35)
+	var word: String = (["KA-POW!", "WHAM!", "CRUNCH!"] if big else ["POW!", "BAM!", "WHACK!", "CRACK!", "THWACK!"]).pick_random()
+	_comic_burst(tpos - dir * 20.0, word, big)
+	_action_lines(tpos, 14 if big else 10)
+	_burst(tpos, Color(1, 0.95, 0.75), 18 if big else 12, 480, 0.4)
+	a.kick(-dir, 16.0)
+	if d:
+		d.flash()
+		d.kick(dir, 36.0 if big else 26.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (46.0 if big else 26.0), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.parallel().tween_property(d, "rotation", d.home_rot + signf(dir.x + 0.01) * 0.18, 0.07)
+		push.tween_property(d, "position", d.home, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		push.parallel().tween_property(d, "rotation", d.home_rot, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.22).set_trans(Tween.TRANS_SINE)
+
+
+## Neutral KO: knocked out cold. K.O.! bursts out, the card is sent spinning back toward its own side
+## and drops, cartoon stars circle where it stood, and a puff of alley dust.
+func _knockout_ko(v: CardView) -> void:
+	var at := v.position
+	var size := CardView.SIZE * v.scale
+	Sfx.play("ko", 1.0)
+	Sfx.play("slam", 0.8)
+	shake(14)
+	_post_pulse("aberration", 7.0, 0.35)
+	_comic_burst(at + Vector2(0, -size.y * 0.2), "K.O.!", true)
+	_dizzy_stars(at + Vector2(0, -size.y * 0.42), size.x * 0.45)
+	var away := 1.0 if at.y > DIVIDER_Y else -1.0   # (back toward its owner's side)
+	var side := 1.0 if randf() < 0.5 else -1.0
+	var t := create_tween().set_parallel()
+	t.tween_property(v, "position", at + Vector2(side * 60.0, away * 110.0), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(v, "rotation", v.rotation + side * 3.4, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(v, "scale", v.scale * 0.72, 0.5)
+	t.tween_property(v, "modulate", Color(0.45, 0.43, 0.42, 1.0), 0.3)
+	t.tween_property(v, "modulate:a", 0.0, 0.3).set_delay(0.45)
+	await _wait(0.42)
+	_smoke_puff(at + Vector2(side * 60.0, away * 110.0 + size.y * 0.2), size.x * 1.5, Color(0.42, 0.4, 0.37))
+	await t.finished
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.25)
+
+
+## A comic-book word in a jagged yellow starburst with a black outline: it pops in big, wobbles, and fades.
+func _comic_burst(at: Vector2, word: String, big: bool) -> void:
+	var b := Node2D.new()
+	b.position = at
+	b.rotation = randf_range(-0.22, 0.22)
+	b.z_index = 82
+	fx.add_child(b)
+	var r := 92.0 if big else 72.0
+	var pts := PackedVector2Array()
+	for i in 24:   # (spikes of different lengths)
+		var ang := TAU * i / 24.0
+		pts.append(Vector2.from_angle(ang) * r * (1.0 if i % 2 == 0 else randf_range(0.55, 0.7)) * Vector2(1.45, 1.0))
+	var star := Polygon2D.new()
+	star.polygon = pts
+	star.color = Color(1.0, 0.86, 0.15)
+	b.add_child(star)
+	var inner := Polygon2D.new()
+	var small := PackedVector2Array()
+	for p in pts:
+		small.append(p * 0.72)
+	inner.polygon = small
+	inner.color = Color(1.0, 0.97, 0.75)
+	b.add_child(inner)
+	var edge := Line2D.new()
+	edge.points = pts
+	edge.closed = true
+	edge.width = 6.0
+	edge.default_color = Color(0.05, 0.04, 0.04)
+	b.add_child(edge)
+	var l := _label(48 if big else 38, Color(0.92, 0.12, 0.1), true)
+	l.label_settings.outline_size = 10
+	l.label_settings.outline_color = Color(0.05, 0.04, 0.04)
+	l.text = word
+	l.size = Vector2(320, 80)
+	l.position = -l.size / 2.0
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_child(l)
+	b.scale = Vector2.ONE * 0.2
+	var t := b.create_tween()
+	t.tween_property(b, "scale", Vector2.ONE * 1.12, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(b, "scale", Vector2.ONE, 0.12)
+	t.parallel().tween_property(b, "rotation", b.rotation + randf_range(-0.08, 0.08), 0.12)
+	t.tween_interval(0.35)
+	t.tween_property(b, "modulate:a", 0.0, 0.25)
+	t.parallel().tween_property(b, "scale", Vector2.ONE * 1.15, 0.25)
+	t.tween_callback(b.queue_free)
+
+
+## Comic action lines: short black-edged white strokes flying out from a hit.
+func _action_lines(at: Vector2, n: int) -> void:
+	for i in n:
+		var ang := TAU * i / n + randf_range(-0.15, 0.15)
+		var dirv := Vector2.from_angle(ang)
+		var line := Line2D.new()
+		line.width = randf_range(4.0, 7.0)
+		line.default_color = Color(1, 1, 1, 0.95)
+		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		var from := at + dirv * randf_range(60.0, 80.0)
+		line.points = PackedVector2Array([from, from + dirv * 10.0])
+		line.z_index = 81
+		fx.add_child(line)
+		var len := randf_range(40.0, 70.0)
+		var t := line.create_tween().set_parallel()
+		t.tween_method(func(k: float): line.points = PackedVector2Array([from + dirv * len * k, from + dirv * (10.0 + len * 1.6 * k)]), 0.0, 1.0, 0.22).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		t.tween_property(line, "modulate:a", 0.0, 0.2).set_delay(0.12)
+		t.chain().tween_callback(line.queue_free)
+
+
+## Speed lines streaking back from a charging card.
+func _speed_lines(from: Vector2, dir: Vector2, n: int) -> void:
+	var side_v := dir.orthogonal()
+	for i in n:
+		var line := Line2D.new()
+		line.width = randf_range(2.0, 4.0)
+		line.default_color = Color(1, 1, 1, 0.7)
+		var off := side_v * randf_range(-70.0, 70.0)
+		var a := from + off - dir * randf_range(20.0, 60.0)
+		line.points = PackedVector2Array([a, a - dir * randf_range(90.0, 160.0)])
+		line.z_index = 71
+		fx.add_child(line)
+		var t := line.create_tween().set_parallel()
+		t.tween_property(line, "position", dir * 120.0, 0.18)
+		t.tween_property(line, "modulate:a", 0.0, 0.18).set_delay(0.04)
+		t.chain().tween_callback(line.queue_free)
+
+
+## Little cartoon stars circling over a knocked-out card.
+func _dizzy_stars(center: Vector2, radius: float) -> void:
+	var n := 4
+	var stars: Array = []
+	for i in n:
+		var l := _label(34, Color(1.0, 0.9, 0.3), true)
+		l.text = "★"
+		l.size = Vector2(40, 40)
+		l.pivot_offset = l.size / 2.0
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.z_index = 83
+		fx.add_child(l)
+		stars.append(l)
+	var t := create_tween()
+	t.tween_method(func(k: float):
+		for i in stars.size():
+			var s: Label = stars[i]
+			var ang := k * TAU * 1.6 + TAU * i / stars.size()
+			s.position = center + Vector2(cos(ang) * radius, sin(ang) * radius * 0.35) - s.size / 2.0
+			s.rotation = k * 6.0
+			s.modulate.a = minf(1.0, k * 6.0) * (1.0 - smoothstep(0.7, 1.0, k)), 0.0, 1.0, 1.1)
+	t.tween_callback(func():
+		for s in stars:
+			s.queue_free())
+
+
 ## Wildcard KO: the card turns away and bursts into a hand of playing cards that fan out, then
 ## scatter, spinning, with a spill of chips.
 func _fold_ko(v: CardView) -> void:
@@ -4414,6 +4683,7 @@ func _ev_ko(ev: Dictionary) -> void:
 			"blast": await _blast_ko(v)
 			"fold": await _fold_ko(v)
 			"rift": await _rift_ko(v)
+			"knockout": await _knockout_ko(v)
 		return
 	v.flash()
 	Sfx.play("ko")

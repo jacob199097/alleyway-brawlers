@@ -1,7 +1,8 @@
 extends Screen
 ## Deck builder: your collection on the left, the deck on the right.
 ## Click (or drag) a card to add it, click (or drag back) a deck row to remove one copy.
-## 40 cards, max 3 copies, plus an optional leader. Right-click any card to zoom.
+## 40 cards, max 3 copies, plus an optional leader. A deck holds its leader's clan and Neutral cards only
+## (no leader: one clan and Neutral; the server checks it too, shared/clans.js deckClanProblem). Right-click any card to zoom.
 ## The Hideout (under the deck list) holds the higher levels of your Strivers: click a level 2+ card
 ## to put it there (up to 3 of each). A Striver only promotes to a level waiting in the Hideout.
 ## Filters: search, clan, type/role, keyword and Authority. AUTO-FILL tops the deck up to 40,
@@ -429,6 +430,9 @@ static func _hideout_level(item: Dictionary) -> int:
 
 
 func _add(item: Dictionary, from: Control = null) -> void:
+	if not _fits(item):
+		UI.toast(self, "Only %s and Neutral cards go in this deck" % _clan_name(_deck_clan()), UI.RED)
+		return
 	if _hideout_level(item) > 0:
 		_add_hideout(item, from)
 		return
@@ -580,13 +584,22 @@ func _auto_fill() -> void:
 	if _deck.size() >= DECK_MIN:
 		UI.toast(self, "The deck already has %d or more cards" % DECK_MIN, UI.GOLD)
 		return
+	var clan := _deck_clan()
+	if clan == "":   # (an empty deck with no leader: the clan you own the most cards of)
+		var owned := {}
+		for i in _inventory:
+			var k := _clan_of(i)
+			if k != "" and k != CardDB.NEUTRAL and i.get("card_type") != "leader":
+				owned[k] = int(owned.get(k, 0)) + int(i.get("quantity", 0))
+		for k in owned:
+			if clan == "" or owned[k] > owned[clan]:
+				clan = k
 	var pool := _inventory.filter(func(i):
 		return i.get("card_type") != "leader" and not CardDB.get_card(str(i.get("art_url", ""))).is_empty() \
-			and int(i.get("level", 1)) <= 1)
+			and int(i.get("level", 1)) <= 1 and _fits_clan(_clan_of(i), clan))
 	var units := pool.filter(func(i): return i.get("card_type") == "gang_member")
 	var effects := pool.filter(func(i): return i.get("card_type") != "gang_member")
-	# The leader's clan first (its cards work together), then the best value for their Authority
-	var clan := str(_leader.get("clan", "")) if _leader is Dictionary else ""
+	# The deck's clan first (its cards work together), then the best value for their Authority
 	var home := func(i) -> float: return 100000.0 if clan != "" and str(i.get("clan", "")) == clan else 0.0
 	var value := func(i): return home.call(i) + float(int(i.get("attack", 0)) + int(i.get("defense", 0))) / maxf(1.0, float(i.get("authority", 1))) + 300.0 * int(i.get("rarity", 1))
 	units.sort_custom(func(a, b): return value.call(a) > value.call(b))
@@ -703,12 +716,18 @@ func _load_code(code: String) -> void:
 			_leader = leader
 		else:
 			missing.append("%s (leader)" % CardDB.get_card(halves[0]).get("name", halves[0]))
+	var clan := _deck_clan()
+	var off := (_deck + _hideout).filter(func(e): return not _fits_clan(_clan_of(e), clan))
+	for e in off:
+		missing.append("%s (not %s or Neutral)" % [e.name, _clan_name(clan)])
+	_deck = _deck.filter(func(e): return _fits_clan(_clan_of(e), clan))
+	_hideout = _hideout.filter(func(e): return _fits_clan(_clan_of(e), clan))
 	_dirty = true
 	_render_all()
 	if missing.is_empty():
 		UI.toast(self, "Deck loaded (%d cards)" % _deck.size(), UI.GREEN)
 	else:
-		UI.dialog(self, "DECK LOADED — SOME CARDS MISSING", "You don't own enough of:\n" + "\n".join(missing) \
+		UI.dialog(self, "DECK LOADED — SOME CARDS MISSING", "Left out:\n" + "\n".join(missing) \
 			+ "\n\nThe deck has %d cards (it needs %d to %d). AUTO-FILL can top it up." % [_deck.size(), DECK_MIN, DECK_MAX], [["OK", func(): pass]])
 
 
@@ -812,6 +831,8 @@ func _exit() -> void:
 
 func _matches(item: Dictionary) -> bool:
 	if item.get("card_type") == "leader":
+		return false
+	if not _fits(item):   # (another clan's card: it can't go in this deck)
 		return false
 	if _faction != "all" and item.get("clan") != _faction:
 		return false
@@ -971,6 +992,10 @@ func _render_stats() -> void:
 	make.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(make)
 	var warn: Array = []
+	var clan := _deck_clan()
+	var strays := (_deck + _hideout).filter(func(e): return not _fits_clan(_clan_of(e), clan))
+	if not strays.is_empty():
+		warn.append("%d card(s) aren't %s or Neutral: a deck holds only its leader's clan and Neutral cards. Take them out to save it." % [strays.size(), _clan_name(clan)])
 	if _leader == null:
 		warn.append("No leader chosen.")
 	if kinds.gang_member < 20:
@@ -1062,16 +1087,57 @@ func _pick_leader() -> void:
 	for l in leaders:
 		var tile := CardTile.make(l, TILE)
 		tile.pressed.connect(func(_t):
-			_leader = l
-			_dirty = true
-			_render_leader()
-			dlg.queue_free())
+			dlg.queue_free()
+			var to := _clan_of(l)
+			var off := (_deck + _hideout).filter(func(e): return not _fits_clan(_clan_of(e), to))
+			var choose := func() -> void:
+				_leader = l
+				_deck = _deck.filter(func(e): return _fits_clan(_clan_of(e), to))
+				_hideout = _hideout.filter(func(e): return _fits_clan(_clan_of(e), to))
+				_dirty = true
+				_render_all()
+			if off.is_empty():
+				choose.call()
+			else:
+				UI.dialog(self, "CHANGE LEADER", "%s leads %s: a deck holds only %s and Neutral cards, so %d card(s) will come out of this deck." \
+					% [str(l.get("name", "")), _clan_name(to), _clan_name(to), off.size()], [["CHANGE", choose, UI.GOLD], ["CANCEL", func(): pass]]))
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
 		row.add_child(tile)
 	await get_tree().process_frame
 	var p: Control = dlg.get_child(0)
 	p.reset_size()
 	p.position = (Vector2(1920, 1080) - p.size) / 2
+
+
+## The deck's clan: its leader's, or with no leader the first card that isn't Neutral ("" = any).
+func _deck_clan() -> String:
+	if _leader is Dictionary:
+		return _clan_of(_leader)
+	for e in _deck + _hideout:
+		var k := _clan_of(e)
+		if k != "" and k != CardDB.NEUTRAL:
+			return k
+	return ""
+
+
+## Whether a card can go in this deck: Neutral, or the deck's clan.
+func _fits(item: Dictionary) -> bool:
+	return _fits_clan(_clan_of(item), _deck_clan())
+
+
+static func _fits_clan(card_clan: String, deck_clan: String) -> bool:
+	return card_clan == "" or card_clan == CardDB.NEUTRAL or deck_clan == "" or card_clan == deck_clan
+
+
+## A card's clan: an inventory row's, or the catalogue's for a deck entry.
+func _clan_of(e: Dictionary) -> String:
+	var k := str(e.get("clan", ""))
+	return k if k != "" else str(CardDB.get_card(str(e.get("art_url", ""))).get("clan", ""))
+
+
+func _clan_name(id: String) -> String:
+	var c := CardDB.clan(id)
+	return str(c.get("name", id.capitalize())) if not c.is_empty() else id.capitalize()
 
 
 func _deck_ok() -> bool:

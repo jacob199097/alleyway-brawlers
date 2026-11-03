@@ -36,6 +36,8 @@ jobs:
         run: node backend/socket/coop.test.cjs
       - name: MARKED (reveal) shows only the viewer their opponents' hidden cards
         run: node backend/socket/reveal.test.cjs
+      - name: Neutral cards and one clan per deck
+        run: node shared/clans.test.mjs
       - name: Card Forge passives do what their text says
         run: node shared/duel/passives.test.mjs
       - name: Free-for-all rules (3-4 players)

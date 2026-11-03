@@ -223,6 +223,16 @@ effects happen. An Ambush that changes the attacker's ATK changes it for that Br
 removes or puts the attacker in Stasis the attack stops. (The Forge hides the options that need a card on
 the field: "This card", Pierce, PROMOTE, Attack again, once per turn.)
 
+**Neutral cards** (clan `neutral`, made in Card Forge 2, prompts in `docs/NEUTRAL_PROMPTS.md`) go in any deck:
+a deck holds only its leader's clan and Neutral cards (no leader: one clan and Neutral). The server checks it
+when a deck is saved (`deckClanProblem` in `shared/clans.js`, used by `backend/routes/deck.js`) and the
+Deck Builder shows only the cards that fit. Neutral is not a clan anywhere else: no starter, clan pick,
+pack, deck box, mastery or turf map (`clanList` leaves it out). Each card in a clan's pack is a Neutral one
+about 1 time in 5 (`NEUTRAL_SHARE` in `backend/economy/packOpener.js`). Their card back is
+`assets/card_back_neutral.png` (also the back for anything with no clan), and their duel animations are
+"spotlight", "brawl" and "knockout" (`CLAN_STYLE` in `duel.gd`). `tools/balance.mjs` builds random
+decks from a clan's cards and Neutral ones, and `--extra <card_catalog.json>` tries cards before importing.
+
 **Clans** need no code: every card carries its clan's name and colour from the Forge, and any clan with
 enough cards for a 40-card deck (`shared/clans.js`) can be picked by new players, gets a starter deck
 built from its cards, is played by the CPU, and shows in the shop, Deck Builder and Card Library. Art

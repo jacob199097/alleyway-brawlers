@@ -3,7 +3,10 @@
  * (or removed) needs no code changes: new players can pick it, the CPU can play it, and the shop
  * and Deck Builder list it.
  *
- *   clanList()            every clan with collectable cards: {id, name, color, tag, cards}
+ *   clanList()            every clan with collectable cards: {id, name, color, tag, cards} (not Neutral)
+ *   NEUTRAL               the clan id of neutral cards: they go in any deck and drop from every clan's
+ *                         packs; Neutral has no leader, starter, pack, turf or mastery of its own
+ *   deckClanProblem(leaderClan, cards)  why a deck breaks "the leader's clan + Neutral only" ('' = it doesn't)
  *   starterRecipe(clan)   its starter: {clan, leader, deck: [[id, copies]], hideout: [[id, copies]]}
  *                         or null when the clan doesn't have enough cards for a 40-card deck yet
  *   pickableClans()       the clans new players can start with (they have a starter)
@@ -13,6 +16,8 @@
  * Used by backend/routes/onboarding.js, backend/scripts/retire_cards.js and shared/duel/DuelAI.js.
  */
 import { CARD_CATALOG } from './cards.js';
+
+export const NEUTRAL = 'neutral';
 
 const DECK_SIZE = 40;
 const MAX_COPIES = 3;
@@ -155,7 +160,7 @@ const inDeck = (c) => isCollectable(c) && !(c.cardType === 'gang_member' && leve
 export function clanList(catalog = CARD_CATALOG) {
     const out = new Map();
     for (const c of Object.values(catalog)) {
-        if (!c.clan) continue;
+        if (!c.clan || c.clan === NEUTRAL) continue;
         if (!out.has(c.clan)) {
             out.set(c.clan, { id: c.clan, name: c.clanName || prettify(c.clan), color: c.clanColor || '#b388ff', tag: c.clanTag || '', cards: 0 });
         }
@@ -228,6 +233,25 @@ export function clanBlurb(clan) {
 
 export function pickableClans(catalog = CARD_CATALOG) {
     return clanList(catalog).filter(c => starterRecipe(c.id, catalog));
+}
+
+/**
+ * A deck holds only its leader's clan and Neutral cards (with no leader: one clan and Neutral).
+ * cards: [{ name, clan }] for the deck and the Hideout. '' when the deck is fine, else why not.
+ */
+export function deckClanProblem(leaderClan, cards) {
+    let clan = String(leaderClan || '');
+    for (const c of cards) {
+        const own = String(c?.clan || '');
+        if (!own || own === NEUTRAL) continue;
+        if (!clan) clan = own;
+        else if (own !== clan) {
+            return leaderClan
+                ? `${c.name || 'A card'} isn't a ${prettify(clan)} or Neutral card: a deck holds only its leader's clan and Neutral cards.`
+                : `A deck holds one clan's cards and Neutral cards (this one has ${prettify(clan)} and ${prettify(own)}).`;
+        }
+    }
+    return '';
 }
 
 export const expand = (pairs) => pairs.flatMap(([id, n]) => Array(n).fill(id));

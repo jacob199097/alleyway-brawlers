@@ -500,7 +500,7 @@ async function deckClan(setup) {
     const count = {};
     for (const spec of setup?.deck || []) {
         const clan = getCard(typeof spec === 'object' ? spec.id : spec)?.clan;
-        if (clan) count[clan] = (count[clan] || 0) + 1;
+        if (clan && clan !== 'neutral') count[clan] = (count[clan] || 0) + 1;   // (Neutral cards aren't a clan)
     }
     return Object.keys(count).sort((a, b) => count[b] - count[a])[0] || null;
 }

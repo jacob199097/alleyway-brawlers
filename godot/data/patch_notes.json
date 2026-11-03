@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.117",
+        "notes": [
+            "Neutral cards are coming: cards from no clan that go in any deck. They drop from every clan's booster packs (about 1 card in 5), have the AlleyWay Brawlers card back, and fight like the street: a streetlamp flickers on as they land, they hit with a comic-book POW!, and a KO sends them spinning, seeing stars.",
+            "A deck now holds only its leader's clan and Neutral cards. The Deck Builder shows only the cards that fit, AUTO-FILL keeps to them, and choosing a leader from another clan asks before taking the other clan's cards out."
+        ]
+    },
+    {
         "version": "0.9.116",
         "notes": [
             "Turf map fights have no difficulty choice any more: each district's gang has a star rating this week, from 1 star (a pushover) to 5 stars (the toughest, with the best rewards).",

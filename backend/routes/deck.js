@@ -106,7 +106,7 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
     // character's first level: its promoted forms wait in the Hideout by themselves
     const { CARD_CATALOG } = await import('../../shared/cards.js');
     const { rows: owned } = await pool.query(
-        `SELECT c.id, c.name, c.card_type, c.art_url, pi.quantity
+        `SELECT c.id, c.name, c.clan::text AS clan, c.card_type, c.art_url, pi.quantity
          FROM   cards c
          JOIN   player_inventory pi ON pi.card_id = c.id AND pi.player_id = $1
          WHERE  c.id::text = ANY($2::text[])`,
@@ -135,6 +135,14 @@ router.put('/:id/cards', requireAuth, async (req, res) => {
         if (copies > 3) return res.status(400).json({ error: `Max 3 copies of ${row.name} in the Hideout.` });
         if (copies > row.quantity) return res.status(400).json({ error: `You only own ${row.quantity} of ${row.name}.` });
     }
+    // The leader's clan and Neutral cards only (no leader: one clan and Neutral; shared/clans.js)
+    const leaderId = leaderCardId !== undefined ? leaderCardId : deck.leader_card_id;
+    const { rows: [lead] } = leaderId
+        ? await pool.query('SELECT clan::text AS clan FROM cards WHERE id::text = $1', [String(leaderId)])
+        : { rows: [] };
+    const { deckClanProblem } = await import('../../shared/clans.js');
+    const clanProblem = deckClanProblem(lead?.clan || '', [...wanted.keys(), ...hidden.keys()].map(id => ownedById.get(id)));
+    if (clanProblem) return res.status(400).json({ error: clanProblem });
 
     const client = await pool.connect();
     try {

@@ -19,7 +19,8 @@
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
 - New cards come from the Card Forge (or Card Forge 2, more art storage, numbers from 501): `node tools/import_forge.mjs <zip>`, then on the server
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data
-  (`shared/clans.js`): no code names a clan. `node tools/balance.mjs` reports how each card does.
+  (`shared/clans.js`): no code names a clan, except Neutral (`NEUTRAL`: cards for any deck, no clan of their own;
+  a deck holds its leader's clan and Neutral cards only). `node tools/balance.mjs` reports how each card does.
 - Rules changes go in both engines; re-run `godot/tests/export_golden.gd` + `shared/duel/engine.test.mjs`.
 - Code is edited on both the PC and the server: `git pull` before starting, push when done.
   `node tools/deploy.mjs` pulls + restarts the server over SSH (host `alleyway`, see "Deploying" in

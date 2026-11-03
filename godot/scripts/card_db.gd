@@ -151,9 +151,12 @@ static func art(id: String) -> Texture2D:
 
 
 ## The card back: a clan's own (assets/card_back_<clan tag>.png, e.g. card_back_nebula.png) when
-## there is one, otherwise the first clan's (by name) that has one. There is no clan-less back.
+## there is one, otherwise the generic AlleyWay Brawlers back (card_back_neutral.png, Neutral cards'),
+## otherwise the first clan's (by name) that has one.
 ## Clan backs that move (shaders/card.gdshader): "galaxy" turns the nebula around the crest;
 ## "radar" sweeps a beam around the emblem's radar rings.
+## The clan of Neutral cards: they go in any deck (with the leader's clan) and drop from every pack.
+const NEUTRAL := "neutral"
 const BACK_STYLES := {"nebula": "galaxy", "militia": "radar", "wildcard": "roulette", "underworld": "hellfire", "arsonists": "embers"}
 
 
@@ -169,6 +172,8 @@ static func back(clan := "") -> Texture2D:
 		var own := _back_texture("card_back_" + clan)
 		if own:
 			return own
+	if _fallback_back == null:
+		_fallback_back = _back_texture("card_back_" + NEUTRAL)
 	if _fallback_back == null:
 		for c in clans():
 			_fallback_back = _back_texture("card_back_" + str(c.tag))

@@ -11,6 +11,9 @@
  *
  * Rarity drop weights (out of 100):
  *   Common(1): 50 | Uncommon(2): 28 | Rare(3): 14 | Epic(4): 6 | Legendary(5): 2
+ *
+ * Neutral cards (shared/clans.js NEUTRAL: they go in any deck) have no pack of their own: each card in
+ * every clan's pack has a NEUTRAL_SHARE chance of being a Neutral card of the rarity rolled.
  */
 
 const { pool } = require('../db/pool');
@@ -43,6 +46,8 @@ async function packCardIds() {
 const PACK_COST = 200;            // karat per pack
 const PACK_COST_CONTRABAND = 100; // contraband per pack
 const CARDS_PER_PACK = 3;
+const NEUTRAL = 'neutral';        // (shared/clans.js NEUTRAL)
+const NEUTRAL_SHARE = 0.2;        // about 1 card in 5
 
 // Weight tables indexed by minimum rarity slot
 const WEIGHT_TABLES = {
@@ -83,17 +88,22 @@ async function drawPack(clan, client) {
         while (!card && attempts < 5) {
             attempts++;
             const rarity = weightedPick(table);
-
-            const { rows } = await client.query(
-                `SELECT id, name, clan, clan_tag, card_type, subtype, level, authority,
-                        attack, defense, rarity, art_url, effect_key, effect_text, flavour_text
-                 FROM cards
-                 WHERE  clan = $1 AND rarity = $2
-                 AND    id   <> ALL($3::uuid[]) AND art_url = ANY($4)
-                 ORDER BY RANDOM()
-                 LIMIT 1`,
-                [clan, rarity, [...usedIds], inGame]
-            );
+            // (a Neutral card when there's one of this rarity, otherwise the clan's)
+            const pools = clan !== NEUTRAL && Math.random() < NEUTRAL_SHARE ? [NEUTRAL, clan] : [clan];
+            let rows = [];
+            for (const from of pools) {
+                ({ rows } = await client.query(
+                    `SELECT id, name, clan, clan_tag, card_type, subtype, level, authority,
+                            attack, defense, rarity, art_url, effect_key, effect_text, flavour_text
+                     FROM cards
+                     WHERE  clan::text = $1 AND rarity = $2
+                     AND    id   <> ALL($3::uuid[]) AND art_url = ANY($4)
+                     ORDER BY RANDOM()
+                     LIMIT 1`,
+                    [from, rarity, [...usedIds], inGame]
+                ));
+                if (rows.length) break;
+            }
 
             if (rows.length) {
                 card = rows[0];

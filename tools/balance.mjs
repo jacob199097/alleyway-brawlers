@@ -2,10 +2,14 @@
 // does, so you can spot cards that are too strong, too weak, or hard to play.
 //
 //   node tools/balance.mjs [--clan nebula | --vs nebula,militia] [--starters] [--games 2000] [--level normal] [--seed 1] [--html report.html]
+//                          [--extra card_catalog.json] [--neutral-share 0.25]
 //
 // Every game gives both players a random legal 40-card deck from the clan's cards (up to 3 copies
 // each, plus the promoted forms in the Hideout and a leader), so each card turns up in many decks.
 // With several clans and no --clan, decks come from random clans and you also get clan win rates.
+// Neutral cards go in any deck: a random deck's cards are Neutral ones --neutral-share of the time
+// (default 0.25), when there are Neutral cards. --extra adds cards that aren't in the game yet (a Card
+// Forge export's card_catalog.json), to see how they'd do before importing them.
 // --starters: both players use their clan's starter deck instead (what new players start with), so
 // the clan win rates say how fair the starters are against each other.
 //
@@ -17,11 +21,11 @@
 //   impact     win rate when drawn minus win rate when in the deck but not drawn: how much
 //              drawing it helps. The clearest single number; positive = good card.
 // Cards seen in fewer than --min games (default 60) aren't flagged: their numbers are noise.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { DuelState } from '../shared/duel/DuelState.js';
 import { choose } from '../shared/duel/DuelAI.js';
 import { CARD_CATALOG } from '../shared/cards.js';
-import { clanList, starterRecipe } from '../shared/clans.js';
+import { clanList, starterRecipe, NEUTRAL } from '../shared/clans.js';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -45,6 +49,8 @@ function rand() {
 }
 const pick = (list) => list[Math.floor(rand() * list.length)];
 
+if (opt('extra', '')) Object.assign(CARD_CATALOG, JSON.parse(readFileSync(opt('extra', ''), 'utf8')));
+const NEUTRAL_SHARE = Number(opt('neutral-share', 0.25));
 const allClans = clanList().map(c => c.id);
 const wantClan = opt('clan', '');
 if (wantClan && !allClans.includes(wantClan)) {
@@ -60,6 +66,7 @@ for (const clan of allClans) {
     if (legal.length * 3 < 40) continue;
     pools[clan] = { legal, leaders: cards.filter(c => c.cardType === 'leader').map(c => c.id) };
 }
+const neutral = Object.values(CARD_CATALOG).filter(c => c.clan === NEUTRAL && deckLegal(c)).map(c => c.id);
 // --vs nebula,militia: every game is one clan against the other (seats swapped at random)
 const versus = opt('vs', '') ? opt('vs', '').split(',').map(s => s.trim()) : null;
 const STARTERS = args.includes('--starters');
@@ -90,7 +97,7 @@ function randomDeck(clan) {
     const copies = new Map();
     const deck = [];
     while (deck.length < 40) {
-        const id = pick(legal);
+        const id = pick(neutral.length && rand() < NEUTRAL_SHARE ? neutral : legal);
         if ((copies.get(id) || 0) >= 3) continue;
         copies.set(id, (copies.get(id) || 0) + 1);
         deck.push(id);
