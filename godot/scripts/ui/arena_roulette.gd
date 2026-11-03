@@ -16,10 +16,13 @@ var _name: Label
 var _frame: Panel
 var done := false
 var instant := false   # the arena is known (a turf map district): show it, no spin
+var ffa := false       # a free-for-all's spin: the Crossroads is in it too
+## The free-for-all's own arena (not a 1v1 one, so not in arenas.json or on the turf map)
+const CROSSROADS := {"id": "crossroads", "name": "The Crossroads", "image": "arena_ffa.jpg"}
 
 
-## Every 1v1 arena: [{id, name, image}].
-static func arenas() -> Array:
+## Every 1v1 arena: [{id, name, image}] (with_crossroads: and the free-for-all's Crossroads).
+static func arenas(with_crossroads := false) -> Array:
 	var f := FileAccess.open("res://data/arenas.json", FileAccess.READ)
 	var list = JSON.parse_string(f.get_as_text()) if f else null
 	var out: Array = []
@@ -27,11 +30,13 @@ static func arenas() -> Array:
 		for a in list:
 			if a is Dictionary and ResourceLoader.exists("res://assets/" + str(a.get("image", ""))):
 				out.append(a)
+	if with_crossroads and ResourceLoader.exists("res://assets/" + CROSSROADS.image):
+		out.append(CROSSROADS)
 	return out
 
 
 static func find(id: String) -> Dictionary:
-	for a in arenas():
+	for a in arenas(true):
 		if str(a.id) == id:
 			return a
 	return {}
@@ -42,10 +47,11 @@ static func random_id() -> String:
 	return str(list.pick_random().id) if not list.is_empty() else ""
 
 
-static func spin(parent: Node, id: String, at: Vector2, known := false) -> Control:
+static func spin(parent: Node, id: String, at: Vector2, known := false, for_ffa := false) -> Control:
 	var r: Control = load("res://scripts/ui/arena_roulette.gd").new()
 	r._final = id
 	r.instant = known
+	r.ffa = for_ffa
 	r.position = at
 	parent.add_child(r)
 	return r
@@ -86,7 +92,7 @@ func _show(a: Dictionary) -> void:
 
 ## Flicks through the arenas, quick then slowing, ending on the chosen one.
 func _run() -> void:
-	var list := arenas()
+	var list := arenas(ffa)
 	if list.is_empty():
 		done = true
 		landed.emit(_final)

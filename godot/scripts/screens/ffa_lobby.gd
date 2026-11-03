@@ -68,6 +68,21 @@ func on_ffa_lobby() -> void:
 	pass
 
 
+## ffa:start: the arena roulette spins and lands on the match's arena (any 1v1 arena, or the
+## Crossroads), then the duel opens
+func on_online_start(data) -> void:
+	var arena = data.get("arena") if data is Dictionary else null
+	if arena is String and arena != "" and not data.get("resync", false):
+		_ready_btn.disabled = true
+		_status.text = "THE FIGHT IS ON"
+		var r := preload("res://scripts/ui/arena_roulette.gd").spin(self, arena, Vector2(1440, 640), false, true)
+		await r.landed
+		await get_tree().create_timer(0.6).timeout
+		if not is_inside_tree():
+			return
+	Game.go("duel")
+
+
 var _faces: Array = []   # every character's face: they flicker through the open seats
 var _flick := 0.0
 

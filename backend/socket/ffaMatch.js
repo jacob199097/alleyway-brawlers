@@ -20,7 +20,7 @@
  *                    ffa:concede {matchId}, ffa:quit (stop watching after going out), ffa:resync
  *   server → client  ffa:lobby {lobbyId, secs, players: [{username, level, avatar_url, title, ready, you}], max},
  *                    ffa:left {reason}, ffa:error {message},
- *                    ffa:start {matchId, resync, players: {player: profile, foe1: ...}, view, clock},
+ *                    ffa:start {matchId, resync, arena, players: {player: profile, foe1: ...}, view, clock},
  *                    ffa:update {matchId, events, view, clock, away},
  *                    ffa:out {matchId, place, players, rewards, achievements},
  *                    ffa:over {matchId, place, places: {player: 1, foe1: 3, ...}, rewards, achievements}
@@ -34,6 +34,11 @@ const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 const LOBBY_SECS   = 60;
 const MAX_PLAYERS  = 4;
 const MIN_PLAYERS  = 3;   // (the rules' fewest for a free-for-all: fillTo can't go lower)
+// Where a free-for-all is fought: any 1v1 arena (godot/data/arenas.json) or the FFA's own Crossroads
+const ARENAS = (() => {
+    try { return [...JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../godot/data/arenas.json'), 'utf8')).map(a => String(a.id)), 'crossroads']; }
+    catch { return ['crossroads']; }
+})();
 const TURN_SECS    = 90;
 const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;
@@ -192,6 +197,7 @@ function createFfaService(io, deps) {
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const state = new DuelState(decks, hideouts, leaders, first, seed);
         const match = { id: randomUUID(), mode: 'ffa', state, seats: {}, over: false, timer: null, startedAt: Date.now(),
+            arena: ARENAS[Math.floor(Math.random() * ARENAS.length)],
             humans: entries.filter(e => !e.bot).length };
         seats.forEach((s, i) => {
             match.seats[s] = { ...entries[i], seat: s, connected: true, grace: null, idle: 0, kos: 0, promotes: 0, awakens: 0,
@@ -228,7 +234,7 @@ function createFfaService(io, deps) {
 
     function sendStart(match, seat, resync) {
         emitTo(match.seats[seat].playerId, 'ffa:start', {
-            matchId: match.id, mode: 'ffa', resync, players: playersFor(match, seat), view: viewOf(match, seat),
+            matchId: match.id, mode: 'ffa', resync, arena: match.arena, players: playersFor(match, seat), view: viewOf(match, seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || secs('turnSecs', TURN_SECS),
         });
     }

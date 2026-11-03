@@ -337,6 +337,8 @@ const routes = {
     ]],
     'POST /api/social/friends/request': (b) => b.targetUsername === 'nobody' ? [404, { error: 'Player not found.' }] : [200, { success: true }],
     'PATCH /api/social/friends/:id/accept': (_b, id) => { const f = friends.find(x => x.friendship_id === id); if (f) f.status = 'accepted'; return [200, { success: true }]; },
+    // Messages AlleyCat sent while the player was away (the chat tab's count and its pop-up)
+    'GET /api/social/unread': () => [200, [{ friend_id: friends[0].friend_id, username: 'AlleyCat', avatar_url: 'level:5', count: 2, last: 'GG! Rematch tonight?' }]],
     'GET /api/social/messages/:id': (_b, id) => [200, [
         { sender_id: id, body: 'You up for a brawl later?' }, { sender_id: player.id, body: 'Always. Bring your best deck.' }]],
     'GET /api/onboarding/clans': () => [200, [...pickableClans().map(c => ({ ...c, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })), ...extraClans()]],

@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.114",
+        "notes": [
+            "Chat with your friends from anywhere, even mid-match: open the CHAT tab on the right edge of the screen.",
+            "New messages pop up at the bottom right (click to reply), and the CHAT tab counts unread ones. Messages sent while you were offline show up when you log in.",
+            "Free-for-all matches now take place in any of the game's arenas (or the Crossroads), picked by the arena roulette.",
+            "Damage and healing numbers no longer cover the Morale they change.",
+            "Replays show the replayed player's name and picture on their side."
+        ]
+    },
+    {
         "version": "0.9.113",
         "notes": [
             "Emotes are much easier to read: a clean font, proper speech bubbles and smoother animations.",

@@ -203,7 +203,9 @@ func _ready() -> void:
 	var bg := "res://assets/arena_1v1.jpg"
 	var arena := {}
 	var ffa_start: bool = Game.duel_setup.get("start") is Dictionary and str(Game.duel_setup.start.get("mode", "")) == "ffa"
-	if not _paint.is_empty() and not ffa_start:
+	# (a free-for-all: its match's arena, any 1v1 one, or the Crossroads (below); an older server sends none)
+	var crossroads: bool = ffa_start and str(Game.duel_setup.start.get("arena", "crossroads")) == "crossroads"
+	if not _paint.is_empty() and not crossroads:
 		var start_arena = Game.duel_setup.get("start", {}).get("arena") if Game.duel_setup.get("start") is Dictionary else null
 		var roof = Game.duel_setup.get("rooftop")   # (tests can pick: true / false)
 		var arena_id := str(start_arena) if start_arena is String else str(Game.duel_setup.get("arena", ""))
@@ -233,7 +235,7 @@ func _ready() -> void:
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
 	if str(online_start.get("mode", "")) == "ffa":
 		_setup_ffa_sides(online_start)
-		if ResourceLoader.exists("res://assets/arena_ffa.jpg"):   # the crossroads, covering the screen
+		if crossroads and ResourceLoader.exists("res://assets/arena_ffa.jpg"):   # the crossroads, covering the screen
 			var mat := TextureRect.new()
 			mat.texture = UI.tex("arena_ffa.jpg")
 			var px := mat.texture.get_size()
@@ -270,9 +272,11 @@ func _ready() -> void:
 		var pv = profs[side].get("vets") if profs[side] is Dictionary else null
 		if pv is Dictionary:
 			_vets[side] = pv
-	_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
-		str(me.get("avatar_url", "")),
-		"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()], int(me.get("level", 1)))
+	var watched: bool = online_start.get("spectate", false) or online_start.get("replay", false)
+	if not watched:   # (watching or a replay: the watched player's plate, below)
+		_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
+			str(me.get("avatar_url", "")),
+			"LV %d  ·  %s" % [int(me.get("level", 1)), UI.shown_title(me).to_upper()], int(me.get("level", 1)))
 	if online_start.is_empty():
 		var tut: bool = Game.duel_setup.get("mode") == "tutorial"
 		_build_panel("opponent", $HUD/UI/OppPanel, "RIVAL" if tut else "CPU", "cpu", "TUTORIAL OPPONENT" if tut else "CPU OPPONENT")
@@ -282,11 +286,11 @@ func _ready() -> void:
 		$HUD/UI/OppPanel.visible = false
 		_build_foe_plates(online_start.get("players", {}))
 	else:
-		if online_start.get("spectate", false):
+		if watched:
 			var you: Dictionary = online_start.get("you", {})
 			_build_panel("player", $HUD/UI/PlayerPanel, str(you.get("username", "PLAYER")).to_upper().left(14),
 				str(you.get("avatar_url")) if you.get("avatar_url") else "",
-				"LV %d  ·  WATCHING" % int(you.get("level", 1)), int(you.get("level", 1)))
+				"LV %d  ·  %s" % [int(you.get("level", 1)), "REPLAY" if online_start.get("replay", false) else "WATCHING"], int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
 		var opp_title = opp.get("title")
 		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
@@ -4340,7 +4344,9 @@ func _ev_damage(ev: Dictionary) -> void:
 		_finisher(_panels[side].root)
 	elif side == "player" and int(ev.morale) <= DuelState.START_MORALE / 4:
 		Sfx.play("heartbeat", 1.0, -2.0)
-	_float_text(root.position + root.size / 2 + Vector2(0, 40 if side != "player" else -40),
+	# (just off the plate, so it never covers the Morale counting down: above yours, below the others')
+	var up: bool = side in ["player", "ally"]
+	_float_text(Vector2(root.position.x + root.size.x / 2, root.position.y - 50 if up else root.position.y + root.size.y + 50),
 		"-%d" % amount, RED, 72)
 	if side == "player":
 		_screen_flash(RED, 0.22)
@@ -4600,7 +4606,9 @@ func _ev_heal(ev: Dictionary) -> void:
 	var root: Control = _panels[side].root
 	_set_morale(side, ev.morale)
 	Sfx.play("promote", 1.4, -4.0)
-	_float_text(root.position + root.size / 2, "+%d" % int(ev.amount), GREEN, 64)
+	var up: bool = side in ["player", "ally"]   # (off the plate, like damage: the Morale stays readable)
+	_float_text(Vector2(root.position.x + root.size.x / 2, root.position.y - 50 if up else root.position.y + root.size.y + 50),
+		"+%d" % int(ev.amount), GREEN, 64)
 	_burst(get_viewport().get_canvas_transform().affine_inverse() * (root.position + root.size / 2), GREEN, 26, 260, 0.8, -300.0)
 	await _wait(0.5)
 

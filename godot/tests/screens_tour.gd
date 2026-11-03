@@ -574,6 +574,53 @@ func _run() -> void:
 			slot += 1
 		get_tree().quit()
 		return
+	for arg in OS.get_cmdline_user_args():   # (--replay=<file>: play a replay, shots as Morale changes)
+		if not str(arg).begins_with("--replay="):
+			continue
+		var data = JSON.parse_string(FileAccess.get_file_as_string(str(arg).trim_prefix("--replay=")))
+		Game.duel_setup = {"online": true, "start": data.start, "replay": data}
+		Game.go("duel")
+		await get_tree().create_timer(3.0).timeout
+		var rp = _screen()
+		rp._base_speed = 4.0
+		Engine.time_scale = 4.0
+		var seen := {}
+		var shots := 0
+		var t0 := Time.get_ticks_msec()
+		while shots < 9 and Time.get_ticks_msec() - t0 < 120000:
+			await get_tree().process_frame
+			for side in rp._panels:
+				var txt: String = rp._panels[side].morale.text
+				if seen.get(side, txt) != txt and shots < 9:
+					Engine.time_scale = 1.0
+					for k in 3:
+						await _shot("rp_%02d_%s" % [shots, side], 0.15)
+						shots += 1
+					Engine.time_scale = 4.0
+				seen[side] = rp._panels[side].morale.text
+		get_tree().quit()
+		return
+	if "--chat" in OS.get_cmdline_user_args():   # (the friends chat: tab, missed-messages pop-up, list, a chat, a message mid-duel)
+		Game.go("main_menu")
+		await get_tree().create_timer(4.0).timeout
+		await _shot("ch_menu", 0.2)
+		Net.chat.open_list()
+		await _shot("ch_list", 1.2)
+		var fr: Array = (await Api.request("GET", "/api/social/friends")).data
+		Net.chat.open_with(str(fr[0].friend_id), str(fr[0].friend_username), fr[0].get("friend_avatar"))
+		await _shot("ch_chat", 1.2)
+		Net.chat.close()
+		var deck8 := await Game.load_duel_deck()
+		Game.duel_setup = deck8
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		if _screen()._menu:
+			_screen()._menu.visible = false
+		Net.event.emit("chat:message", {"fromPlayerId": str(fr[1].friend_id), "fromUsername": str(fr[1].friend_username), "fromAvatar": null, "body": "Nice play! Want to team up for Turf Defense after?"})
+		await _shot("ch_duel_toast", 0.8)
+		get_tree().quit()
+		return
 	if "--emotes-back" in OS.get_cmdline_user_args():   # (the empty card panel's back, the emote menu and bubbles, the Molotov flame)
 		var deck7 := await Game.load_duel_deck()
 		Game.duel_setup = deck7

@@ -33,6 +33,8 @@ var _banner_layer: CanvasLayer
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	event.connect(_on_global_event)
+	chat = preload("res://scripts/ui/chat_dock.gd").new()   # (friends chat on every screen)
+	add_child(chat)
 
 
 func connect_to_server() -> void:
@@ -239,6 +241,7 @@ func _on_global_event(name: String, data) -> void:
 ## "Friend is now online" pop-ups in the bottom-right corner (like Steam's): each slides in with
 ## the friend's picture, stacks above the ones still showing, and slides away after a few seconds.
 var _friend_toasts: Array[Control] = []
+var chat: CanvasLayer   # the friends chat (scripts/ui/chat_dock.gd): chat.open_with(id, name, avatar)
 
 func _friend_online(f: Dictionary) -> void:
 	if _banner_layer == null:
@@ -261,8 +264,29 @@ func _friend_online(f: Dictionary) -> void:
 	col.add_child(UI.label("● is now online", 18, UI.GREEN))
 	if f.get("level") != null:
 		col.add_child(UI.label("Level %d" % int(f.level), 15, UI.MUTED))
+	var id := str(f.get("playerId", ""))
+	corner_toast(p, "friend_online", (func(): chat.open_with(id, str(f.get("username", "")), f.get("avatar"))) if id != "" else Callable())
+
+
+## A pop-up sliding in at the bottom right (a friend online, a new message): the ones still up move
+## up to make room. on_click: clicking it does that (and closes it); otherwise clicks pass through.
+func corner_toast(p: Control, sound := "", on_click := Callable(), secs := 4.5) -> void:
+	if _banner_layer == null:
+		_banner_layer = CanvasLayer.new()
+		_banner_layer.layer = 90
+		add_child(_banner_layer)
+	if on_click.is_valid():
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		p.gui_input.connect(func(e):
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+				_friend_toasts.erase(p)
+				p.queue_free()
+				on_click.call())
 	_banner_layer.add_child(p)
 	await get_tree().process_frame   # (its size, before it's placed)
+	if not is_instance_valid(p):
+		return
 	var h: float = p.size.y + 12.0
 	for t in _friend_toasts:   # the ones still up move up to make room
 		if is_instance_valid(t):
@@ -270,10 +294,11 @@ func _friend_online(f: Dictionary) -> void:
 	_friend_toasts.append(p)
 	var home := Vector2(1920 - p.size.x - 24, 1080 - p.size.y - 24)
 	p.position = Vector2(1940, home.y)
-	Sfx.play("friend_online", 1.0, -8.0)
+	if sound != "":
+		Sfx.play(sound, 1.0, -8.0)
 	var t := p.create_tween()
 	t.tween_property(p, "position:x", home.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.tween_interval(4.5)
+	t.tween_interval(secs)
 	t.tween_property(p, "position:x", 1940.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_callback(func():
 		_friend_toasts.erase(p)

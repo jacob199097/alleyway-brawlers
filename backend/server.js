@@ -222,27 +222,40 @@ io.on('connection', (socket) => {
     coop.register(socket, playerData);
 
     // ── Chat ─────────────────────────────────────────────────────────────────
-    socket.on('chat:message', ({ toPlayerId, body } = {}) => {
+    // Friends only. A friend who isn't online gets it as unread (GET /api/social/unread) next time.
+    socket.on('chat:message', async ({ toPlayerId, body } = {}) => {
         if (typeof body !== 'string' || typeof toPlayerId !== 'string') return;
         if (!body.trim() || body.length > 500) return;
-
-        pool.query(
-            `INSERT INTO messages (sender_id, receiver_id, body) VALUES ($1,$2,$3) RETURNING id, sent_at`,
-            [playerData.playerId, toPlayerId, body.trim()]
-        ).then(({ rows }) => {
-            pool.query('SELECT socket_id FROM players WHERE id = $1', [toPlayerId])
-                .then(({ rows: targets }) => {
-                    if (targets[0]?.socket_id) {
-                        io.to(targets[0].socket_id).emit('chat:message', {
-                            messageId:    rows[0].id,
-                            fromPlayerId: playerData.playerId,
-                            fromUsername: playerData.username,
-                            body:         body.trim(),
-                            sentAt:       rows[0].sent_at,
-                        });
-                    }
+        try {
+            const { rows: friends } = await pool.query(
+                `SELECT 1 FROM friendships WHERE status = 'accepted'
+                   AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`,
+                [playerData.playerId, toPlayerId]);
+            if (!friends.length) return;
+            const { rows } = await pool.query(
+                `INSERT INTO messages (sender_id, receiver_id, body) VALUES ($1,$2,$3) RETURNING id, sent_at`,
+                [playerData.playerId, toPlayerId, body.trim()]);
+            const { rows: targets } = await pool.query('SELECT socket_id FROM players WHERE id = $1', [toPlayerId]);
+            const { rows: [me] } = await pool.query('SELECT avatar_url FROM players WHERE id = $1', [playerData.playerId]);
+            if (targets[0]?.socket_id) {
+                io.to(targets[0].socket_id).emit('chat:message', {
+                    messageId:    rows[0].id,
+                    fromPlayerId: playerData.playerId,
+                    fromUsername: playerData.username,
+                    fromAvatar:   me?.avatar_url ?? null,
+                    body:         body.trim(),
+                    sentAt:       rows[0].sent_at,
                 });
-        }).catch(err => console.error('[Chat] Failed:', err.message));
+            }
+        } catch (err) {
+            console.error('[Chat] Failed:', err.message);
+        }
+    });
+    // The player has read what a friend sent (their chat with them is open)
+    socket.on('chat:read', ({ friendId } = {}) => {
+        if (typeof friendId !== 'string') return;
+        pool.query('UPDATE messages SET read = TRUE WHERE receiver_id = $1 AND sender_id = $2 AND read = FALSE',
+            [playerData.playerId, friendId]).catch(err => console.error('[Chat] Read failed:', err.message));
     });
 
     // ── Disconnect ───────────────────────────────────────────────────────────

@@ -1,10 +1,9 @@
 extends Screen
-## Social club: friends, requests, add a friend, and chat history.
+## Social club: friends, requests, add a friend; CHAT opens the friends chat (Net.chat).
 ## Challenges and live chat go over the realtime connection (Net).
 
 var _list: VBoxContainer
 var _search: LineEdit
-var _chat: Control
 
 
 func _ready() -> void:
@@ -146,70 +145,6 @@ func _add_friend() -> void:
 		_load()
 
 
+## The friends chat panel (Net.chat, scripts/ui/chat_dock.gd: the same one as on every screen).
 func _open_chat(f: Dictionary) -> void:
-	if _chat:
-		_chat.queue_free()
-	_chat = UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.98))
-	_chat.position = Vector2(360, 160)
-	_chat.custom_minimum_size = Vector2(1200, 800)
-	add_child(_chat)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	_chat.add_child(col)
-	var head := HBoxContainer.new()
-	col.add_child(head)
-	var h := UI.label("CHAT — %s" % str(f.friend_username).to_upper(), 34, UI.BLUE, true)
-	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(h)
-	head.add_child(UI.button("✕", func():
-		_chat.queue_free()
-		_chat = null, Vector2(64, 56)))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(1160, 580)
-	col.add_child(scroll)
-	var lines := VBoxContainer.new()
-	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lines.add_theme_constant_override("separation", 8)
-	scroll.add_child(lines)
-	var input_row := HBoxContainer.new()
-	input_row.add_theme_constant_override("separation", 12)
-	col.add_child(input_row)
-	var edit := LineEdit.new()
-	edit.placeholder_text = "Message…"
-	edit.max_length = 500
-	edit.custom_minimum_size = Vector2(1000, 56)
-	input_row.add_child(edit)
-	var add_line := func(body: String, mine: bool):
-		var l := UI.label(body, 22, UI.BLUE if mine else Color.WHITE)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if mine else HORIZONTAL_ALIGNMENT_LEFT
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD
-		l.custom_minimum_size = Vector2(1120, 0)
-		lines.add_child(l)
-		await get_tree().process_frame
-		scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
-	var send_msg := func():
-		var body := edit.text.strip_edges()
-		if body == "":
-			return
-		if not Net.send("chat:message", {"toPlayerId": f.friend_id, "body": body}):
-			UI.toast(self, "Not connected to the server.", UI.RED)
-			return
-		edit.text = ""
-		add_line.call(body, true)
-	edit.text_submitted.connect(func(_t): send_msg.call())
-	input_row.add_child(UI.button("SEND", send_msg, Vector2(140, 56)))
-	# Live messages from this friend while the chat is open
-	var listener := func(name: String, data):
-		if name == "chat:message" and data is Dictionary and data.get("fromPlayerId") == f.friend_id:
-			add_line.call(str(data.get("body", "")), false)
-	Net.event.connect(listener)
-	_chat.tree_exiting.connect(func(): Net.event.disconnect(listener))
-	edit.grab_focus()
-	var r := await Api.request("GET", "/api/social/messages/%s" % f.friend_id)
-	if not r.ok:
-		lines.add_child(UI.label(r.error, 22, UI.RED))
-		return
-	if r.data.is_empty():
-		lines.add_child(UI.label("No messages yet.", 22, UI.MUTED))
-	for m in r.data:
-		add_line.call(str(m.get("body", "")), m.get("sender_id") != f.friend_id)
+	Net.chat.open_with(str(f.friend_id), str(f.friend_username), f.get("friend_avatar"))

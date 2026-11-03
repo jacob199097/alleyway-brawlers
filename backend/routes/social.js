@@ -95,6 +95,24 @@ router.delete('/friends/:id', requireAuth, async (req, res) => {
     }
 });
 
+// ── GET /api/social/unread — messages not read yet, by friend (sent while the player was away) ──
+router.get('/unread', requireAuth, async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT m.sender_id AS friend_id, p.username, p.avatar_url, COUNT(*)::int AS count,
+                    (ARRAY_AGG(m.body ORDER BY m.sent_at DESC))[1] AS last
+             FROM   messages m JOIN players p ON p.id = m.sender_id
+             WHERE  m.receiver_id = $1 AND m.read = FALSE
+             GROUP  BY m.sender_id, p.username, p.avatar_url
+             ORDER  BY MAX(m.sent_at) DESC`,
+            [req.playerId]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── GET /api/social/messages/:friendId — conversation history ────────────────
 router.get('/messages/:friendId', requireAuth, async (req, res) => {
     try {
