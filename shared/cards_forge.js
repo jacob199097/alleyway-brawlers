@@ -8353,5 +8353,45 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Arsonists",
         "clanColor": "#f45815"
+    },
+    "card_arso_033": {
+        "id": "card_arso_033",
+        "name": "Pyra, the Undying Flame",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 6,
+        "tributeCost": 0,
+        "rarity": 5,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_033",
+        "code": "ARSO-033",
+        "flavourText": "Burn me down. I come back hotter.",
+        "effectText": "At the end of your turn: Your opponent loses 150 Morale for each BURNING enemy character.\nOnce per turn, when this card is Downed: It stands back up.\nThis card can't be targeted by your opponent's effects.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "damage",
+                "per": "burning",
+                "amount": 150
+            },
+            {
+                "when": "self_downed",
+                "do": "stand",
+                "target": "self",
+                "once": true
+            },
+            {
+                "when": "passive",
+                "do": "untargetable"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2700,
+        "defense": 2500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
     }
 };
