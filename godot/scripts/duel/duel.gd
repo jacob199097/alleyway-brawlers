@@ -293,9 +293,13 @@ func _ready() -> void:
 				"LV %d  ·  %s" % [int(you.get("level", 1)), "REPLAY" if online_start.get("replay", false) else "WATCHING"], int(you.get("level", 1)))
 		var opp: Dictionary = online_start.get("opponent", {})
 		var opp_title = opp.get("title")
-		_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
-			str(opp.get("avatar_url")) if opp.get("avatar_url") else "",
-			"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"], int(opp.get("level", 1)))
+		if opp.get("bot", false) or str(opp.get("avatar_url", "")) == "cpu":   # (a CPU: who it is, no level or "ONLINE")
+			_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "CPU")).to_upper().left(18),
+				str(opp.get("avatar_url")) if opp.get("avatar_url") else "cpu", str(opp.get("subtitle", "CPU OPPONENT")).to_upper())
+		else:
+			_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
+				str(opp.get("avatar_url")) if opp.get("avatar_url") else "",
+				"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"], int(opp.get("level", 1)))
 	_build_phase_bar()
 	_build_turn_box()
 	_build_log()
@@ -3142,17 +3146,39 @@ func _molotov_fly(from: Vector2, to: Vector2, secs: float, size: float, hit: Cal
 	var m := Molotov.new()
 	m.position = from
 	m.z_index = 72
-	m.spin = randf_range(9.0, 12.0) * (1.0 if to.x >= from.x else -1.0)
+	m.spin = randf_range(2.5, 4.0) * (1.0 if to.x >= from.x else -1.0)
+	m.tumble_speed = randf_range(11.0, 14.0)
 	fx.add_child(m)
 	m.build(_add_mat, FX_FIRE)
 	m.scale = Vector2.ONE * 0.8 * size
+	# Its shadow on the board, under the path: small and faint while it's high, sharp as it comes down
+	var shadow := Sprite2D.new()
+	shadow.texture = ArenaLife._soft_dot()
+	shadow.modulate = Color(0, 0, 0, 0.0)
+	shadow.z_index = 71
+	shadow.position = from
+	fx.add_child(shadow)
+	var light := Sprite2D.new()   # (the burning rag's light on the floor beneath it)
+	light.texture = ArenaLife._soft_dot()
+	light.material = _add_mat
+	light.modulate = Color(1.0, 0.5, 0.15, 0.0)
+	light.z_index = 71
+	fx.add_child(light)
 	var lob := maxf(120.0, from.distance_to(to) * 0.35)
 	var fly := m.create_tween()
 	fly.tween_method(func(k: float):
 		var arc := 4.0 * k * (1.0 - k)
 		m.position = from.lerp(to, k) + Vector2(0, -lob * arc)
-		m.scale = Vector2.ONE * size * (1.35 + 0.55 * arc), 0.0, 1.0, secs)
+		m.scale = Vector2.ONE * size * (1.35 + 0.55 * arc)
+		shadow.position = from.lerp(to, k) + Vector2(0, 26.0 * size)
+		shadow.scale = Vector2(1.5, 0.55) * size * (1.0 - 0.5 * arc)
+		shadow.modulate.a = 0.55 * (1.0 - 0.6 * arc)
+		light.position = shadow.position
+		light.scale = Vector2(2.6, 0.95) * size * (1.0 - 0.35 * arc)
+		light.modulate.a = 0.42 * (1.0 - 0.7 * arc), 0.0, 1.0, secs)
 	await fly.finished
+	shadow.queue_free()
+	light.queue_free()
 	if hit.is_valid():
 		hit.call()
 	m.smash()
@@ -3168,6 +3194,32 @@ func _splash(at: Vector2, dir: Vector2, k: float, d: CardView) -> void:
 	_burst(at, ember, int(22 * k), 420.0, 0.8, -120.0)   # (embers thrown up)
 	_sparks(at, dir, Color(1.0, 0.7, 0.3), int(14 * k), 70.0)
 	var foot := (d.home + Vector2(0, CardView.SIZE.y * 0.4 * d.scale.y)) if d else at + Vector2(0, 60)
+	# The fuel spreads flat across the floor: a burning pool, and the scorch it leaves (seen at an angle)
+	var pool := Sprite2D.new()
+	pool.texture = ArenaLife._soft_dot()
+	pool.material = _add_mat
+	pool.modulate = Color(1.0, 0.45, 0.1, 0.0)
+	pool.position = foot
+	pool.scale = Vector2(1.2, 0.45) * k
+	pool.z_index = 70
+	fx.add_child(pool)
+	var scorch := Sprite2D.new()
+	scorch.texture = ArenaLife._soft_dot()
+	scorch.modulate = Color(0.05, 0.03, 0.02, 0.0)
+	scorch.position = foot
+	scorch.scale = Vector2(3.4, 1.15) * k
+	scorch.z_index = 69
+	fx.add_child(scorch)
+	var spread := create_tween().set_parallel()
+	spread.tween_property(pool, "scale", Vector2(4.6, 1.6) * k, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	spread.tween_property(pool, "modulate:a", 0.8, 0.12)
+	spread.tween_property(scorch, "modulate:a", 0.45, 0.3)
+	spread.chain().tween_interval(0.5 * k)
+	spread.chain().tween_property(pool, "modulate:a", 0.0, 0.7)
+	spread.tween_property(scorch, "modulate:a", 0.0, 1.6).set_delay(0.4)
+	spread.chain().tween_callback(func():
+		pool.queue_free()
+		scorch.queue_free())
 	var row := _flame_row(foot, 170.0 * k, 200.0 * k, 4, cards_layer, d.z_index + 1 if d else 75, Color(1.0, 0.8, 0.45), ember, 0.5)
 	var burn := create_tween()
 	burn.tween_method(_row_life.bind(row), 0.0, 1.0, 0.12)
@@ -3205,11 +3257,15 @@ func _row_free(row: Array) -> void:
 			f.queue_free()
 
 
-## A lit Molotov (Arsonists' attack): an amber bottle with a burning rag in its neck, a glow round it
-## and embers shed as it flies. The bottle spins; its flame keeps burning upward.
+## A lit Molotov (Arsonists' attack): a round amber bottle with a burning rag in its neck, a glow round it,
+## embers and smoke shed as it flies. The bottle tumbles end over end (tumble: it foreshortens as it turns
+## toward and away from the view) and spins a little; its flame keeps burning upward.
 class Molotov extends Node2D:
 	var spin := 0.0
+	var tumble := 0.0
+	var tumble_speed := 0.0
 	var _bottle: Node2D
+	var _smoke: CPUParticles2D
 	var _flame: ColorRect
 	var _glow: Sprite2D
 	var _embers: CPUParticles2D
@@ -3255,27 +3311,77 @@ class Molotov extends Node2D:
 		_embers.color_ramp = g
 		_embers.material = add_mat
 		add_child(_embers)
+		_smoke = CPUParticles2D.new()   # (a trail of smoke behind it)
+		_smoke.local_coords = false
+		_smoke.amount = 26
+		_smoke.lifetime = 0.7
+		_smoke.texture = ArenaLife._soft_dot()
+		_smoke.direction = Vector2.UP
+		_smoke.spread = 30.0
+		_smoke.initial_velocity_min = 6.0
+		_smoke.initial_velocity_max = 24.0
+		_smoke.gravity = Vector2(0, -40)
+		_smoke.scale_amount_min = 0.35
+		_smoke.scale_amount_max = 0.7
+		var sg := Gradient.new()
+		sg.set_color(0, Color(0.16, 0.12, 0.1, 0.45))
+		sg.set_color(1, Color(0.1, 0.09, 0.09, 0.0))
+		_smoke.color_ramp = sg
+		_smoke.show_behind_parent = true
+		add_child(_smoke)
+		move_child(_smoke, 0)
 		_place_flame()
 
 	func _draw_bottle() -> void:
 		var body := PackedVector2Array([Vector2(-12, 22), Vector2(12, 22), Vector2(12, -2), Vector2(5, -10),
 			Vector2(5, -22), Vector2(-5, -22), Vector2(-5, -10), Vector2(-12, -2)])
-		_bottle.draw_colored_polygon(body, Color(0.78, 0.42, 0.1, 0.95))
+		_bottle.draw_colored_polygon(body, Color(0.42, 0.18, 0.04, 0.96))   # (the glass, in shadow)
+		# Round: strips across it, lit from the upper left (brightest a third of the way in, dark at the edges)
+		for i in 12:
+			var x0 := -12.0 + i * 2.0
+			var u := (x0 + 13.0) / 24.0
+			var lit := clampf(1.0 - absf(u - 0.33) * 2.1, 0.0, 1.0)
+			var ax := absf(x0 + 1.0)
+			var top := -10.0 if ax <= 5.0 else -2.0 - 8.0 * (12.0 - ax) / 7.0   # (along the shoulders)
+			if ax <= 5.0:
+				top = -22.0   # (the neck)
+			_bottle.draw_rect(Rect2(x0, top, 2.0, 22.0 - top), Color(1.0, 0.62, 0.22, 0.6 * lit))
+		_bottle.draw_rect(Rect2(-11.5, 8, 23, 13.5), Color(0.75, 0.3, 0.04, 0.45))   # (the fuel inside)
+		_bottle.draw_line(Vector2(-11.5, 8), Vector2(11.5, 8), Color(1.0, 0.8, 0.4, 0.55), 1.5)   # (its surface)
+		_bottle.draw_rect(Rect2(-10, -1, 20, 7), Color(0.78, 0.16, 0.06))   # (its label)
+		_bottle.draw_rect(Rect2(-10, -1, 6, 7), Color(1.0, 0.5, 0.35, 0.35))
 		var edge := body.duplicate()
 		edge.append(body[0])
-		_bottle.draw_polyline(edge, Color(0.25, 0.1, 0.03), 2.0, true)
-		_bottle.draw_rect(Rect2(-10, 3, 20, 8), Color(0.85, 0.2, 0.08))   # (its label)
-		_bottle.draw_line(Vector2(-7, 18), Vector2(-7, -1), Color(1.0, 0.85, 0.55, 0.7), 2.5)   # (light on the glass)
+		_bottle.draw_polyline(edge, Color(0.2, 0.08, 0.02), 2.0, true)
+		_bottle.draw_line(Vector2(-6.5, 19), Vector2(-6.5, 0), Color(1.0, 0.95, 0.8, 0.85), 2.0)   # (light on the glass)
+		_bottle.draw_circle(Vector2(-7, -4), 2.2, Color(1.0, 1.0, 0.95, 0.8))
+		# Tipped toward the view, its round base shows as an ellipse at the bottom
+		var c := cos(tumble)
+		if c > 0.0 and c < 0.97:
+			var h := 12.0 * sqrt(1.0 - c * c) / maxf(_bottle.scale.y, 0.3)
+			var cap := PackedVector2Array()
+			for k in 16:
+				var a := TAU * k / 16.0
+				cap.append(Vector2(12.0 * cos(a), 22.0 + h * 0.5 * sin(a)))
+			_bottle.draw_colored_polygon(cap, Color(0.55, 0.24, 0.05, 0.95))
+			cap.append(cap[0])
+			_bottle.draw_polyline(cap, Color(0.2, 0.08, 0.02), 1.5, true)
 		_bottle.draw_colored_polygon(PackedVector2Array([Vector2(-5, -22), Vector2(5, -22), Vector2(7, -30), Vector2(-3, -33)]), Color(0.85, 0.78, 0.62))   # (the rag)
 
 	## The flame sits on the rag wherever the spinning bottle has it.
 	func _place_flame() -> void:
-		var tip := Vector2(0, -30).rotated(_bottle.rotation)
+		var tip := Vector2(0, -30 * _bottle.scale.y).rotated(_bottle.rotation)
 		_flame.position = tip - _flame.size / 2.0 + Vector2(0, -6)
 		_embers.position = tip
+		if _smoke:
+			_smoke.position = tip
 
 	func _process(delta: float) -> void:
 		_bottle.rotation += spin * delta
+		tumble += tumble_speed * delta
+		var c := cos(tumble)   # (end over end: shorter as it turns toward or away from the view)
+		_bottle.scale.y = signf(c) * maxf(absf(c), 0.3) if c != 0.0 else 0.3
+		_bottle.queue_redraw()
 		_place_flame()
 
 	## It breaks: the bottle and its flame are gone at once; its embers die away behind it.
@@ -3284,7 +3390,8 @@ class Molotov extends Node2D:
 		_flame.visible = false
 		_glow.visible = false
 		_embers.emitting = false
-		get_tree().create_timer(0.6).timeout.connect(queue_free)
+		_smoke.emitting = false
+		get_tree().create_timer(0.8).timeout.connect(queue_free)
 
 
 ## Arsonists' summon: a wall of fire sweeps across the slot and roars up, and the character walks out
@@ -6167,6 +6274,9 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	var n := _label(26, Color.WHITE, true)
 	n.text = display_name
 	n.position = Vector2(92, 10)
+	if display_name.length() > 12:   # (a long name, e.g. a turf gang's: smaller, so it fits)
+		n.label_settings.font_size = 26 if display_name.length() <= 12 else 21 if display_name.length() <= 15 else 18
+		n.position.y = 14
 	p.add_child(n)
 	var sub := _label(14, accent)
 	sub.text = subtitle

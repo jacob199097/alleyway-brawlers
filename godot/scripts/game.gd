@@ -331,14 +331,15 @@ func sign_out() -> void:
 ## A match against the server's CPU (VS CPU, or Ranked). CPU matches run on the server so
 ## the result, and the rewards, can be trusted. mp:start then opens the duel (net.gd).
 ## Returns "" once requested, or why it couldn't be.
-func request_cpu_match(ranked: bool, difficulty := "normal", challenge := false, arena := "") -> String:
+## district: a turf map fight (arena is the district): the CPU is the gang running it.
+func request_cpu_match(ranked: bool, difficulty := "normal", challenge := false, arena := "", district := false) -> String:
 	Net.connect_to_server()
 	var give_up := Time.get_ticks_msec() + 8000   # real time, not game time
 	while not Net.is_open and Time.get_ticks_msec() < give_up:
 		await get_tree().process_frame
 	if not Net.is_open:
 		return "Can't reach the game server. CPU matches run on the server so their rewards count; check your connection, or play offline from the login screen."
-	Net.send("mp:cpu", {"ranked": ranked, "difficulty": difficulty, "challenge": challenge, "arena": arena})
+	Net.send("mp:cpu", {"ranked": ranked, "difficulty": difficulty, "challenge": challenge, "arena": arena, "district": district})
 	return ""
 
 

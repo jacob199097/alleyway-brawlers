@@ -214,6 +214,7 @@ function forSeat(v, seat) {
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  their veteran cards' tiers {cardId: tier}
  * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
  * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the match's district
+ * @param {(district) => object|null} [deps.districtGang]  the gang running a district ({name, district, seed}): a turf map fight's CPU
  *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]  a deck's games and wins
  * @param {(row) => Promise} [deps.recordStats]  a finished match for the balance dashboard (match_stats)
@@ -365,7 +366,8 @@ function createOnlineService(io, deps) {
 
     function profileOf(seat) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
-            title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {} };
+            title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {},
+            ...(seat.profile.bot ? { bot: true, subtitle: seat.profile.subtitle || 'CPU OPPONENT' } : {}) };   // (a CPU: who it is)
     }
 
     // Each player meets every clan's CPU, in a random order, before any comes round again
@@ -378,13 +380,23 @@ function createOnlineService(io, deps) {
         return clan;
     }
 
-    /** The server CPU's seat: a clan's starter deck (shared/clans.js), each clan in turn for this player. */
-    async function cpuSeat(ranked, level, playerId) {
+    /** The server CPU's seat: a clan's starter deck (shared/clans.js), each clan in turn for this player.
+     *  gang: a turf map fight's local gang ({name, district, seed}): it plays under their name and picture. */
+    async function cpuSeat(ranked, level, playerId, gang = null) {
         const { cpuSetup } = await cpu;
         const { pickableClans } = await import('../../shared/clans.js');
+        const profile = { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'cpu', bot: true, subtitle: 'CPU OPPONENT' };
+        if (gang) {
+            // (its picture: a character card of its own, the same one every time for that district)
+            const { CARD_CATALOG } = await import('../../shared/cards.js');
+            const faces = Object.values(CARD_CATALOG).filter(c => c.cardType === 'gang_member' && !c.token && (c.rarity || 1) >= 2)
+                .map(c => c.id).sort();
+            Object.assign(profile, { username: gang.name, subtitle: `RUNS ${String(gang.district).toUpperCase()}`,
+                avatar_url: faces.length ? `card:${faces[gang.seed % faces.length]}` : 'cpu' });
+        }
         return {
             playerId: `cpu:${randomUUID()}`, bot: true, setup: cpuSetup(nextCpuClan(playerId, pickableClans().map(c => c.id))), level,
-            profile: { username: ranked ? 'RANKED CPU' : 'CPU', level: 1, avatar_url: 'cpu' },
+            profile,
         };
     }
 
@@ -705,7 +717,8 @@ function createOnlineService(io, deps) {
 
         // A match against the server CPU (VS CPU, or Ranked when ranked is true)
         // challenge: this week's challenge (shared/challenges.js): its rules twist, against a Hard CPU
-        socket.on('mp:cpu', async ({ ranked, difficulty, challenge, arena } = {}) => {
+        // district: started from the turf map (arena is the district): the CPU is the gang running it
+        socket.on('mp:cpu', async ({ ranked, difficulty, challenge, arena, district } = {}) => {
             if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
             leaveQueue(me);
             try {
@@ -716,7 +729,8 @@ function createOnlineService(io, deps) {
                     return;
                 }
                 const level = ranked === true ? 'hard' : ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
-                await startMatch(entry, await cpuSeat(ranked === true, level, me), ranked === true ? 'cpu_ranked' : 'cpu', null, null, arena);
+                const gang = district === true && typeof arena === 'string' ? deps.districtGang?.(arena) || null : null;
+                await startMatch(entry, await cpuSeat(ranked === true, level, me, gang), ranked === true ? 'cpu_ranked' : 'cpu', null, null, arena);
             } catch (err) {
                 socket.emit('mp:error', { message: err.message || 'Could not start the match.' });
             }

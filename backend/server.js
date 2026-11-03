@@ -133,6 +133,7 @@ const online = createOnlineService(io, {
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
     recordVeterans: veterans.record,
     recordInfluence: territory.record,
+    districtGang: territory.gangOf,
     incrementDailyQuest,
     recordDailyWin,
     saveReplay,

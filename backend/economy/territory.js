@@ -58,6 +58,13 @@ function locals(district, week) {
         strength: LOCALS_MIN + hash(`${week}:${district}`) % LOCALS_SPREAD };
 }
 
+/** The local gang running a district this week, for a fight there from the turf map:
+ *  {name, district (its name), seed (picks the gang's picture)}; null if it isn't a district. */
+function gangOf(district) {
+    const d = DISTRICTS.find(x => x.id === district);
+    return d ? { name: locals(d.id, weekOf()).name, district: d.name, seed: hash('gang:' + d.id) } : null;
+}
+
 /** What a match is worth: mode as onlineMatch/coopMatch name it, outcome win|loss|draw. */
 function pointsFor({ mode, outcome, difficulty = null }) {
     let table = POINTS.online;
@@ -185,4 +192,4 @@ async function claim(playerId, now = new Date()) {
     }
 }
 
-module.exports = { record, overview, claim, weekMap, payFrom, pointsFor, locals, weekOf, DISTRICTS, KARAT, POINTS };
+module.exports = { record, overview, claim, weekMap, payFrom, pointsFor, locals, weekOf, gangOf, DISTRICTS, KARAT, POINTS };

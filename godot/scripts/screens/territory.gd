@@ -739,7 +739,7 @@ func _fight(d: Dictionary) -> void:
 		return
 	_spin = UI.spinner(self, Vector2(960, 1000), "STARTING MATCH…")
 	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784), true)   # (no spin: it's the district picked)
-	var why := await Game.request_cpu_match(false, difficulty, false, str(d.get("id", "")))
+	var why := await Game.request_cpu_match(false, difficulty, false, str(d.get("id", "")), true)
 	if why != "":
 		on_online_error(why)
 		return

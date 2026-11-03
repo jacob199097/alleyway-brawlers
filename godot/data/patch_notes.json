@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.115",
+        "notes": [
+            "The CHAT tab now tucks into the bottom-right corner and slides out when your mouse comes near it.",
+            "Turf map fights: you now face the gang that runs the district, under their own name and picture.",
+            "CPU opponents no longer show a level or ONLINE.",
+            "The Arsonists Molotov looks more 3D: a round glass bottle tumbling end over end, its shadow and firelight on the board below, a smoke trail, and burning fuel spreading across the floor.",
+            "The main menu top bar is sharper on big screens."
+        ]
+    },
+    {
         "version": "0.9.114",
         "notes": [
             "Chat with your friends from anywhere, even mid-match: open the CHAT tab on the right edge of the screen.",

@@ -415,6 +415,7 @@ const spec = (c) => ({ id: c.art_url, name: c.name, authority: c.authority, atta
 let ffa = null;   // the free-for-all lobby and matches (backend/socket/ffaMatch.js)
 let coop = null;  // Turf Defense (backend/socket/coopMatch.js)
 const serviceDeps = {
+    districtGang: (id) => require("../../backend/economy/territory.js").gangOf(id),   // (turf map fights: the gang running the district)
     isBusyElsewhere: (id) => !!ffa?.isBusy(id),
     onAction(match, seat, action, ok) {
         const st = match.state;

@@ -1,5 +1,6 @@
 extends CanvasLayer
-## Friends chat anywhere in the game, in the menus and in a match: a CHAT tab on the right edge opens
+## Friends chat anywhere in the game, in the menus and in a match: a CHAT tab tucked into the bottom-right
+## corner (only its edge and unread count show until the mouse comes near) opens
 ## a panel with your friends (unread and online first) and a conversation with one of them. A message
 ## that comes in while it isn't open pops up at the bottom right (Net.corner_toast: click to reply) and
 ## counts on the tab; ones sent while you were away (GET /api/social/unread) are counted when you
@@ -9,7 +10,9 @@ extends CanvasLayer
 const W := 460.0
 const H := 600.0
 const TAB := Vector2(118, 48)
-const TAB_Y := 822.0   # (the right edge's free gap: under the main menu's Card Library, above the duel's turn box)
+const TAB_Y := 1080.0 - 48.0 - 22.0   # (the bottom-right corner)
+const PEEK := 14.0       # how much of the tab shows while it's tucked away
+const NEAR := Vector2(190, 150)   # the mouse this close to the corner brings it out
 const HIDDEN_ON := ["boot", "login", "clan_select"]   # (not signed in yet)
 const ME := Color(0.16, 0.34, 0.66)
 const THEM := Color(0.17, 0.17, 0.26)
@@ -30,6 +33,7 @@ var _edit: LineEdit
 var _open := false
 var _told_missed := false
 var _load_id := 0            # (a newer load replaces an older one still waiting)
+var _tab_x := -1.0           # where the tab is heading (tucked away or out)
 static var _font: SystemFont
 
 
@@ -56,6 +60,13 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# The tab hides in the corner and slides out when the mouse comes near it (or the chat is open)
+	var m := _root.get_local_mouse_position()
+	var near := _open or (m.x > 1920.0 - NEAR.x and m.y > 1080.0 - NEAR.y)
+	var want := 1920.0 - TAB.x if near else 1920.0 - PEEK
+	if want != _tab_x:
+		_tab_x = want
+		_tab.create_tween().tween_property(_tab, "position:x", want, 0.16 if near else 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var scene := get_tree().current_scene
 	var shown := Api.token != "" and scene != null and not HIDDEN_ON.any(func(s): return scene.scene_file_path == Game.SCREENS[s])
 	if _root.visible != shown:
@@ -77,7 +88,7 @@ func _build_tab() -> void:
 	_tab.text = "CHAT"
 	_tab.focus_mode = Control.FOCUS_NONE
 	_tab.size = TAB
-	_tab.position = Vector2(1920 - TAB.x + 10, TAB_Y)
+	_tab.position = Vector2(1920 - PEEK, TAB_Y)
 	_tab.add_theme_font_override("font", font())
 	_tab.add_theme_font_size_override("font_size", 20)
 	for state in ["normal", "hover", "pressed"]:
@@ -91,8 +102,6 @@ func _build_tab() -> void:
 			close()
 		else:
 			open_list())
-	_tab.mouse_entered.connect(func(): _tab.create_tween().tween_property(_tab, "position:x", 1920 - TAB.x, 0.12))
-	_tab.mouse_exited.connect(func(): _tab.create_tween().tween_property(_tab, "position:x", 1920 - TAB.x + 10, 0.15))
 	_root.add_child(_tab)
 	_badge = PanelContainer.new()
 	var sb := UI.box(UI.RED, Color.WHITE, 2, 13)
@@ -147,6 +156,7 @@ func _show_panel() -> void:
 	if _open and _panel.visible:
 		return
 	_open = true
+	Net.clear_corner_toasts()   # (they'd sit over the chat's typing box)
 	_panel.visible = true
 	_panel.modulate.a = 0.0
 	var t := _panel.create_tween().set_parallel()

@@ -268,6 +268,16 @@ func _friend_online(f: Dictionary) -> void:
 	corner_toast(p, "friend_online", (func(): chat.open_with(id, str(f.get("username", "")), f.get("avatar"))) if id != "" else Callable())
 
 
+## The bottom-right pop-ups slide away now (the chat opened over the corner they're in).
+func clear_corner_toasts() -> void:
+	for p in _friend_toasts:
+		if is_instance_valid(p):
+			var t := p.create_tween()
+			t.tween_property(p, "position:x", 1940.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			t.tween_callback(p.queue_free)
+	_friend_toasts.clear()
+
+
 ## A pop-up sliding in at the bottom right (a friend online, a new message): the ones still up move
 ## up to make room. on_click: clicking it does that (and closes it); otherwise clicks pass through.
 func corner_toast(p: Control, sound := "", on_click := Callable(), secs := 4.5) -> void:
