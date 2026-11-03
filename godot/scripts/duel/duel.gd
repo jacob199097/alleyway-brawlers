@@ -199,8 +199,8 @@ func _ready() -> void:
 	_make_resources()
 	ui.theme = _make_theme()
 	# The floor: the match's 1v1 arena (data/arenas.json; the server's pick online, the roulette's
-	# offline; the slots are painted on it in _draw), or the old backdrop
-	var bg := "res://assets/arena_1v1.jpg" if not _paint.is_empty() else "res://assets/duel_background.png"
+	# offline; the slots are painted on it in _draw), else the Back Alley
+	var bg := "res://assets/arena_1v1.jpg"
 	var arena := {}
 	var ffa_start: bool = Game.duel_setup.get("start") is Dictionary and str(Game.duel_setup.start.get("mode", "")) == "ffa"
 	if not _paint.is_empty() and not ffa_start:
@@ -747,18 +747,33 @@ func _toggle_emote_menu() -> void:
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(grid)
+	var buttons: Array[Button] = []
 	for e in _emote_list():
 		var key: String = e[0]
-		grid.add_child(UI.button(e[1], func(): _send_emote(key), Vector2(170, 46), BLUE))
+		buttons.append(UI.button(e[1], func(): _send_emote(key), Vector2(190, 50), BLUE))
 	var who := "ALLY" if _coop else "RIVAL"
-	var mute := UI.button(("UNMUTE " if _emotes_muted else "MUTE ") + who, func():
+	buttons.append(UI.button(("Unmute " if _emotes_muted else "Mute ") + who.to_lower(), func():
 		_emotes_muted = not _emotes_muted
-		_toggle_emote_menu(), Vector2(170, 46), RED)
-	grid.add_child(mute)
+		_toggle_emote_menu(), Vector2(190, 50), RED))
+	for b in buttons:   # (the plain, readable emote font, not the chunky headline one)
+		b.add_theme_font_override("font", _emote_font())
+		b.add_theme_font_size_override("font_size", 21)
+		grid.add_child(b)
 	ui.add_child(box)
 	box.reset_size()
-	box.position = Vector2(420, 1000 - box.get_combined_minimum_size().y - 8)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(420, 1000 - sz.y - 8)
 	_ui.emotes = box
+	# It opens up from the button, the choices fading in one after another
+	box.pivot_offset = Vector2(0, sz.y)
+	box.scale = Vector2(0.9, 0.7)
+	box.modulate.a = 0.0
+	var t := box.create_tween().set_parallel()
+	t.tween_property(box, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(box, "modulate:a", 1.0, 0.12)
+	for i in buttons.size():
+		buttons[i].modulate.a = 0.0
+		t.tween_property(buttons[i], "modulate:a", 1.0, 0.14).set_delay(0.05 + 0.025 * i)
 
 
 func _send_emote(key: String) -> void:
@@ -789,29 +804,77 @@ func _show_emote(side: String, key: String) -> void:
 	var old: String = "emote_" + side
 	if _ui.has(old) and is_instance_valid(_ui[old]):
 		_ui[old].queue_free()
-	var bubble := PanelContainer.new()
 	var accent := BLUE if side == "player" else TEAL if side == "ally" else RED
-	bubble.add_theme_stylebox_override("panel", _box(Color(0.96, 0.96, 1.0, 0.97), accent, 3, 14))
-	var l := _label(26, Color("101020"), true)
+	# A speech bubble: dark, plain text on white (no outline), a soft shadow, and a tail pointing at the
+	# speaker's plate (down to yours or your ally's, up to the rival's)
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bubble := PanelContainer.new()
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := _box(Color(0.98, 0.98, 1.0), accent, 3, 18)
+	sb.content_margin_left = 24
+	sb.content_margin_right = 24
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 12
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 12
+	sb.shadow_offset = Vector2(0, 5)
+	bubble.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
 	l.text = text
+	l.add_theme_font_override("font", _emote_font())
+	l.add_theme_font_size_override("font_size", 30)
+	l.add_theme_color_override("font_color", Color("17172c"))
 	bubble.add_child(l)
-	ui.add_child(bubble)
-	bubble.reset_size()
+	root.add_child(bubble)
+	ui.add_child(root)
+	bubble.reset_size()   # (measured once it's in the tree, with its font)
+	var down := side != "opponent"
 	var sz := bubble.get_combined_minimum_size()
-	bubble.position = Vector2(40, 760 - sz.y) if side == "player" else Vector2(1896 - sz.x, 242)
-	bubble.pivot_offset = Vector2(0 if side == "player" else sz.x, sz.y if side == "player" else 0.0)
+	var tx := 40.0 if side == "player" else sz.x - 40.0
+	var tip := Vector2(tx - 6.0 if side == "player" else tx + 6.0, sz.y + 20.0) if down else Vector2(tx + 6.0, -20.0)
+	var edge := sz.y - 2.0 if down else 2.0
+	var rim := Polygon2D.new()   # (the tail's outline, under the bubble; its white fill goes over the border)
+	rim.color = accent
+	rim.polygon = PackedVector2Array([Vector2(tx - 16, edge), Vector2(tx + 16, edge), tip + Vector2(0, 4 if down else -4)])
+	root.add_child(rim)
+	root.move_child(rim, 0)
+	var fill := Polygon2D.new()
+	fill.color = Color(0.98, 0.98, 1.0)
+	fill.polygon = PackedVector2Array([Vector2(tx - 12, edge - (2 if down else -2)), Vector2(tx + 12, edge - (2 if down else -2)), tip])
+	root.add_child(fill)
+	root.size = sz
+	root.position = Vector2(40, 740 - sz.y) if side == "player" else Vector2(1896 - sz.x, 262)
 	if side == "ally" and _panels.has("ally"):   # (over your ally's plate)
 		var plate: Control = _panels.ally.root
-		bubble.position = Vector2(plate.position.x + plate.size.x - sz.x, plate.position.y - sz.y - 6)
-		bubble.pivot_offset = Vector2(sz.x, sz.y)
-	bubble.scale = Vector2.ONE * 0.4
-	_ui[old] = bubble
+		root.position = Vector2(plate.position.x + plate.size.x - sz.x, plate.position.y - sz.y - 24)
+	_ui[old] = root
 	Sfx.play("click", 1.25 if side == "player" else 0.9)
-	var t := bubble.create_tween()
-	t.tween_property(bubble, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# It pops out of the speaker with a little wobble, holds, then drifts away as it fades
+	root.pivot_offset = tip
+	root.scale = Vector2.ONE * 0.2
+	root.modulate.a = 0.0
+	var wob := 3.0 if side == "player" else -3.0
+	var t := root.create_tween()
+	t.tween_property(root, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(root, "modulate:a", 1.0, 0.14)
+	t.parallel().tween_property(root, "rotation_degrees", wob, 0.17).set_trans(Tween.TRANS_SINE)
+	t.tween_property(root, "rotation_degrees", -wob * 0.5, 0.16).set_trans(Tween.TRANS_SINE)
+	t.tween_property(root, "rotation_degrees", 0.0, 0.14).set_trans(Tween.TRANS_SINE)
 	t.tween_interval(2.4)
-	t.tween_property(bubble, "modulate:a", 0.0, 0.4)
-	t.tween_callback(bubble.queue_free)
+	t.tween_property(root, "position:y", root.position.y + (-16.0 if down else 16.0), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(root, "modulate:a", 0.0, 0.45)
+	t.tween_callback(root.queue_free)
+
+
+## The emotes' font: a clean, semi-bold sans-serif that reads at a glance (the headline font is too heavy).
+static var _emote_font_cache: SystemFont
+static func _emote_font() -> SystemFont:
+	if _emote_font_cache == null:
+		_emote_font_cache = SystemFont.new()
+		_emote_font_cache.font_names = PackedStringArray(["Segoe UI", "Helvetica Neue", "Arial"])
+		_emote_font_cache.font_weight = 600
+	return _emote_font_cache
 
 
 ## Rejoining a match (reconnect or correction): lay the board out straight from the view.
@@ -1024,6 +1087,8 @@ func _process(delta: float) -> void:
 		_tutorial.update()
 	_update_peek()
 	if _ui.has("detail_art"):
+		if _detail_key == "back:" and duel != null:   # (the match is here: show the player's own back)
+			_show_detail({})
 		# The featured card floats gently, catching the light
 		var tm := Time.get_ticks_msec() / 1000.0
 		var m: ShaderMaterial = _ui.detail_art.material
@@ -6021,16 +6086,19 @@ func _status_word(k) -> String:
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
-	var key := "%s:%s:%s" % [c.get("uid", c.get("id", "")), live_stats, live_status]
+	# (nothing hovered: the player's own card back, once the match is here)
+	var mine := duel != null and duel.sides.has("player")
+	var key := "%s:%s:%s" % [c.get("uid", c.get("id", "")), live_stats, live_status] if not c.is_empty() \
+		else "back:%s" % (_back_clan("player") if mine else "")
 	if key == _detail_key:
 		return
 	_detail_key = key
 	if c.is_empty():
-		_detail_spin = ""
+		_detail_spin = CardDB.back_style(_back_clan("player")) if mine else ""
 		for style in CardDB.BACK_STYLES.values():
-			_ui.detail_art.material.set_shader_parameter(style, 0.0)
+			_ui.detail_art.material.set_shader_parameter(style, 1.0 if style == _detail_spin else 0.0)
 		UI.rarity_fx(_ui.detail_art.material, 1)
-		_ui.detail_art.texture = CardDB.back()
+		_ui.detail_art.texture = _back_for("player") if mine else null
 		_ui.detail_title.text = ""
 		_ui.detail_kind.text = ""
 		_ui.detail_stats.text = ""

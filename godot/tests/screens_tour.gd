@@ -574,6 +574,33 @@ func _run() -> void:
 			slot += 1
 		get_tree().quit()
 		return
+	if "--emotes-back" in OS.get_cmdline_user_args():   # (the empty card panel's back, the emote menu and bubbles, the Molotov flame)
+		var deck7 := await Game.load_duel_deck()
+		Game.duel_setup = deck7
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "caldera"
+		Game.go("duel")
+		await get_tree().create_timer(3.5).timeout
+		var eb = _screen()
+		if eb._menu:
+			eb._menu.visible = false
+		await _shot("eb_panel", 0.3)
+		eb._toggle_emote_menu()
+		await _shot("eb_menu", 0.4)
+		eb._toggle_emote_menu()
+		eb._show_emote("player", "wp")
+		eb._show_emote("opponent", "gotcha")
+		await _shot("eb_bubbles", 0.8)
+		var rc7: Dictionary = CardDB.get_card(CardDB.all().keys()[0]).duplicate()
+		var mb = eb._new_view(rc7, "player", false)
+		mb.set_back(CardDB.back("arsonists"), CardDB.back_style("arsonists"))
+		mb.position = Vector2(960, 540)
+		mb.scale = Vector2.ONE * 3.2
+		mb.z_index = 900
+		for i in 6:
+			await _shot("eb_flame%d" % i, 0.12)
+		get_tree().quit()
+		return
 	if "--arsonists-only" in OS.get_cmdline_user_args():   # (Arsonists' firewall summon, Molotov attack (big), ash KO and back)
 		var deck6 := await Game.load_duel_deck()
 		Game.duel_setup = deck6

@@ -481,6 +481,19 @@ static func toast(parent: Control, msg: String, color := BLUE) -> void:
 
 
 ## A modal dialog. buttons: [[label, callable, accent?], ...]; each closes the dialog first.
+## The buttons Esc presses in a dialog (it takes the choice back, never anything else)
+const DIALOG_CANCELS := ["CANCEL", "CLOSE", "BACK", "NO", "NOT NOW", "LATER", "STAY", "KEEP PLAYING"]
+
+
+## Whether a dialog (UI.dialog) is open over parent; Esc then answers it, not the screen.
+static func dialog_open(parent: Node) -> Control:
+	for i in range(parent.get_child_count() - 1, -1, -1):
+		var c := parent.get_child(i)
+		if c.has_meta("ui_dialog") and not c.is_queued_for_deletion():
+			return c
+	return null
+
+
 static func dialog(parent: Control, heading: String, text: String, buttons: Array, accent := GOLD) -> Control:
 	var veil := ColorRect.new()
 	veil.color = Color(0, 0, 0, 0.7)
@@ -506,9 +519,23 @@ static func dialog(parent: Control, heading: String, text: String, buttons: Arra
 	col.add_child(row)
 	for spec in buttons:
 		var cb: Callable = spec[1]
-		row.add_child(button(spec[0], func():
+		var press := func():
+			if not is_instance_valid(veil) or veil.is_queued_for_deletion():
+				return
 			veil.queue_free()
-			cb.call(), Vector2(220, 56), spec[2] if spec.size() > 2 else BLUE))
+			cb.call()
+		row.add_child(button(spec[0], press, Vector2(220, 56), spec[2] if spec.size() > 2 else BLUE))
+		# Esc presses its Cancel / Close button (or the only one); the screen behind never sees it
+		if str(spec[0]).to_upper() in DIALOG_CANCELS or buttons.size() == 1:
+			veil.set_meta("cancel", press)
+	veil.set_meta("ui_dialog", true)
+	veil.focus_mode = Control.FOCUS_ALL
+	veil.gui_input.connect(func(e):
+		if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+			veil.accept_event()
+			if veil.has_meta("cancel"):
+				(veil.get_meta("cancel") as Callable).call())
+	veil.grab_focus.call_deferred()
 	veil.add_child(p)
 	p.reset_size()
 	var sz := p.get_combined_minimum_size()

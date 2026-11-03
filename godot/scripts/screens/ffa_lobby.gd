@@ -21,7 +21,7 @@ var _last_tick := -1
 
 func _ready() -> void:
 	back_to = ""
-	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "duel_background.png", 0.62)   # (the crowd waiting for a fight)
+	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "menu_background.jpg", 0.62)   # (the crowd waiting for a fight)
 	Game.sound.ambience("crowd")
 	UI.title(self, "FREE-FOR-ALL", ACCENT)
 	var sub := UI.label("4 players · every one for themselves · last one standing wins", 24, UI.MUTED)

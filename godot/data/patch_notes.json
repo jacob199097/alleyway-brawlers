@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.9.113",
+        "notes": [
+            "Emotes are much easier to read: a clean font, proper speech bubbles and smoother animations.",
+            "The Molotov on the Arsonists card back now burns.",
+            "The update screen shows the game's cards turning over while it downloads.",
+            "The card panel in a duel shows your own card back (it briefly showed the Arsonists back).",
+            "Fixed: pressing Esc while choosing the CPU difficulty could leave a black screen. Esc now closes any pop-up instead of leaving the screen behind it.",
+            "The old duel background is gone: conceding shows the match's arena."
+        ]
+    },
+    {
         "version": "0.9.112",
         "notes": [
             "New arena: The Caldera, the floor of an active volcano, with flowing lava, heat haze and rising embers. It is in the arena roulette and on the turf map.",

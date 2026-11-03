@@ -15,7 +15,7 @@ var _vs: Label
 
 func _ready() -> void:
 	back_to = ""
-	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "duel_background.png", 0.62)   # (the crowd waiting for a fight)
+	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "menu_background.jpg", 0.62)   # (the crowd waiting for a fight)
 	Game.sound.ambience("crowd")
 	UI.title(self, "CASUAL BRAWL")
 	_face_off()

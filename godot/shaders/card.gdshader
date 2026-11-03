@@ -45,6 +45,8 @@ uniform vec2 hell_eyes = vec2(0.056, -0.025);   // the skull's eyes: ±x and y, 
 // embers: the Arsonists back: sparks drift up past the Molotov, swaying, each fading slowly in and out,
 // and the fire in the art breathes. Brighter while hovered (galaxy_glow). Slow on purpose: no flicker.
 uniform float embers = 0.0;
+// The Molotov's flame on that back: its centre and radii, as uv (card centre = 0): it licks upward
+uniform vec4 molotov_flame = vec4(0.03, -0.175, 0.16, 0.095);
 uniform float reveal = 1.0;   // 0..1: the card burning into view from the bottom up (Underworld's rise), 1 = whole
 uniform vec4 reveal_color : source_color = vec4(0.75, 0.35, 1.0, 1.0);   // the glowing edge of the reveal
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
@@ -252,6 +254,20 @@ void fragment() {
 
 	if (embers > 0.0) {
 		vec2 p = vec2(uv.x, uv.y * aspect);
+		// The Molotov's flame burns: inside it the art is redrawn rippling upward like real fire (most at
+		// the tips, none at the rag), and its hot colours flare and settle
+		vec2 fd = (uv - molotov_flame.xy) / molotov_flame.zw;
+		float fm = smoothstep(1.0, 0.55, length(fd)) * embers;
+		if (fm > 0.0) {
+			float rise = clamp(0.5 - fd.y * 0.5, 0.0, 1.0);   // 0 at the bottom of the flame, 1 at the top
+			vec2 fq = vec2(uv.x * 22.0, uv.y * 14.0 + TIME * 2.4);
+			vec2 off = vec2(vnoise(fq) - 0.5, (vnoise(fq + vec2(5.2, 1.3)) - 0.5) * 0.6) * 0.022 * rise * fm;
+			off.y += 0.006 * rise * fm * (0.5 + 0.5 * sin(TIME * 3.1 + uv.x * 30.0));   // (tongues licking up)
+			col = mix(col, texture(TEXTURE, uv + 0.5 + off), fm);
+			float hot = clamp((col.r - col.b) * 1.6 - 0.35, 0.0, 1.0) * smoothstep(0.35, 0.8, col.r);
+			float flick = 0.5 + 0.5 * sin(TIME * 5.0 + vnoise(vec2(TIME * 2.0, uv.y * 18.0)) * 6.0);
+			col.rgb += vec3(1.0, 0.6, 0.2) * hot * flick * 0.28 * fm * (1.0 + 0.6 * galaxy_glow);
+		}
 		// The fire in the art (its hot orange and yellow) swells and settles, unevenly
 		float fire = clamp((col.r - col.b) * 1.6 - 0.35, 0.0, 1.0) * smoothstep(0.35, 0.8, col.r);
 		float breathe = 0.5 + 0.5 * sin(TIME * 1.7 + vnoise(p * 5.0 + vec2(0.0, TIME * 0.4)) * 4.0);

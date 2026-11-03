@@ -36,6 +36,11 @@ func _intro() -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE and back_to != "":
 		get_viewport().set_input_as_handled()
+		var open := UI.dialog_open(self)   # (a dialog is up: Esc answers it, e.g. CANCEL, and stays here)
+		if open:
+			if open.has_meta("cancel"):
+				(open.get_meta("cancel") as Callable).call()
+			return
 		Game.go(back_to)
 
 

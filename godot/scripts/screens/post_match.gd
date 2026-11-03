@@ -154,10 +154,15 @@ func _impact(art: Control, shine: ShaderMaterial, rays: Node2D) -> void:
 
 # ── Effects ──────────────────────────────────────────────────────────────────
 
-## The board as the match ended (or the duel background), blurred, drained and graded,
-## slowly pushing in; a vignette and a wash of the result's colour on top.
+## The board as the match ended (or, with no picture of it, e.g. after a concede, the match's arena),
+## blurred, drained and graded, slowly pushing in; a vignette and a wash of the result's colour on top.
 func _build_backdrop(snap) -> void:
-	var tex: Texture2D = snap if snap is Texture2D else UI.tex("duel_background.png")
+	var tex: Texture2D = snap if snap is Texture2D else null
+	if tex == null:
+		var start = Game.duel_setup.get("start")
+		var arena_id := str(start.get("arena", "")) if start is Dictionary and start.get("arena") is String else str(Game.duel_setup.get("arena", ""))
+		var arena: Dictionary = preload("res://scripts/ui/arena_roulette.gd").find(arena_id)
+		tex = UI.tex(str(arena.get("image", "arena_1v1.jpg")))
 	var bg := UI.texture_rect(tex, Vector2(2000, 1125), true)
 	bg.position = Vector2(-40, -22)
 	bg.pivot_offset = bg.size / 2

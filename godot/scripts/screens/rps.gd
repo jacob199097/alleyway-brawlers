@@ -24,7 +24,7 @@ const ARENA_AT := Vector2(1460, 784)
 
 
 func _ready() -> void:
-	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "duel_background.png", 0.55)   # (the crowd waiting for a fight)
+	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "menu_background.jpg", 0.55)   # (the crowd waiting for a fight)
 	Game.sound.ambience("crowd")
 	_layer = Control.new()
 	_layer.size = size

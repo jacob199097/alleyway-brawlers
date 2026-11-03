@@ -28,6 +28,11 @@ var _preview: TextureRect
 var _preview_name: Label
 var _tip: Label
 var _tip_order: Array = []
+## The panel's card shows the game's cards in turn (a random one every CYCLE seconds) while it waits,
+## and each new card as it lands while cards download
+const CYCLE := 2.6
+var _shown_at := 0
+var _flipping: Tween
 
 
 func _ready() -> void:
@@ -228,9 +233,27 @@ func _build_panel(heading: String, text: String, bar_text: String) -> void:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(170, 240)
 	row.add_child(holder)
-	_preview = UI.texture_rect(CardDB.back(), Vector2(170, 240))
+	var first := _random_card_art()
+	_preview = UI.texture_rect(first if first else CardDB.back(), Vector2(170, 240))
 	_preview.pivot_offset = _preview.size / 2
 	holder.add_child(_preview)
+	_shown_at = Time.get_ticks_msec()
+	# It floats gently, rocking a little, between flips
+	var bob := _preview.create_tween().set_loops()
+	bob.tween_property(_preview, "position:y", -6.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bob.tween_property(_preview, "position:y", 4.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var rock := _preview.create_tween().set_loops()
+	rock.tween_property(_preview, "rotation_degrees", 1.6, 2.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rock.tween_property(_preview, "rotation_degrees", -1.6, 2.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var cycle := Timer.new()
+	cycle.wait_time = 0.25
+	cycle.autostart = true
+	cycle.timeout.connect(func():
+		if Time.get_ticks_msec() - _shown_at >= CYCLE * 1000.0:
+			var tex := _random_card_art()
+			if tex:
+				_flip_to(tex))
+	holder.add_child(cycle)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -289,8 +312,36 @@ func _on_progress(done: int, total: int, id: String, tex: Texture2D) -> void:
 	# Each new card flips in as it lands
 	var c := CardDB.get_card(id)
 	_preview_name.text = str(c.get("name", id)) if not c.is_empty() else id.replace("_", " ").capitalize()
-	var t := create_tween()
-	t.tween_property(_preview, "scale:x", 0.0, 0.08)
-	t.tween_callback(func(): _preview.texture = tex)
-	t.tween_property(_preview, "scale:x", 1.0, 0.12).set_trans(Tween.TRANS_BACK)
-	Sfx.play("flip", 1.1, -8.0)
+	_flip_to(tex, 0.6)
+
+
+## A random card from the game that has its picture here (null when there are none yet).
+func _random_card_art() -> Texture2D:
+	var ids: Array = CardDB.all().keys()
+	for i in mini(12, ids.size()):
+		var id := str(ids.pick_random())
+		var c: Dictionary = CardDB.get_card(id)
+		if c.get("token", false) or (_preview and _preview.texture == CardDB.art(id)):
+			continue
+		var tex := CardDB.art(id)
+		if tex:
+			return tex
+	return null
+
+
+## Turn the card over to show another: it narrows to its edge, swaps, and opens out again, catching
+## the light as it turns (speed: 1 = the waiting flip; quicker as cards pour in).
+func _flip_to(tex: Texture2D, speed := 1.0) -> void:
+	if _preview == null:
+		return
+	if _flipping and _flipping.is_running():
+		_flipping.kill()
+	_shown_at = Time.get_ticks_msec()
+	_flipping = _preview.create_tween()
+	_flipping.tween_property(_preview, "scale", Vector2(0.0, 1.04), 0.2 * speed).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_flipping.parallel().tween_property(_preview, "modulate", Color(1.5, 1.4, 1.2), 0.2 * speed)
+	_flipping.tween_callback(func(): _preview.texture = tex)
+	_flipping.tween_property(_preview, "scale", Vector2.ONE, 0.32 * speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_flipping.parallel().tween_property(_preview, "modulate", Color.WHITE, 0.32 * speed)
+	if speed < 1.0:   # (a card landing; the waiting flips are quiet)
+		Sfx.play("flip", 1.1, -8.0)

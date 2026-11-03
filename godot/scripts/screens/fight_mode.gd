@@ -18,7 +18,7 @@ const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
 
 func _ready() -> void:
 	back_to = "main_menu"
-	UI.background(self, "arena_rooftop.jpg" if UI.tex("arena_rooftop.jpg") else "duel_background.png", 0.4 if UI.tex("arena_rooftop.jpg") else 0.62)
+	UI.background(self, "arena_rooftop.jpg" if UI.tex("arena_rooftop.jpg") else "menu_background.jpg", 0.4 if UI.tex("arena_rooftop.jpg") else 0.62)
 	Game.sound.ambience("rooftop")   # (the rooftop over the city)
 	UI.title(self, "SELECT BATTLE MODE")
 	if Game.player.get("first_win_ready", false) and not Game.offline:
@@ -364,8 +364,11 @@ Normal: the standard CPU.
 Hard: sacrifices cleverly and trades up." + rewards,
 		[["EASY", func(): choice[0] = "easy", UI.GREEN], ["NORMAL", func(): choice[0] = "normal", UI.BLUE],
 		["HARD", func(): choice[0] = "hard", UI.RED], ["CANCEL", func(): choice[0] = "cancel"]], Color("b388ff"))
+	var tree := get_tree()
 	while choice[0] == "":
-		await get_tree().process_frame
+		await tree.process_frame
+		if not is_inside_tree():   # (the screen was left: nothing to start)
+			return ""
 	return "" if choice[0] == "cancel" else choice[0]
 
 
