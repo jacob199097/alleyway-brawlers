@@ -108,7 +108,7 @@
         },
         {
             "id": "cinder", "clan": "arsonists", "leader": "card_arso_001", "name": "Cinder, the City Burner", "short": "Cinder", "title": "The Spark Behind Every Blaze",
-            "color": "#f45815", "arena": "junkyard", "portrait": "card_arso_001", "prize": "card_arso_033",
+            "color": "#f45815", "arena": "caldera", "portrait": "card_arso_001", "prize": "card_arso_033",
             "lines": {
                 "intro": ["Smell that? That's your neighbourhood, about to change hands.", "Two of you. More kindling.", "Light 'em up."],
                 "phase": {"1": "Feel that heat? I'm only getting started.", "2": "Every city's got a fuse. You two just lit it."},
