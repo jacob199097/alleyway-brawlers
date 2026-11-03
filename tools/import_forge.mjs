@@ -12,6 +12,9 @@
 // A full export ("Export all Done") is the source of truth: cards not in it are removed here too.
 // A changes-only export ("Export changes": export.json says { "changes": true }) is merged in: the
 // cards in it are added or updated, and every other card stays as it is.
+// There can be more than one Forge (each has its own artwork storage). A second Forge's export says which
+// one it is (export.json "forge": "forge2"); its cards are tagged with it, and a full export replaces only
+// that Forge's cards. A card ID another Forge already has is left out.
 // Then commit, push, and on the server run:  node backend/scripts/sync_cards.mjs
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, copyFileSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -46,7 +49,10 @@ if (!catalogPath) fail(`No card_catalog.json in ${src}. Use the Forge's "Export 
 const exported = JSON.parse(readFileSync(catalogPath, 'utf8'));
 const artDir = join(dirname(catalogPath), 'cards');
 const metaPath = join(dirname(catalogPath), 'export.json');
-const changesOnly = existsSync(metaPath) && JSON.parse(readFileSync(metaPath, 'utf8')).changes === true;
+const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, 'utf8')) : {};
+const changesOnly = meta.changes === true;
+const FORGE = String(meta.forge || '');   // '' = the first Forge
+const forgeOf = (c) => String(c.forge || '');
 
 // ── 2. Clean up each card ────────────────────────────────────────────────────
 const TYPES = ['gang_member', 'leader', 'hustle', 'ambush'];
@@ -121,12 +127,19 @@ for (const [key, raw] of Object.entries(exported)) {
         // Its artworks: <id>.png and <id>_v2.png ... (each token in a match shows one)
         if (int(raw.artVariants) > 1) c.artVariants = Math.min(12, int(raw.artVariants));
     }
+    if (FORGE) c.forge = FORGE;
     cards[id] = c;
 }
 // A changes-only export updates these cards and keeps all the others
 const before = await currentForgeCards();
+for (const id of Object.keys(cards)) {
+    if (before[id] && forgeOf(before[id]) !== FORGE) {
+        warnings.push(`${id}: already made in ${forgeOf(before[id]) || 'the first Forge'}, so this one was left out. Give it another number.`);
+        delete cards[id];
+    }
+}
 const incoming = Object.keys(cards);
-const keep = changesOnly ? before : Object.fromEntries(Object.entries(before).filter(([, c]) => inSkipped(c)));
+const keep = changesOnly ? before : Object.fromEntries(Object.entries(before).filter(([, c]) => inSkipped(c) || forgeOf(c) !== FORGE));
 const all = { ...keep, ...cards };
 for (const c of Object.values(all)) {
     if (c.promotesTo && !all[c.promotesTo]) warnings.push(`${c.id}: promotes to "${c.promotesTo}", which isn't in the game or the export.`);
@@ -161,7 +174,7 @@ execFileSync(process.execPath, [join(ROOT, 'godot/tools/export_cards.mjs')], { s
 const added = incoming.filter(id => !before[id]);
 const updated = incoming.filter(id => before[id] && JSON.stringify(before[id]) !== JSON.stringify(cards[id]));
 const removed = Object.keys(before).filter(id => !all[id]);
-console.log(`\n${changesOnly ? 'Changes only: ' : ''}imported ${incoming.length} Forge cards (${added.length} new, ${updated.length} changed, ${removed.length} removed), ${copied} images; ${Object.keys(all).length} Forge cards in the game.`);
+console.log(`\n${FORGE ? `[${FORGE}] ` : ''}${changesOnly ? 'Changes only: ' : ''}imported ${incoming.length} Forge cards (${added.length} new, ${updated.length} changed, ${removed.length} removed), ${copied} images; ${Object.keys(all).length} Forge cards in the game.`);
 if (updated.length) console.log(`  changed: ${updated.join(', ')}`);
 if (added.length) console.log(`  new: ${added.join(', ')}`);
 if (removed.length) console.log(`  removed: ${removed.join(', ')} (their image files are left in place)`);

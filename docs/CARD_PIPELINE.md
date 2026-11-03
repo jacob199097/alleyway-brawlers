@@ -3,6 +3,15 @@
 Cards are designed in the Card Forge (https://claude.ai/artifact/4DxkURVx8VNZJDMVWMTzCY):
 art, stats, text and **effects** (the game rules). Getting them into the game takes three steps.
 
+**Card Forge 2** (https://claude.ai/artifact/4Y2g2kad276uCVJJvGkd4E) is a second Forge with its own 1 GB
+of artwork storage, for when the first one is full. It has the same clans and works the same way. Its card
+numbers start at 501 (ARSO-501, NEBU-501...), so they never clash with the first Forge's. Its export is
+`alleyway-cards-forge2.zip` and imports the same way: a full export replaces only Forge 2's cards (they
+carry `forge: "forge2"` in `shared/cards_forge.js`), and the first Forge's full export leaves them alone.
+Which Forge a page is comes from its `meta/forge` doc (name, key, numberFrom). A card can only promote to
+or make a token from cards in its own Forge. A clan's frame or colour changed in one Forge has to be
+changed in the other too.
+
 **Artwork that matches.** Each card's **Art prompt** panel picks up to four **reference images**: real
 artwork from the Forge to attach in ChatGPT with the prompt (a Striver's level below first, as the character;
 then the clan's art, same card type and rarest first; then other clans' art, which is what a new clan gets).
@@ -23,7 +32,8 @@ This:
 - copies the card images to `assets/cards/` and `godot/assets/cards/`;
 - regenerates `godot/data/cards.json`.
 
-The Forge is the source of truth: a card deleted in the Forge is removed on the next import.
+The Forge is the source of truth: a card deleted in the Forge is removed on the next import (only
+that Forge's cards: see Card Forge 2 above).
 To hold back a clan that is still being made, add `--skip-clan <clan>` (e.g. `--skip-clan underworld`): its
 cards are left out of the import, and any of them already in the game stay as they are.
 Character roles follow the class rules, and the importer enforces them:

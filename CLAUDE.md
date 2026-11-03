@@ -17,7 +17,7 @@
   Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. The privacy
   policy and terms are pages on the server (`backend/routes/legal.js`): keep them true to what the server stores. Database changes go in a `db/migrate_*.sql`
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
-- New cards come from the Card Forge: `node tools/import_forge.mjs <zip>`, then on the server
+- New cards come from the Card Forge (or Card Forge 2, more art storage, numbers from 501): `node tools/import_forge.mjs <zip>`, then on the server
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data
   (`shared/clans.js`): no code names a clan. `node tools/balance.mjs` reports how each card does.
 - Rules changes go in both engines; re-run `godot/tests/export_golden.gd` + `shared/duel/engine.test.mjs`.
