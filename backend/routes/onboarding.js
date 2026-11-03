@@ -7,6 +7,8 @@
  *   POST /api/onboarding/start-clan   { clan } — seeds that clan's starter inventory (deck cards,
  *                                     the promoted forms for the Hideout, the leader) and makes the
  *                                     40-card starter deck the active deck.
+ * Until the launch wipe (GIVE_ALL_STARTERS) every player also gets every other clan's starter: new
+ * players when they pick a clan, everyone else when the server starts (a new clan reaches them too).
  */
 
 const router         = require('express').Router();
@@ -15,6 +17,9 @@ const { pool }       = require('../db/pool');
 const { sendMail }   = require('./mail');
 
 const clans = import('../../shared/clans.js');
+
+// Pre-launch: everyone gets every clan's starter deck (and its cards). Set to false for the wipe.
+const GIVE_ALL_STARTERS = true;
 
 router.get('/clans', requireAuth, async (_req, res) => {
     try {
@@ -48,6 +53,7 @@ router.post('/start-clan', requireAuth, async (req, res) => {
         }
 
         await seedStarter(client, req.playerId, starterRecipe(clan), info.name);
+        await client.query('INSERT INTO player_starter_grants (player_id, clan) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.playerId, clan]);
 
         await client.query(
             'UPDATE players SET chosen_clan = $1 WHERE id = $2',
@@ -55,6 +61,9 @@ router.post('/start-clan', requireAuth, async (req, res) => {
         );
 
         await client.query('COMMIT');
+        if (GIVE_ALL_STARTERS) {
+            await grantStarters(req.playerId, false).catch(err => console.error('[Onboarding] other starters:', err.message));
+        }
 
         // Drop a welcome message into the player's mailbox.
         sendMail(req.playerId, {
@@ -75,8 +84,68 @@ router.post('/start-clan', requireAuth, async (req, res) => {
     }
 });
 
-/** Inventory and the active starter deck from a recipe (card game IDs = cards.art_url). */
-async function seedStarter(client, playerId, recipe, clanName) {
+/** Every clan's starter a player who has picked a clan hasn't been given yet: its cards and its deck
+ *  (not made active). Returns the clans' names; with mail, tells the player in their mailbox. */
+async function grantStarters(playerId, mail = true) {
+    const { pickableClans, starterRecipe } = await clans;
+    const given = [];
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows } = await client.query('SELECT chosen_clan FROM players WHERE id = $1 FOR UPDATE', [playerId]);
+        if (!rows.length || !rows[0].chosen_clan) { await client.query('ROLLBACK'); return given; }
+        const { rows: had } = await client.query('SELECT clan FROM player_starter_grants WHERE player_id = $1', [playerId]);
+        const have = new Set(had.map(r => r.clan));
+        // (a "<Clan> Starter" deck already there, given before this was recorded: that counts, and stays as it is)
+        const { rows: decks } = await client.query("SELECT name FROM decks WHERE player_id = $1 AND name LIKE '% Starter'", [playerId]);
+        const named = new Set(decks.map(r => r.name));
+        for (const c of pickableClans()) {
+            if (have.has(c.id)) continue;
+            if (named.has(`${c.name} Starter`)) {
+                await client.query('INSERT INTO player_starter_grants (player_id, clan) VALUES ($1, $2) ON CONFLICT DO NOTHING', [playerId, c.id]);
+                continue;
+            }
+            await seedStarter(client, playerId, starterRecipe(c.id), c.name, false);
+            await client.query('INSERT INTO player_starter_grants (player_id, clan) VALUES ($1, $2) ON CONFLICT DO NOTHING', [playerId, c.id]);
+            given.push(c.name);
+        }
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+    if (mail && given.length) {
+        sendMail(playerId, {
+            subject: 'Every starter deck, on the house',
+            body: `Until the game launches, you get every clan's starter deck to try them all.\n\n` +
+                  `Added to your account: the ${given.join(', ')} starter deck${given.length === 1 ? '' : 's'} and their cards. ` +
+                  `Find them in the Deck Builder.`,
+        });
+    }
+    return given;
+}
+
+/** At start-up (GIVE_ALL_STARTERS): every player who has picked a clan gets the starters they're missing. */
+async function grantStartersToEveryone() {
+    if (!GIVE_ALL_STARTERS) return;
+    const { rows } = await pool.query('SELECT id FROM players WHERE chosen_clan IS NOT NULL');
+    let players = 0, decks = 0;
+    for (const { id } of rows) {
+        try {
+            const given = await grantStarters(id);
+            if (given.length) { players += 1; decks += given.length; }
+        } catch (err) {
+            console.error(`[Onboarding] starters for ${id}:`, err.message);
+        }
+    }
+    if (players) console.log(`[Onboarding] Gave ${decks} starter deck(s) to ${players} player(s)`);
+}
+
+/** Inventory and a starter deck from a recipe (card game IDs = cards.art_url); active: it becomes the
+ *  player's active deck. */
+async function seedStarter(client, playerId, recipe, clanName, active = true) {
     const ids = [...new Set([recipe.leader, ...recipe.deck.map(([id]) => id), ...recipe.hideout.map(([id]) => id)].filter(Boolean))];
     const { rows } = await client.query('SELECT id, art_url FROM cards WHERE art_url = ANY($1::text[])', [ids]);
     const dbId = Object.fromEntries(rows.map(r => [r.art_url, r.id]));
@@ -103,12 +172,12 @@ async function seedStarter(client, playerId, recipe, clanName) {
     await client.query('DELETE FROM decks WHERE player_id = $1 AND name = $2', [playerId, name]);
     const { rows: deckRows } = await client.query(
         `INSERT INTO decks (player_id, name, is_active, leader_card_id, hideout_set)
-         VALUES ($1, $2, TRUE, $3, TRUE)
+         VALUES ($1, $2, $3, $4, TRUE)
          RETURNING id`,
-        [playerId, name, recipe.leader ? dbId[recipe.leader] : null]
+        [playerId, name, active, recipe.leader ? dbId[recipe.leader] : null]
     );
     const deckId = deckRows[0].id;
-    await client.query('UPDATE decks SET is_active = FALSE WHERE player_id = $1 AND id <> $2', [playerId, deckId]);
+    if (active) await client.query('UPDATE decks SET is_active = FALSE WHERE player_id = $1 AND id <> $2', [playerId, deckId]);
     for (const [id, copies] of recipe.deck) {
         await client.query('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, $3)', [deckId, dbId[id], copies]);
     }
@@ -118,3 +187,4 @@ async function seedStarter(client, playerId, recipe, clanName) {
 }
 
 module.exports = router;
+module.exports.grantStartersToEveryone = grantStartersToEveryone;

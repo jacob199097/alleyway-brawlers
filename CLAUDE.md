@@ -12,6 +12,8 @@
   `alleyway-backend` systemd service, public at https://alleywaybrawlers.duckdns.org (Apache proxy).
   It is the authority for auth, economy, matches (online and CPU) and decks.
   Never move reward/currency/card logic into the client.
+  Pre-launch, every player gets every clan's starter deck (`GIVE_ALL_STARTERS` in `backend/routes/onboarding.js`):
+  turn it off for the launch wipe.
   Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. The privacy
   policy and terms are pages on the server (`backend/routes/legal.js`): keep them true to what the server stores. Database changes go in a `db/migrate_*.sql`
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.

@@ -262,6 +262,8 @@ migrate(pool)
     .catch(err => console.error('[Server] Database migration failed:', err.message))
     .finally(() => server.listen(PORT, '0.0.0.0', () => {
         console.log(`[Server] AlleyWay Brawlers running on port ${PORT}`);
+        // Pre-launch: everyone gets every clan's starter deck (routes/onboarding.js GIVE_ALL_STARTERS)
+        onboardingRoutes.grantStartersToEveryone().catch(err => console.error('[Onboarding] starters:', err.message));
     }));
 
 module.exports = { app, io };
