@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.110",
+        "notes": [
+            "New card effects for the Arsonists: Ambushes that only spring on a BURNING attacker, and effects that happen only if an enemy is BURNING or only when attacking a BURNING character."
+        ]
+    },
+    {
         "version": "0.9.109",
         "notes": [
             "Decks can now have 40 to 60 cards (still up to 3 copies of a card).",

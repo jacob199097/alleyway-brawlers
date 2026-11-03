@@ -2508,6 +2508,8 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return def != null and def.get("downed", false)
 		"vs_atk":
 			return def != null and def.get("position") == "atk" and not def.get("downed", false)
+		"vs_burning":
+			return def != null and def.has("burn")
 		# (if_clan: whose characters count; without it, the effect's clan as before)
 		"allies":
 			return _fx_pool(side, _cond_clan(e), slot).size() >= n
@@ -2560,6 +2562,8 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return s.deck.size() <= n
 		"foe_statused":
 			return _enemy_chars(side).any(func(x): return _afflicted(x.card))
+		"foe_burning":
+			return _enemy_chars(side).any(func(x): return x.card.has("burn"))
 		"hustles_ge":
 			return _hustles_this_turn(side) >= n
 		"morale_behind":

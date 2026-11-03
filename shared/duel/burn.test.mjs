@@ -116,4 +116,31 @@ morale = st.sides.opponent.morale;
 st._doFx('player', -1, src, { do: 'damage', amount: 100, per: 'st_stun' });
 assert.equal(st.sides.opponent.morale, morale - 200, '100 for each of 2 STUNNED enemies');
 
+// An Ambush that KOs the attacker only if it's BURNING: not offered otherwise
+for (const burning of [false, true]) {
+    st = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1);
+    st.turn = 5; st.phase = 'brawl'; st.active = 'player';
+    st.sides.player.field[0] = st.makeCard({ id: 'burn_grunt', effectKey: '', ...(burning ? { burn: { ...burn } } : {}) });
+    st.sides.opponent.field[0] = st.makeCard({ id: 'burn_grunt', effectKey: '' });
+    const trap = st.makeCard({ id: 'trap', name: 'Backdraft', cardType: 'ambush', clanTag: 'arsonists',
+        effects: [{ when: 'defend', do: 'ko', target: 'attacker', only: 'burning', negate: true }] });
+    trap.face_down = true;
+    st.sides.opponent.field[5] = trap;
+    st._recalc(); st.takeEvents();
+    st.doAction('player', { kind: 'attack', from: 0, target: 0 });
+    assert.equal(st.pending.key === 'ambush', burning, burning ? 'the trap springs on a BURNING attacker' : 'no trap for an attacker that is not BURNING');
+    if (burning) {
+        st.doAction('opponent', { kind: 'choose', option: '5' });
+        assert.ok(!st.cardAt('player', 0), "the BURNING attacker is KO'd");
+    }
+}
+
+// "Only if an enemy is BURNING" / "only if the other card is BURNING"
+st = board([], [{}, {}]);
+assert.ok(!st._fxCond('player', 0, { if: 'foe_burning' }, null), 'no enemy is BURNING');
+st.cardAt('opponent', 1).burn = { ...burn };
+assert.ok(st._fxCond('player', 0, { if: 'foe_burning' }, null), 'an enemy is BURNING');
+assert.ok(!st._fxCond('player', 0, { if: 'vs_burning' }, st.cardAt('opponent', 0)), 'the one it attacks is not BURNING');
+assert.ok(st._fxCond('player', 0, { if: 'vs_burning' }, st.cardAt('opponent', 1)), 'the one it attacks is BURNING');
+
 console.log('burn: ok');

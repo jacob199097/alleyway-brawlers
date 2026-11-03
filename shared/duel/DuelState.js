@@ -2177,6 +2177,7 @@ export class DuelState {
             case 'vs_def': return def != null && (def.position === 'def' || !!def.face_down || !!def.downed);
             case 'vs_downed': return def != null && !!def.downed;
             case 'vs_atk': return def != null && def.position === 'atk' && !def.downed;
+            case 'vs_burning': return def != null && def.burn !== undefined;
             // (if_clan: whose characters count; without it, the effect's clan as before)
             case 'allies': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length >= n;
             case 'allies_le': return this._fxPool(side, { ...e, clan: e.if_clan ?? e.clan }, slot).length <= n;
@@ -2202,6 +2203,7 @@ export class DuelState {
             case 'turn_ge': return this.turn >= n;
             case 'deck_le': return s.deck.length <= n;
             case 'foe_statused': return this._enemyChars(side).some(x => this._afflicted(x.card));
+            case 'foe_burning': return this._enemyChars(side).some(x => x.card.burn !== undefined);
             case 'hustles_ge': return this._hustlesThisTurn(side) >= n;
             case 'morale_behind': return this.foesOf(side).some(f => this.sides[f].morale > s.morale);
             case 'morale_ahead': return this.foesOf(side).length > 0 && this.foesOf(side).every(f => this.sides[f].morale < s.morale);
