@@ -14,6 +14,12 @@ card in 200 CPU games** on each one and adjust.
 
 ## Using the prompts (ChatGPT)
 
+- **The clan's colours:** every Arsonists picture keeps the same scheme, like the other clans do:
+  deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke.
+  (The Forge's Art prompt panel adds it too: Settings, the clan's "Art style".)
+- **Nothing explosive:** ChatGPT won't draw bombs, detonators or explosive charges. Use fire, fuel
+  trails, sparks and smoke instead.
+
 - **The reference image is for the art style only.** Don't attach Cinder: ChatGPT copies his coat,
   gas mask and Molotovs. Attach one or two finished cards from another clan (any Underworld or
   Militia character works), and later, finished Arsonists cards other than Cinder.
@@ -118,25 +124,27 @@ A hothead pit fighter who wraps his fists in burning rags.
 > Using the same artstyle as the reference image. The same character, now a champion: wearing a battered red boxing robe with the hood up, a heavy blackened championship belt over his shoulder, both arms burning from fist to elbow, walking out through a tunnel toward the ring, calm and menacing. Seen from behind and to the side, the robe catching the light. Background: a packed illegal arena ahead of him, spotlights through smoke, the ring ropes on fire. Palette: deep black, robe red, white spotlights, fire orange. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ### 5. Fuse (Rare)
-The demolition expert who plans every fire like a heist. Cold and precise.
+The planner who maps every fire before she lights it, then watches it run exactly where she drew it.
+Cold and precise. (No bombs or explosives in her art: ChatGPT refuses them. Her thing is trails of fire
+that follow her plans.)
 
 **LV1** · 2 Authority · 800 / 400
 - When deployed: 100 Morale damage for each BURNING enemy.
 - At the end of your turn, if an enemy has a status: PROMOTE.
 
-> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Fuse": a calm woman in her thirties with a long dark braid and round wire glasses, a crisp grey work shirt with rolled sleeves, sitting at a workbench soldering wires into a small explosive charge, a pencil behind her ear. Close, quiet portrait framing. Background: a tidy basement workshop, a city blueprint pinned to the wall with buildings circled in red, one desk lamp. Palette: muted greys and steel blue, one warm lamp, small red details. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the card "Fuse": a calm woman in her thirties with a long dark braid and round wire glasses, a fitted charcoal work shirt with rolled sleeves and a pencil behind her ear, leaning over a big hand-drawn city map spread across a table, holding a single lit match above it; a thin line of flame runs along the streets she has drawn in red, lighting her face from below. Close, quiet framing from across the table. Background: a dim back room, maps and photos pinned to the wall joined by red string, smoke curling under one hanging bulb. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV2** · 5 Authority · 1900 / 900
 - ACTIVATE (once per turn, this card can't attack this turn): give all enemy characters STOKE 100.
 - When an enemy is KO'd: PROMOTE.
 
-> Using the same artstyle as the reference image. The same character, now on the job: in a black utility jumpsuit with a harness of tools, rappelling down the side of a skyscraper at night on a single rope, placing a glowing charge on a window ledge, her braid swinging. Seen from above, the drop to the street dizzying below. Background: the neon city far below in the rain, other charges blinking red down the building face. Palette: deep black, steel blue, blinking red lights, neon reflections. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now in the field: a long charcoal coat over her work shirt, a coil of oil-soaked rope over one shoulder, crouched at the mouth of an alley and touching a match to a trail of fuel on the cobbles; the flame races away from her down the alley and splits into several burning lines that run off around corners. Low angle, at ground level behind the flame. Background: a maze of rain-slick back alleys at night, the fire trails glowing between the walls. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 **LV3** · 8 Authority · 2800 / 1800
 - At the end of your turn: give all enemy characters STOKE 200.
 - When an enemy is KO'd: 400 Morale damage.
 
-> Using the same artstyle as the reference image. The same character, now the master of demolition: standing calmly on a rooftop with her back to the viewer, a detonator held loosely at her side, glasses reflecting the blast, as a whole row of towers across the river erupts in a chain of fireballs. Wide cinematic shot. Background: the skyline in flames reflected in the river, debris and smoke rolling up into the night. Palette: deep black, steel blue, huge white-orange explosions. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+> Using the same artstyle as the reference image. The same character, now the mastermind: standing calmly at the edge of a rooftop in her long coat, hands in her pockets, the burning city reflected in her glasses, as lines of fire she set run through the streets below like glowing veins on a map, every line meeting at one great blaze in the middle of the district. Seen from behind her shoulder, wide shot over the city. Background: the night skyline, columns of smoke lit orange from below, embers drifting past. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ---
 
