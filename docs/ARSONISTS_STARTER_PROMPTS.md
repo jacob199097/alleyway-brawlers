@@ -299,3 +299,15 @@ Forge, tagged In progress until her art is in; Cinder shows up in Turf Defense o
 - Flavour: "Burn me down. I come back hotter."
 
 > Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the legendary card "Pyra, the Undying Flame": a fierce young woman with a shaved undercut and long hair dyed ember-red on top, a scorched white tracksuit jacket hanging open over a black top, rising up out of a heap of grey ash in the middle of the street, arms spread wide, head tilted back, eyes glowing faintly orange; behind her, the fire flares up into the shape of huge spread phoenix wings. Low camera angle looking up at her, the wings filling the frame. Background: a burned-out avenue at night, blackened shopfronts, smoke columns lit orange from below, ash falling like snow. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+
+---
+
+## Arena: The Burn Ward
+
+The Arsonists' own 1v1 arena (and Cinder's in Turf Defense once it's in). Attach one of the game's
+arenas as the reference (`assets/arena_1v1_junkyard.jpg` works best: same top-down view and layout),
+generate it in landscape (1536 × 1024), and send it over: it gets upscaled 4x (Real-ESRGAN) like the
+other arenas, added to `godot/data/arenas.json` with its animated fire glows, embers and smoke, and
+shipped in a patch.
+
+> Using the same artstyle as the reference image, and the same straight-down, bird's-eye view and layout: a wide open floor in the middle with the scenery packed around the edges. Take only the style and layout: don't copy the reference's junkyard or its props. A new arena: the gutted ground floor of a burned-out warehouse with its roof gone, seen from directly above at night. The middle two-thirds of the picture is open, flat, scorched concrete floor, cracked and stained with soot, evenly lit and kept clear of objects, where the game's cards are laid out. Around all four edges: charred, collapsed roof beams, rusted oil drums burning with tall flames, scattered red fuel cans, a melted forklift, heaps of glowing embers and black ash, broken pallets still smouldering, a twisted fire escape in one corner, a long trail of spilled fuel along one side with small flames running along it. Warm firelight from the edges, thin smoke drifting across the corners, sparks in the air. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Landscape 1536x1024. No people, no text, no letters or signs anywhere, no border.
