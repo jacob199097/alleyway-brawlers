@@ -305,8 +305,9 @@ Forge, tagged In progress until her art is in; Cinder shows up in Turf Defense o
 ## Arena: The Caldera
 
 The Arsonists' own 1v1 arena (and Cinder's in Turf Defense once it's in): the floor of an active
-volcano's crater. Attach one of the game's arenas as the reference (works best: same top-down view and layout), generate it in landscape (1536 × 1024), and send it over:
-it gets upscaled 4x (Real-ESRGAN) like the other arenas, added to  with
+volcano's crater. Attach one of the game's arenas as the reference (`assets/arena_1v1_junkyard.jpg`
+works best: same top-down view and layout), generate it in landscape (1536 × 1024), and send it over:
+it gets upscaled 4x (Real-ESRGAN) like the other arenas, added to `godot/data/arenas.json` with
 animated lava glows, embers and smoke, and shipped in a patch.
 
 > Using the same artstyle as the reference image, and the same straight-down, bird's-eye view and layout: a wide open floor in the middle with the scenery packed around the edges. Take only the style and layout: don't copy the reference's junkyard or its props. A new arena: the floor of an active volcano's crater, seen from directly above at night. The middle two-thirds of the picture is a wide, flat shelf of cooled black volcanic rock, cracked into rough plates with faint orange glowing seams, evenly lit and kept clear of objects, where the game's cards are laid out. Around all four edges: rivers and pools of bright molten lava, jagged black basalt rocks and the steep crater walls rising at the corners, small lava falls pouring over ledges, steam vents, glowing fissures, scattered burning embers and drifting ash. Heat shimmer and thin smoke across the corners, sparks rising from the lava. Palette: deep black and charcoal rock, blazing orange and ember-red lava, glowing embers, drifting ash and smoke. Landscape 1536x1024. No people, no text, no letters or signs anywhere, no border.
