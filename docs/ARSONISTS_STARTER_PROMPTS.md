@@ -285,3 +285,17 @@ that follow her plans.)
 Deck: 10 Striver LV1s + 19 characters + 1 Heavy = 30 characters, and 10 Hustles/Ambushes. Hideout:
 the LV2s and LV3s (3 each). Once their art is in, `shared/clans.js` gets a hand-picked Arsonists
 starter like the other clans (until then the game builds one from the clan's cards).
+
+---
+
+## Turf Defense prize
+
+**Pyra, the Undying Flame** (ARSO-033, Legendary, 6 Authority, 2600 / 1800). Only Cinder gives her: the
+first time a crew beats his Street level in Turf Defense (never in packs, can't be crafted). In the
+Forge, tagged In progress until her art is in; Cinder shows up in Turf Defense once she's exported.
+- When deployed: give all enemy characters BURN 200.
+- At the end of your turn: your opponent loses 100 Morale for each BURNING enemy character.
+- When this card is KO'd: give all enemy characters STOKE 300.
+- Flavour: "Burn me down. I come back hotter."
+
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Arsonists clan character for the legendary card "Pyra, the Undying Flame": a fierce young woman with a shaved undercut and long hair dyed ember-red on top, a scorched white tracksuit jacket hanging open over a black top, rising up out of a heap of grey ash in the middle of the street, arms spread wide, head tilted back, eyes glowing faintly orange; behind her, the fire flares up into the shape of huge spread phoenix wings. Low camera angle looking up at her, the wings filling the frame. Background: a burned-out avenue at night, blackened shopfronts, smoke columns lit orange from below, ash falling like snow. Palette: deep black and charcoal, blazing orange and ember-red fire, glowing embers, drifting ash and smoke. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
