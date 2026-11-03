@@ -118,6 +118,31 @@ const CURATED = {
             ['card_unde_041', 3], ['card_unde_042', 3],
         ],
     },
+    // 30 characters, 10 Hustles/Ambushes: set enemies BURNING, STOKE the fires, then cash in with cards that
+    // count or only hit BURNING enemies. Gasoline Gus is left for packs. Tuned 2026-11-03 (tools/balance.mjs
+    // --vs arsonists,<clan> --starters): the list in docs/ARSONISTS_STARTER_PROMPTS.md won 36-43%; more
+    // Strivers (the strongest cards) and fewer mid-cost characters made it 51% Nebula / 58% Militia /
+    // 49% Wildcard / 51% Underworld.
+    arsonists: {
+        blurb: 'Burn them down: set enemies BURNING, STOKE the fires higher, and cash in on every enemy that burns.',
+        leader: 'card_arso_001',   // Cinder
+        deck: [
+            // Strivers: Kindle, Flint, Haze, Blaze Maddox, Fuse
+            ['card_arso_002', 3], ['card_arso_005', 3], ['card_arso_008', 3], ['card_arso_011', 3], ['card_arso_014', 2],
+            // Characters: Matchstick Molly, Soot, The Pyre Twins, Cinderblock, Tinder, Sparky, Flashpoint, Smokestack;
+            // Heavy The Furnace
+            ['card_arso_017', 3], ['card_arso_019', 2], ['card_arso_020', 1], ['card_arso_021', 2], ['card_arso_022', 2],
+            ['card_arso_023', 2], ['card_arso_024', 1], ['card_arso_025', 2], ['card_arso_026', 1],
+            // Hustles: Molotov, Fan the Flames, Gas Leak, Burn Notice; Ambushes: Backdraft, Up in Smoke
+            ['card_arso_027', 3], ['card_arso_028', 1], ['card_arso_029', 1], ['card_arso_030', 1],
+            ['card_arso_031', 2], ['card_arso_032', 2],
+        ],
+        hideout: [
+            ['card_arso_003', 3], ['card_arso_004', 3], ['card_arso_006', 3], ['card_arso_007', 3],
+            ['card_arso_009', 3], ['card_arso_010', 3], ['card_arso_012', 3], ['card_arso_013', 3],
+            ['card_arso_015', 3], ['card_arso_016', 3],
+        ],
+    },
 };
 
 // How a clan without a starter yet plays (shown when it can be chosen)

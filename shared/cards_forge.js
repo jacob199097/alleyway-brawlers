@@ -1865,13 +1865,13 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_024",
         "code": "MILI-024",
         "flavourText": "Out here, patience is the sharpest weapon.",
-        "effectText": "When this card KOs a character: If your opponent controls 2 or fewer characters, PROMOTE this card.",
+        "effectText": "When this card KOs a character: If your opponent controls 3 or fewer characters, PROMOTE this card.",
         "effects": [
             {
                 "when": "ko",
                 "do": "promote",
                 "if": "enemies_le",
-                "n": 2
+                "n": 3
             }
         ],
         "clanName": "Militia",
@@ -7319,5 +7319,1039 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null
+    },
+    "card_arso_001": {
+        "id": "card_arso_001",
+        "name": "Cinder",
+        "clan": "arsonists",
+        "cardType": "leader",
+        "authority": 10,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_001",
+        "code": "ARSO-001",
+        "flavourText": "Every city's got a fuse. I just find it.",
+        "effectText": "While this leader is Dormant, at the end of your turn: Give one enemy character BURN 200.\nAWAKEN: When your opponent's Morale is 2500 or less, this leader may take the field.\nWhen this leader Awakens: Give all enemy characters STOKE 200.",
+        "effects": [
+            {
+                "when": "dormant_turn_end",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 200
+            },
+            {
+                "when": "awaken",
+                "do": "stoke",
+                "target": "enemies",
+                "amount": 200
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 3000,
+        "defense": 2000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "awakenCondition": {
+            "foe_morale": 2500
+        },
+        "influence": 5000
+    },
+    "card_arso_002": {
+        "id": "card_arso_002",
+        "name": "Kindle",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_002",
+        "code": "ARSO-002",
+        "flavourText": "Cinder taught me everything. Mostly how to run.",
+        "effectText": "At the end of your turn: If an enemy character is BURNING, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "foe_burning"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 400,
+        "defense": 200,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_arso_003"
+    },
+    "card_arso_003": {
+        "id": "card_arso_003",
+        "name": "Kindle",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_003",
+        "code": "ARSO-003",
+        "flavourText": "Cinder taught me everything. Mostly how to run.",
+        "effectText": "When this card attacks: Give one enemy character BURN 200.\nWhen this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 200
+            },
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1600,
+        "defense": 800,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_arso_004"
+    },
+    "card_arso_004": {
+        "id": "card_arso_004",
+        "name": "Kindle",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_004",
+        "code": "ARSO-004",
+        "flavourText": "Cinder taught me everything. Mostly how to run.",
+        "effectText": "When this card attacks: Swap the ATK and DEF of one enemy character until the end of your turn.\nThis card gains +150 ATK for each BURNING enemy character.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "swap",
+                "target": "enemy",
+                "until": "turn"
+            },
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "self",
+                "per": "burning",
+                "atk": 150
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2700,
+        "defense": 2100,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_arso_005": {
+        "id": "card_arso_005",
+        "name": "Flint",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_005",
+        "code": "ARSO-005",
+        "flavourText": "Fill her up? Sure. With what, though?",
+        "effectText": "When this card is Downed: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "self_downed",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 600,
+        "defense": 0,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_arso_006"
+    },
+    "card_arso_006": {
+        "id": "card_arso_006",
+        "name": "Flint",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_006",
+        "code": "ARSO-006",
+        "flavourText": "Fill her up? Sure. With what, though?",
+        "effectText": "When this card attacks: Give one enemy character BURN 300.\nAfter this card attacks 2 times: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 300
+            },
+            {
+                "when": "attack",
+                "do": "promote",
+                "times": 2
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1800,
+        "defense": 400,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_arso_007"
+    },
+    "card_arso_007": {
+        "id": "card_arso_007",
+        "name": "Flint",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_007",
+        "code": "ARSO-007",
+        "flavourText": "Fill her up? Sure. With what, though?",
+        "effectText": "When this card KOs a character: Your opponent loses 300 Morale for each BURNING enemy character (up to 4).\nACTIVATE (once per turn): Return the enemy character across from this card to its owner's hand.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "damage",
+                "per": "burning",
+                "amount": 300,
+                "per_max": 4
+            },
+            {
+                "when": "activate",
+                "do": "bounce",
+                "target": "opposite"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2700,
+        "defense": 800,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_arso_008": {
+        "id": "card_arso_008",
+        "name": "Haze",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_008",
+        "code": "ARSO-008",
+        "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
+        "effectText": "When this card is attacked: Give the attacker BURN 200.\nAt the end of your turn: If this card is next to another ARSONISTS character, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "burn",
+                "target": "attacker",
+                "amount": 200
+            },
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "adjacent",
+                "if_clan": "arsonists"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 300,
+        "defense": 500,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_arso_009"
+    },
+    "card_arso_009": {
+        "id": "card_arso_009",
+        "name": "Haze",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_009",
+        "code": "ARSO-009",
+        "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
+        "effectText": "When this card is attacked: Give the attacker STOKE 300.\nWhen an enemy character is KO'd: If you control a Downed ARSONISTS character, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "stoke",
+                "target": "attacker",
+                "amount": 300
+            },
+            {
+                "when": "foe_ko",
+                "do": "promote",
+                "if": "ally_downed",
+                "if_clan": "arsonists"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1200,
+        "defense": 2000,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_arso_010"
+    },
+    "card_arso_010": {
+        "id": "card_arso_010",
+        "name": "Haze",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_010",
+        "code": "ARSO-010",
+        "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
+        "effectText": "When this card is attacked: Give the attacker STOKE 400.\nAt the start of your turn: CLEANSE the characters next to this card.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "stoke",
+                "target": "attacker",
+                "amount": 400
+            },
+            {
+                "when": "turn_start",
+                "do": "cleanse",
+                "target": "neighbors"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2500,
+        "defense": 3200,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_arso_011": {
+        "id": "card_arso_011",
+        "name": "Blaze Maddox",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_011",
+        "code": "ARSO-011",
+        "flavourText": "Hands up. Mine are on fire.",
+        "effectText": "When this card attacks a BURNING character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "promote",
+                "if": "vs_burning"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1200,
+        "defense": 300,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_arso_012"
+    },
+    "card_arso_012": {
+        "id": "card_arso_012",
+        "name": "Blaze Maddox",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_012",
+        "code": "ARSO-012",
+        "flavourText": "Hands up. Mine are on fire.",
+        "effectText": "When this card attacks: Give one enemy character BURN 300.\nWhen this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 300
+            },
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2100,
+        "defense": 1100,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_arso_013"
+    },
+    "card_arso_013": {
+        "id": "card_arso_013",
+        "name": "Blaze Maddox",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_013",
+        "code": "ARSO-013",
+        "flavourText": "Hands up. Mine are on fire.",
+        "effectText": "When this card KOs a character: This card gains +500 ATK and +200 DEF permanently.\nThis card has PIERCE.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "buff",
+                "target": "self",
+                "until": "forever",
+                "atk": 500,
+                "def": 200
+            },
+            {
+                "when": "passive",
+                "do": "pierce"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 3000,
+        "defense": 1000,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_arso_014": {
+        "id": "card_arso_014",
+        "name": "Fuse",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_014",
+        "code": "ARSO-014",
+        "flavourText": "Every building has a weak point. I bring the match.",
+        "effectText": "When deployed: Destroy one of your opponent's face-down cards. If you do, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "break_ambush",
+                "amount": 1
+            },
+            {
+                "when": "deploy",
+                "do": "promote",
+                "if_done": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 800,
+        "defense": 400,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_arso_015"
+    },
+    "card_arso_015": {
+        "id": "card_arso_015",
+        "name": "Fuse",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_015",
+        "code": "ARSO-015",
+        "flavourText": "Every building has a weak point. I bring the match.",
+        "effectText": "ACTIVATE (once per turn, this card can't attack this turn): SILENCE the enemy character across from it until the end of your opponent's next turn.\nWhen your opponent plays a Hustle: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "silence",
+                "target": "opposite",
+                "until": "next_turn",
+                "cost": "exhaust"
+            },
+            {
+                "when": "foe_hustle",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1900,
+        "defense": 900,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_arso_016"
+    },
+    "card_arso_016": {
+        "id": "card_arso_016",
+        "name": "Fuse",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_016",
+        "code": "ARSO-016",
+        "flavourText": "Every building has a weak point. I bring the match.",
+        "effectText": "At the end of your turn: If this card is next to another ARSONISTS character, JAM your opponent.\nWhen an enemy character is KO'd: Your opponent loses 400 Morale.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "jam",
+                "if": "adjacent",
+                "if_clan": "arsonists"
+            },
+            {
+                "when": "foe_ko",
+                "do": "damage",
+                "amount": 400
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2800,
+        "defense": 1800,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null
+    },
+    "card_arso_017": {
+        "id": "card_arso_017",
+        "name": "Matchstick Molly",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_017",
+        "code": "ARSO-017",
+        "flavourText": "Matches, mister? Only a penny. Keep the change... and the fire.",
+        "effectText": "When you deploy another character: Give one enemy character BURN 150.",
+        "effects": [
+            {
+                "when": "ally_deployed",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 150,
+                "when_clan": ""
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 400,
+        "defense": 300,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_018": {
+        "id": "card_arso_018",
+        "name": "Gasoline Gus",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_018",
+        "code": "ARSO-018",
+        "flavourText": "Careful where you swing. I'm mostly fuel.",
+        "effectText": "When this card is KO'd: Give all enemy characters BURN 100.",
+        "effects": [
+            {
+                "when": "self_ko",
+                "do": "burn",
+                "target": "enemies",
+                "amount": 100
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1000,
+        "defense": 700,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_019": {
+        "id": "card_arso_019",
+        "name": "Soot",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_019",
+        "code": "ARSO-019",
+        "flavourText": "Smoke goes up. So does everything worth stealing.",
+        "effectText": "At the end of your turn: If an enemy character is BURNING, draw 1 card.\nThis card can't be attacked while you control another character that can be.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "draw",
+                "if": "foe_burning",
+                "amount": 1
+            },
+            {
+                "when": "passive",
+                "do": "elusive"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 900,
+        "defense": 200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_020": {
+        "id": "card_arso_020",
+        "name": "The Pyre Twins",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_020",
+        "code": "ARSO-020",
+        "flavourText": "You light it. I'll keep it going.",
+        "effectText": "When this card attacks: Give up to 2 enemy characters STOKE 200.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "stoke",
+                "target": "enemy",
+                "amount": 200,
+                "count": 2
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1300,
+        "defense": 900,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_021": {
+        "id": "card_arso_021",
+        "name": "Cinderblock",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_021",
+        "code": "ARSO-021",
+        "flavourText": "Go on. Hit the wall. See what happens.",
+        "effectText": "When this card is attacked: Give the attacker BURN 200.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "burn",
+                "target": "attacker",
+                "amount": 200
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1400,
+        "defense": 1600,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_022": {
+        "id": "card_arso_022",
+        "name": "Tinder",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_022",
+        "code": "ARSO-022",
+        "flavourText": "Catch me if you can. You can follow the fire.",
+        "effectText": "When this card attacks: Give one enemy character BURN 250.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "burn",
+                "target": "enemy",
+                "amount": 250
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1400,
+        "defense": 600,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_023": {
+        "id": "card_arso_023",
+        "name": "Sparky",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_023",
+        "code": "ARSO-023",
+        "flavourText": "Live wire? Nah. Live fire.",
+        "effectText": "When deployed: Your opponent loses 200 Morale for each BURNING enemy character (up to 3).\nWhen this card is attacked: SHOCK the attacker for 500.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "damage",
+                "per": "burning",
+                "amount": 200,
+                "per_max": 3
+            },
+            {
+                "when": "defend",
+                "do": "shock",
+                "target": "attacker",
+                "amount": 500
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1600,
+        "defense": 700,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_024": {
+        "id": "card_arso_024",
+        "name": "Flashpoint",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_024",
+        "code": "ARSO-024",
+        "flavourText": "There's always a moment when it can't be put out. I am that moment.",
+        "effectText": "ACTIVATE (once per turn): Flip a coin. If heads, KO one BURNING enemy character.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "ko",
+                "target": "enemy",
+                "luck": "coin",
+                "only": "burning"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1900,
+        "defense": 400,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_025": {
+        "id": "card_arso_025",
+        "name": "Smokestack",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_025",
+        "code": "ARSO-025",
+        "flavourText": "Breathe deep. It is the last clean air you will get.",
+        "effectText": "At the end of your turn: Give all enemy characters BURN 100.\nWhen this card is KO'd: Destroy up to 2 of your opponent's Hustle or Ambush cards, face-up or face-down.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "burn",
+                "target": "enemies",
+                "amount": 100
+            },
+            {
+                "when": "self_ko",
+                "do": "wreck",
+                "amount": 2
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 2100,
+        "defense": 1800,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_026": {
+        "id": "card_arso_026",
+        "name": "The Furnace",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 1,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_026",
+        "code": "ARSO-026",
+        "flavourText": "Feed me.",
+        "effectText": "When deployed: BARRICADE 1000.\nACTIVATE (once per turn): Return one BURNING enemy character to its owner's hand.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "barricade",
+                "amount": 1000
+            },
+            {
+                "when": "activate",
+                "do": "bounce",
+                "target": "enemy",
+                "only": "burning"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 3000,
+        "defense": 3000,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null
+    },
+    "card_arso_027": {
+        "id": "card_arso_027",
+        "name": "Molotov",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_027",
+        "code": "ARSO-027",
+        "flavourText": "Light it. Throw it. Run.",
+        "effectText": "DOWN one BURNING enemy character.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "down",
+                "target": "enemy",
+                "only": "burning"
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
+    },
+    "card_arso_028": {
+        "id": "card_arso_028",
+        "name": "Fan the Flames",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_028",
+        "code": "ARSO-028",
+        "flavourText": "A little air. That's all a fire ever wants.",
+        "effectText": "Give all enemy characters STOKE 150.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "stoke",
+                "target": "enemies",
+                "amount": 150
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
+    },
+    "card_arso_029": {
+        "id": "card_arso_029",
+        "name": "Gas Leak",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_029",
+        "code": "ARSO-029",
+        "flavourText": "Smell that? No? Good.",
+        "effectText": "Your opponent loses 300 Morale for each BURNING enemy character (up to 3).",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "damage",
+                "per": "burning",
+                "amount": 300,
+                "per_max": 3
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
+    },
+    "card_arso_030": {
+        "id": "card_arso_030",
+        "name": "Burn Notice",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_030",
+        "code": "ARSO-030",
+        "flavourText": "Your name's on the list. The list's on fire.",
+        "effectText": "Put a BOUNTY 1 on all BURNING enemy characters.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "bounty",
+                "target": "enemies",
+                "only": "burning",
+                "amount": 1
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
+    },
+    "card_arso_031": {
+        "id": "card_arso_031",
+        "name": "Backdraft",
+        "clan": "arsonists",
+        "cardType": "ambush",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_031",
+        "code": "ARSO-031",
+        "flavourText": "Never open a hot door.",
+        "effectText": "When an enemy attacks one of your ARSONISTS characters: If the attacker is BURNING, KO it and negate the attack.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "ko",
+                "target": "attacker",
+                "only": "burning",
+                "negate": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "ambushClan": "arsonists"
+    },
+    "card_arso_032": {
+        "id": "card_arso_032",
+        "name": "Up in Smoke",
+        "clan": "arsonists",
+        "cardType": "ambush",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_032",
+        "code": "ARSO-032",
+        "flavourText": "Can't hit what you can't see.",
+        "effectText": "When an enemy attacks one of your characters: STUN all enemy characters and negate the attack. If you do, give the attacker BURN 300.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "stun",
+                "target": "enemies",
+                "negate": true
+            },
+            {
+                "when": "defend",
+                "do": "burn",
+                "target": "attacker",
+                "amount": 300,
+                "if_done": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
     }
 };
