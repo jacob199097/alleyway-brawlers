@@ -105,6 +105,32 @@
                         {"below": 3500, "label": "HOLLOW THRONE", "fx": [{"do": "drain", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 600, "until": "forever"}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
+        },
+        {
+            "id": "cinder", "clan": "arsonists", "leader": "card_arso_001", "name": "Cinder, the City Burner", "short": "Cinder", "title": "The Spark Behind Every Blaze",
+            "color": "#f45815", "arena": "junkyard", "portrait": "card_arso_001", "prize": "card_arso_033",
+            "lines": {
+                "intro": ["Smell that? That's your neighbourhood, about to change hands.", "Two of you. More kindling.", "Light 'em up."],
+                "phase": {"1": "Feel that heat? I'm only getting started.", "2": "Every city's got a fuse. You two just lit it."},
+                "low": "No... the fire's... going out?",
+                "player_out": "One burned down. The other's still smouldering.",
+                "defeat": "Ashes cool. Then they catch again.",
+                "victory": "Nothing left but ash. Just how I like it."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 11000, "ai": "hard", "draw": 0, "authority": 2,
+                    "phases": [{"below": 5500, "label": "FAN THE FLAMES", "fx": [{"do": "burn", "target": "enemies", "amount": 200}, {"do": "draw", "amount": 1}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 13000, "ai": "hard", "draw": 1, "authority": 3, "add": [["card_arso_018", 1], ["card_arso_029", 1]],
+                    "phases": [{"below": 8800, "label": "FAN THE FLAMES", "fx": [{"do": "burn", "target": "enemies", "amount": 200}, {"do": "draw", "amount": 1}]},
+                        {"below": 4400, "label": "BACKDRAFT", "fx": [{"do": "stoke", "target": "enemies", "amount": 200}, {"do": "damage", "amount": 400, "each_foe": true}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 15000, "ai": "hard", "draw": 1, "authority": 3, "add": [["card_arso_018", 2], ["card_arso_029", 1], ["card_arso_024", 1], ["card_arso_026", 1]],
+                    "phases": [{"below": 10500, "label": "FAN THE FLAMES", "fx": [{"do": "burn", "target": "enemies", "amount": 300}, {"do": "draw", "amount": 1}]},
+                        {"below": 6100, "label": "BACKDRAFT", "fx": [{"do": "stoke", "target": "enemies", "amount": 300}, {"do": "damage", "amount": 600, "each_foe": true}]},
+                        {"below": 2800, "label": "THE CITY BURNS", "fx": [{"do": "damage", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 700, "until": "forever"}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
         }
     ]
 }

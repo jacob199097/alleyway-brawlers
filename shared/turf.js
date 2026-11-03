@@ -8,7 +8,9 @@ import { CARD_CATALOG } from './cards.js';
 import { starterRecipe, expand } from './clans.js';
 
 export const BOSS_DATA = JSON.parse(fs.readFileSync(new URL('../godot/data/bosses.json', import.meta.url), 'utf8'));
-export const BOSSES = BOSS_DATA.bosses;
+// A boss waits until its prize card is in the game (a new boss can ship before its prize's art is done:
+// it appears once the card comes in from the Card Forge and backend/scripts/sync_cards.mjs runs)
+export const BOSSES = BOSS_DATA.bosses.filter(b => CARD_CATALOG[b.prize]);
 export const SEATS = ['p1', 'p2', 'boss'];
 
 export const findBoss = (id) => BOSSES.find(b => b.id === id) || null;

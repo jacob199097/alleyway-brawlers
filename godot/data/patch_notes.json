@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.111",
+        "notes": [
+            "A new clan: the Arsonists! Led by Cinder, they set enemies BURNING, STOKE the fires and cash in on every enemy that burns. Pick them as your starter clan or find them in their own card pack.",
+            "Coming soon to Turf Defense: Cinder, the City Burner, with a new boss-only prize card."
+        ]
+    },
+    {
         "version": "0.9.110",
         "notes": [
             "New card effects for the Arsonists: Ambushes that only spring on a BURNING attacker, and effects that happen only if an enemy is BURNING or only when attacking a BURNING character."
