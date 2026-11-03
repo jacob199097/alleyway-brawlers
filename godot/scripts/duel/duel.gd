@@ -295,7 +295,7 @@ func _ready() -> void:
 		var opp_title = opp.get("title")
 		if opp.get("bot", false) or str(opp.get("avatar_url", "")) == "cpu":   # (a CPU: who it is, no level or "ONLINE")
 			_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "CPU")).to_upper().left(18),
-				str(opp.get("avatar_url")) if opp.get("avatar_url") else "cpu", str(opp.get("subtitle", "CPU OPPONENT")).to_upper())
+				str(opp.get("avatar_url")) if opp.get("avatar_url") else "cpu", str(opp.get("subtitle", "CPU OPPONENT")).to_upper(), 0, int(opp.get("stars", 0)))
 		else:
 			_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
 				str(opp.get("avatar_url")) if opp.get("avatar_url") else "",
@@ -6260,7 +6260,8 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	_ui.detail_text.text = body
 
 
-func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String, level := 0) -> void:
+## stars: a turf map gang's rating (1..5), along the bottom of its picture.
+func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String, level := 0, stars := 0) -> void:
 	var accent := BLUE if side == "player" else RED
 	# Player plates glow in their side's colour
 	p.add_theme_stylebox_override("panel", UI._glow(_box(INK, accent, 2, 10), accent, 0.8))
@@ -6271,6 +6272,15 @@ func _build_panel(side: String, p: Panel, display_name: String, avatar: String, 
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = UI.avatar(avatar)
 	p.add_child(av)
+	if stars > 0:
+		var rating := _label(12, GOLD, true)
+		rating.text = "★".repeat(clampi(stars, 1, 5))
+		rating.label_settings.outline_size = 5
+		rating.label_settings.outline_color = Color(0, 0, 0, 0.95)
+		rating.size = Vector2(64, 16)
+		rating.position = Vector2(14, 62)
+		rating.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		p.add_child(rating)
 	var n := _label(26, Color.WHITE, true)
 	n.text = display_name
 	n.position = Vector2(92, 10)

@@ -304,8 +304,11 @@ const DAILY_CPU_REWARD_CAP = 15;
 // CPU matches pay this share of an online match, by difficulty (Ranked always plays the hard CPU).
 // Keep every value below 1 so online wins always pay more.
 const CPU_REWARD_SCALE = { easy: 0.4, normal: 0.65, hard: 0.85 };
+// A turf map fight pays by its gang's star rating (economy/territory.js GANG_STARS). The 5 star gang
+// is the one exception to the rule above: the hardest CPU in the game, it pays a little over an online win.
+const TURF_STAR_REWARD_SCALE = [null, 0.4, 0.65, 0.85, 0.95, 1.1];
 
-async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty = 'normal', second = false }) {
+async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty = 'normal', second = false, stars = null }) {
     const { rows: [{ rewarded_today }] } = await pool.query(
         `SELECT COUNT(*)::int AS rewarded_today FROM solo_matches
          WHERE  player_id = $1 AND rewarded AND completed_at >= date_trunc('day', NOW())`,
@@ -321,7 +324,7 @@ async function resolveCpuMatch({ playerId, outcome, ranked = false, difficulty =
         return { outcome, karatEarned: 0, xpEarned: 0, firstWinBonus: false, leveledUp: false,
             rankChanged: false, rankPointDelta: 0, dailyCapReached: true };
     }
-    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, second, rewardScale: CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
+    return resolveSoloMatch({ playerId, outcome, matchMeta: { ranked, second, rewardScale: TURF_STAR_REWARD_SCALE[stars] ?? CPU_REWARD_SCALE[ranked ? 'hard' : difficulty] ?? CPU_REWARD_SCALE.normal } });
 }
 
 /**

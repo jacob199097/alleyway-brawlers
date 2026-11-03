@@ -170,4 +170,22 @@ for (const boss of BOSSES) {
     assert.ok(!st.sides.boss.out, 'the boss is still in');
 }
 
+// The turf map's 4 and 5 star gangs (1v1, rules.edge {seat: n}): n Authority extra every turn of
+// theirs, on top of the usual; their more Morale is rules.morale
+{
+    const deck = Array(20).fill('card_mili_033');
+    const st = new DuelState({ player: deck, opponent: deck }, {}, {}, 'player', -1, { edge: { opponent: 1 }, morale: { opponent: 9000 } });
+    st.start();
+    assert.equal(st.sides.opponent.morale, 9000, 'the gang starts on 9000 Morale');
+    assert.equal(st.sides.player.morale, 6000);
+    let guard = 0;
+    while (!(st.active === 'opponent' && st.phase === 'deployment') && guard++ < 200) {
+        const who = st.pending.side || st.active;
+        const act = choose(st, who, 'easy');
+        if (!Object.keys(act).length || !st.doAction(who, act)) st.doAction(who, { kind: 'next' });
+    }
+    assert.equal(st.active, 'opponent');
+    assert.equal(st.sides.opponent.authority, st.sides.opponent.authority_max + 1 + 1, 'its first turn: +1 for going second, +1 edge');
+}
+
 console.log('turf bosses: ok');

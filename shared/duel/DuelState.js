@@ -23,7 +23,8 @@
  * most) Morale. rules.boss {seat, name, draw, authority, phases: [{below, label, fx}]}: the boss seat
  * draws and gets Authority extra each turn, and each phase's effects (Card Forge effects, run as the
  * boss) happen once when its Morale drops to "below" or less ("boss_phase" event); an effect with
- * each_foe: true hits every player (damage, drain, discard: once at each).
+ * each_foe: true hits every player (damage, drain, discard: once at each). rules.edge {seat: n}: that
+ * seat gets n Authority extra each turn (the turf map's 4 and 5 star gangs).
  */
 
 import { CARD_CATALOG } from '../cards.js';
@@ -3266,6 +3267,11 @@ export class DuelState {
                 s.authority += toInt(boss.authority);
                 this._authEv(this.active, toInt(boss.authority));
             }
+        }
+        const edge = toInt((this.rules.edge || {})[this.active]);   // (a turf map gang of 4 or 5 stars: Authority extra each turn)
+        if (edge > 0 && this.winner === '') {
+            s.authority += edge;
+            this._authEv(this.active, edge);
         }
         if (toInt(s.tax ?? 0) > 0) {   // TAX: this turn's Authority, less what an opponent's card took
             const t = Math.min(toInt(s.tax), s.authority);

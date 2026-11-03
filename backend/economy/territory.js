@@ -23,6 +23,16 @@ const POINTS = {
     cpu: { win: 1, draw: 0, loss: 0 },              // Easy and Normal VS CPU
     coop: { win: 3, draw: 1, loss: 1 },             // Turf Defense, each player
 };
+/** A district's gang by its star rating this week (1..5, index = stars): the CPU's play (ai), its
+ *  starting Morale and Authority extra each turn (rules.edge), and the influence a match is worth.
+ *  What it pays is TURF_STAR_REWARD_SCALE in postMatch.js. */
+const GANG_STARS = [null,
+    { ai: 'easy', morale: 0, edge: 0, points: { win: 1, draw: 0, loss: 0 } },
+    { ai: 'normal', morale: 0, edge: 0, points: { win: 1, draw: 0, loss: 0 } },
+    { ai: 'hard', morale: 0, edge: 0, points: { win: 2, draw: 1, loss: 0 } },
+    { ai: 'hard', morale: 9000, edge: 0, points: { win: 2, draw: 1, loss: 0 } },
+    { ai: 'hard', morale: 9000, edge: 1, points: { win: 3, draw: 1, loss: 0 } },
+];
 const LOCALS_MIN = 3;
 const LOCALS_SPREAD = 6;   // a local gang's strength: 3..8
 const GANG_FIRST = ['Rust', 'Gutter', 'Neon', 'Iron', 'Velvet', 'Bone', 'Static', 'Copper', 'Ash', 'Midnight', 'Glass', 'Hollow', 'Chrome', 'Smoke'];
@@ -58,17 +68,32 @@ function locals(district, week) {
         strength: LOCALS_MIN + hash(`${week}:${district}`) % LOCALS_SPREAD };
 }
 
-/** The local gang running a district this week, for a fight there from the turf map:
- *  {name, district (its name), seed (picks the gang's picture)}; null if it isn't a district. */
-function gangOf(district) {
-    const d = DISTRICTS.find(x => x.id === district);
-    return d ? { name: locals(d.id, weekOf()).name, district: d.name, seed: hash('gang:' + d.id) } : null;
+/** A district's star rating this week, 1..5: its gang's strength against the other districts'
+ *  (5 = the toughest gang, and the best pay), spread evenly over the districts. */
+function starsOf(district, week = weekOf()) {
+    const ranked = DISTRICTS.map(d => ({ id: d.id, s: locals(d.id, week).strength, h: hash(`${week}:stars:${d.id}`) }))
+        .sort((a, b) => a.s - b.s || a.h - b.h);
+    const i = ranked.findIndex(x => x.id === district);
+    return i < 0 ? 1 : 1 + Math.floor(i * 5 / ranked.length);
 }
 
-/** What a match is worth: mode as onlineMatch/coopMatch name it, outcome win|loss|draw. */
-function pointsFor({ mode, outcome, difficulty = null }) {
+/** The local gang running a district this week, for a fight there from the turf map:
+ *  {name, district (its name), seed (picks the gang's picture), stars, ai, morale, edge};
+ *  null if it isn't a district. */
+function gangOf(district) {
+    const d = DISTRICTS.find(x => x.id === district);
+    if (!d) return null;
+    const stars = starsOf(d.id);
+    const { ai, morale, edge } = GANG_STARS[stars];
+    return { name: locals(d.id, weekOf()).name, district: d.name, seed: hash('gang:' + d.id), stars, ai, morale, edge };
+}
+
+/** What a match is worth: mode as onlineMatch/coopMatch name it, outcome win|loss|draw;
+ *  stars: a turf map fight's gang (its rating decides it). */
+function pointsFor({ mode, outcome, difficulty = null, stars = null }) {
     let table = POINTS.online;
-    if (mode === 'cpu_coop' || mode === 'coop') table = POINTS.coop;
+    if (GANG_STARS[stars]) table = GANG_STARS[stars].points;
+    else if (mode === 'cpu_coop' || mode === 'coop') table = POINTS.coop;
     else if (mode === 'cpu_ranked' || mode === 'cpu_challenge' || (mode === 'cpu' && difficulty === 'hard')) table = POINTS.cpu_hard;
     else if (String(mode).startsWith('cpu')) table = POINTS.cpu;
     return table[outcome] ?? 0;
@@ -78,9 +103,9 @@ function pointsFor({ mode, outcome, difficulty = null }) {
  * A finished match for one player: influence for their clan in the district it was fought in →
  * {district, name, clan, points} for the post-match screen, or null when it earned none.
  */
-async function record({ playerId, district, clan, mode, outcome, difficulty = null, at = new Date() }) {
+async function record({ playerId, district, clan, mode, outcome, difficulty = null, stars = null, at = new Date() }) {
     if (!playerId || !isDistrict(district) || !clan || !/^[a-z0-9_]+$/.test(clan)) return null;
-    const points = pointsFor({ mode, outcome, difficulty });
+    const points = pointsFor({ mode, outcome, difficulty, stars });
     if (points <= 0) return null;
     await pool.query(
         `INSERT INTO territory_influence (week, district, clan, player_id, points) VALUES ($1, $2, $3, $4, $5)
@@ -113,7 +138,7 @@ async function weekMap(week) {
             const top = clans[0];
             const holder = top && top.points > gang.strength && !(clans[1] && clans[1].points === top.points) ? top.clan : '';
             const best = holder ? mine.filter(r => r.clan === holder).sort((a, b) => b.points - a.points || String(a.username).localeCompare(String(b.username)))[0] : null;
-            return { ...d, locals: gang, clans, holder,
+            return { ...d, locals: { ...gang, stars: starsOf(d.id, week) }, clans, holder,
                 boss: best ? { playerId: best.player_id, username: best.username, points: best.points } : null,
                 fighters: mine.map(r => ({ playerId: r.player_id, clan: r.clan, points: r.points })) };
         }),
@@ -192,4 +217,4 @@ async function claim(playerId, now = new Date()) {
     }
 }
 
-module.exports = { record, overview, claim, weekMap, payFrom, pointsFor, locals, weekOf, gangOf, DISTRICTS, KARAT, POINTS };
+module.exports = { record, overview, claim, weekMap, payFrom, pointsFor, locals, weekOf, gangOf, starsOf, DISTRICTS, KARAT, POINTS, GANG_STARS };

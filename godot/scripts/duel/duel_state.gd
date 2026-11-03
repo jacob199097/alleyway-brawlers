@@ -3768,6 +3768,10 @@ func _begin_turn() -> void:
 		if int(boss.get("authority", 0)) > 0:
 			s.authority += int(boss.authority)
 			_auth_ev(active, int(boss.authority))
+	var edge: int = int(rules.get("edge", {}).get(active, 0)) if rules.get("edge") is Dictionary else 0   # (a turf map gang of 4 or 5 stars: Authority extra each turn)
+	if edge > 0 and winner == "":
+		s.authority += edge
+		_auth_ev(active, edge)
 	if int(s.get("tax", 0)) > 0:   # TAX: this turn's Authority, less what an opponent's card took
 		var t: int = mini(int(s.tax), s.authority)
 		s.tax = 0

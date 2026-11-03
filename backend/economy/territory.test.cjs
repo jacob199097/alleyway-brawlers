@@ -71,6 +71,14 @@ const conn = (database) => new Client({
     assert.equal(territory.pointsFor({ mode: 'cpu', outcome: 'win', difficulty: 'hard' }), 2);
     assert.equal(territory.pointsFor({ mode: 'cpu_ranked', outcome: 'loss' }), 0);
     assert.equal(territory.pointsFor({ mode: 'coop', outcome: 'win' }), 3);
+    // A turf map fight: its gang's stars decide it (5 stars: +3), whatever the difficulty
+    assert.equal(territory.pointsFor({ mode: 'cpu', outcome: 'win', difficulty: 'hard', stars: 5 }), 3);
+    assert.equal(territory.pointsFor({ mode: 'cpu', outcome: 'win', difficulty: 'easy', stars: 1 }), 1);
+    // Every rating from 1 to 5 is on the map each week, the strongest gang at 5
+    const rated = territory.DISTRICTS.map(d => ({ stars: territory.starsOf(d.id), strength: territory.locals(d.id, territory.weekOf()).strength }));
+    assert.deepEqual([...new Set(rated.map(r => r.stars))].sort(), [1, 2, 3, 4, 5]);
+    assert.equal(rated.find(r => r.stars === 5).strength >= Math.max(...rated.filter(r => r.stars === 1).map(r => r.strength)), true);
+    assert.equal(territory.gangOf(territory.DISTRICTS[0].id).ai, territory.GANG_STARS[territory.starsOf(territory.DISTRICTS[0].id)].ai);
     assert.equal(territory.weekOf(new Date('2026-11-01T12:00:00Z')), '2026-10-26', 'a Sunday is the end of the week');
     assert.equal(territory.weekOf(new Date('2026-11-02T00:00:00Z')), '2026-11-02');
     assert.equal(await territory.record({ playerId: ann, district: 'nowhere', clan: 'nebula', mode: 'ranked', outcome: 'win' }), null);

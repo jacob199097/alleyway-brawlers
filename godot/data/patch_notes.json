@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.116",
+        "notes": [
+            "Turf map fights have no difficulty choice any more: each district's gang has a star rating this week, from 1 star (a pushover) to 5 stars (the toughest, with the best rewards).",
+            "The stars show under each district on the map, in its details, and on the gang's picture during the fight.",
+            "4 and 5 star gangs start with 9000 Morale, and 5 star gangs get +1 Authority every turn. Beating a 5 star gang is worth +3 influence and the best rewards in VS CPU."
+        ]
+    },
+    {
         "version": "0.9.115",
         "notes": [
             "The CHAT tab now tucks into the bottom-right corner and slides out when your mouse comes near it.",

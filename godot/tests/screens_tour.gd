@@ -85,18 +85,12 @@ func _turf_map_shots() -> void:
 	await _shot("t06_zoom", 1.0)
 	Game.go("territory")
 	await get_tree().create_timer(2.5).timeout
-	# FIGHT HERE, as a player does it: open the district, press it, pick NORMAL
+	# FIGHT HERE, as a player does it: open the district (its gang's stars), press it
 	var map = _screen()
 	map._open(map._data.districts[11])
-	await get_tree().process_frame
+	await _shot("t06a_district_stars", 0.8)
 	for b in map.find_children("*", "Button", true, false):
 		if "FIGHT HERE" in b.text:
-			b.pressed.emit()
-			break
-	await get_tree().create_timer(0.6).timeout
-	await _shot("t06b_difficulty", 0.1)
-	for b in map.find_children("*", "Button", true, false):
-		if b.text == "NORMAL":
 			b.pressed.emit()
 			break
 	await _shot("t06c_arena", 1.2)

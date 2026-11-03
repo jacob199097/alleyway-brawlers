@@ -225,7 +225,7 @@ const routes = {
             const standings = clans.slice(0, 3).map((c, k) => ({ clan: c.id, points: (i * 7 + k * 5) % 13 })).filter(x => x.points > 0).sort((x, y) => y.points - x.points);
             const strength = 3 + (i * 5) % 6;
             const holder = standings[0] && standings[0].points > strength && standings[0].points !== standings[1]?.points ? standings[0].clan : '';
-            return { id: a.id, name: a.name, image: a.image, locals: { name: gangs[i % gangs.length], strength }, clans: standings, holder,
+            return { id: a.id, name: a.name, image: a.image, locals: { name: gangs[i % gangs.length], strength, stars: 1 + i % 5 }, clans: standings, holder,
                 boss: holder ? { username: i % 2 ? 'AlleyCat' : player.username, points: standings[0].points - 2 } : null,
                 mine: i % 3 === 0 && standings[0] ? { [standings[0].clan]: 3 + (i % 4) } : {}, lastHolder: i % 4 === 0 ? clans[i % clans.length].id : '' };
         });

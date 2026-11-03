@@ -3,7 +3,8 @@ extends Screen
 ## arenas. Every match is fought in one and wins influence there for your deck's clan; each week a
 ## district goes to the clan with the most influence in it, if that beats the local gang running it.
 ## When the week ends, everyone who fought for a clan in a district it took is paid Karat, and the
-## district's boss (its top fighter) more: CLAIM. A district's FIGHT HERE starts a CPU match in it.
+## district's boss (its top fighter) more: CLAIM. A district's FIGHT HERE starts a CPU match in it
+## against the gang that runs it, as tough as the gang's star rating this week (1 to 5 stars).
 ## Drawn on the city itself once data/turf_city.json and its picture are in the game: each district a
 ## marker where it is in the city, glowing in its holder's colour, the city alive around them
 ## (ArenaLife fx). Until then, a grid of the arenas.
@@ -14,6 +15,15 @@ const TILE := Vector2(290, 236)
 const GAP := Vector2(15, 16)
 const GRID := Vector2(52, 232)
 const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
+## A gang's star rating: how it plays and what beating it is worth (index = stars; the server's
+## GANG_STARS in backend/economy/territory.js and TURF_STAR_REWARD_SCALE in economy/postMatch.js).
+const STAR_INFO := ["",
+	"PUSHOVERS: an Easy CPU. A win is +1 influence, small rewards.",
+	"SCRAPPERS: a Normal CPU. A win is +1 influence.",
+	"A TOUGH CREW: a Hard CPU. A win is +2 influence and better rewards.",
+	"HEAVY HITTERS: a Hard CPU with 9000 Morale. A win is +2 influence and big rewards.",
+	"KINGPINS: a Hard CPU with 9000 Morale and +1 Authority every turn. A win is +3 influence and the best rewards in VS CPU.",
+]
 
 var _data := {}
 var _clan := {}             # clan id -> {name, color}
@@ -97,7 +107,7 @@ func _build() -> void:
 ## The rules line along the bottom.
 func _rules_text() -> String:
 	var k: Dictionary = _data.get("karat", {}) if _data.get("karat") is Dictionary else {}
-	return "Online win +3  ·  online loss +1  ·  Ranked or Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))]
+	return "Online win +3  ·  online loss +1  ·  Ranked or Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3  ·  a gang win +1 to +3 by its stars.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))]
 
 
 # ── The city ─────────────────────────────────────────────────────────────────
@@ -323,7 +333,8 @@ func _build_city(districts: Array) -> void:
 
 ## A district on the city: its turf glowing in the holder's colour under a round badge (the clan's
 ## emblem, or a skull while a local gang runs it), its name, and its standings in a thin bar. A
-## contested district's ring flickers; yours wear a gold star. Hover for the standings, click to open.
+## contested district's ring flickers; yours wear a gold star. Under it, its gang's star rating.
+## Hover for the standings, click to open.
 ## `anchor`: [x, y] in the picture's pixels, or [x, y, turf size] (1 = normal).
 func _marker(d: Dictionary, anchor: Array, n: int) -> void:
 	var at := Vector2(float(anchor[0]), float(anchor[1]))
@@ -355,7 +366,7 @@ func _marker(d: Dictionary, anchor: Array, n: int) -> void:
 	_world.add_child(pin)
 	_pins.append(pin)
 	var m := Control.new()
-	m.size = Vector2(150, 118)
+	m.size = Vector2(150, 132)
 	m.position = Vector2(-75, -36)
 	m.pivot_offset = Vector2(75, 36)
 	m.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -398,6 +409,16 @@ func _marker(d: Dictionary, anchor: Array, n: int) -> void:
 	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bars.draw.connect(_draw_bars.bind(bars, d))
 	m.add_child(bars)
+	var rating := Control.new()
+	rating.position = Vector2(25, 108)
+	rating.size = Vector2(100, 24)
+	rating.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rating.draw.connect(func():
+		for i in 5:
+			var spot := Vector2(i * 20, 19)
+			rating.draw_string(UI.font(), spot + Vector2(1, 1), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0, 0, 0, 0.85))
+			rating.draw_string(UI.font(), spot, "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UI.GOLD if i < _stars_of(d) else Color(1, 1, 1, 0.3)))
+	m.add_child(rating)
 	m.mouse_entered.connect(func():
 		Sfx.play("hover", 1.2, -14.0)
 		m.create_tween().tween_property(m, "scale", Vector2.ONE * 1.15, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -439,6 +460,7 @@ func _show_hint(d: Dictionary, m: Control) -> void:
 	for c in d.get("clans", []):
 		v.add_child(UI.label("%s  %d" % [_clan_name(str(c.clan)).to_upper(), int(c.get("points", 0))], 16, _clan_col(str(c.clan)), true))
 	v.add_child(UI.label("%s  %d to beat" % [str(gang.get("name", "Locals")), int(gang.get("strength", 0))], 15, UI.MUTED))
+	v.add_child(_stars_row(_stars_of(d), 20))
 	var boss = d.get("boss")
 	if boss is Dictionary:
 		v.add_child(UI.label("👑 %s" % str(boss.get("username", "")), 15, UI.GOLD))
@@ -637,14 +659,29 @@ func _open(d: Dictionary) -> void:
 	left.add_child(img)
 	var fight := UI.button("⚔  FIGHT HERE  (VS CPU)", _fight.bind(d), Vector2(560, 70), UI.RED)
 	left.add_child(fight)
-	left.add_child(UI.label("A CPU match in this district: win it to push your clan's influence here.", 17, UI.MUTED))
+	var gang: Dictionary = d.get("locals", {}) if d.get("locals") is Dictionary else {}
+	var against := UI.label("A CPU match against %s: win it to push your clan's influence here." % str(gang.get("name", "the locals")), 17, UI.MUTED)
+	against.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	against.custom_minimum_size = Vector2(560, 0)
+	left.add_child(against)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	right.custom_minimum_size = Vector2(660, 0)
 	row.add_child(right)
 	right.add_child(UI.label(str(d.get("name", "")).to_upper(), 46, Color.WHITE, true))
-	var gang: Dictionary = d.get("locals", {}) if d.get("locals") is Dictionary else {}
 	right.add_child(UI.label(("HELD BY %s" % _clan_name(holder).to_upper()) if holder != "" else "RUN BY %s" % str(gang.get("name", "the locals")).to_upper(), 24, col, true))
+	right.add_child(HSeparator.new())
+	# The gang's star rating: how hard the fight is, and what it pays
+	var stars := _stars_of(d)
+	var rated := HBoxContainer.new()
+	rated.add_theme_constant_override("separation", 16)
+	rated.add_child(UI.label("%s  " % str(gang.get("name", "The locals")).to_upper(), 20, UI.MUTED, true))
+	rated.add_child(_stars_row(stars, 34))
+	right.add_child(rated)
+	var info := UI.label(STAR_INFO[stars], 18, UI.GOLD if stars >= 4 else Color(0.85, 0.85, 0.9))
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(660, 0)
+	right.add_child(info)
 	right.add_child(HSeparator.new())
 	right.add_child(UI.label("INFLUENCE THIS WEEK", 20, UI.GOLD, true))
 	var clans: Array = d.get("clans", [])
@@ -665,6 +702,25 @@ func _open(d: Dictionary) -> void:
 	right.add_child(UI.label("Last week: %s" % (("held by " + _clan_name(last)) if last != "" else "the locals kept it"), 18, UI.MUTED))
 	var close := UI.button("CLOSE", _close, Vector2(200, 56))
 	right.add_child(close)
+
+
+## A district's gang rating this week, 1..5 (the server's, in its "locals").
+func _stars_of(d: Dictionary) -> int:
+	var gang: Dictionary = d.get("locals", {}) if d.get("locals") is Dictionary else {}
+	return clampi(int(gang.get("stars", 1)), 1, 5)
+
+
+## Five stars in a row, the gang's rating in gold and the rest dim.
+func _stars_row(n: int, font_size: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	for i in 5:
+		var s := UI.label("★", font_size, UI.GOLD if i < n else Color(1, 1, 1, 0.2), true)
+		row.add_child(s)
+		if i < n:   # (they light up one after another)
+			s.modulate.a = 0.0
+			s.create_tween().tween_property(s, "modulate:a", 1.0, 0.18).set_delay(0.08 * i)
+	return row
 
 
 func _close() -> void:
@@ -722,10 +778,7 @@ func _claim() -> void:
 func _fight(d: Dictionary) -> void:
 	if _starting:
 		return
-	_close()   # (the district panel sits over everything: the questions below go on the map)
-	var difficulty := await _pick_difficulty()
-	if difficulty == "":
-		return
+	_close()   # (the district panel sits over everything: what follows goes on the map)
 	_starting = true
 	var spin := UI.spinner(self, Vector2(960, 980), "LOADING YOUR DECK…")
 	var deck := await Game.load_duel_deck()
@@ -739,25 +792,13 @@ func _fight(d: Dictionary) -> void:
 		return
 	_spin = UI.spinner(self, Vector2(960, 1000), "STARTING MATCH…")
 	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784), true)   # (no spin: it's the district picked)
-	var why := await Game.request_cpu_match(false, difficulty, false, str(d.get("id", "")), true)
+	var why := await Game.request_cpu_match(false, "", false, str(d.get("id", "")), true)   # (the gang's stars decide how it plays)
 	if why != "":
 		on_online_error(why)
 		return
 	await get_tree().create_timer(12.0).timeout
 	if is_inside_tree() and _starting:
 		on_online_error("The server didn't start the match. Try again in a moment.")
-
-
-## Easy / Normal / Hard (as VS CPU); "" when cancelled.
-func _pick_difficulty() -> String:
-	var choice := [""]
-	UI.dialog(self, "CHOOSE DIFFICULTY",
-		"Easy and Normal wins are worth +1 influence here, Hard wins +2.\nRewards scale with difficulty, as in VS CPU.",
-		[["EASY", func(): choice[0] = "easy", UI.GREEN], ["NORMAL", func(): choice[0] = "normal", UI.BLUE],
-		["HARD", func(): choice[0] = "hard", UI.RED], ["CANCEL", func(): choice[0] = "cancel"]], Color("b388ff"))
-	while choice[0] == "":
-		await get_tree().process_frame
-	return "" if choice[0] == "cancel" else choice[0]
 
 
 ## mp:start for the CPU match: the duel opens once the arena has landed.
