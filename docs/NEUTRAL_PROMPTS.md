@@ -76,14 +76,16 @@ Every prompt starts the same way and ends with the same colours; only the middle
 
 ## The frame and the card back
 
-Both are placeholders made from the game's own art: the frame is the Nebula frame in steel (uploaded in
-Card Forge 2, Settings → Clans → Neutral), and the back is asphalt, a steel border and the logo. To
-replace them with ChatGPT versions:
+Both are placeholders made from the game's own art: the frame is the Nebula frame in steel with the
+AlleyWay Brawlers logo on the top-right plate where a clan's emblem would be (uploaded in Card Forge 2,
+Settings → Clans → Neutral), and the back is asphalt, a steel border and the logo. To replace them with
+ChatGPT versions:
 
-- **Frame:** attach two clan frames (e.g. Nebula and Militia) and ask: "Make a card frame in exactly
-  the same layout and size as these (1024 × 1536, the same boxes in the same places, the art window
-  and text box left empty), in brushed gunmetal and steel with rivets and scratches, silver trim
-  instead of neon, a small plain steel plate in the top-right corner. No clan emblem, no text." Upload it in
+- **Frame:** attach two clan frames (e.g. Nebula and Militia) and the logo (`assets/title_alleyway.png`)
+  and ask: "Make a card frame in exactly the same layout and size as these (1024 × 1536, the same boxes
+  in the same places, the art window and text box left empty), in brushed gunmetal and steel with rivets
+  and scratches, silver trim instead of neon, and the attached logo small on the plate in the top-right
+  corner where the clan emblem goes. No other text." Upload it in
   Card Forge 2 (Settings → Clans → Neutral → Replace card frame). Make the art window transparent or
   magenta, like the other frames.
 - **Card back:** attach the logo (`assets/title_alleyway.png`) and a clan back, and ask: "A trading card
