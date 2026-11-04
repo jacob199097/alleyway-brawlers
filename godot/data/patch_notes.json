@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.119",
+        "notes": [
+            "A fresh full download of the game. Updates from here on are small again (they had grown to over 600 MB).",
+            "The update screen always turns cards over while it downloads, even before any card pictures are on your computer."
+        ]
+    },
+    {
         "version": "0.9.118",
         "notes": [
             "The first 20 Neutral cards are here, from Street Rat to Mack \"Undisputed\" Malone.",

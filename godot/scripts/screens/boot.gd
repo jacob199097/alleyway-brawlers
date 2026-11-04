@@ -315,10 +315,11 @@ func _on_progress(done: int, total: int, id: String, tex: Texture2D) -> void:
 	_flip_to(tex, 0.6)
 
 
-## A random card from the game that has its picture here (null when there are none yet).
+## A random card from the game that has its picture here; when none has, a random clan's card back
+## (so the card still turns over); null when there are neither.
 func _random_card_art() -> Texture2D:
 	var ids: Array = CardDB.all().keys()
-	for i in mini(12, ids.size()):
+	for i in mini(40, ids.size()):
 		var id := str(ids.pick_random())
 		var c: Dictionary = CardDB.get_card(id)
 		if c.get("token", false) or (_preview and _preview.texture == CardDB.art(id)):
@@ -326,7 +327,12 @@ func _random_card_art() -> Texture2D:
 		var tex := CardDB.art(id)
 		if tex:
 			return tex
-	return null
+	var backs: Array = []
+	for clan in CardDB.BACK_STYLES:
+		var b := CardDB.back(clan)
+		if b and not backs.has(b) and not (_preview and _preview.texture == b):
+			backs.append(b)
+	return backs.pick_random() if not backs.is_empty() else null
 
 
 ## Turn the card over to show another: it narrows to its edge, swaps, and opens out again, catching
