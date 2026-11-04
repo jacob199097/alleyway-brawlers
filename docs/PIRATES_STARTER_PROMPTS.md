@@ -52,6 +52,7 @@ tricorn hats, a tattered black flag).
 - **LV2 and LV3:** attach only that character's LV1 picture (it's in the same style), so the face and
   build carry over and nothing else does.
 - Every picture is square (1024 × 1024): the Forge crops it into the card's art window.
+- Not every card has to be a person: creatures and monsters fit too (The Leviathan is a sea serpent).
 - Each character has its own look, weapon, pose and setting on purpose. Only Marlow wears a captain's
   coat and tricorn; nobody else has a hook for a hand.
 - **Strivers:** all three levels share one flavour text (and its "by").
@@ -251,7 +252,9 @@ Flavour (all levels): "Show me yours. Then it's mine."
 - When deployed: PLUNDER one enemy character: it fights for you from now on.
 - Flavour: "When it surfaces, the harbour changes hands."
 
-> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Pirates clan heavy for the card "The Leviathan": a colossal man in a battered antique diving suit of riveted copper gone green with verdigris, the round helmet's porthole glowing teal, barnacles and seaweed hanging off him, hauling himself up out of the harbour onto the quay with one enormous gloved hand, water pouring off him, dock workers scattering. Seen from very low at water level, towering. Background: the container port at night, cranes and floodlights, fog. Palette: deep navy night sea and black water, sea-teal and verdigris green, rusted iron orange, glints of brass and gold, drifting harbour fog. Lighting: cold teal moonlight and warm sodium-orange dock lamps, no purple or magenta light anywhere. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
+The crew's monster: a vast sea serpent that lives under the docks and comes up when Marlow calls it.
+
+> Using the same artstyle as the reference image. Take only the art style: don't reuse the reference's character, pose, clothes or props. A new Pirates clan heavy for the card "The Leviathan": a colossal sea serpent bursting up out of the black harbour water, its long scaled neck rising higher than the cranes, a huge armoured head with rows of jagged teeth and glowing teal eyes, barnacles, old chains and torn fishing nets hanging off its scales, a frilled fin running down its back, one coil of its body wrapped around a capsized police boat and dragging it under, water pouring off it in sheets, tiny dock workers scattering on the quay. Seen from very low at water level, the monster towering over everything. Background: the container port at night, cranes and floodlights, waves smashing against the quay, fog. Palette: deep navy night sea and black water, sea-teal and verdigris green, rusted iron orange, glints of brass and gold, drifting harbour fog. Lighting: cold teal moonlight and warm sodium-orange dock lamps, no purple or magenta light anywhere. Square 1024x1024, the character centred with space around the edges. No text, no border, no card frame.
 
 ---
 
