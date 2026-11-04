@@ -21,8 +21,8 @@
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
  *                    mp:declined {byUsername}, mp:start {matchId, you, opponent, view, resync, clock},
  *                    mp:update {matchId, events, view, clock, away}, mp:opponent {status, graceSecs?},
- *                    mp:over {matchId, result, reason, rewards}, mp:none (resync with no match),
- *                    mp:rematch_offer {fromUsername}, mp:rematch_sent, mp:rematch_declined {message}
+ *                    mp:over {matchId, result, reason, rewards, series}, mp:none (resync with no match),
+ *                    mp:rematch_offer {fromUsername, ranked, game}, mp:rematch_sent, mp:rematch_declined {message}
  *   clock = seconds the player who acts next has before a safe move is played for them;
  *   away = that player was auto-played last time (so they get AWAY_SECS).
  *
@@ -45,6 +45,10 @@ const RECONNECT_SECS   = 60;    // a disconnected player loses after this long (
 const REMATCH_SECS     = 60;    // after a match against a player, either can offer a rematch this long
 const CHALLENGE_SECS   = 60;
 const RANKED_LEVEL     = 5;     // Ranked Brawl (player against player) unlocks at this level
+// A Ranked match and its rematches are a best of SERIES_GAMES. Rank Points follow the series score
+// (whoever is ahead holds a win's points, a level series none), so trading wins earns nothing
+// and leaving early keeps the score as it stands. Once it's decided, a rematch is friendly.
+const SERIES_GAMES     = 3;
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
 const BOT_EVENT_MS     = 140;   // and this much more for each event the last move made (the player's screen animates them)
 const BOT_MAX_MS       = 3000;
@@ -64,6 +68,13 @@ const cpu = import('../../shared/duel/DuelAI.js');
 // ── Perspective and hidden information ──────────────────────────────────────
 
 const other = (seat) => (seat === 'player' ? 'opponent' : 'player');
+const newSeries = (a, b) => ({ ids: [a.playerId, b.playerId], games: 0,
+    wins: { [a.playerId]: 0, [b.playerId]: 0 }, applied: { [a.playerId]: 0, [b.playerId]: 0 } });   // applied: Rank Points so far
+const seriesOver = (s) => s.games >= SERIES_GAMES || Object.values(s.wins).some(w => w * 2 > SERIES_GAMES);
+function seriesLeader(s) {
+    const [x, y] = s.ids;
+    return s.wins[x] === s.wins[y] ? null : s.wins[x] > s.wins[y] ? x : y;
+}
 
 /** Deep copy with "player" and "opponent" swapped (values and keys) — the other seat's view. */
 function swapSides(v) {
@@ -244,8 +255,10 @@ function createOnlineService(io, deps) {
     }
 
     // ── Scissors Paper Rock (who goes first) ──
-    function startRps(a, b, mode) {
-        const rps = { id: randomUUID(), a, b, mode, round: 0, picks: {}, timer: null, over: false, arena: pickArena() };
+    // series: the best of 3 a Ranked rematch carries on (a new Ranked match starts one)
+    function startRps(a, b, mode, series = null) {
+        series ||= mode === 'ranked' ? newSeries(a, b) : null;
+        const rps = { id: randomUUID(), a, b, mode, series, round: 0, picks: {}, timer: null, over: false, arena: pickArena() };
         rpsByPlayer.set(a.playerId, rps);
         rpsByPlayer.set(b.playerId, rps);
         rpsRound(rps);
@@ -303,7 +316,7 @@ function createOnlineService(io, deps) {
             rpsByPlayer.delete(rps.a.playerId);
             rpsByPlayer.delete(rps.b.playerId);
             // Seat "player" is a, so the first player's seat follows from who that is
-            startMatch(rps.a, rps.b, rps.mode, firstPlayer === rps.a ? 'player' : 'opponent', null, rps.arena)
+            startMatch(rps.a, rps.b, rps.mode, firstPlayer === rps.a ? 'player' : 'opponent', null, rps.arena, null, rps.series)
                 .catch(err => console.error('[Online] Start failed:', err));
         }, 1800);
     }
@@ -316,7 +329,7 @@ function createOnlineService(io, deps) {
         rpsByPlayer.delete(rps.a.playerId);
         rpsByPlayer.delete(rps.b.playerId);
         const stay = rps.a.playerId === leaver ? rps.b : rps.a;
-        const requeue = (rps.mode === 'casual' || rps.mode === 'ranked') && sockets.get(stay.playerId)?.connected;
+        const requeue = (rps.mode === 'casual' || rps.mode === 'ranked') && !rps.series?.games && sockets.get(stay.playerId)?.connected;   // (not a rematch)
         emitTo(stay.playerId, 'mp:rps_cancel', { requeued: requeue,
             message: requeue ? 'Your opponent left. Finding you another match…' : 'Your opponent left before the match started.' });
         if (requeue) {
@@ -326,7 +339,7 @@ function createOnlineService(io, deps) {
     }
 
     // rules: the match's rules (DuelState) when there's no challenge: a turf map gang's edge
-    async function startMatch(a, b, mode, firstSeat = null, challenge = null, arena = null, rules = null) {
+    async function startMatch(a, b, mode, firstSeat = null, challenge = null, arena = null, rules = null, series = null) {
         const { DuelState } = await engine;
         rules = challenge ? challenge.rules : rules || {};
         const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
@@ -340,7 +353,7 @@ function createOnlineService(io, deps) {
             if (!e.bot) e.vets = await deps.veteranTiers?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
         }
         const match = {
-            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena),
+            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena), series,
             seats: {
                 player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
                 opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
@@ -552,15 +565,22 @@ function createOnlineService(io, deps) {
                 console.error('[Online] CPU match rewards failed:', err.message);
             }
         } else try {
+            const series = match.mode === 'ranked' ? match.series : null;
+            if (series) {
+                series.games += 1;
+                if (winner) series.wins[winner.playerId] += 1;
+            }
             rewards = await deps.resolveMatch({
                 winnerId: winner?.playerId ?? null, loserId: loser?.playerId ?? null,
                 p1Id: match.seats.player.playerId, p2Id: match.seats.opponent.playerId,
                 matchMeta: {
                     turns: match.state.turn, ranked: match.mode === 'ranked',
+                    series: series ? { leader: seriesLeader(series), applied: { ...series.applied } } : null,
                     p1MoraleEnd: match.state.sides.player.morale, p2MoraleEnd: match.state.sides.opponent.morale,
                     durationSecs: Math.round((Date.now() - match.startedAt) / 1000),
                 },
             }) || {};
+            if (series) for (const id of series.ids) series.applied[id] += Number(rewards[id]?.rankPointDelta) || 0;
             if (winner) deps.recordDailyWin?.(winner.playerId)?.catch?.(() => {});
             for (const s of Object.values(match.seats)) {
                 if (s.cardsPlayed > 0) deps.incrementDailyQuest?.(s.playerId, 'daily_play_10', Math.min(40, s.cardsPlayed))?.catch?.(() => {});
@@ -627,14 +647,19 @@ function createOnlineService(io, deps) {
                 player_morale: match.state.sides[seat].morale,
                 opponent_morale: match.state.sides[other(seat)].morale,
                 turns: match.state.turn,
+                series: match.mode === 'ranked' && match.series ? { game: match.series.games, of: SERIES_GAMES, over: seriesOver(match.series),
+                    you: match.series.wins[s.playerId], them: match.series.wins[match.seats[other(seat)].playerId],
+                    rankPoints: match.series.applied[s.playerId] } : null,
             });
         }
         if (!bot) {
             // Either player can offer a rematch for a while (mp:rematch)
             const until = Date.now() + REMATCH_SECS * 1000;
             const [p, o] = [match.seats.player.playerId, match.seats.opponent.playerId];
-            rematchable.set(p, { opp: o, until });
-            rematchable.set(o, { opp: p, until });
+            // (a Ranked series still being decided: the rematch is its next game)
+            const series = match.mode === 'ranked' && match.series && !seriesOver(match.series) ? match.series : null;
+            rematchable.set(p, { opp: o, until, series });
+            rematchable.set(o, { opp: p, until, series });
             rematchAsks.delete(p);
             rematchAsks.delete(o);
         }
@@ -804,7 +829,8 @@ function createOnlineService(io, deps) {
             }
         });
 
-        // Rematch: both players ask (the second ask starts it, with Scissors Paper Rock again)
+        // Rematch: both players ask (the second ask starts it, with Scissors Paper Rock again): the next
+        // game of a Ranked series still being decided, otherwise a friendly match
         socket.on('mp:rematch', async () => {
             const r = rematchable.get(me);
             if (!r || r.until < Date.now()) return socket.emit('mp:rematch_declined', { message: 'The rematch offer has expired.' });
@@ -812,7 +838,7 @@ function createOnlineService(io, deps) {
             if (busy(me) || busy(r.opp)) return socket.emit('mp:rematch_declined', { message: 'Your opponent is already in another match.' });
             if (rematchAsks.get(r.opp) !== me) {
                 rematchAsks.set(me, r.opp);
-                emitTo(r.opp, 'mp:rematch_offer', { fromUsername: playerData.username });
+                emitTo(r.opp, 'mp:rematch_offer', { fromUsername: playerData.username, ranked: !!r.series, game: r.series ? r.series.games + 1 : 0 });
                 return socket.emit('mp:rematch_sent', {});
             }
             rematchAsks.delete(me);
@@ -823,7 +849,7 @@ function createOnlineService(io, deps) {
             leaveQueue(r.opp);
             try {
                 const [a, b] = await Promise.all([prepare(r.opp), prepare(me)]);
-                startRps(a, b, 'friendly');
+                startRps(a, b, r.series ? 'ranked' : 'friendly', r.series);
             } catch (err) {
                 for (const id of [me, r.opp]) emitTo(id, 'mp:rematch_declined', { message: err.message || 'Could not start the rematch.' });
             }

@@ -110,8 +110,13 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
 
         for (const { playerId, outcome } of assignments) {
             const reward = REWARDS[outcome];
-            // Casual and friendly matches don't move Rank Points
-            const rankDelta = matchMeta.ranked === false ? 0 : reward.rankPoints;
+            // Casual and friendly matches don't move Rank Points. A game of a Ranked best of 3
+            // (socket/onlineMatch.js) moves them to what the series score is worth: the leader holds
+            // a win's points, the other a loss's, a level series none (less what's been applied so far)
+            const s = matchMeta.series;
+            const rankDelta = matchMeta.ranked === false ? 0
+                : s ? (!s.leader ? 0 : REWARDS[s.leader === playerId ? 'win' : 'loss'].rankPoints) - (Number(s.applied?.[playerId]) || 0)
+                : reward.rankPoints;
 
             const { rows } = await client.query(
                 `SELECT karat, xp, level, rank_points, wins, losses, draws, first_win_date
@@ -181,7 +186,7 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                 ...levelRewards(p.level, newLevel),
                 newRank,
                 rankChanged:    newRank !== p.rank,
-                rankPointDelta: rankDelta,
+                rankPointDelta: clampedRankPts - p.rank_points,   // (what it moved: never below 0)
                 matchId,
             };
         }

@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.122",
+        "notes": [
+            "Ranked Brawl is now a best of 3: after a Ranked match, the rematch is the next game of the series. Rank Points follow the series score (whoever is ahead holds them, a level series has none), so winning the series is what counts.",
+            "Once a series is decided, a rematch is a friendly match. The results screen shows the series score."
+        ]
+    },
+    {
         "version": "0.9.121",
         "notes": [
             "Ranked Brawl is now against other players only: it has its own queue (never mixed with Casual), and wins earn Rank Points while losses cost some. The CPU is still there in VS CPU.",

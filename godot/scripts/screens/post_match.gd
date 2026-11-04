@@ -399,9 +399,30 @@ func _rematch_box() -> void:
 	col.custom_minimum_size = Vector2(520, 0)
 	col.add_theme_constant_override("separation", 12)
 	add_child(col)
-	_rematch = UI.button("⚔ REMATCH", _ask_rematch, Vector2(520, 72), UI.GOLD)
+	# A Ranked match is a best of 3 (backend/socket/onlineMatch.js): the score, and whether the
+	# rematch is its next game or (once it's decided) a friendly match
+	var s = Game.match_result.get("series")
+	var series: Dictionary = s if s is Dictionary else {}
+	var next_game: bool = not series.is_empty() and not series.get("over", false)
+	if not series.is_empty():
+		col.position.y -= 38.0   # (the score above keeps the button where it always is)
+		var you := int(series.get("you", 0))
+		var them := int(series.get("them", 0))
+		var head := "RANKED · BEST OF 3 · %d–%d" % [you, them]
+		if series.get("over", false):
+			head = ("SERIES WON %d–%d" if you > them else "SERIES LOST %d–%d" if you < them else "SERIES LEVEL %d–%d") % [you, them]
+		var rp := int(series.get("rankPoints", 0))
+		var h := UI.label("%s  ·  %+d RP" % [head, rp] if rp != 0 else head, 26, UI.GOLD if you >= them else UI.RED, true)
+		h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(h)
+	_rematch = UI.button("⚔ RANKED REMATCH · GAME %d" % (int(series.get("game", 0)) + 1) if next_game else "⚔ REMATCH", _ask_rematch, Vector2(520, 72), UI.GOLD)
 	col.add_child(_rematch)
-	_rematch_note = UI.label("Offer your opponent another match (60 s).", 20, UI.MUTED)
+	var note := "Offer your opponent another match (60 s)."
+	if next_game:
+		note = "Play the next game of the series (60 s). Rank Points follow the series: whoever's ahead holds them, a level series has none."
+	elif not series.is_empty():
+		note = "The series is over: a rematch now is a friendly match (60 s)."
+	_rematch_note = UI.label(note, 20, UI.MUTED)
 	_rematch_note.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_rematch_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_rematch_note.custom_minimum_size = Vector2(520, 0)
@@ -444,7 +465,8 @@ func _on_net(name: String, data) -> void:
 			Sfx.play("ambush", 1.2)
 			_rematch.disabled = false
 			_rematch.text = "✓ ACCEPT REMATCH"
-			_rematch_note.text = "%s wants a rematch!" % str(data.get("fromUsername", "Your opponent"))
+			var who := str(data.get("fromUsername", "Your opponent"))
+			_rematch_note.text = "%s wants game %d of the series!" % [who, int(data.get("game", 2))] if data.get("ranked", false) else "%s wants a rematch!" % who
 			_rematch_note.label_settings.font_color = UI.GOLD
 		"mp:rematch_sent":
 			_rematch_note.text = "Asked. It starts as soon as they agree."

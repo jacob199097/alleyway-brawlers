@@ -5651,6 +5651,7 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.mastery = _over.get("mastery")
 		Game.match_result.veterans = _over.get("veterans", [])   # cards that reached a new veteran tier
 		Game.match_result.turf = _over.get("turf")               # the turf map influence won
+		Game.match_result.series = _over.get("series")           # a Ranked best of 3: the score so far
 		if _over.has("result"):
 			Game.match_result.result = _over.result
 		if _coop:

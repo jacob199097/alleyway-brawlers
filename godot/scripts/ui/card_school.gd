@@ -464,7 +464,7 @@ func _chapter_pages(ch: String) -> Array:
 				["DAILY QUESTS & REWARD", UI.GREEN, "Quests on the main menu (win matches, play cards, open a pack) pay Karat. Log in each day for the daily reward: day 7 gives a free pack."],
 			], "text": "Everything is earned by playing: no card is locked behind real money."})
 			out.append({"chapter": ch, "mode": "tiles", "cols": 3, "title": "CLIMBING THE STREETS", "tiles": [
-				["RANKED BRAWL", Color("ffd34d"), "From level 5. Wins earn Rank Points, losses lose some. Climb from [b]Rookie[/b] to Street Tough, Enforcer, Underboss, Kingpin and [b]Legend[/b]."],
+				["RANKED BRAWL", Color("ffd34d"), "From level 5, a best of 3 against another player. Winning the series earns Rank Points, losing it costs some. Climb from [b]Rookie[/b] to Street Tough, Enforcer, Underboss, Kingpin and [b]Legend[/b]."],
 				["CLAN MASTERY", Color("6fd3ff"), "Each clan you play levels up on its own (10 levels), paying Karat, that clan's profile pictures and titles."],
 				["VETERAN CARDS", Color("d0905a"), "Win with a card and it remembers: 5 wins makes it [b]Seasoned[/b], 15 [b]Battle-Scarred[/b] (holo foil), 40 a [b]Street Legend[/b] (gold foil). Your rivals see it."],
 				["ACHIEVEMENTS", Color("ff9a3c"), "Goals of every kind, paying Karat, Dust, titles, profile pictures and card backs."],
