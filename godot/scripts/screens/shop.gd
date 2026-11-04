@@ -1,6 +1,7 @@
 extends Screen
 ## Card packs: buy with Karat, Contraband or a free pack (the server rolls the cards), then the
 ## pack opening (scripts/ui/pack_opening.gd), where the player can open another without leaving it.
+## Starter decks: every clan's, under its deck box (POST /api/shop/starter adds the cards and the deck).
 
 ## Known packs and their art. The server's list decides what's on sale: a new Card Forge clan
 ## shows up with its name, and art from assets/<id>_booster.png once that file exists.
@@ -21,6 +22,14 @@ var _first := 0
 var _count := 0
 var _dots: HBoxContainer
 var _arrows: Array[Button] = []
+var _title: Label
+var _clip: Control
+## Tabs: card packs or starter decks (GET /api/shop/starters)
+var _tab := "packs"
+var _tabs := {}
+var _pack_list: Array = []
+var _starter_list: Array = []
+var _starter_cost := {}
 ## The pack opening's synthesised sounds (sfx.gd), made ready while the shop is open
 const PACK_SOUNDS := ["tear", "charge", "burst", "shimmer", "reveal_rare", "reveal_epic", "new_card"]
 
@@ -29,7 +38,7 @@ func _ready() -> void:
 	back_to = "main_menu"
 	UI.background(self, "menu_background.jpg", 0.6)
 	Game.play_menu_music()
-	UI.title(self, "CARD PACKS")
+	_title = UI.title(self, "CARD PACKS")
 	_balance = UI.label("", 26, UI.GOLD, true)
 	_balance.size = Vector2(1920, 34)
 	_balance.position = Vector2(0, 100)
@@ -60,9 +69,58 @@ func _ready() -> void:
 				"color": info.get("color", Color("b388ff"))}).duplicate()
 			entry.odds = sp.get("odds", {})
 			packs.append(entry)
-	_count = packs.size()
+	_pack_list = packs
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 16)
+	tabs.position = Vector2(960 - 308, 990)   # (bottom centre: the back button is bottom left)
+	add_child(tabs)
+	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"]]:
+		var tb := UI.button(t[1], _show.bind(t[0]), Vector2(300, 64), UI.GOLD)
+		tabs.add_child(tb)
+		_tabs[t[0]] = tb
+	_show("packs")
+	Sfx.warm(PACK_SOUNDS)
+
+
+## The shelf for a tab: card packs, or every clan's starter deck (its deck box)
+func _show(tab: String) -> void:
+	if _opening or _busy:
+		return
+	_tab = tab
+	for k in _tabs:
+		(_tabs[k] as Button).modulate = Color.WHITE if k == tab else Color(1, 1, 1, 0.5)
+	if tab == "starters" and _starter_list.is_empty():
+		var r := await Api.request("GET", "/api/shop/starters")
+		if not is_inside_tree():
+			return
+		if not r.ok or not r.data is Dictionary:
+			UI.toast(self, r.error if not r.ok else "Could not load the starter decks.", UI.RED)
+			return
+		_starter_cost = r.data.get("cost", {})
+		_starter_list = r.data.get("starters", [])
+		if _tab != tab:
+			return
+	_title.text = "STARTER DECKS" if tab == "starters" else "CARD PACKS"
+	_fill(_starter_list if tab == "starters" else _pack_list, _starter if tab == "starters" else _pack)
+
+
+## The carousel: entries laid out by maker (one Control each), SHOWN at a time.
+func _fill(entries: Array, maker: Callable) -> void:
+	for n in [_clip, _dots]:
+		if n:
+			n.queue_free()
+	for n in _arrows:
+		n.queue_free()
+	_clip = null
+	_dots = null
+	_arrows.clear()
+	_free_buttons.clear()
+	_arts.clear()
+	_first = 0
+	_count = entries.size()
 	var shown := mini(SHOWN, _count)
-	var clip := Control.new()   # (packs scrolled out of view are cut off at its edges)
+	var clip := Control.new()
+	_clip = clip   # (packs scrolled out of view are cut off at its edges)
 	clip.clip_contents = _count > SHOWN
 	clip.size = Vector2(STEP * shown, 830)
 	clip.position = Vector2(960 - clip.size.x / 2, 150)
@@ -72,7 +130,7 @@ func _ready() -> void:
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(_row)
 	for i in _count:
-		var holder := _pack(packs[i])
+		var holder: Control = maker.call(entries[i])
 		holder.position = Vector2(i * STEP + 40, 20)
 		_row.add_child(holder)
 	if _count > SHOWN:
@@ -90,7 +148,6 @@ func _ready() -> void:
 			d.custom_minimum_size = Vector2(16, 16)
 			_dots.add_child(d)
 		_scroll(0)
-	Sfx.warm(PACK_SOUNDS)
 
 
 ## Move the carousel by dir packs (0: just show where it is).
@@ -188,6 +245,82 @@ func _pack(p: Dictionary) -> Control:
 	_free_buttons.append(free)
 	_refresh_balance()
 	return holder
+
+
+## One clan's starter deck on the shelf: its deck box, what's in it and its prices.
+func _starter(d: Dictionary) -> Control:
+	var id := str(d.get("id", ""))
+	var info := CardDB.clan(id)
+	var col: Color = info.get("color", UI.GOLD)
+	var holder := Control.new()
+	holder.size = Vector2(400, 790)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := UI.texture_rect(UI.tex("%s_deckbox.png" % id) if UI.tex("%s_deckbox.png" % id) else CardDB.back(id), Vector2(400, 400))
+	box.position = Vector2(0, 90)
+	box.pivot_offset = box.size / 2
+	holder.add_child(box)
+	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	box.mouse_entered.connect(func():
+		Sfx.play("hover", 0.9, -8.0)
+		box.create_tween().tween_property(box, "scale", Vector2.ONE * 1.06, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+	box.mouse_exited.connect(func(): box.create_tween().tween_property(box, "scale", Vector2.ONE, 0.14))
+	var bob := box.create_tween().set_loops()
+	var phase := randf_range(1.6, 2.2)
+	bob.tween_property(box, "position:y", 82.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bob.tween_property(box, "position:y", 94.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_arts[id] = box
+	var name := UI.label("%s STARTER" % str(d.get("name", info.get("name", id))).to_upper(), 30, col, true)
+	name.size = Vector2(400, 40)
+	name.position = Vector2(0, 520)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(name)
+	var leader := CardDB.get_card(str(d.get("leader", "")))
+	var sub := UI.label("A ready-to-play 40-card deck, its Hideout\nand %s" % ("its leader, %s" % leader.name if not leader.is_empty() else "its leader"), 16, UI.MUTED)
+	sub.size = Vector2(400, 44)
+	sub.position = Vector2(0, 562)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(sub)
+	var blurb := UI.label(str(d.get("blurb", "")), 15, Color(1, 1, 1, 0.75))
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+	blurb.size = Vector2(380, 40)
+	blurb.position = Vector2(10, 618)
+	blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(blurb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.position = Vector2(8, 690)
+	row.add_child(UI.button("%d KARAT" % int(_starter_cost.get("karat", 800)), _buy_starter.bind(d, "karat"), Vector2(184, 60), UI.GOLD))
+	row.add_child(UI.button("%d CB" % int(_starter_cost.get("contraband", 400)), _buy_starter.bind(d, "contraband"), Vector2(184, 60), UI.PURPLE))
+	holder.add_child(row)
+	return holder
+
+
+func _buy_starter(d: Dictionary, currency: String) -> void:
+	if _busy:
+		return
+	var cost := int(_starter_cost.get(currency, 0))
+	var what := "%s Starter" % str(d.get("name", ""))
+	UI.dialog(self, "BUY THE %s?" % what.to_upper(), "%d %s for its 40 cards, Hideout and leader. The deck is added to your Deck Builder, ready to play." % [
+		cost, "Karat" if currency == "karat" else "Contraband"], [["BUY", func():
+			_busy = true
+			var r := await Api.request("POST", "/api/shop/starter", {"clan": str(d.get("id", "")), "currency": currency})
+			_busy = false
+			if not is_inside_tree():
+				return
+			if not r.ok:
+				UI.toast(self, r.error, UI.RED)
+				return
+			Game.player.karat = r.data.get("newKarat", Game.player.get("karat", 0))
+			Game.player.contraband = r.data.get("newContraband", Game.player.get("contraband", 0))
+			_refresh_balance()
+			Sfx.play("reveal_epic")
+			var box: Control = _arts.get(str(d.get("id", "")))
+			if box:
+				var t := box.create_tween()
+				t.tween_property(box, "scale", Vector2.ONE * 1.25, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				t.tween_property(box, "scale", Vector2.ONE, 0.25)
+			UI.toast(self, "Added \"%s\" and its cards. Find it in the Deck Builder." % str(r.data.get("deckName", what)), UI.GREEN), UI.GOLD],
+		["CANCEL", func(): pass]])
 
 
 func _buy(p: Dictionary, currency: String) -> void:

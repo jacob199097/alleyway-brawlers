@@ -39,6 +39,10 @@ func _clan_shots() -> void:
 	_screen()._scroll(1)
 	_screen()._scroll(1)
 	await _shot("10_shop_scrolled", 0.8)
+	_screen()._show("starters")
+	await _shot("10_shop_starters", 2.0)
+	_screen()._buy_starter(_screen()._starter_list[0], "karat")
+	await _shot("10_shop_starter_buy", 0.8)
 
 
 ## The turf map (a district opened, last week's Karat claimed), veteran cards in the library and the

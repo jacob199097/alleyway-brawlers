@@ -419,7 +419,7 @@ func _rematch_box() -> void:
 	col.add_child(_rematch)
 	var note := "Offer your opponent another match (60 s)."
 	if next_game:
-		note = "Play the next game of the series (60 s). Rank Points follow the series: whoever's ahead holds them, a level series has none."
+		note = "Want another game? It only happens if you both accept (60 s). Rank Points follow the series score, so stopping here keeps it as it is."
 	elif not series.is_empty():
 		note = "The series is over: a rematch now is a friendly match (60 s)."
 	_rematch_note = UI.label(note, 20, UI.MUTED)
@@ -466,10 +466,11 @@ func _on_net(name: String, data) -> void:
 			_rematch.disabled = false
 			_rematch.text = "✓ ACCEPT REMATCH"
 			var who := str(data.get("fromUsername", "Your opponent"))
-			_rematch_note.text = "%s wants game %d of the series!" % [who, int(data.get("game", 2))] if data.get("ranked", false) else "%s wants a rematch!" % who
+			_rematch_note.text = "%s is waiting: accept to play game %d of the series." % [who, int(data.get("game", 2))] if data.get("ranked", false) \
+				else "%s is waiting: accept to play again." % who
 			_rematch_note.label_settings.font_color = UI.GOLD
 		"mp:rematch_sent":
-			_rematch_note.text = "Asked. It starts as soon as they agree."
+			_rematch_note.text = "Waiting for your opponent to accept…"
 		"mp:rematch_declined":
 			_rematch_end(str(data.get("message", "No rematch.")))
 

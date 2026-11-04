@@ -144,8 +144,8 @@ async function grantStartersToEveryone() {
 }
 
 /** Inventory and a starter deck from a recipe (card game IDs = cards.art_url); active: it becomes the
- *  player's active deck. */
-async function seedStarter(client, playerId, recipe, clanName, active = true) {
+ *  player's active deck. name: the deck's name (a deck already called that is replaced). */
+async function seedStarter(client, playerId, recipe, clanName, active = true, name = `${clanName} Starter`) {
     const ids = [...new Set([recipe.leader, ...recipe.deck.map(([id]) => id), ...recipe.hideout.map(([id]) => id)].filter(Boolean))];
     const { rows } = await client.query('SELECT id, art_url FROM cards WHERE art_url = ANY($1::text[])', [ids]);
     const dbId = Object.fromEntries(rows.map(r => [r.art_url, r.id]));
@@ -168,7 +168,6 @@ async function seedStarter(client, playerId, recipe, clanName, active = true) {
 
     const total = recipe.deck.reduce((s, [, q]) => s + q, 0);
     if (total !== 40) throw new Error(`The starter deck must have 40 cards (got ${total}).`);
-    const name = `${clanName} Starter`;
     await client.query('DELETE FROM decks WHERE player_id = $1 AND name = $2', [playerId, name]);
     const { rows: deckRows } = await client.query(
         `INSERT INTO decks (player_id, name, is_active, leader_card_id, hideout_set)
@@ -188,3 +187,4 @@ async function seedStarter(client, playerId, recipe, clanName, active = true) {
 
 module.exports = router;
 module.exports.grantStartersToEveryone = grantStartersToEveryone;
+module.exports.seedStarter = seedStarter;

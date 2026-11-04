@@ -287,6 +287,13 @@ const routes = {
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },
     'GET /api/shop/packs': () => [200, { karat: player.karat, freePacks: player.free_packs, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
         .map(id => ({ id, name: id, cost: 200, cards: 3, odds: { 3: 1, 4: 0.504, 5: 0.134 } })).concat(extraClans().map(c => ({ id: c.id, name: c.name, cost: 200, cards: 3 }))) }],
+    'GET /api/shop/starters': () => [200, { cost: { karat: 800, contraband: 400 }, starters: pickableClans().map(c => ({ id: c.id, name: c.name, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })) }],
+    'POST /api/shop/starter': (b) => {
+        const field = b.currency === 'contraband' ? 'contraband' : 'karat', cost = field === 'karat' ? 800 : 400;
+        if (player[field] < cost) return [402, { error: 'Not enough.' }];
+        player[field] -= cost;
+        return [200, { deckName: (pickableClans().find(c => c.id === b.clan)?.name ?? b.clan) + ' Starter 2', newKarat: player.karat, newContraband: player.contraband }];
+    },
     'POST /api/shop/open': (b) => {
         const cost = b.currency === 'contraband' ? 100 : b.currency === 'free' ? 1 : 200;
         const field = b.currency === 'contraband' ? 'contraband' : b.currency === 'free' ? 'free_packs' : 'karat';

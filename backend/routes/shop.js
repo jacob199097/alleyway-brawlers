@@ -91,6 +91,57 @@ router.post('/open', requireAuth, async (req, res) => {
     }
 });
 
+// ── Starter decks: every clan's starter (shared/clans.js), its 40 cards, Hideout and leader ──
+// Bought as often as you like: the cards go into the collection and a ready-made deck is added
+// ("<Clan> Starter", or "<Clan> Starter 2", ... so a deck already there is never replaced).
+const STARTER_COST = { karat: 800, contraband: 400 };
+const clansLib = import('../../shared/clans.js');
+
+router.get('/starters', requireAuth, async (_req, res) => {
+    try {
+        const { pickableClans, starterRecipe, clanBlurb } = await clansLib;
+        res.json({ cost: STARTER_COST, starters: pickableClans().map(c => ({
+            id: c.id, name: c.name, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/starter', requireAuth, async (req, res) => {
+    const { clan, currency = 'karat' } = req.body || {};
+    if (!['karat', 'contraband'].includes(currency)) return res.status(400).json({ error: 'Invalid currency.' });
+    const { pickableClans, starterRecipe } = await clansLib;
+    const info = pickableClans().find(c => c.id === clan);
+    if (!info) return res.status(400).json({ error: 'There is no starter deck for that clan.' });
+    const { seedStarter } = require('./onboarding');
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const cost = STARTER_COST[currency];
+        const { rows } = await client.query(
+            `UPDATE players SET ${currency} = ${currency} - $1 WHERE id = $2 AND ${currency} >= $1 RETURNING karat, contraband`,
+            [cost, req.playerId]);
+        if (!rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(402).json({ error: `Not enough ${currency === 'karat' ? 'Karat' : 'Contraband'}: a starter deck is ${cost}.` });
+        }
+        const { rows: decks } = await client.query('SELECT name FROM decks WHERE player_id = $1', [req.playerId]);
+        const taken = new Set(decks.map(d => d.name));
+        let name = `${info.name} Starter`;
+        for (let k = 2; taken.has(name); k++) name = `${info.name} Starter ${k}`;
+        await seedStarter(client, req.playerId, starterRecipe(info.id), info.name, false, name);
+        await client.query('INSERT INTO player_starter_grants (player_id, clan) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.playerId, info.id]);
+        await client.query('COMMIT');
+        res.json({ deckName: name, newKarat: rows[0].karat, newContraband: rows[0].contraband });
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('[Shop] starter:', err.message);
+        res.status(500).json({ error: 'Could not buy the starter deck.' });
+    } finally {
+        client.release();
+    }
+});
+
 // ── Contraband bundles — the server is the only source of price and amount ───
 // The client only ever names a bundleId; never trust an amount or price it sends.
 const CONTRABAND_BUNDLES = {

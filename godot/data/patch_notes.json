@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.123",
+        "notes": [
+            "The shop has a STARTER DECKS tab: every clan's starter deck, under its deck box, for 800 Karat or 400 Contraband. You get its 40 cards, its Hideout and its leader, and the deck is added to your Deck Builder ready to play (a deck you already have is never replaced).",
+            "Ranked rematches: the next game of a series only happens if you both accept. Your opponent is told you're waiting."
+        ]
+    },
+    {
         "version": "0.9.122",
         "notes": [
             "Ranked Brawl is now a best of 3: after a Ranked match, the rematch is the next game of the series. Rank Points follow the series score (whoever is ahead holds them, a level series has none), so winning the series is what counts.",
