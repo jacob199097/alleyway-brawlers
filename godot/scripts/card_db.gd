@@ -154,17 +154,21 @@ static func art(id: String) -> Texture2D:
 ## there is one, otherwise the generic AlleyWay Brawlers back (card_back_neutral.png, Neutral cards'),
 ## otherwise the first clan's (by name) that has one.
 ## Clan backs that move (shaders/card.gdshader): "galaxy" turns the nebula around the crest;
-## "radar" sweeps a beam around the emblem's radar rings.
+## "radar" sweeps a beam around the emblem's radar rings; "streetlight" (the generic back) rains.
 ## The clan of Neutral cards: they go in any deck (with the leader's clan) and drop from every pack.
 const NEUTRAL := "neutral"
-const BACK_STYLES := {"nebula": "galaxy", "militia": "radar", "wildcard": "roulette", "underworld": "hellfire", "arsonists": "embers"}
+const BACK_STYLES := {"nebula": "galaxy", "militia": "radar", "wildcard": "roulette", "underworld": "hellfire", "arsonists": "embers",
+		"neutral": "streetlight"}
 
 
-## How a clan's back moves ("" = it doesn't).
+## How a clan's back moves ("" = it doesn't). A clan without a back of its own wears the generic
+## one (back()), so it moves like that one.
 static func back_style(clan: String) -> String:
-	if not BACK_STYLES.has(clan) or _back_texture("card_back_" + clan) == null:
-		return ""
-	return BACK_STYLES[clan]
+	if _back_texture("card_back_" + clan) == null:
+		if _back_texture("card_back_" + NEUTRAL) == null:
+			return ""
+		clan = NEUTRAL
+	return BACK_STYLES.get(clan, "")
 
 
 static func back(clan := "") -> Texture2D:

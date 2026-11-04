@@ -47,6 +47,11 @@ uniform vec2 hell_eyes = vec2(0.056, -0.025);   // the skull's eyes: ±x and y, 
 uniform float embers = 0.0;
 // The Molotov's flame on that back: its centre and radii, as uv (card centre = 0): it licks upward
 uniform vec4 molotov_flame = vec4(0.03, -0.175, 0.16, 0.095);
+// streetlight: the generic AlleyWay Brawlers back (Neutral cards'): rain falls through the warm light
+// over the logo, the light hums, a glint slides across the logo now and then, and drops ripple the
+// puddles at the bottom. Brighter while hovered (galaxy_glow). Slow on purpose: no flicker.
+uniform float streetlight = 0.0;
+uniform float street_light_y = -0.04;   // the light's (and the logo's) centre, as uv.y (card centre = 0)
 uniform float reveal = 1.0;   // 0..1: the card burning into view from the bottom up (Underworld's rise), 1 = whole
 uniform vec4 reveal_color : source_color = vec4(0.75, 0.35, 1.0, 1.0);   // the glowing edge of the reveal
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
@@ -283,6 +288,46 @@ void fragment() {
 			float glow = 0.5 + 0.5 * sin(TIME * 0.9 + rnd * 30.0);
 			col.rgb += vec3(1.0, 0.55, 0.15) * spark * glow * embers * (0.55 + 0.4 * galaxy_glow);
 		}
+	}
+
+	if (streetlight > 0.0) {
+		vec2 p = vec2(uv.x, uv.y * aspect);
+		float inner = (1.0 - smoothstep(0.44, 0.452, abs(uv.x))) * (1.0 - smoothstep(0.456, 0.466, abs(uv.y)));   // (inside the steel border)
+		// The light over the logo hums: its warm pool swells and settles, slowly and a little unevenly
+		vec2 lc = vec2(0.0, street_light_y * aspect);
+		float pool = exp(-pow(length((p - lc) * vec2(1.0, 0.8)) / 0.42, 2.0));
+		float hum = 0.5 + 0.5 * sin(TIME * 1.3 + 1.5 * vnoise(vec2(TIME * 0.6, 0.0)));
+		col.rgb += vec3(1.0, 0.62, 0.3) * pool * (0.05 + 0.07 * hum) * (1.0 + 1.5 * galaxy_glow) * inner * streetlight;
+		// Rain: thin slanted streaks, one to a cell of a falling grid, two layers (near: longer and faster),
+		// brightest where they pass through the light
+		for (int l = 0; l < 2; l++) {
+			vec2 q = vec2(p.x + p.y * 0.18, p.y) * (l == 0 ? vec2(34.0, 2.6) : vec2(56.0, 4.2));
+			q.y -= TIME * (l == 0 ? 3.0 : 2.4);
+			vec2 cell = floor(q);
+			float rnd = hash21(cell + float(l) * 31.0);
+			vec2 f = fract(q);
+			float o = fract(rnd * 7.13) * 0.5;
+			float streak = smoothstep(0.07, 0.0, abs(f.x - 0.5 - (fract(rnd * 3.7) - 0.5) * 0.6))
+					* smoothstep(o, o + 0.08, f.y) * (1.0 - smoothstep(o + (l == 0 ? 0.32 : 0.22), o + (l == 0 ? 0.42 : 0.3), f.y)) * step(0.55, rnd);
+			col.rgb += vec3(0.8, 0.86, 1.0) * streak * (0.07 + 0.32 * pool) * (l == 0 ? 1.0 : 0.6) * (1.0 + 0.6 * galaxy_glow) * inner * streetlight;
+		}
+		// The logo (its white and red letters) catches the light: a glint slides across it every few
+		// seconds (not in Photosensitive mode), and the red glows with the hum
+		float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+		float red = clamp((col.r - max(col.g, col.b)) * 2.5 - 0.4, 0.0, 1.0);
+		float letters = max(smoothstep(0.6, 0.85, lum), red) * (1.0 - smoothstep(0.36, 0.4, abs(uv.x))) * (1.0 - smoothstep(0.13, 0.15, abs(uv.y - street_light_y)));
+		float sweep = fract(TIME * 0.16 + 0.3) / 0.35;   // (crosses in the first third of each turn)
+		float d = uv.x + (uv.y - street_light_y) * 0.6 - mix(-0.55, 0.55, sweep);
+		col.rgb += vec3(1.0, 0.95, 0.85) * exp(-d * d * 320.0) * step(sweep, 1.0) * letters * (0.45 + 0.3 * galaxy_glow) * (1.0 - calm) * streetlight;
+		col.rgb += vec3(1.0, 0.2, 0.15) * red * letters * (0.08 + 0.1 * hum) * (1.0 + galaxy_glow) * streetlight;
+		// Drops ripple the wet ground at the bottom: rings spreading, seen at an angle (flattened)
+		vec2 rq = vec2(p.x, p.y * 2.6) * 6.0;
+		vec2 rc = floor(rq);
+		float rr = hash21(rc + 3.3);
+		float age = fract(TIME * 0.45 + rr * 7.0);
+		float rdist = length(fract(rq) - 0.5 - (vec2(hash21(rc + 1.1), hash21(rc + 2.2)) - 0.5) * 0.4);
+		float ring = smoothstep(0.035, 0.0, abs(rdist - age * 0.42)) * (1.0 - age) * step(0.6, rr);
+		col.rgb += vec3(1.0, 0.78, 0.55) * ring * smoothstep(0.14, 0.32, uv.y) * inner * 0.2 * (1.0 + galaxy_glow) * streetlight;
 	}
 
 	// A soft diagonal band of light that slides across as the card tilts

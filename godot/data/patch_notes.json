@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.118",
+        "notes": [
+            "The first 20 Neutral cards are here, from Street Rat to Mack \"Undisputed\" Malone.",
+            "The AlleyWay Brawlers card back (Neutral cards') now moves like the clan backs: rain falls through the streetlight over the logo, the light hums, a glint slides across the logo and drops ripple the puddles. Hover it and the light brightens."
+        ]
+    },
+    {
         "version": "0.9.117",
         "notes": [
             "Neutral cards are coming: cards from no clan that go in any deck. They drop from every clan's booster packs (about 1 card in 5), have the AlleyWay Brawlers card back, and fight like the street: a streetlamp flickers on as they land, they hit with a comic-book POW!, and a KO sends them spinning, seeing stars.",
