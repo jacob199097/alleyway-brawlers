@@ -8388,5 +8388,587 @@
   "level": 1,
   "subtype": "brawler",
   "promotesTo": null
+ },
+ "card_neut_001": {
+  "id": "card_neut_001",
+  "name": "Street Rat",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_001",
+  "code": "NEUT-001",
+  "flavourText": "Nobody misses a rat. That's the point.",
+  "effectText": "When this card is KO'd: Draw 1 card.",
+  "effects": [
+   {
+    "when": "self_ko",
+    "do": "draw",
+    "amount": 1
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 500,
+  "defense": 200,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_002": {
+  "id": "card_neut_002",
+  "name": "Corner Lookout",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_002",
+  "code": "NEUT-002",
+  "flavourText": "I see everything on this block. Everything.",
+  "effectText": "Your opponent's cards are MARKED.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "reveal"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 400,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_003": {
+  "id": "card_neut_003",
+  "name": "Doorman",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_003",
+  "code": "NEUT-003",
+  "flavourText": "Name's not on the list. You're not coming in.",
+  "effectText": "Your opponent must attack this card first if it is standing.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "guard"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 600,
+  "defense": 1300,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_004": {
+  "id": "card_neut_004",
+  "name": "Back-Alley Medic",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_004",
+  "code": "NEUT-004",
+  "flavourText": "Hold still. This'll hurt more than the knife did.",
+  "effectText": "When deployed: HEAL 1000.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "heal",
+    "amount": 1000
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 400,
+  "defense": 1100,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_005": {
+  "id": "card_neut_005",
+  "name": "Pickpocket",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_005",
+  "code": "NEUT-005",
+  "flavourText": "Your wallet? Never seen it. Nice watch, though.",
+  "effectText": "When deployed: Draw 2 cards, then discard 1 card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "loot",
+    "amount": 2,
+    "discard_n": 1
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 800,
+  "defense": 500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_006": {
+  "id": "card_neut_006",
+  "name": "Crowbar Carl",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_006",
+  "code": "NEUT-006",
+  "flavourText": "I don't do talking.",
+  "effectText": "",
+  "effects": [],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 1500,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_007": {
+  "id": "card_neut_007",
+  "name": "Getaway Driver",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_007",
+  "code": "NEUT-007",
+  "flavourText": "Engine stays running. Always.",
+  "effectText": "This card can't be attacked while you control another character that can be.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "elusive"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 1300,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_008": {
+  "id": "card_neut_008",
+  "name": "Bare-Knuckle Bruno",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_008",
+  "code": "NEUT-008",
+  "flavourText": "Gloves are for people who plan to stop.",
+  "effectText": "When this card attacks: It gains +500 ATK for this Brawl.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "buff",
+    "target": "self",
+    "atk": 500
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 1800,
+  "defense": 900,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_009": {
+  "id": "card_neut_009",
+  "name": "The Fixer",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_009",
+  "code": "NEUT-009",
+  "flavourText": "You need it, I know a guy. I am the guy.",
+  "effectText": "When deployed: Search your deck for a card with 4 or less Authority and add it to your hand.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "search",
+    "amount": 1,
+    "max_auth": 4,
+    "choose": true
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 1200,
+  "defense": 1500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_010": {
+  "id": "card_neut_010",
+  "name": "Loan Shark",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_010",
+  "code": "NEUT-010",
+  "flavourText": "Interest is due. So's your kneecap.",
+  "effectText": "At the end of your turn: Put a BOUNTY 2 on one enemy character.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "bounty",
+    "target": "enemy",
+    "amount": 2
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 1700,
+  "defense": 1100,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_011": {
+  "id": "card_neut_011",
+  "name": "Dirty Cop",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_011",
+  "code": "NEUT-011",
+  "flavourText": "Badge says Officer. Payroll says otherwise.",
+  "effectText": "ACTIVATE (once per turn): Switch one enemy character to DEF position.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "force_def",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 2100,
+  "defense": 1700,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_012": {
+  "id": "card_neut_012",
+  "name": "The Enforcer",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 1,
+  "rarity": 4,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_012",
+  "code": "NEUT-012",
+  "flavourText": "Sent by someone. Doesn't matter who. Matters that he came.",
+  "effectText": "When deployed: KO one enemy character.\nOnce per turn, when this card hits your opponent directly: Your opponent discards 1 card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "ko",
+    "target": "enemy"
+   },
+   {
+    "when": "direct",
+    "do": "discard",
+    "amount": 1,
+    "once": true
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 2800,
+  "defense": 2500,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_013": {
+  "id": "card_neut_013",
+  "name": "Mack \"Undisputed\" Malone",
+  "clan": "neutral",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 2,
+  "rarity": 5,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_013",
+  "code": "NEUT-013",
+  "flavourText": "Forty fights in the alley. Forty wins. Next.",
+  "effectText": "This card has PIERCE.\nOnce per turn, when this card KOs a character: This card may attack again this turn.\nWhen deployed: STUN one enemy character.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "pierce"
+   },
+   {
+    "when": "ko",
+    "do": "attack_again",
+    "once": true
+   },
+   {
+    "when": "deploy",
+    "do": "stun",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "attack": 3300,
+  "defense": 2800,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_neut_014": {
+  "id": "card_neut_014",
+  "name": "Cheap Shot",
+  "clan": "neutral",
+  "cardType": "hustle",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_014",
+  "code": "NEUT-014",
+  "flavourText": "There's no ref in the alley.",
+  "effectText": "One of your characters gains +500 ATK until the end of your turn.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "buff",
+    "target": "ally",
+    "until": "turn",
+    "atk": 500
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
+ },
+ "card_neut_015": {
+  "id": "card_neut_015",
+  "name": "Word on the Street",
+  "clan": "neutral",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_015",
+  "code": "NEUT-015",
+  "flavourText": "Everybody talks. You just have to listen.",
+  "effectText": "Draw 2 cards.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "draw",
+    "amount": 2
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
+ },
+ "card_neut_016": {
+  "id": "card_neut_016",
+  "name": "Patch Job",
+  "clan": "neutral",
+  "cardType": "hustle",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_016",
+  "code": "NEUT-016",
+  "flavourText": "Duct tape fixes everything.",
+  "effectText": "One of your Downed characters stands back up.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "stand",
+    "target": "ally"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
+ },
+ "card_neut_017": {
+  "id": "card_neut_017",
+  "name": "Scatter!",
+  "clan": "neutral",
+  "cardType": "hustle",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_017",
+  "code": "NEUT-017",
+  "flavourText": "COPS! Everybody run!",
+  "effectText": "Return one enemy character to its owner's hand.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "bounce",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
+ },
+ "card_neut_018": {
+  "id": "card_neut_018",
+  "name": "Brass Knuckles",
+  "clan": "neutral",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_018",
+  "code": "NEUT-018",
+  "flavourText": "Makes a good point. Every time.",
+  "effectText": "The equipped character gains +500 ATK.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "atk": 500
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "subtype": "equip",
+  "forge": "forge2"
+ },
+ "card_neut_019": {
+  "id": "card_neut_019",
+  "name": "Dirty Trick",
+  "clan": "neutral",
+  "cardType": "ambush",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_019",
+  "code": "NEUT-019",
+  "flavourText": "Sand in the eyes. Classic.",
+  "effectText": "When an enemy attacks one of your characters: The attacker loses 900 ATK for this Brawl.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "buff",
+    "target": "attacker",
+    "atk": -900
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
+ },
+ "card_neut_020": {
+  "id": "card_neut_020",
+  "name": "Sucker Punch",
+  "clan": "neutral",
+  "cardType": "ambush",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "neutral",
+  "effectKey": "",
+  "art_url": "card_neut_020",
+  "code": "NEUT-020",
+  "flavourText": "Never saw it coming. That's the idea.",
+  "effectText": "When an enemy attacks one of your characters: DOWN the attacker and negate the attack.",
+  "effects": [
+   {
+    "when": "defend",
+    "do": "down",
+    "target": "attacker",
+    "negate": true
+   }
+  ],
+  "clanName": "Neutral",
+  "clanColor": "#9aa4b1",
+  "forge": "forge2"
  }
 }
