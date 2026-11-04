@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.120",
+        "notes": [
+            "How to Play has a page for every keyword (POISON, STASIS, UNDEAD, DOUBLE OR NOTHING...) and a new CARD TERMS tab that explains what card text means: PROMOTE, the Hideout, ACTIVATE, sacrifices, tokens, the Gutter, searching, \"can't be targeted\" and more. Each page shows real cards that use it."
+        ]
+    },
+    {
         "version": "0.9.119",
         "notes": [
             "A fresh full download of the game. Updates from here on are small again (they had grown to over 600 MB).",

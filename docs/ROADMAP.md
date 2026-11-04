@@ -14,7 +14,7 @@ when it ships, or delete it if it's dropped.
   the game: Android / iOS exports, touch controls (drag to attack, long-press for the right-click
   zoom), layouts that fit phone screens, lighter assets, and store accounts (Google $25 once, Apple
   $99/yr). `shared/game_version.json` minimum-version checks need to cover each platform.
-- [ ] **Steam release.** The integration is built (`docs/STEAM.md`): what is left is the Steamworks account,
+- [ ] **Steam release.** Step by step: `docs/LAUNCH_CHECKLIST.md`. The integration is built (`docs/STEAM.md`): what is left is the Steamworks account,
   the App ID, achievements and keys there, and uploading. Older notes: `docs/DESKTOP_PLAN.md` (GodotSteam instead of
   steamworks.js). The game ships through Steam, so no Windows code signing or Apple Developer account
   is needed (games installed by Steam don't get the "unrecognised app" warnings).
@@ -36,8 +36,8 @@ when it ships, or delete it if it's dropped.
 - [x] **Wildcard cards.** In the game (44 cards, with packs and a starter deck).
 - [x] **Re-import Continuous / Equip cards** through the Forge, so their effect text loses the old
   "CONTINUOUS" / "EQUIP:" line (removed from the text box in Forge v84; it's on the type line).
-- [ ] **How to Play / tutorial pages for newer mechanics:** luck, DOUBLE OR NOTHING, LOADED DICE,
-  Equips, Strivers and evolution.
+- [x] **How to Play pages for every keyword and mechanic** (0.9.120): KEYWORDS and CARD TERMS in How to Play,
+  a page each with real cards that use it (`godot/scripts/ui/how_to_play.gd`).
 - [ ] **Ranked seasons:** a season reset with end-of-season rewards (ties in with the seasonal emails).
 
 ## Accounts & email
@@ -59,7 +59,8 @@ when it ships, or delete it if it's dropped.
 
 - [x] **Database backups:** nightly at 3:30 on the server (`backend/scripts/backup_db.sh`, cron; the newest
   14 kept in `~/backups`). `node tools/backup_db.mjs` copies them to the PC.
-  - [ ] Still to do: copy them off the server automatically (only one copy has reached the PC, on 2026-10-26).
+  Copied to the PC every day at noon (Windows Task Scheduler: "AlleywayBrawlers DB backup copy", to
+  `DocumentsAlleywayBrawlers-backups`).
 - [ ] **Hosting:** the server is a home machine behind DuckDNS. Before a wider or mobile launch, move
   to a small rented server (VPS), or at least add a battery backup (UPS) and an uptime monitor.
 - [x] **Crash reports:** the game sends its errors and crashes to the server (`client_errors` table,

@@ -35,4 +35,5 @@
   Rank emblems made in ChatGPT come in with `godot/tools/import_rank_icons.gd`.
 - Steam (`docs/STEAM.md`): GodotSteam in `godot/addons/godotsteam`, `godot/scripts/steam.gd` (on only in the "Windows Steam"
   export, feature `steam`, or with `--steam`); server `backend/routes/steam.js`; `tools/steam_build.mjs` builds and uploads.
+- `docs/LAUNCH_CHECKLIST.md` — what changes at launch (the wipe, starters off, 1.0.0, Steam live), in order.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

@@ -1,6 +1,7 @@
 extends Control
 ## How to Play: the rules in short sections, open from the duel menu and from Settings (Gameplay).
-## The keyword section is built from the keyword glossary (scripts/keywords.gd), so it stays current.
+## KEYWORDS and CARD TERMS are a page per keyword or mechanic, each with real cards that use it. The
+## keywords come from the keyword glossary (scripts/keywords.gd), so new ones show up by themselves.
 ##   load("res://scripts/ui/how_to_play.gd").open(parent)   (no class_name: patches can't add one)
 
 const Keywords := preload("res://scripts/keywords.gd")
@@ -20,6 +21,35 @@ A [b]Continuous[/b] Ambush can also be flipped face-up without an attack, once i
 	["GAME MODES", "[b]Casual[/b] and [b]Ranked[/b]: one on one. Ranked earns Rank Points (from level 5).\n\n[b]Free-for-all[/b]: four players, everyone for themselves, in turn order round the table. When you attack or an effect hits \"an opponent\", you choose which one. The last one standing wins; the rest are placed in the order they went out.\n\n[b]Turf Defense[/b]: you and a partner against a clan boss. You each have your own deck, board and Morale, and your partner's cards can't be targeted by yours. The boss has far more Morale, draws and gets Authority extra each turn, and changes [b]phase[/b] as its Morale drops (the marks on its bar). If one of you goes down, the other fights on: beat the boss and you both win. The first win on Street pays the boss's prize card."],
 ]
 
+## The mechanics card text talks about: {name, color, text, and the cards to show: "do" (effects that
+## do one of these) or "on" (leader, heavy, striver, neutral, activate, luck, or "text" with "re")}
+const TERMS := [
+	{"name": "PROMOTE", "color": "6fd3ff", "do": ["promote", "promote_ally"], "text": "A [b]Striver[/b] PROMOTES into its next level: that card comes out of your Hideout and takes its place, in the same position. It can't attack the turn it promotes (the ZZZ tag).\n\nEach Striver says what makes it promote. The stars on a Striver show its level: one gold star of three is level 1."},
+	{"name": "HIDEOUT", "color": "6fd3ff", "on": "striver", "text": "Where your Strivers' higher levels wait. They don't go in your deck: you put them in the Hideout in the Deck Builder.\n\nA Striver can only PROMOTE when its next level is in your Hideout. Click it during a duel to look through it."},
+	{"name": "DORMANT & AWAKEN", "color": "f4c430", "on": "leader", "text": "Your [b]leader[/b] starts beside the field, [b]Dormant[/b]: its Dormant effects help you all game while it waits. The enemy can attack it to wear down its [b]Influence[/b]: at 0 it is defeated.\n\nWhen its [b]AWAKEN[/b] condition is met, you may bring it onto the field as a character, at full strength. Usually it can't attack that turn."},
+	{"name": "ACTIVATE", "color": "4fe3d0", "on": "activate", "text": "An ability you use yourself. When a character [b]glows teal[/b], click it to use its ACTIVATE ability: once per turn, paying any cost shown first (Authority, Morale, a discard, a sacrifice, or not attacking this turn)."},
+	{"name": "SACRIFICE", "color": "ff5a5a", "on": "heavy", "text": "A [b]Heavy[/b] is played by sacrificing as many of your characters as it says (SACRIFICE 1-3): they go to the Gutter, and the Heavy takes one of their lanes.\n\nSome ACTIVATE costs and effects sacrifice characters too. A sacrificed token vanishes."},
+	{"name": "TOKENS", "color": "c9b8ff", "do": ["token"], "text": "Characters made by an effect, not from your deck.\n\nWhen a token leaves the field it vanishes: it never goes to the Gutter, a hand or a deck, unless it has REMAINS."},
+	{"name": "THE GUTTER", "color": "9aa4b1", "do": ["revive", "recover", "mill_self"], "text": "Your discard pile. KO'd characters and used Hustles and Ambushes go there.\n\nSome effects bring cards back from it: [b]revive[/b] puts a character back on the field, [b]recover[/b] puts a card back in your hand. Click either player's Gutter to look through it."},
+	{"name": "DRAW & DISCARD", "color": "e8e8e8", "do": ["draw", "loot", "discard"], "text": "[b]Draw[/b]: take cards from the top of your deck into your hand. [b]Discard[/b]: put cards from your hand into the Gutter.\n\nA player who has to draw from an empty deck loses."},
+	{"name": "SEARCH & CALL", "color": "8fe388", "do": ["search", "call"], "text": "[b]Search[/b]: look through your deck for a card that fits, add it to your hand, then the deck is shuffled. Your opponent isn't shown what you took, unless the card says so.\n\n[b]Call[/b]: put a character from your deck straight onto the field, in ATK."},
+	{"name": "DOWN, STAND UP & KO", "color": "ff7a5a", "do": ["down", "stand", "ko"], "text": "Effects can [b]Down[/b] a standing character without a brawl (it drops to DEF and its effects stop), [b]stand[/b] a Downed one back up, or [b]KO[/b] a character outright: straight to the Gutter."},
+	{"name": "BACK TO THE HAND", "color": "7ab8ff", "do": ["bounce", "topdeck"], "text": "The character leaves the field and goes back to its owner's hand (or on top of their deck), as good as new: its changes and statuses are gone.\n\nA token sent back vanishes."},
+	{"name": "DESTROYING HUSTLES & AMBUSHES", "color": "ffb35a", "do": ["wreck", "break_ambush"], "text": "Destroys a card in your opponent's back row (set face-down, face-up, or either: the card says which). It goes to the Gutter without doing anything."},
+	{"name": "MUST BE ATTACKED FIRST", "color": "d9c08a", "do": ["guard"], "text": "While this character is standing, your opponent's characters have to attack it before any of your other characters."},
+	{"name": "CAN'T BE ATTACKED", "color": "a0d8ff", "do": ["elusive"], "text": "It can't be attacked while you have another character that can be."},
+	{"name": "CAN'T BE TARGETED", "color": "c6b4ff", "do": ["untargetable"], "text": "Your opponent's effects can't choose it. It can still be attacked."},
+	{"name": "IMMUNE", "color": "bff6ff", "do": ["immune"], "text": "The statuses the card lists don't affect it."},
+	{"name": "ATK & DEF POSITION", "color": "ffd27a", "do": ["force_def", "force_atk"], "text": "[b]ATK[/b] (upright) attacks. [b]DEF[/b] (sideways) only defends. You choose when you deploy, and you can switch each character once per turn.\n\nSome effects switch an enemy's position for you."},
+	{"name": "ATTACKING AGAIN", "color": "ff9f5a", "do": ["attack_again", "ready", "double_attack"], "text": "Each character attacks once a turn. Some effects let one attack again: at most once more each turn."},
+	{"name": "ATK & DEF CHANGES", "color": "ffe08a", "do": ["buff", "set_stats", "swap"], "text": "Effects add to or take from ATK and DEF for a while: until the end of the turn, until the end of your next turn, or permanently (as long as it stays on the field).\n\n[b]Swap[/b]: its ATK and DEF trade places."},
+	{"name": "MORALE", "color": "ff6f8f", "do": ["damage", "heal", "drain"], "text": "Both players start with 6000 Morale. Lost brawls, direct attacks and effects take it away: at 0 you lose.\n\nHEAL and DRAIN give some back, up to 6000."},
+	{"name": "AUTHORITY", "color": "f2c14e", "do": ["cost_down", "cost_up", "authority"], "text": "Authority pays for your cards: 1 at the start, 1 more every turn, up to 15 (going second, 1 extra on your first turn).\n\nSome effects make cards cost less or more, or give you extra Authority."},
+	{"name": "COIN FLIPS & DICE", "color": "f2c14e", "on": "luck", "text": "Some effects flip a coin or roll a die, shown on the board: they only happen if it comes up right. \"If tails\" parts follow the same flip.\n\nSee DOUBLE OR NOTHING and LOADED DICE under KEYWORDS."},
+	{"name": "NEUTRAL CARDS", "color": "9aa4b1", "on": "neutral", "text": "Cards of no clan. They go in any deck, next to your leader's clan's cards, and drop from every clan's booster packs."},
+	{"name": "ONCE PER TURN & IF YOU DO", "color": "e8e8e8", "on": "text", "re": "(?i)once per turn|if you do", "text": "[b]Once per turn[/b]: the ability only works the first time each turn.\n\n[b]If you do[/b]: the part after it only happens if the part before it worked."},
+]
+
 
 static func open(parent: Node) -> Control:
 	var h: Control = load("res://scripts/ui/how_to_play.gd").new()
@@ -30,6 +60,9 @@ static func open(parent: Node) -> Control:
 var _text: RichTextLabel
 var _cards: HBoxContainer   # the section's example cards, under its text
 var _tabs := {}
+var _grid: GridContainer    # KEYWORDS / CARD TERMS: a button per page
+var _back: Button           # from a page back to its grid
+var _tab := ""
 
 
 func _ready() -> void:
@@ -57,7 +90,7 @@ func _ready() -> void:
 	var tabs := VBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	row.add_child(tabs)
-	var names: Array = SECTIONS.map(func(s): return s[0]) + ["KEYWORDS"]
+	var names: Array = SECTIONS.map(func(s): return s[0]) + ["KEYWORDS", "CARD TERMS"]
 	for n in names:
 		var b := UI.button(n, _show.bind(n), Vector2(300, 50))
 		b.toggle_mode = true
@@ -79,7 +112,15 @@ func _ready() -> void:
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 22)
 	scroll.add_child(body)
+	_back = UI.button("◀  ALL", func(): _show(_tab), Vector2(300, 46))
+	_back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	body.add_child(_back)
 	body.add_child(_text)
+	_grid = GridContainer.new()
+	_grid.columns = 3
+	_grid.add_theme_constant_override("h_separation", 12)
+	_grid.add_theme_constant_override("v_separation", 12)
+	body.add_child(_grid)
 	_cards = HBoxContainer.new()
 	_cards.add_theme_constant_override("separation", 28)
 	body.add_child(_cards)
@@ -97,40 +138,117 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _show(tab: String) -> void:
 	Sfx.play("click")
+	_tab = tab
 	for k in _tabs:
 		_tabs[k].set_pressed_no_signal(k == tab)
-	var body := ""
-	if tab == "KEYWORDS":
-		var lines: Array = []
-		for kw in Keywords.LIST:
-			var d: String = Keywords.LIST[kw][1]
-			var full: String = Keywords.full_name(kw)
-			lines.append("[color=#%s][b]%s[/b][/color]%s" % [Keywords.LIST[kw][0].to_html(false), full, d.substr(full.length()) if d.begins_with(full) else ": " + d])   # ("POISON X: ...")
-		lines.append("[b]ZZZ[/b]: just promoted or Awakened: it can't attack until your next turn.")
-		lines.append("[b]DOWNED[/b]: in DEF, its effects stop; it stands back up after a round unless it is attacked again (KO).")
-		body = "\n\n".join(lines)
-	else:
-		for s in SECTIONS:
-			if s[0] == tab:
-				body = _colour_keywords(s[1])
-	_text.text = body
+	_back.visible = false
+	for b in _grid.get_children():
+		b.queue_free()
+	_grid.visible = tab in ["KEYWORDS", "CARD TERMS"]
+	if _grid.visible:
+		_text.text = "Keywords are the coloured words in card text (hover one on a card to read it). Pick one to see what it does, and cards that have it." \
+			if tab == "KEYWORDS" else "What card text means. Pick a term to see how it works, and cards that use it."
+		for p in _pages(tab):
+			var b := UI.button(p.name, _open_page.bind(p), Vector2(330, 52))
+			b.add_theme_color_override("font_color", p.color)
+			b.add_theme_color_override("font_hover_color", p.color.lightened(0.3))
+			b.add_theme_font_size_override("font_size", 18)
+			_grid.add_child(b)
+		_lay_cards([])
+		return
+	for s in SECTIONS:
+		if s[0] == tab:
+			_text.text = _colour_keywords(s[1])
 	_show_cards(tab)
 
 
-## Real cards for a section: [card, caption, degrees turned, dimmed]. Your clan's first.
-func _show_cards(tab: String) -> void:
-	for c in _cards.get_children():
-		c.queue_free()
+## The pages of KEYWORDS or CARD TERMS: [{name, color, text, fits}]. fits(card): 2 = it does this,
+## 1 = it only mentions it, 0 = no.
+func _pages(tab: String) -> Array:
+	var out: Array = []
+	if tab == "KEYWORDS":
+		var seen := {}
+		for kw in Keywords.LIST:
+			var d: String = Keywords.LIST[kw][1]
+			if seen.has(d):   # (EXILES is EXILE)
+				continue
+			seen[d] = true
+			var full: String = Keywords.full_name(kw)
+			out.append({"name": full, "color": Keywords.LIST[kw][0], "text": "[b]%s[/b]%s" % [full, d.substr(full.length()) if d.begins_with(full) else ": " + d],
+				"fits": _keyword_fits.bind(kw)})
+		out.append({"name": "DOWNED", "color": Keywords.STATUS_HELP.DOWNED[0], "text": Keywords.STATUS_HELP.DOWNED[1],
+			"fits": func(c): return 2 if (c.get("effects", []) as Array).any(func(e): return str(e.get("do", "")) == "down") else 0})
+		out.append({"name": "ZZZ", "color": Keywords.STATUS_HELP.RESTING[0], "text": "[b]ZZZ[/b]: " + str(Keywords.STATUS_HELP.RESTING[1]).trim_prefix("CAN'T ATTACK YET: "),
+			"fits": func(c): return 2 if str(c.get("subtype", "")) == "striver" and int(c.get("level", 1)) == 2 else 0})
+		return out
+	for t in TERMS:
+		out.append({"name": t.name, "color": Color(t.color), "text": t.text, "fits": func(c): return 2 if _term_fits(c, t) else 0})
+	return out
+
+
+## A keyword: its own effect (do "stasis", "give_undead") or type (Continuous, Equip), or failing that
+## its name in the card's text, not counting being immune to it
+func _keyword_fits(c: Dictionary, kw: String) -> int:
+	var low := kw.to_lower()
+	if str(c.get("subtype", "")) == low or (c.get("effects", []) as Array).any(func(e): return str(e.get("do", "")) in [low, "give_" + low]):
+		return 2
+	var text := str(c.get("effectText", ""))
+	return 1 if Keywords.found(text).has(kw) and not text.to_lower().contains("immune to") else 0
+
+
+func _term_fits(c: Dictionary, t: Dictionary) -> bool:
+	var fx: Array = c.get("effects", [])
+	match str(t.get("on", "")):
+		"leader": return c.get("cardType") == "leader"
+		"heavy": return c.get("cardType") == "gang_member" and str(c.get("subtype", "")) == "heavy"
+		"striver": return str(c.get("subtype", "")) == "striver" and int(c.get("level", 1)) == 2
+		"neutral": return str(c.get("clan", "")) == CardDB.NEUTRAL
+		"activate": return fx.any(func(e): return str(e.get("when", "")) == "activate")
+		"luck": return fx.any(func(e): return e.has("luck"))
+		"text": return RegEx.create_from_string(str(t.re)).search(str(c.get("effectText", ""))) != null
+	return fx.any(func(e): return str(e.get("do", "")) in t.do)
+
+
+## A keyword's or term's page: what it does, and up to three real cards that have it
+func _open_page(p: Dictionary) -> void:
+	Sfx.play("click")
+	for b in _grid.get_children():
+		b.queue_free()
+	_grid.visible = false
+	_back.text = "◀  ALL " + _tab
+	_back.visible = true
+	_text.text = "[font_size=34][color=#%s]%s[/color][/font_size]\n\n%s" % [p.color.to_html(false), p.name, _colour_keywords(p.text)]
+	# The cards that do it first, then ones that mention it; tokens only when no other card has it
+	var ranked: Array = []
+	for c in _pool(true):
+		var score: float = p.fits.call(c)
+		if score > 0:
+			ranked.append([score - (1.5 if c.get("token", false) else 0.0), ranked.size(), c])
+	ranked.sort_custom(func(a, b): return a[0] > b[0] if a[0] != b[0] else a[1] < b[1])
+	var picks: Array = ranked.slice(0, 3).map(func(r): return [r[2], str(r[2].get("name", "")).to_upper(), 0.0, false])
+	if picks.is_empty():
+		_text.text += "\n\n[color=#8a8494]No card has it yet.[/color]"
+	_lay_cards(picks, Vector2(200, 283))
+
+
+## Every card that can be shown, your clan's first (tokens too, when asked).
+func _pool(tokens := false) -> Array:
 	var mine := str(Game.player.get("chosen_clan", ""))
 	var pool: Array = []
 	for id in CardDB.all():
 		var c: Dictionary = CardDB.all()[id]
-		if not c.get("token", false) and str(c.get("clan", "")) != "":
+		if (tokens or not c.get("token", false)) and str(c.get("clan", "")) != "":
 			pool.append(c)
 	pool.sort_custom(func(a, b):
 		var ma := 0 if str(a.get("clan", "")) == mine else 1
 		var mb := 0 if str(b.get("clan", "")) == mine else 1
 		return ma < mb if ma != mb else str(a.id) < str(b.id))
+	return pool
+
+
+## Real cards for a section: [card, caption, degrees turned, dimmed]. Your clan's first.
+func _show_cards(tab: String) -> void:
+	var pool := _pool()
 	var find := func(ok: Callable) -> Dictionary:
 		for c in pool:
 			if ok.call(c):
@@ -174,12 +292,19 @@ func _show_cards(tab: String) -> void:
 			for c in pool:
 				if picks.size() < 2 and (c.get("effects", []) as Array).any(func(e): return str(e.get("when", "")) == "activate"):
 					picks.append([c, "ACTIVATE", 0.0, false])
+	_lay_cards(picks)
+
+
+## Cards under the text: [card, caption, degrees turned, dimmed]
+func _lay_cards(picks: Array, card := Vector2(150, 212)) -> void:
+	for c in _cards.get_children():
+		c.queue_free()
 	for p in picks:
 		var box := VBoxContainer.new()
 		box.add_theme_constant_override("separation", 10)
 		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(212, 212) if p[2] != 0.0 else Vector2(150, 212)
-		var tile := CardTile.make(p[0], Vector2(150, 212))
+		holder.custom_minimum_size = Vector2(card.y, card.y) if p[2] != 0.0 else card
+		var tile := CardTile.make(p[0], card)
 		tile.position = (holder.custom_minimum_size - tile.size) / 2
 		holder.add_child(tile)
 		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
@@ -191,7 +316,9 @@ func _show_cards(tab: String) -> void:
 		box.add_child(holder)
 		var cap := UI.label(p[1], 16, UI.GOLD, true)
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cap.custom_minimum_size = Vector2(holder.custom_minimum_size.x, 0)
+		cap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		box.add_child(cap)
 		_cards.add_child(box)
 	CardTile.cascade(_cards.get_children(), 0.05)
