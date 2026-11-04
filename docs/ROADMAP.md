@@ -57,8 +57,9 @@ when it ships, or delete it if it's dropped.
 
 ## Server & reliability
 
-- [ ] **Database backups:** a nightly `pg_dump` copied off the server, so accounts and collections
-  survive a disk failure. (There's no backup script in the repo yet.)
+- [x] **Database backups:** nightly at 3:30 on the server (`backend/scripts/backup_db.sh`, cron; the newest
+  14 kept in `~/backups`). `node tools/backup_db.mjs` copies them to the PC.
+  - [ ] Still to do: copy them off the server automatically (only one copy has reached the PC, on 2026-10-26).
 - [ ] **Hosting:** the server is a home machine behind DuckDNS. Before a wider or mobile launch, move
   to a small rented server (VPS), or at least add a battery backup (UPS) and an uptime monitor.
 - [x] **Crash reports:** the game sends its errors and crashes to the server (`client_errors` table,
