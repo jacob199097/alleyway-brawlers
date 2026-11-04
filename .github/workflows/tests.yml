@@ -24,6 +24,8 @@ jobs:
           node-version: 20
       - name: Online matches and Scissors Paper Rock
         run: node backend/socket/rps.test.cjs
+      - name: Ranked is player against player only
+        run: node backend/socket/ranked.test.cjs
       - name: Rematches and away players
         run: node backend/socket/rematch.test.cjs
       - name: Replays match live play

@@ -9,13 +9,13 @@
  * neither player learns the other's hand, deck or face-down cards.
  *
  * Socket.io events (Godot client, scripts/net.gd):
- * CPU matches (VS CPU and Ranked) run here too, against a server-side CPU (shared/duel/DuelAI.js),
+ * CPU matches (VS CPU) run here too, against a server-side CPU (shared/duel/DuelAI.js),
  * so their rewards come from a result the server saw rather than one a client reported.
  *
  *   Matches against players start with Scissors Paper Rock (mp:rps, mp:rps_pick {rpsId, pick},
  *   mp:rps_result, mp:rps_choose, mp:rps_first {rpsId, goFirst}, mp:rps_decided, mp:rps_cancel);
  *   the winner chooses to go first or second.
- *   client → server  mp:queue, mp:cancel, mp:cpu {ranked, difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
+ *   client → server  mp:queue {ranked}, mp:cancel, mp:cpu {difficulty}, mp:challenge {targetPlayerId}, mp:accept {fromPlayerId},
  *                    mp:decline {fromPlayerId}, mp:action {matchId, action}, mp:concede {matchId},
  *                    mp:resync, mp:rematch, mp:rematch_decline, mp:spectate {targetPlayerId}, mp:unspectate
  *   server → client  mp:queued, mp:cancelled, mp:error {message}, mp:challenge {fromPlayerId, fromUsername},
@@ -44,6 +44,7 @@ const AFK_FORFEIT      = 8;
 const RECONNECT_SECS   = 60;    // a disconnected player loses after this long (their clock waits meanwhile)
 const REMATCH_SECS     = 60;    // after a match against a player, either can offer a rematch this long
 const CHALLENGE_SECS   = 60;
+const RANKED_LEVEL     = 5;     // Ranked Brawl (player against player) unlocks at this level
 const BOT_MOVE_MS      = 350;   // the server CPU's think time between moves
 const BOT_EVENT_MS     = 140;   // and this much more for each event the last move made (the player's screen animates them)
 const BOT_MAX_MS       = 3000;
@@ -315,12 +316,12 @@ function createOnlineService(io, deps) {
         rpsByPlayer.delete(rps.a.playerId);
         rpsByPlayer.delete(rps.b.playerId);
         const stay = rps.a.playerId === leaver ? rps.b : rps.a;
-        const requeue = rps.mode === 'casual' && sockets.get(stay.playerId)?.connected;
+        const requeue = (rps.mode === 'casual' || rps.mode === 'ranked') && sockets.get(stay.playerId)?.connected;
         emitTo(stay.playerId, 'mp:rps_cancel', { requeued: requeue,
             message: requeue ? 'Your opponent left. Finding you another match…' : 'Your opponent left before the match started.' });
         if (requeue) {
             queue.push(stay);
-            emitTo(stay.playerId, 'mp:queued', { position: queue.length });
+            emitTo(stay.playerId, 'mp:queued', { position: queue.filter(e => e.mode === stay.mode).length, ranked: stay.mode === 'ranked' });
         }
     }
 
@@ -697,31 +698,43 @@ function createOnlineService(io, deps) {
         const me = playerData.playerId;
         sockets.set(me, socket);
 
-        socket.on('mp:queue', async () => {
+        // Casual, or Ranked ({ ranked: true }): two queues, each matched only with itself. Ranked is
+        // player against player only (from level 5) and moves Rank Points.
+        socket.on('mp:queue', async ({ ranked } = {}) => {
+            const mode = ranked === true ? 'ranked' : 'casual';
+            const waiting = () => queue.filter(e => e.mode === mode).length;
             if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
-            if (queue.some(e => e.playerId === me)) return socket.emit('mp:queued', { position: queue.length });
+            const queued = queue.find(e => e.playerId === me);
+            if (queued?.mode === mode) return socket.emit('mp:queued', { position: waiting(), ranked: mode === 'ranked' });
+            leaveQueue(me);   // (in the other queue: this one replaces it)
             let entry;
             try {
-                entry = await prepare(me);
+                entry = { ...await prepare(me), mode };
             } catch (err) {
                 return socket.emit('mp:error', { message: err.message || 'Could not load your deck.' });
             }
-            const rival = queue.find(e => e.playerId !== me);
+            if (mode === 'ranked' && Number(entry.profile.level || 1) < RANKED_LEVEL) {
+                return socket.emit('mp:error', { message: `Ranked Brawl unlocks at level ${RANKED_LEVEL}.` });
+            }
+            const rival = queue.find(e => e.playerId !== me && e.mode === mode);
             if (rival) {
                 leaveQueue(rival.playerId);
-                startRps(rival, entry, 'casual');
+                startRps(rival, entry, mode);
             } else {
                 queue.push(entry);
-                socket.emit('mp:queued', { position: queue.length });
+                socket.emit('mp:queued', { position: waiting(), ranked: mode === 'ranked' });
             }
         });
 
-        // A match against the server CPU (VS CPU, or Ranked when ranked is true)
+        // A match against the server CPU (VS CPU; Ranked is against players only: mp:queue)
         // challenge: this week's challenge (shared/challenges.js): its rules twist, against a Hard CPU
         // district: started from the turf map (arena is the district): the CPU is the gang running it, as
         // hard as its star rating (difficulty is ignored)
         socket.on('mp:cpu', async ({ ranked, difficulty, challenge, arena, district } = {}) => {
             if (busy(me)) return socket.emit('mp:error', { message: 'You are already in a match.' });
+            if (ranked === true) {   // (an older game's Ranked button)
+                return socket.emit('mp:error', { message: 'Ranked Brawl is against other players now. Update the game to play it.' });
+            }
             leaveQueue(me);
             try {
                 const entry = await prepare(me);

@@ -1,5 +1,6 @@
 extends Screen
-## Online queue: waits for another player, then the match starts (Net handles mp:start).
+## Online queue: waits for another player, then the match starts (Net handles mp:start). Casual, or
+## Ranked when Game.queue_ranked (player against player only: no CPU to fall back on).
 
 var _status: Label
 var _clock: Label
@@ -17,9 +18,10 @@ func _ready() -> void:
 	back_to = ""
 	UI.background(self, "arena_lobby.jpg" if UI.tex("arena_lobby.jpg") else "menu_background.jpg", 0.62)   # (the crowd waiting for a fight)
 	Game.sound.ambience("crowd")
-	UI.title(self, "CASUAL BRAWL")
+	var ranked := Game.queue_ranked
+	UI.title(self, "RANKED BRAWL" if ranked else "CASUAL BRAWL")
 	_face_off()
-	var p := UI.glass(UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.94)), Color(0.02, 0.03, 0.1, 0.62))
+	var p := UI.glass(UI.panel(UI.GOLD if ranked else UI.BLUE, Color(0.04, 0.04, 0.12, 0.94)), Color(0.02, 0.03, 0.1, 0.62))
 	p.position = Vector2(560, 640)
 	p.custom_minimum_size = Vector2(800, 380)
 	add_child(p)
@@ -33,7 +35,8 @@ func _ready() -> void:
 	_clock = UI.label("", 30, UI.MUTED, true)
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_clock)
-	var hint := UI.label("You'll play another player with your active deck.\nCasual matches don't change your Rank Points.", 22, UI.MUTED)
+	var hint := UI.label("You'll play another player with your active deck.\n" + ("Win to earn Rank Points; a loss costs some." if ranked \
+		else "Casual matches don't change your Rank Points."), 22, UI.MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(hint)
 	var row := HBoxContainer.new()
@@ -71,7 +74,7 @@ func _process(delta: float) -> void:
 	_clock.text = "%d:%02d" % [int(_waited) / 60, int(_waited) % 60]
 	var t := Time.get_ticks_msec() / 400 % 4
 	_status.text = "SEARCHING" + ".".repeat(t)
-	_cpu.visible = _waited > 20.0
+	_cpu.visible = _waited > 20.0 and not Game.queue_ranked   # (Ranked is against players only)
 	# The opponent's frame flickers through faces, faster than you can read them
 	_scan_at += delta
 	if _scan and not _scan_faces.is_empty() and _scan_at > (2.0 if Game.photosafe() else 0.09):
@@ -138,7 +141,7 @@ func _frame(picture: Texture2D, name: String, col: Color) -> Control:
 
 func _join() -> void:
 	_sent = true
-	Net.send("mp:queue")
+	Net.send("mp:queue", {"ranked": Game.queue_ranked})
 
 
 func _on_event(name: String, _data) -> void:

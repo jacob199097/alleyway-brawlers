@@ -38,7 +38,7 @@ func _ready() -> void:
 			"sub": "Online vs another player\nNo Rank Points at stake",
 			"locked": Game.offline, "lock_text": "Needs the server"},
 		{"id": "ranked", "title": "RANKED BRAWL", "color": UI.GOLD,
-			"sub": "Ranked vs CPU · earn Rank Points" if level >= 5 else "Unlocks at Level 5 (you are Lv %d)" % level,
+			"sub": "Online vs another player\nWin Rank Points, lose some" if level >= 5 else "Unlocks at Level 5 (you are Lv %d)" % level,
 			"locked": Game.offline or level < 5, "lock_text": "Needs the server" if Game.offline else "Locked until Level 5"},
 		{"id": "cpu", "title": "VS CPU", "color": Color("b388ff"),
 			"sub": "Practice against the AI" + ("\nOffline: starter deck, no rewards" if Game.offline else ""),
@@ -308,7 +308,7 @@ func _rank_art(parent: Control) -> void:
 func _start(mode: String) -> void:
 	if _starting:
 		return
-	var difficulty := "hard" if mode in ["ranked", "challenge"] else "normal"
+	var difficulty := "hard" if mode == "challenge" else "normal"
 	if mode == "cpu":
 		difficulty = await _pick_difficulty()
 		if difficulty == "":
@@ -317,7 +317,8 @@ func _start(mode: String) -> void:
 		Game.duel_setup = {"mode": mode, "difficulty": difficulty}
 		Game.go("rps")
 		return
-	if mode == "casual":
+	if mode in ["casual", "ranked"]:   # (both against players: screens/matchmaking.gd queues for the one chosen)
+		Game.queue_ranked = mode == "ranked"
 		Game.go("matchmaking")
 		return
 	_starting = true
@@ -342,7 +343,7 @@ func _start(mode: String) -> void:
 	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
 	var arena := ArenaRoulette.random_id()
 	_arena = ArenaRoulette.spin(self, arena, Vector2(1460, 784))
-	var why := await Game.request_cpu_match(mode == "ranked", difficulty, mode == "challenge", arena)
+	var why := await Game.request_cpu_match(false, difficulty, mode == "challenge", arena)
 	if why != "":
 		on_online_error(why)
 		return

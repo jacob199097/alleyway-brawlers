@@ -71,6 +71,7 @@ var last_email := ""
 ## Developer option: run against another server without saving it (launch with -- --server=<url>)
 var server_override := ""
 var duel_setup := {}        # fight mode → rock-paper-scissors → duel
+var queue_ranked := false   # the matchmaking screen queues for Ranked (true) or Casual
 var view_player_id := ""    # social → profile: show this friend's profile instead of yours
 var match_result := {}      # duel → post-match
 var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet): it fills on from there

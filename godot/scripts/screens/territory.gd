@@ -107,7 +107,7 @@ func _build() -> void:
 ## The rules line along the bottom.
 func _rules_text() -> String:
 	var k: Dictionary = _data.get("karat", {}) if _data.get("karat") is Dictionary else {}
-	return "Online win +3  ·  online loss +1  ·  Ranked or Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3  ·  a gang win +1 to +3 by its stars.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))]
+	return "Online win +3 (Casual or Ranked)  ·  online loss +1  ·  Hard CPU win +2  ·  CPU win +1  ·  Turf Defense win +3  ·  a gang win +1 to +3 by its stars.   When the week ends, the clan's fighters in each district it holds earn %d Karat, its boss %d more." % [int(k.get("district", 50)), int(k.get("boss", 50))]
 
 
 # ── The city ─────────────────────────────────────────────────────────────────

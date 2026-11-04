@@ -356,7 +356,7 @@ func _recent_matches(parent: Control) -> void:
 		var res := UI.label({"win": "WIN", "loss": "LOSS"}.get(m.get("result"), "DRAW"), 22, UI.GREEN if won else UI.RED, true)
 		res.custom_minimum_size = Vector2(80, 0)
 		row.add_child(res)
-		var mode: String = {"casual": "Casual", "friendly": "Friendly", "cpu": "VS CPU", "cpu_ranked": "Ranked", "cpu_challenge": "Weekly Challenge"}.get(m.get("mode"), "Match")
+		var mode: String = {"casual": "Casual", "ranked": "Ranked", "friendly": "Friendly", "cpu": "VS CPU", "cpu_ranked": "Ranked vs CPU", "cpu_challenge": "Weekly Challenge"}.get(m.get("mode"), "Match")
 		var opp: Dictionary = m.get("opponent", {}) if m.get("opponent") is Dictionary else {}
 		var info := UI.label("vs %s  ·  %s  ·  %d turns  ·  %s" % [opp.get("username", "?"), mode, int(m.get("turns", 0)),
 			str(m.get("created_at", "")).left(10)], 20, Color(0.85, 0.85, 0.95))
