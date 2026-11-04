@@ -6337,7 +6337,7 @@
   "art_url": "card_mili_047",
   "code": "MILI-047",
   "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
-  "effectText": "When this card attacks: It has PIERCE for this attack.\nThis card is immune to POISON, FREEZE, STUN, SUPPRESS and SILENCE.\nACTIVATE (once per turn, pay 2 Authority): Your opponent loses 1000 Morale.",
+  "effectText": "When this card attacks: It has PIERCE for this attack.\nThis card is immune to POISON, FREEZE, STUN, STASIS, SUPPRESS and SILENCE.\nACTIVATE (once per turn, pay 2 Authority): Your opponent loses 1000 Morale.",
   "effects": [
    {
     "when": "attack",
@@ -6350,6 +6350,7 @@
      "poison",
      "freeze",
      "stun",
+     "stasis",
      "suppress",
      "silence"
     ]
@@ -6428,7 +6429,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 1500,
+  "attack": 1700,
   "defense": 900,
   "level": 2,
   "subtype": "striver",
@@ -6466,7 +6467,7 @@
   ],
   "clanName": "Militia",
   "clanColor": "#a3e635",
-  "attack": 2600,
+  "attack": 2900,
   "defense": 1600,
   "level": 3,
   "subtype": "striver",
@@ -8970,5 +8971,415 @@
   "clanName": "Neutral",
   "clanColor": "#9aa4b1",
   "forge": "forge2"
+ },
+ "card_mili_053": {
+  "id": "card_mili_053",
+  "name": "Mick",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_053",
+  "code": "MILI-053",
+  "flavourText": "Broken? Nah, mate. It's just got a few extra features now. Probably.",
+  "effectText": "When another of your characters is attacked: The attacker loses 800 ATK permanently.\nACTIVATE (once per turn): JAM your opponent.\nThis card can't be targeted by your opponent's effects.",
+  "effects": [
+   {
+    "when": "ally_attacked",
+    "do": "buff",
+    "target": "attacker",
+    "until": "forever",
+    "atk": -800
+   },
+   {
+    "when": "activate",
+    "do": "jam"
+   },
+   {
+    "when": "passive",
+    "do": "untargetable"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 3400,
+  "defense": 3000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_mili_054": {
+  "id": "card_mili_054",
+  "name": "Hellstorm",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 1,
+  "rarity": 3,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_054",
+  "code": "MILI-054",
+  "flavourText": "They asked for backup. Command sent us. Guess they should've been more specific!",
+  "effectText": "At the end of your turn: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.\nACTIVATE (once per turn, this card can't attack this turn): Your opponent loses 900 Morale.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "wreck",
+    "amount": 1
+   },
+   {
+    "when": "activate",
+    "do": "damage",
+    "cost": "exhaust",
+    "amount": 900
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2800,
+  "defense": 2500,
+  "level": 1,
+  "subtype": "heavy",
+  "promotesTo": null
+ },
+ "card_mili_055": {
+  "id": "card_mili_055",
+  "name": "Mick",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_055",
+  "code": "MILI-055",
+  "flavourText": "Broken? Nah, mate. It's just got a few extra features now. Probably.",
+  "effectText": "At the end of your turn: If your opponent controls 3 or fewer characters, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "clan": "militia",
+    "if": "enemies_le",
+    "n": 3
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 500,
+  "defense": 1200,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_mili_056"
+ },
+ "card_mili_056": {
+  "id": "card_mili_056",
+  "name": "Mick",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_056",
+  "code": "MILI-056",
+  "flavourText": "Broken? Nah, mate. It's just got a few extra features now. Probably.",
+  "effectText": "At the end of your turn: If an enemy character is Downed, PROMOTE this card.\nWhen another of your characters is attacked: The attacker loses 500 ATK until the end of your next turn.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "foe_downed"
+   },
+   {
+    "when": "ally_attacked",
+    "do": "buff",
+    "target": "attacker",
+    "until": "next_turn",
+    "atk": -500
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 2100,
+  "defense": 2500,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_mili_053"
+ },
+ "card_mili_057": {
+  "id": "card_mili_057",
+  "name": "Mick's Truck",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_057",
+  "code": "MILI-057",
+  "flavourText": "Told ya I could make it shoot faster! Didn't say anything about making it stop!",
+  "effectText": "When this card is KO'd: Add \"Mick\" from your deck to your hand.",
+  "effects": [
+   {
+    "when": "self_ko",
+    "do": "search",
+    "name": "Mick",
+    "amount": 1
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1400,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_mili_058": {
+  "id": "card_mili_058",
+  "name": "Roadbreaker",
+  "clan": "militia",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "militia",
+  "effectKey": "",
+  "art_url": "card_mili_058",
+  "code": "MILI-058",
+  "flavourText": "Roadblock? What roadblock? I didn't see a bloody roadblock!",
+  "effectText": "When deployed: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.\nThis card has PIERCE.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "wreck",
+    "amount": 1
+   },
+   {
+    "when": "passive",
+    "do": "pierce"
+   }
+  ],
+  "clanName": "Militia",
+  "clanColor": "#a3e635",
+  "attack": 1800,
+  "defense": 1500,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_049": {
+  "id": "card_unde_049",
+  "name": "Helga",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_049",
+  "code": "UNDE-049",
+  "flavourText": "Every flame tells a story. Every shadow whispers a name. And every name belongs to someone who hasn't died yet.",
+  "effectText": "When you PROMOTE a Striver: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_promoted",
+    "do": "promote",
+    "clan": "underworld"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 800,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_unde_050"
+ },
+ "card_unde_050": {
+  "id": "card_unde_050",
+  "name": "Helga",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_050",
+  "code": "UNDE-050",
+  "flavourText": "Every flame tells a story. Every shadow whispers a name. And every name belongs to someone who hasn't died yet.",
+  "effectText": "When an enemy character is KO'd: If your Gutter has 5 or more cards, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "foe_ko",
+    "do": "promote",
+    "clan": "underworld",
+    "if": "gutter_ge",
+    "n": 5
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 2300,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_unde_051"
+ },
+ "card_unde_051": {
+  "id": "card_unde_051",
+  "name": "Helga",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_051",
+  "code": "UNDE-051",
+  "flavourText": "Every flame tells a story. Every shadow whispers a name. And every name belongs to someone who hasn't died yet.",
+  "effectText": "This card is immune to POISON, BURN, BLEED, SHOCK, STASIS, SUPPRESS, SILENCE and CHARM.\nACTIVATE (once per turn, sacrifice another of your characters): KO one enemy character.\nAt the start of your turn: Swap the ATK and DEF of one enemy character until the end of your opponent's next turn.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "burn",
+     "bleed",
+     "shock",
+     "stasis",
+     "suppress",
+     "silence",
+     "charm"
+    ]
+   },
+   {
+    "when": "activate",
+    "do": "ko",
+    "target": "enemy",
+    "cost": "sacrifice"
+   },
+   {
+    "when": "turn_start",
+    "do": "swap",
+    "target": "enemy",
+    "until": "next_turn"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 3500,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_unde_052": {
+  "id": "card_unde_052",
+  "name": "Mortis, the Cryptkeeper",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_052",
+  "code": "UNDE-052",
+  "flavourText": "The living pay to get in. The dead pay to get out. And nobody leaves without my permission.",
+  "effectText": "This card gains +300 ATK and +400 DEF for each UNDERWORLD card in your Gutter.\nYour opponent must attack this card first if it is standing.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "gutter",
+    "per_clan": "underworld",
+    "atk": 300,
+    "def": 400
+   },
+   {
+    "when": "passive",
+    "do": "guard"
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "varStats": true
+ },
+ "card_unde_053": {
+  "id": "card_unde_053",
+  "name": "Wisp, the Lost Soul",
+  "clan": "underworld",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_053",
+  "code": "UNDE-053",
+  "flavourText": "I don't remember how I died. Only that someone promised to come back for me.",
+  "effectText": "When deployed: Return the most recent UNDERWORLD card from your Gutter to your hand.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "recover",
+    "clan": "underworld",
+    "amount": 1
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "attack": 0,
+  "defense": 200,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_unde_054": {
+  "id": "card_unde_054",
+  "name": "Gravekeepers",
+  "clan": "underworld",
+  "cardType": "hustle",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "underworld",
+  "effectKey": "",
+  "art_url": "card_unde_054",
+  "code": "UNDE-054",
+  "flavourText": "Quit squirming in there! You're making this harder than it needs to be. You've already had your funeral!",
+  "effectText": "At the start of your turn: Put an UNDERWORLD character with 6 or less Authority of your choice from your Gutter onto the field in ATK position.",
+  "effects": [
+   {
+    "when": "turn_start",
+    "do": "revive",
+    "clan": "underworld",
+    "amount": 1,
+    "max_auth": 6,
+    "choose": true
+   }
+  ],
+  "clanName": "Underworld",
+  "clanColor": "#4f1c5e",
+  "subtype": "continuous"
  }
 }
