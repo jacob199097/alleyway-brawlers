@@ -198,6 +198,14 @@ const FX_SAMPLES := [
 	[{"when": "self_downed", "do": "draw", "amount": 1}, {"when": "deploy", "do": "shock", "target": "enemies", "amount": 800}],
 	# REMAINS: Skeleton tokens (BRITTLE, REMAINS) go to the Gutter when KO'd; recover never takes a token
 	[{"when": "deploy", "do": "token", "token": "card_unde_002", "amount": 2}, {"when": "turn_start", "do": "recover", "amount": 1}],
+	# PLUNDER (an opponent's card becomes yours: from their hand at random or chosen, deck, Gutter or field)
+	[{"when": "deploy", "do": "plunder", "from": "hand"}, {"when": "attack", "do": "plunder", "from": "gutter", "choose": true}],
+	[{"when": "deploy", "do": "plunder", "from": "deck", "amount": 2}, {"when": "ko", "do": "plunder", "from": "hand", "choose": true}],
+	[{"when": "activate", "do": "plunder", "from": "field", "target": "enemy", "cost": "authority", "cost_n": 3}, {"when": "turn_end", "do": "plunder", "from": "gutter", "kind": "gang_member", "once": true}],
+	# Gutter abilities (used from your Gutter on your turn, once a turn; exile_self: the card leaves the game)
+	[{"when": "gutter", "do": "damage", "amount": 300, "cost": "exile_self"}, {"when": "deploy", "do": "mill_self", "amount": 2}],
+	[{"when": "gutter", "do": "draw", "amount": 1, "cost": "authority", "cost_n": 2}, {"when": "attack", "do": "buff", "target": "self", "atk": 300}],
+	[{"when": "gutter", "do": "revive", "cost": "exile_gutter", "cost_n": 2}, {"when": "gutter", "do": "buff", "target": "allies", "atk": 200, "until": "turn", "cost": "discard", "cost_n": 1}],
 ]
 
 
@@ -232,6 +240,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "damage", "amount": 100, "per": "foe_downed"}, {"do": "call", "choose": true}],
 	[{"do": "tax", "amount": 1}, {"do": "reshuffle", "amount": 3}],
 	[{"do": "draw", "amount": 1, "per": "hustles_turn"}],
+	[{"do": "plunder", "from": "hand", "amount": 2}, {"when": "gutter", "do": "damage", "amount": 200, "cost": "exile_self"}],
+	[{"do": "plunder", "from": "field", "target": "enemy"}],
 ]
 
 

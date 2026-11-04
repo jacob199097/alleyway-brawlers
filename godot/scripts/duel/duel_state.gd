@@ -613,12 +613,20 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return int(c.get("tribute_atk", 0)) > 0
 		"attack_again":
 			return card_at(side, slot) == c and c.has_attacked and int(c.get("again_turn", 0)) != turn
+		"plunder":   # PLUNDER from their hand, deck or Gutter (from their field: a target, below)
+			var from := str(e.get("from", "hand"))
+			if from == "hand":
+				return foes.any(func(x): return x.hand.any(func(y): return _fx_kind_ok(y, e)))
+			if from == "deck":
+				return foes.any(func(x): return not x.deck.is_empty())
+			if from == "gutter":
+				return foes.any(func(x): return x.gutter.any(func(y): return not y.get("token", false) and _fx_kind_ok(y, e)))
 	if not e.has("target"):
 		return true
-	if str(e.get("do", "")) == "charm" and _empty_lane(side) < 0:   # (no lane to take it to)
+	if str(e.get("do", "")) in ["charm", "plunder"] and _empty_lane(side) < 0:   # (no lane to take it to)
 		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
-		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
+		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "plunder": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
@@ -857,13 +865,63 @@ func activations(side: String, slot: int) -> Array:
 ## on how it went (if_luck: "If tails, ..."), so "Flip a coin: heads draw 2, tails draw 1" is one
 ## ability (ACTIVATE k is group k). Same as activateGroups in DuelState.js.
 func activate_groups(c) -> Array:
+	return fx_groups(c, "activate")
+
+
+## activate_groups for any trigger ("activate", "gutter").
+func fx_groups(c, when: String) -> Array:
 	var out: Array = []
-	for e in _fx(c, "activate"):
+	for e in _fx(c, when):
 		if not out.is_empty() and str(e.get("if_luck", "")) != "":
 			out.back().append(e)
 		else:
 			out.append([e])
 	return out
+
+
+## Gutter abilities (Card Forge "When: In your Gutter"): used from a card in your Gutter during your own
+## turn, once per turn each, paying the cost first (exile_self: the card leaves the game to do it).
+## Which ones card uid can use now: 1 for its first "gutter" effect, ... Same as gutterActivations.
+func gutter_activations(side: String, uid: int) -> Array:
+	var out: Array = []
+	if not can_act(side) or not phase in ["deployment", "brawl", "regroup"]:
+		return out
+	var c = _gutter_card(side, uid)
+	if c == null or c.get("token", false):
+		return out
+	var k := 0
+	for g in fx_groups(c, "gutter"):
+		k += 1
+		var e: Dictionary = g[0]
+		if int(c.get("fx_used", {}).get("gutter%d" % k, -1)) != turn and str(e.get("cost", "")) != "exhaust" \
+				and fx_can(side, NO_SLOT, c, e) and _can_pay(side, NO_SLOT, c, e):
+			out.append(k)
+	return out
+
+
+func _gutter_card(side: String, uid: int):
+	for x in sides[side].gutter:
+		if int(x.uid) == uid:
+			return x
+	return null
+
+
+func _gutter_activate(side: String, uid: int, k: int) -> bool:
+	if not k in gutter_activations(side, uid):
+		return false
+	var c: Dictionary = _gutter_card(side, uid)
+	var group: Array = fx_groups(c, "gutter")[k - 1]
+	var used: Dictionary = c.get("fx_used", {})
+	used["gutter%d" % k] = turn
+	c.fx_used = used
+	_pay_then(side, NO_SLOT, c, group[0], "%s acts from the Gutter" % c.name, func():
+		_take_self = true   # (its own "bring it back" may take it from the Gutter)
+		for x in group:
+			if winner != "":
+				break
+			_do_fx(side, NO_SLOT, c, x)
+		_take_self = false)
+	return true
 
 
 func _can_pay(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
@@ -880,8 +938,10 @@ func _can_pay(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
 			return characters(side).any(func(x): return x.slot != slot)
 		"exhaust":
 			return not c.has_attacked and not c.downed
-		"exile_gutter":
-			return s.gutter.size() >= n
+		"exile_gutter":   # (not the card itself: exile_self)
+			return s.gutter.filter(func(x): return not is_same(x, c)).size() >= n
+		"exile_self":
+			return s.gutter.any(func(x): return is_same(x, c))
 	return true
 
 
@@ -894,11 +954,16 @@ func _activate(side: String, slot: int, k: int) -> bool:
 	var used: Dictionary = c.get("fx_used", {})
 	used["activate%d" % k] = turn
 	c.fx_used = used
-	var go := func():
+	_pay_then(side, slot, c, e, "%s activates its ability" % c.name, func():
 		for x in group:
 			if winner != "":
 				return
-			_do_fx(side, slot, c, x)
+			_do_fx(side, slot, c, x))
+	return true
+
+
+## Pays effect e's cost (an activated or Gutter ability), then go; plain: what it says with no cost.
+func _pay_then(side: String, slot: int, c: Dictionary, e: Dictionary, plain: String, go: Callable) -> void:
 	var n: int = maxi(1, int(e.get("cost_n", 1)))
 	match str(e.get("cost", "")):
 		"authority":
@@ -925,17 +990,20 @@ func _activate(side: String, slot: int, k: int) -> bool:
 				if winner == "":
 					go.call())
 		"exile_gutter":   # the cards that have been in your Gutter longest
-			_exile_gutter(side, sides[side].gutter.slice(0, n))
+			_exile_gutter(side, sides[side].gutter.filter(func(x): return not is_same(x, c)).slice(0, n))
 			_effect(side, c, "%s: EXILES %d card%s from the Gutter to activate" % [c.name, n, "" if n == 1 else "s"], slot)
 			go.call()
 		"exhaust":
 			c.has_attacked = true
 			_effect(side, c, "%s activates: it can't attack this turn" % c.name, slot)
 			go.call()
-		_:
-			_effect(side, c, "%s activates its ability" % c.name, slot)
+		"exile_self":   # (a Gutter ability: the card leaves the game)
+			_exile_gutter(side, [c])
+			_effect(side, c, "%s: EXILED from the Gutter to activate" % c.name, slot)
 			go.call()
-	return true
+		_:
+			_effect(side, c, plain, slot)
+			go.call()
 
 
 ## Whether effect `e` of the card in `slot` has anyone to affect right now (abilities that only
@@ -994,6 +1062,8 @@ func do_action(side: String, a: Dictionary) -> bool:
 				ok = true
 		"activate":
 			ok = _activate(side, int(a.slot), int(a.get("fx", 1)))
+		"gutter":   # a Gutter ability
+			ok = _gutter_activate(side, int(a.uid), int(a.get("fx", 1)))
 		"choose":
 			ok = _answer(side, str(a.option))
 		"discard":
@@ -2291,7 +2361,7 @@ func _fx(c, when: String) -> Array:
 	# that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
 	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
 	for e in _fold_if_done(c.get("effects", [])):
-		if e is Dictionary and (when == "*" or str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes)
+		if e is Dictionary and (str(e.get("when", "")) != "gutter" if when == "*" else str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes), not a Gutter ability
 			if silenced and str(e.get("do", "")) != "promote":
 				continue
 			# (...but a "?" card keeps the ATK and DEF its own passive gives it: Downed isn't SILENCE)
@@ -3134,6 +3204,51 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				_recalc()
 				return "%s CHARMS %s: it fights for %s this turn" % [c.name, x.card.name, "its charmer" if side == active else "the other side"]
 			_fx_apply(side, slot, c, e, vs, "charmable", "CHARM", fn, "%s CHARMS %%s" % c.name)
+		"plunder":   # PLUNDER: an opponent's card becomes yours (from their hand, deck, Gutter or field)
+			var from := str(e.get("from", "hand"))
+			if from == "field":   # one of their characters fights for you from now on (CHARM, for good)
+				var steal := func(x: Dictionary) -> String:
+					var lane := _empty_lane(side)
+					if lane < 0:
+						return "%s can't be PLUNDERED (no room)" % x.card.name
+					sides[x.side].field[x.slot] = null
+					x.card.has_attacked = true   # (it joins the crew: it can attack from next turn)
+					x.card.erase("rest_turn")
+					sides[side].field[lane] = x.card
+					_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true), "plunder": true})
+					_recalc()
+					return "%s PLUNDERS %s: it fights for its new crew" % [c.name, x.card.name]
+				_fx_apply(side, slot, c, e, vs, "charmable", "PLUNDER", steal, "%s PLUNDERS %%s" % c.name)
+			else:
+				# (a plundered card is shown to everyone: it goes into the plunderer's hand)
+				var take := func(foe: String, card: Dictionary, where: String) -> void:
+					card.downed = false
+					card.mods = []
+					card.face_down = false
+					card.erase("rise_turn")   # (an UNDEAD card taken from the Gutter doesn't rise)
+					s.hand.append(card)
+					_emit("plunder", {"side": side, "from_side": foe, "from": where, "card": card.duplicate(true)})
+					_effect(side, c, "%s PLUNDERS %s from the enemy's %s" % [c.name, card.name, "Gutter" if where == "gutter" else where], slot)
+				var has := func(f) -> bool:
+					var fs: Dictionary = sides[f]
+					if from == "deck":
+						return not fs.deck.is_empty()
+					if from == "gutter":
+						return fs.gutter.any(func(y): return not y.get("token", false) and _fx_kind_ok(y, e))
+					return fs.hand.any(func(y): return _fx_kind_ok(y, e))
+				_with_foe(side, c, vs, has, func(foe: String):
+					var fs: Dictionary = sides[foe]
+					if from == "deck":   # the top card(s)
+						for i in n:
+							if fs.deck.is_empty() or winner != "":
+								break
+							take.call(foe, fs.deck.pop_back(), "deck")
+					elif from == "gutter":
+						_fx_take(side, c, e, fs.gutter, "%s: choose a card to PLUNDER from the enemy's Gutter" % c.name, func(card: Dictionary) -> bool:
+							take.call(foe, card, "gutter")
+							return true)
+					else:
+						_plunder_hand(side, c, e, foe, n, take))
 		"damage":
 			if e.get("to", "") == "self":   # the card's own player loses it (a risk or a price; a BARRICADE doesn't stop it)
 				_effect(side, c, "%s: you lose %d Morale" % [c.name, n], slot)
@@ -3546,6 +3661,48 @@ func _fx_kind_ok(card: Dictionary, e: Dictionary) -> bool:
 ## Same as _fxTake in shared/duel/DuelState.js.
 ## after: once it's done (every card taken, or skipped), when it looked through the pile (a deck is
 ## shuffled then)
+## PLUNDER from an opponent's hand, left cards: a random one each (the luck generator), or with
+## choose, the plunderer looks at their hand and picks. Same as _plunderHand in DuelState.js.
+func _plunder_hand(side: String, c: Dictionary, e: Dictionary, foe: String, left: int, take: Callable) -> void:
+	var hand: Array = sides[foe].hand
+	var pool: Array = hand.filter(func(x): return _fx_kind_ok(x, e))
+	if left <= 0 or pool.is_empty() or winner != "":
+		return
+	var next := func(card: Dictionary) -> void:
+		var i := -1
+		for k in hand.size():
+			if is_same(hand[k], card):
+				i = k
+				break
+		if i >= 0:
+			take.call(foe, hand.pop_at(i), "hand")
+		_plunder_hand(side, c, e, foe, left - 1, take)
+	if not e.get("choose", false):
+		next.call(pool[mini(pool.size() - 1, int(floor(_luck_next() * pool.size())))])
+		return
+	var opts: Array = []
+	for k in pool.size():
+		opts.append({"m": pool[k], "k": k})
+	opts.sort_custom(func(x, y):
+		var da := int(x.m.get("authority", 0)) - int(y.m.get("authority", 0))
+		if da != 0:
+			return da > 0
+		var dk := int(x.m.get("base_attack", 0)) - int(y.m.get("base_attack", 0))
+		if dk != 0:
+			return dk > 0
+		return x.k < y.k)
+	var shown: Array = opts.slice(0, 8)
+	var options: Array = []
+	for k in shown.size():
+		options.append({"id": str(k), "label": "%s  (%d)" % [str(shown[k].m.name).to_upper(), int(shown[k].m.get("authority", 0))],
+			"card": shown[k].m.duplicate(true)})
+	options.append({"id": "skip", "label": "SKIP"})
+	_ask(side, "fx_pick", "%s: choose a card to PLUNDER from their hand" % c.name, c, options, func(choice: String):
+		var k := int(choice) if choice != "skip" else -1
+		if k >= 0 and k < shown.size():
+			next.call(shown[k].m))
+
+
 func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: String, take: Callable, after := Callable(), left := -1) -> bool:
 	var amount := maxi(1, int(e.get("amount", 1)))
 	if left < 0:
@@ -3553,7 +3710,7 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 	var matches: Array = []
 	for i in range(pile.size() - 1, -1, -1):
 		if (not is_same(pile[i], c) or _take_self) and _fx_kind_ok(pile[i], e) \
-				and not (pile[i].get("token", false) and str(e.get("do", "")) == "recover"):
+				and not (pile[i].get("token", false) and str(e.get("do", "")) in ["recover", "plunder"]):
 			matches.append(pile[i])
 	if matches.is_empty():
 		if after.is_valid() and left < amount:   # (found some before)

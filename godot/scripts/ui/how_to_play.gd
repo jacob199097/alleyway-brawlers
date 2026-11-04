@@ -28,6 +28,7 @@ const TERMS := [
 	{"name": "HIDEOUT", "color": "6fd3ff", "on": "striver", "text": "Where your Strivers' higher levels wait. They don't go in your deck: you put them in the Hideout in the Deck Builder.\n\nA Striver can only PROMOTE when its next level is in your Hideout. Click it during a duel to look through it."},
 	{"name": "DORMANT & AWAKEN", "color": "f4c430", "on": "leader", "text": "Your [b]leader[/b] starts beside the field, [b]Dormant[/b]: its Dormant effects help you all game while it waits. The enemy can attack it to wear down its [b]Influence[/b]: at 0 it is defeated.\n\nWhen its [b]AWAKEN[/b] condition is met, you may bring it onto the field as a character, at full strength. Usually it can't attack that turn."},
 	{"name": "ACTIVATE", "color": "4fe3d0", "on": "activate", "text": "An ability you use yourself. When a character [b]glows teal[/b], click it to use its ACTIVATE ability: once per turn, paying any cost shown first (Authority, Morale, a discard, a sacrifice, or not attacking this turn)."},
+	{"name": "GUTTER ABILITY", "color": "4fe3d0", "on": "gutter", "text": "An ability a card uses from your [b]Gutter[/b] (\"In your Gutter: ...\"). When your Gutter [b]glows teal[/b], one is ready: click your Gutter and press USE under the card. Once per turn each, on your turn, paying any cost shown first; some cost the card itself, which is EXILED.\n\nAn opponent can take it away first: EXILE or PLUNDER from the Gutter."},
 	{"name": "SACRIFICE", "color": "ff5a5a", "on": "heavy", "text": "A [b]Heavy[/b] is played by sacrificing as many of your characters as it says (SACRIFICE 1-3): they go to the Gutter, and the Heavy takes one of their lanes.\n\nSome ACTIVATE costs and effects sacrifice characters too. A sacrificed token vanishes."},
 	{"name": "TOKENS", "color": "c9b8ff", "do": ["token"], "text": "Characters made by an effect, not from your deck.\n\nWhen a token leaves the field it vanishes: it never goes to the Gutter, a hand or a deck, unless it has REMAINS."},
 	{"name": "THE GUTTER", "color": "9aa4b1", "do": ["revive", "recover", "mill_self"], "text": "Your discard pile. KO'd characters and used Hustles and Ambushes go there.\n\nSome effects bring cards back from it: [b]revive[/b] puts a character back on the field, [b]recover[/b] puts a card back in your hand. Click either player's Gutter to look through it."},
@@ -204,6 +205,7 @@ func _term_fits(c: Dictionary, t: Dictionary) -> bool:
 		"striver": return str(c.get("subtype", "")) == "striver" and int(c.get("level", 1)) == 2
 		"neutral": return str(c.get("clan", "")) == CardDB.NEUTRAL
 		"activate": return fx.any(func(e): return str(e.get("when", "")) == "activate")
+		"gutter": return fx.any(func(e): return str(e.get("when", "")) == "gutter")
 		"luck": return fx.any(func(e): return e.has("luck"))
 		"text": return RegEx.create_from_string(str(t.re)).search(str(c.get("effectText", ""))) != null
 	return fx.any(func(e): return str(e.get("do", "")) in t.do)

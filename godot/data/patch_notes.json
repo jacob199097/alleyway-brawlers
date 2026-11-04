@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.124",
+        "notes": [
+            "Gutter abilities: some cards can act from your Gutter (In your Gutter: ...). When one is ready your Gutter glows teal: click it and press USE under the card. Once per turn each, on your turn; some cost the card itself (it is EXILED).",
+            "New keyword PLUNDER (for the coming Pirates clan): take a card from your opponent, from their hand, the top of their deck, their Gutter, or one of their characters for good. Plundering the Gutter takes a card before it can rise or use its Gutter ability.",
+            "How to Play has pages for PLUNDER and GUTTER ABILITY."
+        ]
+    },
+    {
         "version": "0.9.123",
         "notes": [
             "The shop has a STARTER DECKS tab: every clan's starter deck, under its deck box, for 800 Karat or 400 Contraband. You get its 40 cards, its Hideout and its leader, and the deck is added to your Deck Builder ready to play (a deck you already have is never replaced).",

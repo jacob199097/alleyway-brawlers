@@ -550,11 +550,18 @@ export class DuelState {
             case 'reshuffle': return s.gutter.some(x => !x.token);
             case 'tribute_damage': return toInt(c.tribute_atk ?? 0) > 0;
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
+            case 'plunder': {   // PLUNDER from their hand, deck or Gutter (from their field: a target, below)
+                const from = String(e.from ?? 'hand');
+                if (from === 'hand') return foes.some(x => x.hand.some(y => this._fxKindOk(y, e)));
+                if (from === 'deck') return foes.some(x => x.deck.length > 0);
+                if (from === 'gutter') return foes.some(x => x.gutter.some(y => !y.token && this._fxKindOk(y, e)));
+                break;
+            }
         }
         if (!('target' in e)) return true;
-        if (String(e.do ?? '') === 'charm' && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
+        if (['charm', 'plunder'].includes(String(e.do ?? '')) && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
-            promote_ally: 'promotable', charm: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
+            promote_ally: 'promotable', charm: 'charmable', plunder: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
         if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
         return entries.length > 0;
@@ -733,12 +740,50 @@ export class DuelState {
      *  on how it went (if_luck: "If tails, ..."), so "Flip a coin: heads draw 2, tails draw 1" is one
      *  ability (ACTIVATE k is group k). Same as activate_groups in duel_state.gd. */
     activateGroups(c) {
+        return this.fxGroups(c, 'activate');
+    }
+
+    /** activateGroups for any trigger ('activate', 'gutter'). */
+    fxGroups(c, when) {
         const out = [];
-        for (const e of this._fx(c, 'activate')) {
+        for (const e of this._fx(c, when)) {
             if (out.length && String(e.if_luck ?? '') !== '') out[out.length - 1].push(e);
             else out.push([e]);
         }
         return out;
+    }
+
+    // Gutter abilities (Card Forge "When: In your Gutter"): used from a card in your Gutter during your own
+    // turn, once per turn each, paying the cost first (exile_self: the card leaves the game to do it).
+    // Which ones card uid can use now: 1 for its first "gutter" effect, ... Same as gutter_activations.
+    gutterActivations(side, uid) {
+        const out = [];
+        if (!this.canAct(side) || !['deployment', 'brawl', 'regroup'].includes(this.phase)) return out;
+        const c = this.sides[side].gutter.find(x => x.uid === uid);
+        if (c == null || c.token) return out;
+        let k = 0;
+        for (const [e] of this.fxGroups(c, 'gutter')) {
+            k++;
+            if (((c.fx_used ?? {})['gutter' + k] ?? -1) !== this.turn && String(e.cost ?? '') !== 'exhaust'
+                && this.fxCan(side, NO_SLOT, c, e) && this._canPay(side, NO_SLOT, c, e)) out.push(k);
+        }
+        return out;
+    }
+
+    _gutterActivate(side, uid, k) {
+        if (!this.gutterActivations(side, uid).includes(k)) return false;
+        const c = this.sides[side].gutter.find(x => x.uid === uid);
+        const group = this.fxGroups(c, 'gutter')[k - 1];
+        c.fx_used = { ...(c.fx_used ?? {}), ['gutter' + k]: this.turn };
+        this._payThen(side, NO_SLOT, c, group[0], `${c.name} acts from the Gutter`, () => {
+            this._takeSelf = true;   // (its own "bring it back" may take it from the Gutter)
+            for (const x of group) {
+                if (this.winner !== '') break;
+                this._doFx(side, NO_SLOT, c, x);
+            }
+            this._takeSelf = false;
+        });
+        return true;
     }
 
     _canPay(side, slot, c, e) {
@@ -750,7 +795,8 @@ export class DuelState {
             case 'discard': return s.hand.length >= n;
             case 'sacrifice': return this.characters(side).some(x => x.slot !== slot);
             case 'exhaust': return !c.has_attacked && !c.downed;
-            case 'exile_gutter': return s.gutter.length >= n;
+            case 'exile_gutter': return s.gutter.filter(x => x !== c).length >= n;   // (not the card itself: exile_self)
+            case 'exile_self': return s.gutter.includes(c);
         }
         return true;
     }
@@ -761,12 +807,17 @@ export class DuelState {
         const group = this.activateGroups(c)[k - 1];
         const e = group[0];   // (its cost is the first effect's)
         c.fx_used = { ...(c.fx_used ?? {}), ['activate' + k]: this.turn };
-        const go = () => {
+        this._payThen(side, slot, c, e, `${c.name} activates its ability`, () => {
             for (const x of group) {
                 if (this.winner !== '') return;
                 this._doFx(side, slot, c, x);
             }
-        };
+        });
+        return true;
+    }
+
+    /** Pays effect e's cost (an activated or Gutter ability), then go(); plain: what it says with no cost. */
+    _payThen(side, slot, c, e, plain, go) {
         const n = Math.max(1, toInt(e.cost_n ?? 1));
         switch (String(e.cost ?? '')) {
             case 'authority':
@@ -795,7 +846,7 @@ export class DuelState {
                 break;
             }
             case 'exile_gutter':   // the cards that have been in your Gutter longest
-                this._exileGutter(side, this.sides[side].gutter.slice(0, n));
+                this._exileGutter(side, this.sides[side].gutter.filter(x => x !== c).slice(0, n));
                 this._effect(side, c, `${c.name}: EXILES ${n} card${n === 1 ? '' : 's'} from the Gutter to activate`, slot);
                 go();
                 break;
@@ -804,11 +855,15 @@ export class DuelState {
                 this._effect(side, c, `${c.name} activates: it can't attack this turn`, slot);
                 go();
                 break;
+            case 'exile_self':   // (a Gutter ability: the card leaves the game)
+                this._exileGutter(side, [c]);
+                this._effect(side, c, `${c.name}: EXILED from the Gutter to activate`, slot);
+                go();
+                break;
             default:
-                this._effect(side, c, `${c.name} activates its ability`, slot);
+                this._effect(side, c, plain, slot);
                 go();
         }
-        return true;
     }
 
     // Whether effect e of the card in slot has anyone to affect right now (the CPU checks before activating)
@@ -858,6 +913,7 @@ export class DuelState {
                 }
                 break;
             case 'activate': ok = this._activate(side, toInt(a.slot), toInt(a.fx ?? 1)); break;
+            case 'gutter': ok = this._gutterActivate(side, toInt(a.uid), toInt(a.fx ?? 1)); break;   // a Gutter ability
             case 'choose': ok = this._answer(side, String(a.option)); break;
             case 'discard': ok = this._chooseDiscard(side, toInt(a.uid)); break;
             case 'next': ok = this._nextPhase(side); break;
@@ -1992,8 +2048,8 @@ export class DuelState {
         const downed = !!c.downed && !['self_downed', 'self_ko'].includes(when);
         // ...but a "?" card keeps the ATK and DEF its own passive gives it (Downed isn't SILENCE)
         const ownStats = (e) => when === 'passive' && !!c.varStats && String(e.do ?? '') === 'buff' && ['', 'self'].includes(String(e.target ?? ''));
-        // "*": all of them (Hustles, Ambushes)
-        return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' || String(e.when ?? '') === when)
+        // "*": all of them (Hustles, Ambushes), but a Gutter ability waits for the Gutter
+        return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' ? String(e.when ?? '') !== 'gutter' : String(e.when ?? '') === when)
             && !(silenced && String(e.do ?? '') !== 'promote')
             && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self') && !ownStats(e)));
     }
@@ -2747,6 +2803,46 @@ export class DuelState {
                     return `${c.name} CHARMS ${x.card.name}: it fights for ${side === this.active ? 'its charmer' : 'the other side'} this turn`;
                 }, `${c.name} CHARMS %s`);
                 break;
+            case 'plunder': {   // PLUNDER: an opponent's card becomes yours (from their hand, deck, Gutter or field)
+                const from = String(e.from ?? 'hand');
+                if (from === 'field') {   // one of their characters fights for you from now on (CHARM, for good)
+                    this._fxApply(side, slot, c, e, vs, 'charmable', 'PLUNDER', (x) => {
+                        const lane = this._emptyLane(side);
+                        if (lane < 0) return `${x.card.name} can't be PLUNDERED (no room)`;
+                        this.sides[x.side].field[x.slot] = null;
+                        x.card.has_attacked = true;   // (it joins the crew: it can attack from next turn)
+                        delete x.card.rest_turn;
+                        this.sides[side].field[lane] = x.card;
+                        this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card), plunder: true });
+                        this._recalc();
+                        return `${c.name} PLUNDERS ${x.card.name}: it fights for its new crew`;
+                    }, `${c.name} PLUNDERS %s`);
+                    break;
+                }
+                // (a plundered card is shown to everyone: it goes into the plunderer's hand)
+                const take = (foe, card, where) => {
+                    card.downed = false;
+                    card.mods = [];
+                    card.face_down = false;
+                    delete card.rise_turn;   // (an UNDEAD card taken from the Gutter doesn't rise)
+                    s.hand.push(card);
+                    this._emit('plunder', { side, from_side: foe, from: where, card: clone(card) });
+                    this._effect(side, c, `${c.name} PLUNDERS ${card.name} from the enemy's ${where === 'gutter' ? 'Gutter' : where}`, slot);
+                };
+                const has = (f) => {
+                    const fs = this.sides[f];
+                    return from === 'deck' ? fs.deck.length > 0 : from === 'gutter' ? fs.gutter.some(y => !y.token && this._fxKindOk(y, e)) : fs.hand.some(y => this._fxKindOk(y, e));
+                };
+                this._withFoe(side, c, vs, has, (foe) => {
+                    const fs = this.sides[foe];
+                    if (from === 'deck') {   // the top card(s)
+                        for (let i = 0; i < n && fs.deck.length > 0 && this.winner === ''; i++) take(foe, fs.deck.pop(), 'deck');
+                    } else if (from === 'gutter') {
+                        this._fxTake(side, c, e, fs.gutter, `${c.name}: choose a card to PLUNDER from the enemy's Gutter`, (card) => { take(foe, card, 'gutter'); return true; });
+                    } else this._plunderHand(side, c, e, foe, n, take);
+                });
+                break;
+            }
             case 'damage':
                 if (e.to === 'self') {   // the card's own player loses it (a risk or a price; a BARRICADE doesn't stop it)
                     this._effect(side, c, `${c.name}: you lose ${n} Morale`, slot);
@@ -3118,7 +3214,7 @@ export class DuelState {
     _fxTake(side, c, e, pile, prompt, take, after = null, left = Math.max(1, toInt(e.amount ?? 1))) {
         const matches = [];
         for (let i = pile.length - 1; i >= 0; i--) {
-            if ((pile[i] !== c || this._takeSelf) && this._fxKindOk(pile[i], e) && !(pile[i].token && String(e.do ?? '') === 'recover')) matches.push(pile[i]);
+            if ((pile[i] !== c || this._takeSelf) && this._fxKindOk(pile[i], e) && !(pile[i].token && ['recover', 'plunder'].includes(String(e.do ?? '')))) matches.push(pile[i]);
         }
         if (!matches.length) {
             if (after && left < Math.max(1, toInt(e.amount ?? 1))) after();   // (found some before)
@@ -3150,6 +3246,29 @@ export class DuelState {
             { id: 'skip', label: 'SKIP' }],
             (choice) => { const o = choice === 'skip' ? null : shown[toInt(choice)]; if (o) next(o.m); else done(); });
         return true;
+    }
+
+    /** PLUNDER from an opponent's hand, left cards: a random one each (the luck generator), or with
+     *  choose, the plunderer looks at their hand and picks. Same as _plunder_hand in duel_state.gd. */
+    _plunderHand(side, c, e, foe, left, take) {
+        const hand = this.sides[foe].hand;
+        const pool = hand.filter(x => this._fxKindOk(x, e));
+        if (left <= 0 || !pool.length || this.winner !== '') return;
+        const next = (card) => {
+            const i = hand.indexOf(card);
+            if (i >= 0) take(foe, hand.splice(i, 1)[0], 'hand');
+            this._plunderHand(side, c, e, foe, left - 1, take);
+        };
+        if (!e.choose) {
+            next(pool[Math.min(pool.length - 1, Math.floor(this._luck() * pool.length))]);
+            return;
+        }
+        const opts = pool.map((m, k) => ({ m, k }));
+        opts.sort((a, b) => (toInt(b.m.authority) - toInt(a.m.authority)) || (toInt(b.m.base_attack) - toInt(a.m.base_attack)) || (a.k - b.k));
+        const shown = opts.slice(0, 8);
+        this._ask(side, 'fx_pick', `${c.name}: choose a card to PLUNDER from their hand`, c, [...shown.map((o, k) => ({ id: String(k),
+            label: `${String(o.m.name).toUpperCase()}  (${toInt(o.m.authority)})`, card: clone(o.m) })), { id: 'skip', label: 'SKIP' }],
+            (choice) => { const o = choice === 'skip' ? null : shown[toInt(choice)]; if (o) next(o.m); });
     }
 
     /** A deck that was searched is shuffled (not in the engines' comparison games, which keep a fixed order). */

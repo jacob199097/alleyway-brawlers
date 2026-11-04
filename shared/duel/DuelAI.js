@@ -224,6 +224,23 @@ function activation(d, side, level = 'normal') {
             return { kind: 'activate', slot, fx: k };
         }
     }
+    // Gutter abilities: the same checks (exile_self, the card leaving the game, is always worth it)
+    for (const g of s.gutter) {
+        for (const k of d.gutterActivations(side, g.uid)) {
+            const e = d.fxGroups(g, 'gutter')[k - 1][0];
+            const n = Math.max(1, Math.trunc(Number(e.cost_n ?? 1)) || 1);
+            const cost = String(e.cost ?? '');
+            if (String(e.target ?? '') === 'all' && !allWorth(d, side, -10)) continue;
+            if (cost === 'sacrifice') {
+                if (level !== 'hard') continue;
+                const fodder = d.characters(side).sort((a, b) => (toAttackValue(a.card) - toAttackValue(b.card)) || a.slot - b.slot)[0];
+                if (!fodder || keepValue(fodder.card) > 600) continue;
+            }
+            if (cost === 'morale' && s.morale <= n * 3) continue;
+            if (cost === 'discard' && s.hand.length < n + 2) continue;
+            return { kind: 'gutter', uid: g.uid, fx: k };
+        }
+    }
     return null;
 }
 

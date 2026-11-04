@@ -30,6 +30,8 @@ const LIST := {
 	"REMAINS": [Color("b9a98a"), "REMAINS: when this token is KO'd or sacrificed, it goes to the Gutter instead of vanishing."],
 	"MARKED": [Color("ff4d6d"), "MARKED: you can see your opponent's hand and face-down cards. Only you can: they stay hidden from everyone else."],
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
+	"PLUNDER": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
+	"PLUNDERS": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
 	"CHARM": [Color("ff6fb5"), "CHARM: you take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner."],
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],
 	"EXILE": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],

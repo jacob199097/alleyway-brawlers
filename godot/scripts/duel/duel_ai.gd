@@ -220,6 +220,27 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 			if cost == "exhaust" and (d.phase != "brawl" or d.can_attack_with(side, slot)):
 				continue
 			return {"kind": "activate", "slot": slot, "fx": k}
+	# Gutter abilities: the same checks (exile_self, the card leaving the game, is always worth it)
+	for g in s.gutter:
+		for k in d.gutter_activations(side, int(g.uid)):
+			var e: Dictionary = d.fx_groups(g, "gutter")[k - 1][0]
+			var n: int = maxi(1, int(e.get("cost_n", 1)))
+			var cost := str(e.get("cost", ""))
+			if str(e.get("target", "")) == "all" and not _all_worth(d, side, DuelState.NO_SLOT):
+				continue
+			if cost == "sacrifice":
+				if level != "hard":
+					continue
+				var mine: Array = d.characters(side)
+				mine.sort_custom(func(a, b): return DuelState._attack_value(a.card) < DuelState._attack_value(b.card) \
+					or (DuelState._attack_value(a.card) == DuelState._attack_value(b.card) and a.slot < b.slot))
+				if mine.is_empty() or _keep_value(mine[0].card) > 600:
+					continue
+			if cost == "morale" and s.morale <= n * 3:
+				continue
+			if cost == "discard" and s.hand.size() < n + 2:
+				continue
+			return {"kind": "gutter", "uid": int(g.uid), "fx": k}
 	return {}
 
 

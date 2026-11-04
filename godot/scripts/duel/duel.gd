@@ -705,6 +705,8 @@ func _log_event(ev: Dictionary) -> void:
 			_log("%s was sent from the deck to the Gutter" % _cname(ev.card), side)
 		"recover":
 			_log("%s got %s back from the Gutter" % [_who(side), _cname(ev.card)], side)
+		"plunder":
+			_log("%s PLUNDERED %s from %s %s" % [_who(side), _cname(ev.card), _whose(str(ev.get("from_side", ""))).to_lower(), str(ev.get("from", "hand"))], side)
 		"promote":
 			_log("%s promoted to %s" % [_cname(ev.get("from")), _cname(ev.card)], side)
 		"effect":   # ("Megan Downs Kade", not "Megan: Megan Downs Kade")
@@ -719,6 +721,8 @@ func _log_event(ev: Dictionary) -> void:
 		"charm":
 			if ev.get("back", false):
 				_log("%s goes back to its owner" % _cname(ev.card), str(ev.to_side))
+			elif ev.get("plunder", false):
+				_log("%s is PLUNDERED" % _cname(ev.card), str(ev.to_side))
 			else:
 				_log("%s is CHARMED" % _cname(ev.card), str(ev.to_side))
 		"position":
@@ -1765,6 +1769,12 @@ func _draw_pile(side: String, pile: String) -> void:
 			draw_rect(r, Color(1, 1, 1, 0.3), false, 2.0)
 	if not _pile_backs.has("%s:%s" % [side, pile]):   # (a moving back has its count and name drawn over it)
 		_draw_pile_text(self, side, pile)
+	if pile == "gutter" and side == "player" and _gutter_glow:   # (a Gutter ability is ready: click it)
+		var top := layers - 1
+		var r := Rect2(p - size / 2 + Vector2(-top * 2.0, -top * 3.0) * k, size).grow(5.0 * k)
+		var a := 0.55 + 0.35 * sin(Time.get_ticks_msec() / 260.0)
+		draw_rect(r, Color(TEAL, a), false, 5.0 * k)
+		draw_rect(r.grow(5.0 * k), Color(TEAL, a * 0.35), false, 4.0 * k)
 
 
 ## The deck and Hideout wear the side's moving back on top (like a face-down card): it turns
@@ -2036,6 +2046,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_discard(ev)
 		"charm":
 			await _ev_charm(ev)
+		"plunder":
+			await _ev_plunder(ev)
 		"absorb":
 			await _ev_absorb(ev)
 		"stats":
@@ -5384,6 +5396,34 @@ func _ev_absorb(ev: Dictionary) -> void:
 	await _wait(0.3)
 
 
+## PLUNDER from a hand or deck: the card turns face-up, crosses the board in a gold trail and goes
+## into the plunderer's hand (face-down again if that's the opponent's).
+func _ev_plunder(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var from_side := str(ev.get("from_side", ""))
+	var v: CardView
+	if str(ev.get("from", "hand")) == "hand" and hand.has(from_side):
+		v = _take_from_hand(from_side, ev.card.uid, ev.card)
+		_layout_hand(from_side)
+	else:
+		v = _new_view(ev.card, from_side, false)
+		v.position = pile_pos(from_side, "deck")
+	v.set_card(ev.card)
+	v.side = side
+	v.z_index = 440
+	if not v.face_up:
+		v.flip(true)
+	Sfx.play("whoosh", 1.1)
+	_float_text(v.position + Vector2(0, -110 if from_side == "player" else 110), "PLUNDERED!", GOLD, 40)
+	await v.move_to(v.position.lerp(Vector2(1080, DIVIDER_Y), 0.5), 1.25, 0.0, 0.3).finished
+	if side != "player":
+		v.flip(false)
+	_burst(v.position, GOLD, 16, 220, 0.5)
+	hand[side].append(v)
+	_layout_hand(side)
+	await _wait(0.35)
+
+
 func _ev_charm(ev: Dictionary) -> void:
 	var from: String = ev.side
 	var to: String = str(ev.to_side)
@@ -5399,11 +5439,11 @@ func _ev_charm(ev: Dictionary) -> void:
 	v.home = target
 	v.home_rot = PI / 2 if str(ev.card.get("position", "atk")) == "def" else 0.0
 	v.z_index = 440
-	var pink := Color(1.0, 0.45, 0.75)
+	var pink := Color(1.0, 0.45, 0.75) if not ev.get("plunder", false) else GOLD
 	Sfx.play("whoosh", 0.8)
 	_ring(v.position, pink, 1.1)
 	if not ev.get("back", false):
-		_float_text(v.position + Vector2(0, -110 if from == "player" else 110), "CHARMED!", pink, 40)
+		_float_text(v.position + Vector2(0, -110 if from == "player" else 110), "PLUNDERED!" if ev.get("plunder", false) else "CHARMED!", pink, 40)
 		for i in 6:   # hearts trailing it across
 			_burst(v.position.lerp(target, i / 5.0), pink, 4, 160, 0.5, i * 0.05)
 	await v.move_to(target, v.home_scale, v.home_rot, 0.55, Tween.TRANS_SINE).finished
@@ -6883,10 +6923,40 @@ func _player_ready() -> void:
 			if can_activate:
 				field.player[slot].pulse_color = TEAL
 			moves += 1
+	_gutter_glow = not _gutter_ready().is_empty()
+	if _gutter_glow:
+		moves += 1
+	queue_redraw()
 	_nudge_next(moves == 0)
 
 
+## Your Gutter's cards that can use a Gutter ability now: [[card, k], ...] (newest first).
+func _gutter_ready() -> Array:
+	var out: Array = []
+	if duel == null or duel.active != "player" or not duel.sides.has("player"):
+		return out
+	var g: Array = duel.sides.player.gutter
+	for i in range(g.size() - 1, -1, -1):
+		var c = g[i]
+		if not c is Dictionary or not c.has("uid"):
+			continue
+		for k in duel.gutter_activations("player", int(c.uid)):
+			if _tut_ok({"kind": "gutter", "uid": int(c.uid), "fx": k}):
+				out.append([c, k])
+	return out
+
+
+## "USE  (2 AUTHORITY)": the button for a Gutter card's k-th Gutter ability.
+func _gutter_label(c: Dictionary, k: int, numbered: bool) -> String:
+	var e: Dictionary = duel.fx_groups(c, "gutter")[k - 1][0]
+	var n: int = maxi(1, int(e.get("cost_n", 1)))
+	var cost: String = {"authority": "%d AUTHORITY" % n, "morale": "%d MORALE" % n, "discard": "DISCARD %d" % n,
+		"sacrifice": "SACRIFICE AN ALLY", "exile_gutter": "EXILE %d OTHER%s" % [n, "" if n == 1 else "S"], "exile_self": "EXILE IT"}.get(str(e.get("cost", "")), "")
+	return "USE%s%s" % [" %d" % k if numbered else "", "  (%s)" % cost if cost != "" else ""]
+
+
 var _next_pulse: Tween = null
+var _gutter_glow := false   # a card in your Gutter can use its Gutter ability (the pile glows teal)
 
 
 ## Nothing left to do this phase: the next-phase / End Turn button breathes gold; anything to do: it's still.
@@ -7146,6 +7216,7 @@ func _playable(c: Dictionary) -> bool:
 
 
 func _clear_highlights() -> void:
+	_gutter_glow = false
 	for v in hand.player:
 		v.glow = 0.0
 	for side in field:
@@ -7302,6 +7373,8 @@ func _update_hover() -> void:
 			if top != "":
 				var shown: Dictionary = CardDB.get_card(top).duplicate()
 				shown.note = "Top of the Gutter · click to see every card in it"
+				if side == "player" and _gutter_glow:
+					shown.note = "A Gutter ability is ready · click your Gutter to use it"
 				shown.uid = "gutter:%s:%s" % [side, top]
 				_show_detail(shown)
 		# The deck and Hideout show that side's card back, with how many cards are in them
@@ -7874,7 +7947,17 @@ func _show_pile(side: String, pile: String) -> void:
 		grid.add_theme_constant_override("h_separation", 8)
 		grid.add_theme_constant_override("v_separation", 8)
 		scroll.add_child(grid)
+		var ready: Array = _gutter_ready() if pile == "gutter" and side == "player" else []
+		if not ready.is_empty():   # (the cards that can act come first)
+			var first: Array = []
+			for r in ready:
+				if not first.has(r[0]):
+					first.append(r[0])
+			cards = first + cards.filter(func(c): return not first.has(c))
+			scroll.custom_minimum_size.y = minf(2.0, ceilf(cards.size() / 6.0)) * (183 + 44)
 		for c in cards:
+			var cell := VBoxContainer.new()
+			cell.add_theme_constant_override("separation", 4)
 			var t := TextureRect.new()
 			t.texture = CardDB.art(str(c.get("art_url", c.get("id", ""))))
 			t.custom_minimum_size = CARD
@@ -7884,7 +7967,24 @@ func _show_pile(side: String, pile: String) -> void:
 			t.tooltip_text = str(c.get("name", ""))
 			var card: Dictionary = c
 			t.mouse_entered.connect(func(): _show_detail(card))
-			grid.add_child(t)
+			cell.add_child(t)
+			var mine := ready.filter(func(r): return r[0] == card)
+			for r in mine:   # this card's Gutter abilities, ready now
+				var b := Button.new()
+				b.text = _gutter_label(card, r[1], mine.size() > 1)
+				b.custom_minimum_size = Vector2(CARD.x, 36)
+				b.add_theme_font_size_override("font_size", 13)
+				b.modulate = Color(0.75, 1.0, 0.95)
+				var act := {"kind": "gutter", "uid": int(card.uid), "fx": r[1]}
+				b.pressed.connect(func():
+					Sfx.play("click")
+					_field_action(act))
+				cell.add_child(b)
+			if not ready.is_empty() and mine.is_empty():
+				var gap := Control.new()
+				gap.custom_minimum_size = Vector2(CARD.x, 36)
+				cell.add_child(gap)
+			grid.add_child(cell)
 	var close := Button.new()
 	close.text = "CLOSE"
 	close.custom_minimum_size = Vector2(200, 40)
