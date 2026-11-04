@@ -51,6 +51,12 @@ const artDir = join(dirname(catalogPath), 'cards');
 const metaPath = join(dirname(catalogPath), 'export.json');
 const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, 'utf8')) : {};
 const changesOnly = meta.changes === true;
+// Two Forge cards with the same card number land in one catalog entry and one picture: the export then
+// holds fewer cards than it says, and importing it would put one card over the other
+if (Number(meta.cards) > Object.keys(exported).length) {
+    fail(`The export says ${meta.cards} cards but holds ${Object.keys(exported).length}: two or more cards share a card number. ` +
+        'Give each card in the Forge its own number (Card number), export again and import that.');
+}
 const FORGE = String(meta.forge || '');   // '' = the first Forge
 const forgeOf = (c) => String(c.forge || '');
 
