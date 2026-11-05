@@ -158,7 +158,7 @@ static func art(id: String) -> Texture2D:
 ## The clan of Neutral cards: they go in any deck (with the leader's clan) and drop from every pack.
 const NEUTRAL := "neutral"
 const BACK_STYLES := {"nebula": "galaxy", "militia": "radar", "wildcard": "roulette", "underworld": "hellfire", "arsonists": "embers",
-		"neutral": "streetlight"}
+		"pirates": "tide", "neutral": "streetlight"}
 
 
 ## How a clan's back moves ("" = it doesn't). A clan without a back of its own wears the generic
