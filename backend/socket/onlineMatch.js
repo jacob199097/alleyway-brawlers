@@ -253,6 +253,14 @@ function createOnlineService(io, deps) {
     async function prepare(playerId) {
         const [setup, profile] = await Promise.all([deps.loadSetup(playerId), deps.loadProfile(playerId)]);
         if (setup.error) throw new Error(setup.error);
+        // The deck's clan and the player's mastery with it (their plate shows it)
+        if (deps.masteryLevel && !profile.bot) {
+            const clan = await deckClan(setup).catch(() => null);
+            if (clan) {
+                profile.clan = clan;
+                profile.clan_level = await deps.masteryLevel(playerId, clan)?.catch?.(() => null) ?? null;
+            }
+        }
         return { playerId, setup, profile };
     }
 
@@ -383,6 +391,7 @@ function createOnlineService(io, deps) {
 
     function profileOf(seat) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
+            clan: seat.profile.clan || null, clan_level: seat.profile.clan_level || null,
             title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {},
             ...(seat.profile.bot ? { bot: true, subtitle: seat.profile.subtitle || 'CPU OPPONENT', ...(seat.profile.stars ? { stars: seat.profile.stars } : {}) } : {}) };   // (a CPU: who it is; a turf gang's stars)
     }
@@ -1031,15 +1040,16 @@ async function loadProfileFromDb(pool, playerId) {
  * and the mp:over result. complete is false if today's rules refuse a recorded move (a replay
  * from an older version of the game); it then stops there.
  */
-async function replaySteps(rec, seat) {
+// viewer: whose eyes ("spectator": a friend watching, both hands hidden); seat: whose side it's seen from
+async function replaySteps(rec, seat, viewer = seat) {
     const { DuelState } = await engine;
     const st = new DuelState(rec.decks, rec.hideouts, rec.leaders, rec.first, rec.seed, rec.rules || {});
     st.start();
     // Snapshots (structuredClone): the view shares objects with the live state, which later moves change
-    const view = () => structuredClone(forSeat(viewFor(st, seat), seat));
+    const view = () => structuredClone(forSeat(viewFor(st, viewer), seat));
     const pack = (events) => ({
         matchId: 'replay', view: view(),
-        events: structuredClone(forSeat(events.map(ev => statsFilter(filterEvent(ev, seat), seat)), seat)),
+        events: structuredClone(forSeat(events.map(ev => statsFilter(filterEvent(ev, viewer), viewer)), seat)),
     });
     const start = { matchId: 'replay', mode: rec.mode, resync: false, replay: true,
         you: rec.profiles[seat], opponent: rec.profiles[other(seat)], view: view() };

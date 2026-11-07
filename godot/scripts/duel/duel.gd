@@ -307,6 +307,10 @@ func _ready() -> void:
 			_build_panel("opponent", $HUD/UI/OppPanel, str(opp.get("username", "RIVAL")).to_upper().left(12),
 				str(opp.get("avatar_url")) if opp.get("avatar_url") else "",
 				"LV %d  ·  %s" % [int(opp.get("level", 1)), str(opp_title).to_upper() if opp_title is String and opp_title != "" else "ONLINE"], int(opp.get("level", 1)))
+	# Each player's mastery with their deck's clan, under their level and title (the server sends it)
+	if not online_start.is_empty() and not _coop and not _ffa:
+		_clan_line($HUD/UI/PlayerPanel, online_start.get("you", {}))
+		_clan_line($HUD/UI/OppPanel, online_start.get("opponent", {}))
 	_build_phase_bar()
 	_build_turn_box()
 	_build_log()
@@ -6977,6 +6981,17 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 
 
 ## stars: a turf map gang's rating (1..5), along the bottom of its picture.
+## "NEBULA  ·  MASTERY 7": a player's mastery with their deck's clan, small, in its colour, on their plate
+func _clan_line(p: Panel, prof) -> void:
+	if not prof is Dictionary or not prof.get("clan") is String or prof.get("clan_level") == null:
+		return
+	var clan := CardDB.clan(str(prof.clan))
+	var l := _label(12, clan.get("color", GOLD), true)
+	l.text = "%s  ·  MASTERY %d" % [str(clan.get("name", prof.clan)).to_upper(), int(prof.clan_level)]
+	l.position = Vector2(92, 66)
+	p.add_child(l)
+
+
 func _build_panel(side: String, p: Panel, display_name: String, avatar: String, subtitle: String, level := 0, stars := 0) -> void:
 	var accent := BLUE if side == "player" else RED
 	# Player plates glow in their side's colour

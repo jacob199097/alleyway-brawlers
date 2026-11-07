@@ -58,18 +58,29 @@ async function saveReplay(rec) {
     }
 }
 
+/** Whether two players are friends (a friend's replays can be watched, as a spectator sees them). */
+async function friends(a, b) {
+    const { rowCount } = await pool.query(
+        `SELECT 1 FROM friendships WHERE status = 'accepted'
+           AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b]);
+    return rowCount > 0;
+}
+
 function createReplayRoutes(replaySteps) {
     const router = express.Router();
 
+    // ?player=<id>: a friend's matches (their profile), seen from their side
     router.get('/', requireAuth, async (req, res) => {
         try {
             await ensureTable();
+            const who = typeof req.query.player === 'string' && /^[0-9a-f-]{36}$/i.test(req.query.player) ? req.query.player : req.playerId;
+            if (who !== req.playerId && !(await friends(req.playerId, who))) return res.status(403).json({ error: "You can only see your friends' matches." });
             const { rows } = await pool.query(
                 `SELECT id, created_at, mode, p1, data->'profiles' AS profiles, data->'end' AS ending
                  FROM   match_replays WHERE p1 = $1 OR p2 = $1
-                 ORDER  BY created_at DESC LIMIT 20`, [req.playerId]);
+                 ORDER  BY created_at DESC LIMIT 20`, [who]);
             res.json(rows.map((r) => {
-                const seat = r.p1 === req.playerId ? 'player' : 'opponent';
+                const seat = r.p1 === who ? 'player' : 'opponent';
                 const foe = seat === 'player' ? 'opponent' : 'player';
                 const end = r.ending || {};
                 return {
@@ -91,8 +102,13 @@ function createReplayRoutes(replaySteps) {
             await ensureTable();
             const { rows } = await pool.query('SELECT p1, p2, data FROM match_replays WHERE id = $1', [req.params.id]);
             const r = rows[0];
-            if (!r || (r.p1 !== req.playerId && r.p2 !== req.playerId)) return res.status(404).json({ error: 'Replay not found.' });
-            res.json(await replaySteps(r.data, r.p1 === req.playerId ? 'player' : 'opponent'));
+            if (!r) return res.status(404).json({ error: 'Replay not found.' });
+            if (r.p1 === req.playerId || r.p2 === req.playerId) return res.json(await replaySteps(r.data, r.p1 === req.playerId ? 'player' : 'opponent'));
+            // A friend's match: from their side, as a spectator sees it (both hands hidden)
+            for (const [pid, seat] of [[r.p1, 'player'], [r.p2, 'opponent']]) {
+                if (pid && await friends(req.playerId, pid)) return res.json(await replaySteps(r.data, seat, 'spectator'));
+            }
+            return res.status(404).json({ error: 'Replay not found.' });
         } catch (err) {
             console.error('[Replays] Load failed:', err.message);
             res.status(500).json({ error: 'Could not load that replay.' });

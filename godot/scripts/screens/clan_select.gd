@@ -134,4 +134,82 @@ func _do_confirm() -> void:
 		UI.toast(self, r.error, UI.RED)
 		return
 	Game.player.chosen_clan = _selected
+	await _pick_avatar()
 	Game.go("main_menu")
+
+
+signal _avatar_done
+
+
+## A new player picks their profile picture: any of the free ones (each clan's leader and starter
+## characters), their own clan's first. SKIP keeps the default; it can be changed any time on the
+## Achievements screen, where more unlock (levels, achievements, clan mastery).
+func _pick_avatar() -> void:
+	var r := await Api.request("GET", "/api/achievements")
+	var keys: Array = []
+	if r.ok and r.data is Dictionary and r.data.get("cosmetics") is Dictionary:
+		keys = r.data.cosmetics.get("avatars", [])
+	if keys.is_empty() or not is_inside_tree():
+		return
+	var mine: Array = []
+	var rest: Array = []
+	var seen := {}
+	for k in keys:   # (each picture once)
+		var src := UI.avatar_source(k)
+		if seen.has(src):
+			continue
+		seen[src] = true
+		var c := CardDB.get_card(src)
+		(mine if str(c.get("clan", "")) == _selected or str(c.get("clanTag", "")) == _selected else rest).append(k)
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0.8)
+	veil.size = Vector2(1920, 1080)
+	add_child(veil)
+	var p := UI.glass(UI.panel(UI.GOLD, Color(0.04, 0.04, 0.1, 0.96)), Color(0.02, 0.02, 0.06, 0.6))
+	p.position = Vector2(230, 90)
+	p.custom_minimum_size = Vector2(1460, 0)
+	add_child(p)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	p.add_child(col)
+	var title := UI.label("PICK YOUR PROFILE PICTURE", 44, UI.GOLD, true)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var sub := UI.label("Other players see it next to your name. More unlock as you play (levels, achievements, clan mastery): change it any time on the Achievements screen.", 20, UI.MUTED)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
+	sub.custom_minimum_size = Vector2(1400, 0)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(sub)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1420, 640)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var grid := HFlowContainer.new()
+	grid.custom_minimum_size = Vector2(1400, 0)
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	scroll.add_child(grid)
+	var busy := [false]
+	for k in mine + rest:
+		var key: String = str(k)
+		var frame := PanelContainer.new()
+		frame.add_theme_stylebox_override("panel", UI.box(Color(0, 0, 0, 0.5), Color(1, 1, 1, 0.25), 2, 10))
+		frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var pic := UI.texture_rect(UI.avatar(key), Vector2(150, 150), true)
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(pic)
+		frame.mouse_entered.connect(func(): frame.add_theme_stylebox_override("panel", UI.box(Color(0, 0, 0, 0.5), UI.GOLD, 3, 10)))
+		frame.mouse_exited.connect(func(): frame.add_theme_stylebox_override("panel", UI.box(Color(0, 0, 0, 0.5), Color(1, 1, 1, 0.25), 2, 10)))
+		frame.gui_input.connect(func(e: InputEvent):
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not busy[0]:
+				busy[0] = true
+				Sfx.play("click")
+				var put := await Api.request("PATCH", "/api/profile/me", {"avatarUrl": key})
+				if put.ok:
+					Game.player.avatar_url = key
+				_avatar_done.emit())
+		grid.add_child(frame)
+	var skip_box := CenterContainer.new()
+	skip_box.add_child(UI.button("SKIP FOR NOW", func(): _avatar_done.emit(), Vector2(300, 56)))
+	col.add_child(skip_box)
+	await _avatar_done

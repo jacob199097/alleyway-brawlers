@@ -5,6 +5,8 @@ const { requireAuth } = require('./middleware');
 const { pool }        = require('../db/pool');
 const achievements    = require('../economy/achievements');
 const { leaderboard } = require('../economy/leaderboard');
+const mastery         = require('../economy/mastery');
+const veterans        = require('../economy/veterans');
 
 // ── GET /api/profile/me ───────────────────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
@@ -29,7 +31,8 @@ router.get('/me', requireAuth, async (req, res) => {
         // Whether today's first-win bonus is still there (decided as economy/postMatch.js does)
         const { first_win_date: fw, ...me } = rows[0];
         const firstWinReady = (fw ? fw.toISOString().slice(0, 10) : null) !== new Date().toISOString().slice(0, 10);
-        res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id) });
+        res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id),
+            most_played: await mastery.mostPlayed(req.playerId).catch(() => null) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -69,7 +72,15 @@ router.get('/player/:id', requireAuth, async (req, res) => {
                     ) AS collection_pct
              FROM players p WHERE p.id = $1`, [id]);
         if (!rows.length) return res.status(404).json({ error: 'Player not found.' });
-        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id) });
+        // Their clan mastery (no reward lists), their best cards (most card XP: economy/veterans.js) and
+        // the clan they play most
+        const ms = (await mastery.overview(id).catch(() => [])).map(m => ({ clan: m.clan, name: m.name, color: m.color, level: m.level,
+            max: m.max, xp: m.xp, floor: m.floor, next: m.next, games: m.games, wins: m.wins }));
+        const vet = await veterans.overview(id).catch(() => ({ cards: {} }));
+        const best = Object.entries(vet.cards).sort((a, b) => b[1].xp - a[1].xp).slice(0, 5)
+            .map(([cardId, v]) => ({ id: cardId, plays: v.plays, wins: v.wins, tier: v.tier }));
+        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id), mastery: ms, best_cards: best,
+            most_played: await mastery.mostPlayed(id).catch(() => null) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

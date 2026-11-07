@@ -2,9 +2,12 @@ extends Screen
 ## Profile: avatar, name, title, rank, level/XP, stats and recent matches. The avatar, title and
 ## card back are chosen on the Achievements screen, which unlocks them.
 ## Opened from the friends list (Game.view_player_id), it shows that friend's profile instead:
-## the same stats, without currencies, the look button or replays.
+## the same stats without currencies or the look button, their clan mastery, best cards and recent
+## matches (watched as a spectator sees them).
 
 var _friend := false
+var _friend_id := ""
+var _p := {}          # the profile shown
 var _views := {}       # tab -> its Control (built when first opened)
 var _tabs := {}
 
@@ -13,6 +16,7 @@ func _ready() -> void:
 	var id := Game.view_player_id
 	Game.view_player_id = ""
 	_friend = id != ""
+	_friend_id = id
 	back_to = "social" if _friend else "main_menu"
 	UI.background(self, "menu_background.jpg", 0.62)
 	Game.play_menu_music()
@@ -31,6 +35,7 @@ func _ready() -> void:
 
 
 func _render(p: Dictionary) -> void:
+	_p = p
 	# The player card: a glass card edged in their clan's colour, the picture framed at the top
 	var clan_col: Color = CardDB.clan(str(p.get("chosen_clan", ""))).get("color", UI.GOLD)
 	var card := UI.glass(UI.panel(Color(clan_col, 0.9), Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.6))
@@ -72,6 +77,12 @@ func _render(p: Dictionary) -> void:
 		lb.add_theme_font_size_override("font_size", 16)
 		rank_row.add_child(lb)
 	left.add_child(rank_row)
+	var mp = p.get("most_played")
+	if mp is Dictionary and mp.has("clan"):   # the clan they play most, and their mastery with it
+		var mc: Color = Color(str(mp.color)) if mp.get("color") is String else CardDB.clan(str(mp.clan)).get("color", UI.GOLD)
+		var most := UI.label("MOST PLAYED  ·  %s  ·  MASTERY LV %d" % [str(mp.get("name", mp.clan)).to_upper(), int(mp.get("level", 1))], 22, mc, true)
+		most.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		left.add_child(most)
 	var lv_box := CenterContainer.new()
 	lv_box.add_child(UI.texture_rect(UI.level_icon(int(p.get("level", 1))), Vector2(120, 120)))
 	left.add_child(lv_box)
@@ -123,12 +134,13 @@ func _render(p: Dictionary) -> void:
 	stats_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stats_view)
 	_views["stats"] = stats_view
-	if not Game.offline and not _friend:
+	if not Game.offline:
 		var bar := HBoxContainer.new()
 		bar.position = Vector2(900, 170)
 		bar.add_theme_constant_override("separation", 12)
 		add_child(bar)
-		for t in [["stats", "STATS"], ["mastery", "CLAN MASTERY"], ["decks", "DECKS"]]:
+		var tabs := [["stats", "STATS"], ["mastery", "CLAN MASTERY"]] + ([] if _friend else [["decks", "DECKS"]])
+		for t in tabs:
 			var b := UI.button(t[1], _tab.bind(t[0]), Vector2(280, 54), UI.BLUE)
 			b.toggle_mode = true
 			b.set_pressed_no_signal(t[0] == "stats")
@@ -158,6 +170,9 @@ func _render(p: Dictionary) -> void:
 	if not Game.offline and not _friend:
 		_recent_matches(stats_view)
 		_showcase(stats_view)
+	elif not Game.offline:   # a friend's: their recent matches (watch them) and their best cards
+		_recent_matches(stats_view, _friend_id)
+		_friend_cards(stats_view, p.get("best_cards", []) if p.get("best_cards") is Array else [])
 
 
 ## A stat's number counting up to what it says ("1200", "63.2%"; anything else is left as it is).
@@ -203,15 +218,19 @@ func _mastery(view: Control) -> void:
 	scroll.add_child(col)
 	var wait := UI.label("Loading…", 22, UI.MUTED)
 	col.add_child(wait)
-	var r := await Api.request("GET", "/api/achievements")
-	if not is_instance_valid(col):
-		return
+	var list: Array = []
+	if _friend:   # (a friend's mastery came with their profile)
+		list = _p.get("mastery", []) if _p.get("mastery") is Array else []
+	else:
+		var r := await Api.request("GET", "/api/achievements")
+		if not is_instance_valid(col):
+			return
+		list = r.data.get("mastery", []) if r.ok and r.data is Dictionary else []
 	wait.queue_free()
-	var list: Array = r.data.get("mastery", []) if r.ok and r.data is Dictionary else []
 	if list.is_empty():
 		col.add_child(UI.label("Clan mastery isn't available right now.", 22, UI.MUTED))
 		return
-	col.add_child(UI.label("Every match levels up the clan your deck is built from: a win 100 XP, anything else 40.", 20, UI.MUTED))
+	col.add_child(UI.label("Every match levels up the clan the deck is built from: a win 100 XP, anything else 40.", 20, UI.MUTED))
 	for m in list:
 		var p := UI.panel(Color(str(m.get("color", "#b388ff"))), Color(0.05, 0.05, 0.12, 0.92))
 		p.custom_minimum_size = Vector2(888, 0)
@@ -241,7 +260,8 @@ func _mastery(view: Control) -> void:
 			if int(rw.level) > int(m.level):
 				coming = "Level %d: %s" % [int(rw.level), _mastery_reward(rw.reward)]
 				break
-		v.add_child(UI.label(("%d / %d XP  ·  Next  %s" % [int(m.xp), int(next), coming]) if next != null else "Mastered: every reward unlocked", 20, Color.WHITE))
+		var line := ("%d / %d XP" % [int(m.xp), int(next)] + ("  ·  Next  %s" % coming if coming != "" else "")) if next != null else "Mastered: every reward unlocked"
+		v.add_child(UI.label(line, 20, Color.WHITE))
 
 
 static func _mastery_reward(r: Dictionary) -> String:
@@ -320,7 +340,31 @@ func _showcase(parent: Control) -> void:
 	CardTile.cascade(row, 0.5)
 
 
-func _recent_matches(parent: Control) -> void:
+## A friend's best cards: the ones they've played most and won most with (card XP), with their records.
+func _friend_cards(parent: Control, best: Array) -> void:
+	var cards: Array = []
+	for b in best:
+		var c := CardDB.get_card(str(b.get("id", "")))
+		if not c.is_empty():
+			cards.append([c, b])
+	if cards.is_empty():
+		return
+	var head := UI.label("THEIR BEST CARDS", 18, UI.GOLD, true)
+	head.position = Vector2(1214, 548)
+	parent.add_child(head)
+	var row: Array = []
+	for i in cards.size():
+		var t := CardTile.make(cards[i][0], Vector2(100, 141))
+		t.position = Vector2(1214 + i * 114, 574)
+		t.zoomed.connect(func(tt): UI.card_zoom(self, tt.card))
+		t.tooltip_text = "%d games · %d wins" % [int(cards[i][1].get("plays", 0)), int(cards[i][1].get("wins", 0))]
+		parent.add_child(t)
+		row.append(t)
+	CardTile.cascade(row, 0.5)
+
+
+## who: a friend's matches (their profile), else your own
+func _recent_matches(parent: Control, who := "") -> void:
 	var head := UI.label("RECENT MATCHES", 26, UI.GOLD, true)
 	head.position = Vector2(900, 700)
 	parent.add_child(head)
@@ -339,7 +383,7 @@ func _recent_matches(parent: Control) -> void:
 	scroll.add_child(list)
 	var spin := UI.label("Loading…", 20, UI.MUTED)
 	list.add_child(spin)
-	var r := await Api.request("GET", "/api/replays")
+	var r := await Api.request("GET", "/api/replays" + ("?player=" + who if who != "" else ""))
 	if not is_instance_valid(list):
 		return
 	spin.queue_free()
@@ -347,7 +391,7 @@ func _recent_matches(parent: Control) -> void:
 		list.add_child(UI.label("Replays aren't available right now.", 20, UI.MUTED))
 		return
 	if r.data.is_empty():
-		list.add_child(UI.label("Play a match and it shows up here, ready to watch again.", 20, UI.MUTED))
+		list.add_child(UI.label("No matches to watch yet." if who != "" else "Play a match and it shows up here, ready to watch again.", 20, UI.MUTED))
 		return
 	for m in r.data:
 		var row := HBoxContainer.new()
@@ -367,7 +411,7 @@ func _recent_matches(parent: Control) -> void:
 		var label_text := "vs %s %s" % [str(opp.get("username", "")), str(m.get("created_at", "")).left(10)]
 		row.add_child(UI.button("SAVE", func(): _save(id, label_text), Vector2(100, 44), UI.GREEN))
 		list.add_child(row)
-	var note := UI.label("The server keeps your last 3 matches. SAVE one to keep it on this computer.", 16, UI.MUTED)
+	var note := UI.label("Watched as a spectator sees it: both hands hidden." if who != "" else "The server keeps your last 3 matches. SAVE one to keep it on this computer.", 16, UI.MUTED)
 	list.add_child(note)
 
 

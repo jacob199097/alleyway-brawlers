@@ -130,4 +130,19 @@ async function titleText(id) {
     return (await rewardAt(m[1], Number(m[2]))).title || null;
 }
 
-module.exports = { record, progress, overview, cosmetics, titleText, LEVELS, REWARDS };
+/** A player's mastery level with one clan (1 if they've never played it). */
+async function level(playerId, clan) {
+    const { rows } = await pool.query('SELECT xp FROM clan_mastery WHERE player_id = $1 AND clan = $2', [playerId, clan]);
+    return levelOf(rows[0]?.xp || 0);
+}
+
+/** The clan a player has played most: {clan, name, color, level, games}, or null before their first match. */
+async function mostPlayed(playerId) {
+    const { rows } = await pool.query('SELECT clan, xp, games FROM clan_mastery WHERE player_id = $1 AND games > 0 ORDER BY games DESC, xp DESC LIMIT 1', [playerId]);
+    if (!rows[0]) return null;
+    const { clanList } = await import('../../shared/clans.js');
+    const c = clanList().find(x => x.id === rows[0].clan);
+    return { clan: rows[0].clan, name: c?.name || rows[0].clan, color: c?.color || null, level: levelOf(rows[0].xp), games: rows[0].games };
+}
+
+module.exports = { record, progress, overview, cosmetics, titleText, level, mostPlayed, LEVELS, REWARDS };

@@ -129,6 +129,7 @@ const online = createOnlineService(io, {
     loadSetup:   (playerId) => loadSetupFromDb(pool, playerId),
     loadProfile: (playerId) => loadProfileFromDb(pool, playerId),
     resolveMatch,
+    masteryLevel: (playerId, clan) => require('./economy/mastery').level(playerId, clan),   // (a player's plate: their deck's clan mastery)
     resolveCpuMatch,
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
     recordVeterans: veterans.record,
