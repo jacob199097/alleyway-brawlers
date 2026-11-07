@@ -399,29 +399,34 @@ func _rematch_box() -> void:
 	col.custom_minimum_size = Vector2(520, 0)
 	col.add_theme_constant_override("separation", 12)
 	add_child(col)
-	# A Ranked match is a best of 3 (backend/socket/onlineMatch.js): the score, and whether the
-	# rematch is its next game or (once it's decided) a friendly match
+	# A Casual or Ranked match and its rematches are a best of 3 (backend/socket/onlineMatch.js): the
+	# score, and whether the rematch is its next game or (once it's decided) none: a new opponent
 	var s = Game.match_result.get("series")
 	var series: Dictionary = s if s is Dictionary else {}
 	var next_game: bool = not series.is_empty() and not series.get("over", false)
+	var ranked: bool = series.get("ranked", true)
 	if not series.is_empty():
 		col.position.y -= 38.0   # (the score above keeps the button where it always is)
 		var you := int(series.get("you", 0))
 		var them := int(series.get("them", 0))
-		var head := "RANKED · BEST OF 3 · %d–%d" % [you, them]
+		var head := "%s · BEST OF 3 · %d–%d" % ["RANKED" if ranked else "CASUAL", you, them]
 		if series.get("over", false):
 			head = ("SERIES WON %d–%d" if you > them else "SERIES LOST %d–%d" if you < them else "SERIES LEVEL %d–%d") % [you, them]
 		var rp := int(series.get("rankPoints", 0))
 		var h := UI.label("%s  ·  %+d RP" % [head, rp] if rp != 0 else head, 26, UI.GOLD if you >= them else UI.RED, true)
 		h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(h)
-	_rematch = UI.button("⚔ RANKED REMATCH · GAME %d" % (int(series.get("game", 0)) + 1) if next_game else "⚔ REMATCH", _ask_rematch, Vector2(520, 72), UI.GOLD)
+	_rematch = UI.button("⚔ REMATCH · GAME %d" % (int(series.get("game", 0)) + 1) if next_game else "⚔ REMATCH", _ask_rematch, Vector2(520, 72), UI.GOLD)
 	col.add_child(_rematch)
 	var note := "Offer your opponent another match (60 s)."
 	if next_game:
-		note = "Want another game? It only happens if you both accept (60 s). Rank Points follow the series score, so stopping here keeps it as it is."
-	elif not series.is_empty():
-		note = "The series is over: a rematch now is a friendly match (60 s)."
+		note = ("Want another game? It only happens if you both accept (60 s). Rank Points follow the series score, so stopping here keeps it as it is." if ranked
+			else "Want another game? It only happens if you both accept (60 s), up to a best of 3.")
+	elif not series.is_empty():   # (decided: no rematch, so nobody farms one opponent)
+		note = "That was the best of 3. BRAWL AGAIN to find a new opponent."
+		_rematch.text = "SERIES OVER"
+		_rematch.disabled = true
+		_rematch_done = true
 	_rematch_note = UI.label(note, 20, UI.MUTED)
 	_rematch_note.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_rematch_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -466,7 +471,7 @@ func _on_net(name: String, data) -> void:
 			_rematch.disabled = false
 			_rematch.text = "✓ ACCEPT REMATCH"
 			var who := str(data.get("fromUsername", "Your opponent"))
-			_rematch_note.text = "%s is waiting: accept to play game %d of the series." % [who, int(data.get("game", 2))] if data.get("ranked", false) \
+			_rematch_note.text = "%s is waiting: accept to play game %d of the series." % [who, int(data.get("game", 2))] if data.get("series", data.get("ranked", false)) \
 				else "%s is waiting: accept to play again." % who
 			_rematch_note.label_settings.font_color = UI.GOLD
 		"mp:rematch_sent":

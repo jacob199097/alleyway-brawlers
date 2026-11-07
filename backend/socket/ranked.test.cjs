@@ -2,7 +2,7 @@
 // Ranked Brawl is player against player only (onlineMatch.js): its own queue (never matched with
 // Casual), from level 5, Rank Points in the result; the old Ranked-vs-CPU request is refused.
 // A Ranked match and its rematches are a best of 3: Rank Points follow the series score, and once
-// it is decided a rematch is friendly.
+// it is decided there is no rematch (find another player).
 const path = require('path');
 const { createOnlineService } = require(path.join(__dirname, 'onlineMatch.js'));
 
@@ -110,11 +110,12 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     await game(r1, r2, 3);
     check(series(r1)?.game === 3 && series(r1).you === 2 && series(r1).over, 'game 3 to rhea: she wins the series 2-1');
     check(series(r1).rankPoints === 25 && series(r2).rankPoints === -10, 'one series win\'s Rank Points in all (+25 / -10)');
-    const before = nth(r1, 'mp:rps');
+    const before = nth(r1, 'mp:rps'), offers = nth(r1, 'mp:rematch_offer');
     r2.handlers['mp:rematch']();
-    check(last(r1, 'mp:rematch_offer')?.ranked === false, 'once decided, the rematch offered is friendly');
-    r1.handlers['mp:rematch']();
-    check(await until(() => nth(r1, 'mp:rps') > before) && last(r1, 'mp:rps').mode === 'friendly', 'and it is');
+    check(nth(r1, 'mp:rematch_offer') === offers, 'once decided, no rematch is offered');
+    check(/best of 3/.test(last(r2, 'mp:rematch_declined')?.message || ''), 'remy is told to find a new opponent');
+    await wait(100);
+    check(nth(r1, 'mp:rps') === before, 'and no match starts');
 
     console.log(bad ? `\n${bad} check(s) failed` : '\nRanked queue: all good');
     process.exit(bad ? 1 : 0);

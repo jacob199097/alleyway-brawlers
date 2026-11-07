@@ -326,6 +326,10 @@ func allow(a: Dictionary) -> bool:
 func permits(a: Dictionary) -> bool:
 	if not active:
 		return true
+	# The opening hand's KEEP is fine whenever it's asked: pressed before the lesson about it comes up,
+	# that step is simply done when it's reached (refusing it closed the question and soft-locked the lesson)
+	if a.get("kind") == "choose" and a.get("option") == "keep" and str(d.pending.get("key", "")) == "mulligan":
+		return true
 	var st: Dictionary = steps[index]
 	return st.type == DO and st.allow.call(a)
 

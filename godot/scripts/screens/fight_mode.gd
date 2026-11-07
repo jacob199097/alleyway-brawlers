@@ -38,7 +38,7 @@ func _ready() -> void:
 			"sub": "Online vs another player\nNo Rank Points at stake",
 			"locked": Game.offline, "lock_text": "Needs the server"},
 		{"id": "ranked", "title": "RANKED BRAWL", "color": UI.GOLD,
-			"sub": "Best of 3 vs another player\nWin Rank Points, lose some" if level >= 5 else "Unlocks at Level 5 (you are Lv %d)" % level,
+			"sub": "Online vs another player\nWin Rank Points, lose some" if level >= 5 else "Unlocks at Level 5 (you are Lv %d)" % level,
 			"locked": Game.offline or level < 5, "lock_text": "Needs the server" if Game.offline else "Locked until Level 5"},
 		{"id": "cpu", "title": "VS CPU", "color": Color("b388ff"),
 			"sub": "Practice against the AI" + ("\nOffline: starter deck, no rewards" if Game.offline else ""),

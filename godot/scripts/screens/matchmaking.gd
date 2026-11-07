@@ -35,7 +35,7 @@ func _ready() -> void:
 	_clock = UI.label("", 30, UI.MUTED, true)
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_clock)
-	var hint := UI.label("You'll play another player with your active deck.\n" + ("A best of 3: win the series to earn Rank Points; losing it costs some." if ranked \
+	var hint := UI.label("You'll play another player with your active deck.\n" + ("Win to earn Rank Points; a loss costs some." if ranked \
 		else "Casual matches don't change your Rank Points."), 22, UI.MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(hint)
