@@ -32,6 +32,7 @@ const LIST := {
 	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
 	"PLUNDER": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
 	"PLUNDERS": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
+	"INFILTRATE": [Color("9fe870"), "INFILTRATE: it can attack your opponent directly, even while they have standing characters (and past a Guard)."],
 	"CHARM": [Color("ff6fb5"), "CHARM: you take control of an enemy character until the end of the turn. It can attack for you, then goes back to its owner."],
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],
 	"EXILE": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],

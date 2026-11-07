@@ -186,6 +186,9 @@ export class DuelState {
             const leaderId = leaders[side] || '';
             const leader = leaderId !== '' ? this.makeCard(leaderId) : null;
             if (leader) leader.influence = leader.influence != null ? toInt(leader.influence) : leader.base_defense;   // (Forge leaders set it; else DEF)
+            // rules.leader_influence {seat: k}: that seat's leader starts with k times its Influence (a Turf Defense boss)
+            const lk = Number((this.rules.leader_influence || {})[side]) || 0;
+            if (leader && lk > 0) leader.influence = Math.round(leader.influence * lk);
             if (leader) leader.influence_max = leader.influence;
             const morale = toInt((this.rules.morale || {})[side]) || toInt(this.rules.start_morale) || START_MORALE;
             this.sides[side] = {
@@ -678,8 +681,9 @@ export class DuelState {
     }
 
     // Any enemy character; DIRECT when none is still standing (empty row or only Downed);
-    // the enemy LEADER whenever it is dormant. foe: which opponent (FFA; default: the first one)
-    attackTargets(side, foe = null) {
+    // the enemy LEADER whenever it is dormant. foe: which opponent (FFA; default: the first one).
+    // from: the attacker's slot: INFILTRATE lets it attack DIRECT anyway (even past a Guard)
+    attackTargets(side, foe = null, from = null) {
         foe = foe ?? this.foesOf(side)[0];
         if (foe == null || foe === side || !this.sides[foe] || this.sides[foe].out) return [];
         const foes = this.characters(foe).filter(e => !this.inStasis(e.card));
@@ -688,9 +692,11 @@ export class DuelState {
         const pool = open.length ? open : foes;
         // A standing Guard must be attacked first
         const guards = pool.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'guard'));
-        if (guards.length) return guards.map(e => e.slot);
+        const att = from == null ? null : this.cardAt(side, from);
+        const sneak = att != null && this._passive(side, from, att, 'infiltrate') != null;
+        if (guards.length) return guards.map(e => e.slot).concat(sneak ? [DIRECT] : []);
         const targets = pool.map(e => e.slot);
-        if (!foes.some(e => !e.card.downed)) targets.push(DIRECT);
+        if (sneak || !foes.some(e => !e.card.downed)) targets.push(DIRECT);
         if (this.leaderDormant(foe)) targets.push(LEADER);
         return targets;
     }
@@ -1116,7 +1122,7 @@ export class DuelState {
     _attack(side, from, target, foe = null) {
         foe = foe ?? this.foesOf(side)[0];
         if (foe == null || !this.foesOf(side).includes(foe)) return false;
-        if (!this.canAttackWith(side, from) || !this.attackTargets(side, foe).includes(target)) return false;
+        if (!this.canAttackWith(side, from) || !this.attackTargets(side, foe, from).includes(target)) return false;
         const att = this.cardAt(side, from);
         att.has_attacked = true;
         // Attacks twice each turn: the first attack leaves it ready for one more
@@ -1273,6 +1279,7 @@ export class DuelState {
     }
 
     _atkResolve(ctx) {
+        this._recalc();   // (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
             const dmg = Math.max(0, att.attack + ctx.bonus);
@@ -3013,6 +3020,9 @@ export class DuelState {
             for (const x of entries) this._effect(side, c, fn(x), slot);
         } else if (target === 'ally' || target === 'enemy') {
             entries.sort((a, b) => {
+                // ("when your opponent deploys": the character just deployed comes first)
+                const da = vs.deployed != null && a.card === vs.deployed ? 1 : 0, db = vs.deployed != null && b.card === vs.deployed ? 1 : 0;
+                if (da !== db) return db - da;
                 const va = this._targetValue(side, e, a), vb = this._targetValue(side, e, b);
                 return va !== vb ? vb - va : (this.seats.indexOf(a.side) - this.seats.indexOf(b.side)) || a.slot - b.slot;
             });
@@ -3373,8 +3383,9 @@ export class DuelState {
             s.authority = s.authority_max;
             this._authEv(this.active, 1);
         }
-        // Going second (or later) is a disadvantage; one extra Authority on that player's first turn
-        if (s.turns === 1 && this.active !== this.first && SECOND_PLAYER_AUTHORITY > 0) {
+        // Going second is a disadvantage in a duel: one extra Authority on that player's first turn. Not in a
+        // free-for-all (or Turf Defense): nobody attacks in the first round, so going later is no handicap
+        if (s.turns === 1 && this.active !== this.first && SECOND_PLAYER_AUTHORITY > 0 && !this.ffa) {
             s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY;
             this._authEv(this.active, SECOND_PLAYER_AUTHORITY);
         }

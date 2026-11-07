@@ -267,7 +267,7 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 		for foe in d.foes_of(side):
 			# FFA: a little extra for hitting whoever is weakest, so the CPU closes players out
 			var focus: float = (6000.0 - d.sides[foe].morale) / 6000.0 if d.ffa else 0.0
-			for t in d.attack_targets(side, foe):
+			for t in d.attack_targets(side, foe, slot):
 				var score := 0.0
 				if t == DuelState.DIRECT:
 					# Finish the game (or a player) if this hit does it; otherwise chip their morale

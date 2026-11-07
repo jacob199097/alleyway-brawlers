@@ -269,7 +269,7 @@ function brawl(d, side, level) {
         for (const foe of d.foesOf(side)) {
             // FFA: a little extra for hitting whoever is weakest, so the CPU closes players out
             const focus = d.ffa ? (6000 - d.sides[foe].morale) / 6000 : 0;
-            for (const t of d.attackTargets(side, foe)) {
+            for (const t of d.attackTargets(side, foe, slot)) {
                 let score;
                 if (t === DIRECT) {
                     // Finish the game (or a player) if this hit does it; otherwise chip their morale

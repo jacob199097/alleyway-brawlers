@@ -202,6 +202,9 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "plunder", "from": "hand"}, {"when": "attack", "do": "plunder", "from": "gutter", "choose": true}],
 	[{"when": "deploy", "do": "plunder", "from": "deck", "amount": 2}, {"when": "ko", "do": "plunder", "from": "hand", "choose": true}],
 	[{"when": "activate", "do": "plunder", "from": "field", "target": "enemy", "cost": "authority", "cost_n": 3}, {"when": "turn_end", "do": "plunder", "from": "gutter", "kind": "gang_member", "once": true}],
+	# INFILTRATE: attacks directly past standing characters and Guards
+	[{"when": "passive", "do": "infiltrate"}, {"when": "direct", "do": "draw", "amount": 1}],
+	[{"when": "passive", "do": "infiltrate"}, {"when": "passive", "do": "guard"}],
 	# Gutter abilities (used from your Gutter on your turn, once a turn; exile_self: the card leaves the game)
 	[{"when": "gutter", "do": "damage", "amount": 300, "cost": "exile_self"}, {"when": "deploy", "do": "mill_self", "amount": 2}],
 	[{"when": "gutter", "do": "draw", "amount": 1, "cost": "authority", "cost_n": 2}, {"when": "attack", "do": "buff", "target": "self", "atk": 300}],
@@ -291,7 +294,7 @@ const LEADER_SAMPLES := [
 
 
 ## Turf Defense (both players, then the boss; see shared/duel/turf.test.mjs)
-const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000},
+const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000}, "leader_influence": {"boss": 2.0},
 	"boss": {"seat": "boss", "name": "Test Boss", "draw": 2, "authority": 1, "phases": [
 		{"below": 6600, "label": "ENRAGED", "fx": [{"do": "buff", "target": "allies", "atk": 400, "until": "forever"}, {"do": "heal", "amount": 500}]},
 		{"below": 3300, "label": "LAST STAND", "fx": [{"do": "damage", "amount": 600, "each_foe": true}, {"do": "draw", "amount": 2}]}]}}

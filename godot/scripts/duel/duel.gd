@@ -7936,7 +7936,7 @@ func _tut_card_ok(uid: int) -> bool:
 func _tut_attack_ok(slot: int) -> bool:
 	if _tutorial == null or not _tutorial.active:
 		return true
-	return duel.attack_targets("player").any(func(t): return _tutorial.permits({"kind": "attack", "from": slot, "target": t}))
+	return duel.attack_targets("player", "", slot).any(func(t): return _tutorial.permits({"kind": "attack", "from": slot, "target": t}))
 
 
 func _field_action(action: Dictionary) -> void:
@@ -7954,7 +7954,7 @@ func _begin_target(slot: int) -> void:
 	if _ffa:
 		_begin_target_ffa(slot)
 		return
-	var targets: Array = duel.attack_targets("player").filter(func(t): return _tut_ok({"kind": "attack", "from": slot, "target": t}))
+	var targets: Array = duel.attack_targets("player", "", slot).filter(func(t): return _tut_ok({"kind": "attack", "from": slot, "target": t}))
 	for t in targets:
 		if t >= 0:
 			_valid["opponent:%d" % t] = RED
@@ -8655,7 +8655,7 @@ static func _place_text(place: int) -> String:
 func _begin_target_ffa(slot: int) -> void:
 	var parts := {}
 	for foe in duel.foes_of("player"):
-		var targets: Array = duel.attack_targets("player", foe)
+		var targets: Array = duel.attack_targets("player", foe, slot)
 		for t in targets:
 			if t >= 0:
 				_valid["%s:%d" % [foe, t]] = RED

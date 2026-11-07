@@ -63,6 +63,7 @@ export function turfRules(boss, level) {
         order: SEATS,
         teams: { p1: 'crew', p2: 'crew', boss: 'boss' },
         morale: { boss: lv.morale },
+        leader_influence: { boss: lv.influence || 1 },   // (its leader's Influence, times this)
         boss: { seat: 'boss', name: boss.name, draw: lv.draw || 0, authority: lv.authority || 0, phases: lv.phases || [] },
     };
 }
@@ -73,7 +74,7 @@ export function bossInfo(boss, level) {
     return {
         id: boss.id, clan: boss.clan, name: boss.name, short: boss.short || boss.name, title: boss.title, color: boss.color, arena: boss.arena,
         portrait: boss.portrait, prize: boss.prize, lines: boss.lines,
-        level: lv.level, level_name: lv.name, morale: lv.morale, draw: lv.draw || 0, authority: lv.authority || 0,
+        level: lv.level, level_name: lv.name, morale: lv.morale, draw: lv.draw || 0, authority: lv.authority || 0, influence: lv.influence || 1,
         phases: (lv.phases || []).map(p => ({ below: p.below, label: p.label })),
     };
 }

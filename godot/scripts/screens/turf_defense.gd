@@ -435,6 +435,8 @@ func _stat_line(lv: Dictionary) -> String:
 		bits.append("DRAWS %d EXTRA" % int(lv.draw))
 	if int(lv.get("authority", 0)) > 0:
 		bits.append("+%d AUTHORITY A TURN" % int(lv.authority))
+	if float(lv.get("influence", 1)) > 1.0:
+		bits.append("LEADER INFLUENCE ×%s" % str(lv.influence).trim_suffix(".0"))
 	return "  ·  ".join(bits)
 
 

@@ -139,7 +139,7 @@ for (let i = 0; i < 6; i++) {
     while (st.active && st.pending.kind === 'discard') st.doAction(st.pending.side, { kind: 'discard', uid: st.sides[st.pending.side].hand[0].uid });
     while (st.phase !== 'deployment' && st.canAct(st.active)) st.doAction(st.active, { kind: 'next' });
 }
-assert.deepEqual(firstTurn, { p1: 1, p2: 2, p3: 2, p4: 2 }, 'going later: one extra Authority on the first turn');
+assert.deepEqual(firstTurn, { p1: 1, p2: 1, p3: 1, p4: 1 }, 'going later: no extra Authority (nobody attacks in the first round)');
 assert.equal(st.sides.p1.authority_max, 2, "p1's second turn: 2 max Authority");
 
 // ── Whole CPU games, 3 and 4 players, to the end ──

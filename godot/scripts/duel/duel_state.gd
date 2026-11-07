@@ -122,6 +122,10 @@ func _init(decks: Dictionary, hideouts: Dictionary, leaders: Dictionary, first :
 		var leader = make_card(leader_id) if leader_id != "" else null
 		if leader != null:
 			leader.influence = int(leader.influence) if leader.get("influence") != null else leader.base_defense   # (Forge leaders set it; else DEF)
+			# rules.leader_influence {seat: k}: that seat's leader starts with k times its Influence (a Turf Defense boss)
+			var lk: float = float(rules.get("leader_influence", {}).get(side, 0)) if rules.get("leader_influence") is Dictionary else 0.0
+			if lk > 0.0:
+				leader.influence = int(round(int(leader.influence) * lk))
 			leader.influence_max = leader.influence
 		var morale: int = int(rules.get("morale", {}).get(side, 0)) if rules.get("morale") is Dictionary else 0
 		if morale <= 0:
@@ -778,7 +782,8 @@ func can_attack_with(side: String, slot: int) -> bool:
 ## Attack targets: any enemy character; DIRECT when none of them is still standing (an empty
 ## front row, or only Downed characters); and the enemy LEADER whenever it is dormant.
 ## foe: which opponent (FFA; default: the first one)
-func attack_targets(side: String, foe := "") -> Array:
+## from: the attacker's slot: INFILTRATE lets it attack DIRECT anyway (even past a Guard)
+func attack_targets(side: String, foe := "", from := -100) -> Array:
 	if foe == "":
 		var all_foes := foes_of(side)
 		foe = all_foes[0] if not all_foes.is_empty() else ""
@@ -791,10 +796,15 @@ func attack_targets(side: String, foe := "") -> Array:
 	var pool: Array = open if not open.is_empty() else foes
 	# A standing Guard must be attacked first
 	var guards := pool.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "guard").is_empty())
+	var att = card_at(side, from) if from in FRONT else null
+	var sneak: bool = att != null and not _passive(side, from, att, "infiltrate").is_empty()
 	if not guards.is_empty():
-		return guards.map(func(e): return e.slot)
+		var g: Array = guards.map(func(e): return e.slot)
+		if sneak:
+			g.append(DIRECT)
+		return g
 	var targets: Array = pool.map(func(e): return e.slot)
-	if not foes.any(func(e): return not e.card.downed):
+	if sneak or not foes.any(func(e): return not e.card.downed):
 		targets.append(DIRECT)
 	if leader_dormant(foe):
 		targets.append(LEADER)
@@ -1286,7 +1296,7 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		foe = foes[0] if not foes.is_empty() else ""
 	if foe == "" or not foe in foes:
 		return false
-	if not can_attack_with(side, from) or not target in attack_targets(side, foe):
+	if not can_attack_with(side, from) or not target in attack_targets(side, foe, from):
 		return false
 	var att: Dictionary = card_at(side, from)
 	att.has_attacked = true
@@ -1485,6 +1495,7 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 
 
 func _atk_resolve(ctx: Dictionary) -> void:
+	_recalc()   # (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
 	var side: String = ctx.side
 	var foe: String = ctx.foe
 	var from: int = ctx.from
@@ -3430,6 +3441,11 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 			_effect(side, c, fn.call(x), slot)
 	elif target == "ally" or target == "enemy":
 		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
+			# ("when your opponent deploys": the character just deployed comes first)
+			var da: bool = vs.get("deployed") is Dictionary and is_same(a.card, vs.deployed)
+			var db: bool = vs.get("deployed") is Dictionary and is_same(b.card, vs.deployed)
+			if da != db:
+				return da
 			var va := _target_value(side, e, a)
 			var vb := _target_value(side, e, b)
 			if va != vb:
@@ -3910,8 +3926,9 @@ func _begin_turn() -> void:
 		s.authority = s.authority_max
 		_auth_ev(active, 1)
 	# Going second (or later) is a disadvantage (in CPU mirror matches the first player won ~70%);
-	# one extra Authority on that player's first turn brings it close to even
-	if s.turns == 1 and active != first_seat and SECOND_PLAYER_AUTHORITY > 0:
+	# one extra Authority on that player's first turn brings it close to even. Not in a free-for-all (or
+	# Turf Defense): nobody attacks in the first round, so going later is no handicap
+	if s.turns == 1 and active != first_seat and SECOND_PLAYER_AUTHORITY > 0 and not ffa:
 		s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY
 		_auth_ev(active, SECOND_PLAYER_AUTHORITY)
 	if turn > 1:
