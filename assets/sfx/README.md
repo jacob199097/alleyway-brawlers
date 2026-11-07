@@ -80,6 +80,9 @@ matched to what they replaced), with silence trimmed off the start; the .m4a mus
 | `legendary` | A Legendary card lands (after its entrance) | **wanted** (uses a near sound until then) |
 | `ignite` | Arsonists: a Molotov's rag catches as it's lit | **wanted** (uses a near sound until then) |
 | `glass_smash` | Arsonists: the Molotov smashes on its target | **wanted** (uses a near sound until then) |
+| `cannon` | Pirates: the ship's cannon fires | **wanted** (uses a near sound until then) |
+| `splash` | Pirates: a wave bursts up as a character arrives, or closes over one that sinks | **wanted** (uses a near sound until then) |
+| `creak` | Pirates: the cannon's wooden carriage rolls up | **wanted** (uses a near sound until then) |
 | `fire_roar` | Arsonists: the wall of fire roars up (summon); a card bursts into flame (KO) | **wanted** (uses a near sound until then) |
 | `chat_message` | A friend's chat message pops up (the chat tab, bottom right) | **wanted** (uses a near sound until then) |
 | `friend_online` | A friend comes online (the pop-up) | **wanted** (uses a near sound until then) |

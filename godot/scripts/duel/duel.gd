@@ -77,12 +77,16 @@ const REPLAY_GAP := 0.35   # seconds between moves when watching a replay
 ## ko "blast": blown up, the card thrown spinning and blackened, a smoking scorch mark left (Militia);
 ## ko "fold": the card bursts into a hand of playing cards that fan out and scatter (Wildcard);
 ## ko "rift": the ground cracks open under the card and it's pulled down into it, souls escaping (Underworld).
+## attack "cannon": a ship's cannon rolls up in front of the card, its fuse fizzes and it fires a cannonball
+## across that smashes into the target in splinters and smoke (Pirates); summon "wave": a pool of sea water
+## opens, a wave bursts up and the character rises out of it, streaming water; ko "sink": a whirlpool opens
+## under the card and it spins down into it, bubbles rising, the water closing over it.
 ## Neutral cards (any deck) fight like the street: summon "spotlight" (a streetlamp flickers on and the card
 ## drops into its light), attack "brawl" (a charging haymaker, a comic-book POW! on contact), ko "knockout"
 ## (K.O.!, sent spinning, cartoon stars circling where it stood).
 const CLAN_STYLE := {"nebula": {"attack": "laser", "summon": "warp", "ko": "stardust"}, "militia": {"attack": "guns", "summon": "airdrop", "ko": "blast"},
 	"wildcard": {"attack": "cards", "summon": "deal", "ko": "fold"}, "underworld": {"attack": "skulls", "summon": "grave", "ko": "rift"},
-	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}, "neutral": {"attack": "brawl", "summon": "spotlight", "ko": "knockout"}}
+	"arsonists": {"attack": "molotov", "summon": "firewall", "ko": "ash"}, "pirates": {"attack": "cannon", "summon": "wave", "ko": "sink"}, "neutral": {"attack": "brawl", "summon": "spotlight", "ko": "knockout"}}
 const FX_RIFT := preload("res://shaders/fx_rift.gdshader")
 const FX_FIRE := preload("res://shaders/fx_fire.gdshader")
 const FX_COMET := preload("res://shaders/fx_comet.gdshader")
@@ -2248,6 +2252,8 @@ func _ev_summon(ev: Dictionary) -> void:
 			await _deal_in(v, target, heavy)
 		elif _clan_style(c, "summon") == "firewall":
 			await _firewall_in(v, target, heavy)
+		elif _clan_style(c, "summon") == "wave":
+			await _wave_in(v, target, heavy)
 		elif _clan_style(c, "summon") == "spotlight":
 			await _spotlight_in(v, target, heavy)
 		else:
@@ -2482,6 +2488,8 @@ func _ev_clash(ev: Dictionary) -> void:
 		await _skull_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "molotov":
 		await _molotov_strike(a, d, tpos, dir, big, direct)
+	elif _clan_style(a.card, "attack") == "cannon":
+		await _cannon_strike(a, d, tpos, dir, big, direct)
 	elif _clan_style(a.card, "attack") == "brawl":
 		await _brawl_strike(a, d, tpos, dir, big, direct)
 	else:
@@ -3159,6 +3167,300 @@ func _molotov_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big:
 	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
 
 
+## Pirates attack: a ship's cannon rolls up in front of the attacker and swings round to aim, its fuse
+## fizzes, and it fires: a muzzle flash and a cloud of smoke as it kicks back, the cannonball flying across
+## trailing smoke, smashing into the target in wood splinters, sparks and smoke. A big hit: a bigger gun.
+func _cannon_strike(a: CardView, d: CardView, tpos: Vector2, dir: Vector2, big: bool, direct: bool) -> void:
+	var k := 1.6 if big else 1.35
+	# It rolls up beside the attacker, on the side away from the target so its barrel leans across toward it
+	var size := CardView.SIZE * a.board_scale
+	var side := -1.0 if tpos.x >= a.home.x - 4.0 else 1.0
+	var spot := a.home + Vector2(side * (size.x * 0.5 + 40.0 * k), signf(dir.y) * size.y * 0.18)
+	var gun := Cannon.new()
+	gun.position = spot
+	gun.z_index = 72
+	gun.flip = side > 0.0   # (on the right: it faces left)
+	fx.add_child(gun)
+	gun.aim_at(tpos)
+	gun.scale = Vector2.ZERO
+	_cam_focus(a.home.lerp(tpos, 0.4), 1.05 if big else 1.03, 0.3)
+	Sfx.play("creak", 0.9, -4.0)
+	var t := create_tween().set_parallel()
+	t.tween_property(gun, "scale", Vector2.ONE * k, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position", a.home - dir * 30.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_smoke_puff(spot + Vector2(0, 24.0 * k), 60.0 * k, Color(0.5, 0.48, 0.42))   # (dust as it rolls up)
+	await t.finished
+	_clear_attack_line()
+	# The fuse fizzes at the back of the barrel
+	var fuse := gun.breech()
+	Sfx.play("ignite", 1.3, -6.0)
+	for i in 4:
+		get_tree().create_timer(i * 0.07).timeout.connect(func(): _sparks(fuse, Vector2.UP, Color(1.0, 0.8, 0.35), 5, 70.0))
+	await _wait(0.32)
+	# Fire
+	var muzzle := gun.muzzle()
+	Sfx.play("cannon", 0.85 if big else 1.0, 0.0)
+	Sfx.play("boom", 1.2, -6.0)
+	shake(14.0 if big else 9.0)
+	_flame_burst(muzzle, 70.0 * k, Color(1.0, 0.95, 0.7), Color(1.0, 0.5, 0.15), 0.25)
+	_smoke_puff(muzzle, 110.0 * k, Color(0.62, 0.62, 0.6))
+	_ring(muzzle, Color(1.0, 0.85, 0.55), 0.7)
+	gun.kick()
+	var ball := Cannonball.new()
+	ball.position = muzzle
+	ball.z_index = 73
+	ball.scale = Vector2.ONE * k * 0.9
+	fx.add_child(ball)
+	var trail := CPUParticles2D.new()   # (smoke behind it)
+	trail.local_coords = false
+	trail.amount = 30
+	trail.lifetime = 0.6
+	trail.texture = ArenaLife._soft_dot()
+	trail.spread = 25.0
+	trail.initial_velocity_min = 5.0
+	trail.initial_velocity_max = 20.0
+	trail.gravity = Vector2(0, -30)
+	trail.scale_amount_min = 0.25
+	trail.scale_amount_max = 0.5
+	var g := Gradient.new()
+	g.set_color(0, Color(0.75, 0.75, 0.72, 0.55))
+	g.set_color(1, Color(0.4, 0.4, 0.4, 0.0))
+	trail.color_ramp = g
+	ball.add_child(trail)
+	var lob := minf(70.0, muzzle.distance_to(tpos) * 0.12)
+	var fly := create_tween()
+	fly.tween_method(func(q: float):
+		ball.position = muzzle.lerp(tpos, q) + Vector2(0, -lob * 4.0 * q * (1.0 - q))
+		ball.rotation += 0.3, 0.0, 1.0, 0.3 if big else 0.26)
+	await fly.finished
+	ball.position = tpos
+	trail.emitting = false
+	ball.get_child(0).reparent(fx)   # (the smoke trail lingers as the ball goes)
+	var left := trail
+	get_tree().create_timer(0.7).timeout.connect(func(): if is_instance_valid(left): left.queue_free())
+	ball.queue_free()
+	# Impact
+	_strike_at = tpos
+	_strike_time = _game_time
+	Sfx.play("hit", 0.85 if direct else 1.0, -2.0)
+	Sfx.play("boom", 0.8 if big else 1.0, 0.0 if big else -4.0)
+	shake(24.0 if big else 14.0)
+	_shockwave(tpos, 0.9 if big else 0.55)
+	_post_pulse("aberration", 10.0 if big else 5.0, 0.4)
+	_flame_burst(tpos, 80.0 * k, Color(1.0, 0.9, 0.6), Color(1.0, 0.45, 0.12), 0.3)
+	_shards(tpos, dir, 16 if big else 10, [Color(0.55, 0.38, 0.22, 1.0), Color(0.42, 0.28, 0.16, 0.9), Color(0.25, 0.17, 0.1, 0.0)])   # (splinters)
+	_sparks(tpos, dir, Color(1.0, 0.75, 0.35), 18 if big else 12, 70.0)
+	_smoke_puff(tpos, 130.0 * k, Color(0.3, 0.3, 0.3))
+	_ring(tpos, Color(0.35, 0.95, 0.85), 1.5 if big else 1.2)
+	if d:
+		d.flash()
+		d.kick(dir, 30.0 if big else 22.0)
+		var push := create_tween()
+		push.tween_property(d, "position", d.home + dir * (30.0 if big else 18.0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		push.tween_property(d, "position", d.home, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	if big:
+		_impact_frame(0.06)
+	a.create_tween().tween_property(a, "rotation", a.home_rot, 0.2)
+	var gone := gun.create_tween()   # (the cannon rolls away into its smoke)
+	gone.tween_interval(0.35)
+	gone.tween_property(gun, "modulate:a", 0.0, 0.35)
+	gone.tween_callback(gun.queue_free)
+
+
+## Pirates summon: a pool of dark sea water opens in the slot, a wave bursts up out of it and the
+## character rises through it, streaming water, ripples spreading as it settles.
+func _wave_in(v: CardView, target: Vector2, heavy: bool) -> void:
+	var sea := Color(0.2, 0.85, 0.8)
+	var foam := Color(0.85, 1.0, 0.98)
+	var k := 1.25 if heavy else 1.0
+	if heavy:
+		_cam_focus(target, 1.07, 0.3)
+	var size := CardView.SIZE * v.board_scale
+	var pool := Sprite2D.new()   # (the water, seen at an angle: a flattened disc)
+	pool.texture = ArenaLife._soft_dot()
+	pool.position = target + Vector2(0, size.y * 0.25)
+	pool.modulate = Color(0.04, 0.3, 0.34, 0.0)
+	pool.z_index = v.z_index - 1
+	cards_layer.add_child(pool)
+	var pk := size.x / 64.0 * 2.2 * k
+	var open := pool.create_tween().set_parallel()
+	open.tween_property(pool, "scale", Vector2(pk, pk * 0.5), 0.3).from(Vector2.ZERO).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	open.tween_property(pool, "modulate:a", 0.85, 0.2)
+	Sfx.play("splash", 0.9, -3.0)
+	for i in 3:   # (ripples)
+		get_tree().create_timer(i * 0.12).timeout.connect(func(): _ring(pool.position, sea, 1.1 + i * 0.25))
+	await _wait(0.25)
+	# The wave bursts up
+	Sfx.play("splash", 1.15, -1.0)
+	shake(5.0 if heavy else 3.0)
+	_water_spray(pool.position, size.x * 0.9 * k, 70 if heavy else 50, sea, foam)
+	# ...and the character rises out of it, wet and dark, brightening as it clears the water
+	v.position = target + Vector2(0, size.y * 0.55)
+	v.rotation = v.home_rot
+	v.scale = Vector2.ONE * 0.8 * v.board_scale
+	v.modulate = Color(0.25, 0.6, 0.65, 0.0)
+	var rise := create_tween().set_parallel()
+	rise.tween_property(v, "modulate:a", 1.0, 0.15)
+	rise.tween_property(v, "position", target + Vector2(0, -22.0 * k), 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rise.tween_property(v, "scale", Vector2.ONE * 1.06 * v.board_scale, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rise.tween_property(v, "modulate", Color.WHITE, 0.45).set_delay(0.15)
+	await rise.finished
+	_drips(v.position, size)
+	var land := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	land.tween_property(v, "position", target, 0.2)
+	land.tween_property(v, "scale", Vector2.ONE * v.board_scale, 0.22)
+	var close := pool.create_tween()
+	close.tween_property(pool, "modulate:a", 0.0, 0.5)
+	close.tween_callback(pool.queue_free)
+	_ring(target, sea, 1.5 if heavy else 1.15)
+	await _impact(target, heavy)
+	if heavy:
+		_cam_reset(0.45)
+		_dim(0.0, 0.35)
+
+
+## Pirates KO: a whirlpool opens under the card and it spins down into it, darkening, bubbles rising,
+## until the water closes over it in a last splash.
+func _sink_ko(v: CardView) -> void:
+	var sea := Color(0.2, 0.85, 0.8)
+	var at := v.position
+	var size := CardView.SIZE * v.scale
+	Sfx.play("ko", 0.9)
+	Sfx.play("splash", 0.75, -3.0)
+	shake(9)
+	_post_pulse("aberration", 5.0, 0.35)
+	_stamp(at, "K.O.", Color(0.35, 0.95, 0.85))
+	var swirl := Node2D.new()   # (rings of water turning, drawn as broken arcs)
+	swirl.position = at + Vector2(0, size.y * 0.2)
+	swirl.z_index = v.z_index - 1
+	swirl.scale = Vector2(1.0, 0.55)
+	swirl.draw.connect(func():
+		for i in 4:
+			var r := size.x * (0.25 + 0.2 * i)
+			for j in 3:
+				var a0 := j * TAU / 3.0 + i * 0.7
+				swirl.draw_arc(Vector2.ZERO, r, a0, a0 + 1.4, 18, Color(sea, 0.55 - 0.1 * i), 5.0 - i, true))
+	cards_layer.add_child(swirl)
+	var pit := Sprite2D.new()   # (the dark eye of it)
+	pit.texture = ArenaLife._soft_dot()
+	pit.position = swirl.position
+	pit.modulate = Color(0.0, 0.08, 0.1, 0.85)
+	pit.scale = Vector2(2.4, 1.2) * size.x / 64.0
+	pit.z_index = v.z_index - 2
+	cards_layer.add_child(pit)
+	var turn := swirl.create_tween().set_parallel()
+	turn.tween_property(swirl, "rotation", -TAU * 1.6, 1.3)
+	turn.tween_property(swirl, "modulate:a", 0.0, 0.4).set_delay(0.95)
+	_bubbles(at, size)
+	var down := create_tween().set_parallel()
+	down.tween_property(v, "rotation", v.rotation + 2.2, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	down.tween_property(v, "scale", v.scale * 0.25, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	down.tween_property(v, "position", swirl.position, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	down.tween_property(v, "modulate", Color(0.1, 0.35, 0.4, 0.0), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await down.finished
+	Sfx.play("splash", 1.2, -5.0)
+	_water_spray(swirl.position, size.x * 0.5, 14, sea, Color(0.85, 1.0, 0.98))
+	_ring(swirl.position, sea, 1.0)
+	var shut := pit.create_tween()
+	shut.tween_property(pit, "modulate:a", 0.0, 0.5)
+	shut.tween_callback(pit.queue_free)
+	get_tree().create_timer(0.5).timeout.connect(swirl.queue_free)
+	if v == _hovered:
+		_hovered = null
+	v.queue_free()
+	await _wait(0.2)
+
+
+## Sea spray bursting up from at: water drops thrown up and falling back, and white foam
+func _water_spray(at: Vector2, width: float, amount: int, sea: Color, foam: Color) -> void:
+	for white in [false, true]:
+		var p := CPUParticles2D.new()
+		p.position = at
+		p.z_index = 74
+		p.one_shot = true
+		p.explosiveness = 0.85
+		p.amount = amount if not white else amount / 2
+		p.lifetime = 1.0
+		p.texture = ArenaLife._soft_dot()
+		p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		p.emission_rect_extents = Vector2(width * 0.5, 6)
+		p.direction = Vector2.UP
+		p.spread = 22.0
+		p.initial_velocity_min = 300.0
+		p.initial_velocity_max = 560.0
+		p.gravity = Vector2(0, 950)
+		p.scale_amount_min = 0.22 if not white else 0.35
+		p.scale_amount_max = 0.55 if not white else 0.8
+		var g := Gradient.new()
+		g.set_color(0, Color(foam if white else sea, 0.95))
+		g.set_color(1, Color(foam if white else sea, 0.0))
+		p.color_ramp = g
+		if white:
+			p.material = _add_mat
+		fx.add_child(p)
+		p.emitting = true
+		get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+
+
+## Water streaming off a card that's just come up out of the sea
+func _drips(at: Vector2, size: Vector2) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at
+	p.z_index = 74
+	p.one_shot = true
+	p.explosiveness = 0.3
+	p.amount = 24
+	p.lifetime = 0.7
+	p.texture = ArenaLife._soft_dot()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(size.x * 0.45, size.y * 0.4)
+	p.direction = Vector2.DOWN
+	p.spread = 8.0
+	p.initial_velocity_min = 20.0
+	p.initial_velocity_max = 60.0
+	p.gravity = Vector2(0, 700)
+	p.scale_amount_min = 0.06
+	p.scale_amount_max = 0.14
+	var g := Gradient.new()
+	g.set_color(0, Color(0.7, 1.0, 0.95, 0.9))
+	g.set_color(1, Color(0.3, 0.8, 0.8, 0.0))
+	p.color_ramp = g
+	fx.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(1.0).timeout.connect(p.queue_free)
+
+
+## Bubbles rising out of the water where a card sinks
+func _bubbles(at: Vector2, size: Vector2) -> void:
+	var p := CPUParticles2D.new()
+	p.position = at + Vector2(0, size.y * 0.15)
+	p.z_index = 74
+	p.amount = 26
+	p.lifetime = 1.1
+	p.texture = ArenaLife._soft_dot()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(size.x * 0.35, 10)
+	p.direction = Vector2.UP
+	p.spread = 15.0
+	p.initial_velocity_min = 60.0
+	p.initial_velocity_max = 140.0
+	p.gravity = Vector2(0, -60)
+	p.tangential_accel_min = -30.0
+	p.tangential_accel_max = 30.0
+	p.scale_amount_min = 0.08
+	p.scale_amount_max = 0.22
+	var g := Gradient.new()
+	g.set_color(0, Color(0.75, 1.0, 0.97, 0.0))
+	g.add_point(0.2, Color(0.75, 1.0, 0.97, 0.75))
+	g.set_color(1, Color(0.75, 1.0, 0.97, 0.0))
+	p.color_ramp = g
+	p.material = _add_mat
+	fx.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(1.1).timeout.connect(func(): p.emitting = false)
+	get_tree().create_timer(2.4).timeout.connect(p.queue_free)
+
+
 ## One Molotov lobbed from -> to (high in the middle: it swells as it comes up toward the view),
 ## hit() when it lands.
 func _molotov_fly(from: Vector2, to: Vector2, secs: float, size: float, hit: Callable) -> void:
@@ -3279,6 +3581,96 @@ func _row_free(row: Array) -> void:
 ## A lit Molotov (Arsonists' attack): a round amber bottle with a burning rag in its neck, a glow round it,
 ## embers and smoke shed as it flies. The bottle tumbles end over end (tumble: it foreshortens as it turns
 ## toward and away from the view) and spins a little; its flame keeps burning upward.
+## A ship's cannon seen side-on, standing on its wooden carriage and two wheels: an iron barrel with brass
+## bands that tilts on its trunnion to aim (aim_at). flip: it faces left. kick(): it recoils and rolls
+## back. muzzle() / breech(): where the shot leaves and the fuse is, on screen.
+class Cannon extends Node2D:
+	const PIVOT := Vector2(-2, -12)   # the trunnion the barrel turns on
+	var flip := false
+	var _root: Node2D
+	var _barrel: Node2D
+
+	func _ready() -> void:
+		_root = Node2D.new()
+		_root.scale.x = -1.0 if flip else 1.0
+		add_child(_root)
+		var carriage := Node2D.new()
+		carriage.draw.connect(_draw_carriage.bind(carriage))
+		_root.add_child(carriage)
+		_barrel = Node2D.new()
+		_barrel.position = PIVOT
+		_barrel.draw.connect(_draw_barrel)
+		_root.add_child(_barrel)
+		var cheek := Node2D.new()   # (the bracket over the trunnion, in front of the barrel)
+		cheek.draw.connect(func():
+			cheek.draw_circle(PIVOT, 5.5, Color(0.85, 0.62, 0.25))
+			cheek.draw_arc(PIVOT, 5.5, 0, TAU, 14, Color(0.04, 0.03, 0.03), 1.5, true))
+		_root.add_child(cheek)
+
+	## Tilts the barrel toward a point on screen (it can't point back over its own carriage)
+	func aim_at(target: Vector2) -> void:
+		var l := _root.to_local(target) - PIVOT
+		_barrel.rotation = clampf(l.angle(), -1.4, 1.1)
+
+	func muzzle() -> Vector2:
+		return _barrel.to_global(Vector2(54, 0))
+
+	func breech() -> Vector2:
+		return _barrel.to_global(Vector2(-36, -8))
+
+	func kick() -> void:
+		var t := _root.create_tween()
+		t.tween_property(_root, "position", Vector2(-20.0 if not flip else 20.0, 0), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(_root, "position", Vector2.ZERO, 0.45).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+	func _draw_carriage(n: Node2D) -> void:
+		var wood := Color(0.4, 0.25, 0.13)
+		var wood_dark := Color(0.22, 0.13, 0.07)
+		var brass := Color(0.85, 0.62, 0.25)
+		var ink := Color(0.04, 0.03, 0.03)
+		# A stepped wooden wedge, low at the back
+		var body := PackedVector2Array([Vector2(-40, 2), Vector2(-14, 2), Vector2(-14, -6), Vector2(12, -6), Vector2(26, 12), Vector2(-44, 12)])
+		n.draw_colored_polygon(body, wood)
+		n.draw_polyline(body + PackedVector2Array([body[0]]), ink, 2.0, true)
+		n.draw_line(Vector2(-42, 7), Vector2(22, 7), wood_dark, 1.5)
+		for wx in [-28.0, 14.0]:
+			var c := Vector2(wx, 16)
+			n.draw_circle(c, 11.0, wood_dark)
+			n.draw_arc(c, 11.0, 0, TAU, 22, ink, 2.0, true)
+			for k in 4:
+				var ang := k * PI / 4.0
+				n.draw_line(c + Vector2(cos(ang), sin(ang)) * 3.0, c + Vector2(cos(ang), sin(ang)) * 10.0, wood, 2.0)
+			n.draw_circle(c, 3.2, brass)
+
+	func _draw_barrel() -> void:
+		var iron := Color(0.15, 0.16, 0.18)
+		var iron_hi := Color(0.46, 0.49, 0.53)
+		var brass := Color(0.85, 0.62, 0.25)
+		var ink := Color(0.04, 0.03, 0.03)
+		var body := PackedVector2Array([Vector2(-34, -11), Vector2(46, -7), Vector2(46, 7), Vector2(-34, 11)])
+		_barrel.draw_colored_polygon(body, iron)
+		_barrel.draw_line(Vector2(-30, -7), Vector2(44, -4), iron_hi, 2.5)   # (its shine)
+		_barrel.draw_polyline(body + PackedVector2Array([body[0]]), ink, 2.0, true)
+		_barrel.draw_circle(Vector2(-37, 0), 8.0, iron)   # (the breech knob)
+		_barrel.draw_arc(Vector2(-37, 0), 8.0, 0, TAU, 18, ink, 2.0, true)
+		for bx in [-22.0, 2.0, 30.0]:   # brass bands
+			var h := lerpf(11.0, 7.0, (bx + 34.0) / 80.0) + 1.0
+			_barrel.draw_rect(Rect2(bx, -h, 5, h * 2.0), brass)
+			_barrel.draw_rect(Rect2(bx, -h, 5, h * 2.0), ink, false, 1.2)
+		_barrel.draw_rect(Rect2(46, -9, 8, 18), brass)   # (the muzzle ring)
+		_barrel.draw_rect(Rect2(46, -9, 8, 18), ink, false, 1.5)
+		_barrel.draw_circle(Vector2(54, 0), 4.5, ink)
+
+
+## A cannonball: a black iron ball with a dull highlight.
+class Cannonball extends Node2D:
+	func _draw() -> void:
+		draw_circle(Vector2(2, 3), 11.0, Color(0, 0, 0, 0.35))   # (shadow)
+		draw_circle(Vector2.ZERO, 10.0, Color(0.1, 0.1, 0.11))
+		draw_circle(Vector2(-3, -3), 3.5, Color(0.45, 0.47, 0.5, 0.8))
+		draw_arc(Vector2.ZERO, 10.0, 0, TAU, 20, Color(0.02, 0.02, 0.02), 1.5, true)
+
+
 class Molotov extends Node2D:
 	var spin := 0.0
 	var tumble := 0.0
@@ -4692,6 +5084,7 @@ func _ev_ko(ev: Dictionary) -> void:
 		match _clan_style(v.card, "ko"):
 			"stardust": await _stardust(v, _clan_color(v.card))
 			"ash": await _ash_ko(v)
+			"sink": await _sink_ko(v)
 			"blast": await _blast_ko(v)
 			"fold": await _fold_ko(v)
 			"rift": await _rift_ko(v)
