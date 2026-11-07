@@ -572,6 +572,23 @@ static func shown_title(p: Dictionary) -> String:
 ## A player's avatar (players.avatar_url): always card art. Everyone has each clan's leader and
 ## commonest characters (shared/clans.js freeAvatars); achievements unlock a clan's rarest card
 ## ("clan:<clan>") and any owned card ("card:<id>"); every 5 levels unlocks "level:<n>".
+## What a profile picture shows: its card's id (or a level picture's own key). Two unlocks can show the
+## same card (a clan Loyalist picture and a level picture can both be the clan's rarest card).
+static func avatar_source(key) -> String:
+	var k := str(key) if key != null else ""
+	if k.begins_with("card:"):
+		return k.substr(5)
+	if k.begins_with("clan:"):
+		return _avatar_card(func(c): return c.get("clan") == k.substr(5) and c.get("cardType") == "gang_member")
+	if k.begins_with("level:"):
+		var n := int(k.substr(6))
+		if tex("avatars/level_%02d.png" % n):
+			return k
+		var rare := _avatar_cards(func(c): return c.get("cardType") == "gang_member" and int(c.get("rarity", 1)) >= 4)
+		return k if rare.is_empty() else str(rare[(maxi(1, n / 5) - 1) % rare.size()])
+	return k
+
+
 static func avatar(key) -> Texture2D:
 	# Every profile picture is a crop of card art:
 	#   card:<id>   that card · clan:<clan> the clan's rarest character (Loyalist reward) ·

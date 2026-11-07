@@ -5317,7 +5317,17 @@ func _ev_barricade(ev: Dictionary) -> void:
 		badge = UI.label("", 20, steel)
 		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 		badge.add_theme_constant_override("outline_size", 6)
-		badge.position = Vector2(root.size.x - 150, -26 if ev.side == "player" else root.size.y + 2)
+		# Inside the panel's width, right-aligned, above or below it: whichever side stays on screen (in a
+		# free-for-all the panels sit against different edges)
+		badge.size = Vector2(minf(220.0, root.size.x), 26)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		var g := root.get_global_rect()
+		var below: bool = ev.side != "player"
+		if below and g.end.y + 30.0 * root.get_global_transform().get_scale().y > 1080.0:
+			below = false
+		elif not below and g.position.y - 30.0 * root.get_global_transform().get_scale().y < 0.0:
+			below = true
+		badge.position = Vector2(root.size.x - badge.size.x, root.size.y + 2 if below else -26)
 		root.add_child(badge)
 		p["barricade"] = badge
 	var amount := int(ev.amount)
@@ -6894,8 +6904,10 @@ const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a"}
 
 
 ## A status in the card panel, in its colour: "DOWNED" red, "STASIS" violet...
-func _status_word(k) -> String:
+func _status_word(k, amt := "") -> String:
 	var word: String = STATUS_WORDS.get(k, str(k).to_upper())
+	if amt != "":   # (its number: "BURN 200")
+		word += " " + amt
 	var kw := Keywords.find(word)
 	if kw != "" and STATUS_COLORS.get(k) == null:
 		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, Keywords.LIST[kw][0].to_html(false), word]
@@ -6955,7 +6967,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_stats.text = ""
 	var body := Keywords.markup(str(c.get("effectText", "")))
 	if not live_status.is_empty():
-		var words: Array = live_status.map(_status_word)
+		var words: Array = live_status.map(func(k): return _status_word(k, CardView.status_amount(c, str(k))))
 		body = "[color=#8a8aa0]Status:[/color] %s\n\n%s" % ["[color=#8a8aa0]  ·  [/color]".join(words), body]
 	if c.get("flavourText") is String:
 		body += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % c.flavourText

@@ -20,6 +20,16 @@ const STATUS_STYLE := {
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 }
 
+
+## The number a status carries ("" if none): a BURN's or POISON's amount a turn, a BLEED's per brawl
+static func status_amount(c: Dictionary, k: String) -> String:
+	var v = c.get(k)
+	if v is Dictionary and int(v.get("amt", 0)) > 0:
+		return str(int(v.amt))
+	if k == "bleed" and (v is int or v is float) and int(v) > 0:
+		return str(int(v))
+	return ""
+
 var card: Dictionary = {}
 var uid := -1
 var side := "player"
@@ -618,15 +628,19 @@ func _draw_statuses() -> void:
 		if not STATUS_STYLE.has(k):
 			continue
 		var col: Color = STATUS_STYLE[k][0]
-		var pill := Rect2(x, y, 34, 17)
-		if pill.end.x > r.end.x - 2.0:
+		# (with its number: "BRN 200")
+		var amt := status_amount(card, k)
+		var text: String = STATUS_STYLE[k][1] + (" " + amt if amt != "" else "")
+		var w := maxf(34.0, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 8.0)
+		var pill := Rect2(x, y, w, 17)
+		if pill.end.x > r.end.x - 2.0 and x > r.position.x + 4.0:
 			x = r.position.x + 4.0
 			y += 20.0
-			pill = Rect2(x, y, 34, 17)
+			pill = Rect2(x, y, w, 17)
 		_status_layer.draw_rect(pill, Color(0.03, 0.03, 0.08, 0.9))
 		_status_layer.draw_rect(pill, col, false, 1.5)
-		_status_layer.draw_string(font, Vector2(x, y + 13), STATUS_STYLE[k][1], HORIZONTAL_ALIGNMENT_CENTER, 34, 11, col)
-		x += 38.0
+		_status_layer.draw_string(font, Vector2(x, y + 13), text, HORIZONTAL_ALIGNMENT_CENTER, w, 11, col)
+		x += w + 4.0
 
 
 func _heart(L: Node2D, at: Vector2, size: float, col: Color) -> void:

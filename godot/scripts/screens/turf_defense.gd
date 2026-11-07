@@ -5,7 +5,7 @@ extends Screen
 ## one before. The first win on Street pays the boss's prize card. Net opens the duel when the match
 ## starts (coop:start); while you wait, everyone else online gets a pop-up to join you.
 
-const LIST_X := 56.0
+const LIST_X := 6.0     # (inside the scrolling list, which sits at x 50)
 const ENTRY := Vector2(520, 178)
 const DETAIL := Rect2(610, 150, 1254, 790)
 const ART := Vector2(300, 424)
@@ -168,16 +168,26 @@ func on_online_error(message: String) -> void:
 
 func _build_list() -> void:
 	var bosses: Array = _data.bosses
+	# The list scrolls (mouse wheel or its bar) once there are more bosses than fit
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(50, 150)
+	scroll.size = Vector2(ENTRY.x + 50, 840)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	var inner := Control.new()
+	inner.custom_minimum_size = Vector2(ENTRY.x + 36, bosses.size() * (ENTRY.y + 26))
+	inner.mouse_filter = Control.MOUSE_FILTER_PASS
+	scroll.add_child(inner)
 	for i in bosses.size():
 		var b: Dictionary = bosses[i]
 		var col := Color(str(b.get("color", "#ffffff")))
 		var root := Panel.new()
-		root.position = Vector2(LIST_X, 150 + i * (ENTRY.y + 26))
+		root.position = Vector2(LIST_X, i * (ENTRY.y + 26))
 		root.size = ENTRY
 		root.add_theme_stylebox_override("panel", UI.box(Color(0.04, 0.03, 0.08, 0.9), Color(col, 0.35), 2, 12))
-		root.mouse_filter = Control.MOUSE_FILTER_STOP
+		root.mouse_filter = Control.MOUSE_FILTER_PASS   # (clicks reach it, the wheel still scrolls the list)
 		root.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		add_child(root)
+		inner.add_child(root)
 		var pic := UI.texture_rect(UI.card_crop(str(b.get("portrait", ""))), Vector2(150, 150), true)
 		pic.position = Vector2(14, 14)
 		root.add_child(pic)

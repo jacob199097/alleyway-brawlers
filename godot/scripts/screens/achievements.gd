@@ -52,9 +52,13 @@ func _ready() -> void:
 	lp.position = Vector2(1270, 112)
 	lp.size = Vector2(620, 938)
 	add_child(lp)
+	var look_scroll := ScrollContainer.new()   # (it scrolls once there are more pictures and backs than fit)
+	look_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lp.add_child(look_scroll)
 	_look = VBoxContainer.new()
 	_look.add_theme_constant_override("separation", 12)
-	lp.add_child(_look)
+	_look.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	look_scroll.add_child(_look)
 	await _load()
 
 
@@ -171,7 +175,16 @@ func _render_look() -> void:
 	avs.add_theme_constant_override("v_separation", 10)
 	_look.add_child(avs)
 	var current := str(eq.get("avatar", ""))
+	# Each picture once: two unlocks can show the same card (a clan Loyalist picture and a level picture can
+	# both be the clan's rarest card); the one you're wearing wins
+	var shown := {}
+	if current != "":
+		shown[UI.avatar_source(current)] = current
 	for key in cos.get("avatars", []):
+		var src := UI.avatar_source(key)
+		if shown.has(src) and shown[src] != str(key):
+			continue
+		shown[src] = str(key)
 		avs.add_child(_pick(UI.avatar(key), Vector2(84, 84), str(key) == current, func(): _equip({"avatar": key})))
 	if current.begins_with("card:") and not current in cos.get("avatars", []):   # (one worn from before)
 		avs.add_child(_pick(UI.avatar(current), Vector2(84, 84), true, func(): pass))
