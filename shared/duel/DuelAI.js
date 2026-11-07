@@ -48,10 +48,12 @@ function everyCardSetup() {
     return { deck: [...base, ...base], hideout, leader };
 }
 
-// Difficulty: "easy" misses attacks, picks the first target that works and never sacrifices for
-// a Heavy; "normal" is the standard CPU; "hard" sacrifices more readily (preferring Downed or
-// weakened characters), takes even trades that cost it the weaker card, keeps its Ambushes for
-// attacks that would hurt, and pays an Activate ability's sacrifice with a Downed or weak character.
+// Difficulty: "easy" misses attacks, picks the first target that works, deploys by raw strength and
+// never sacrifices; "normal" deploys (or stands up) attackers that can beat something this turn,
+// attacks leaders to fulfil a Striver's promotion, takes even trades when it's behind and pays an
+// Activate ability's sacrifice with a Downed character; "hard" also sacrifices more readily
+// (preferring Downed or weakened characters), takes even trades that cost it the weaker card, keeps
+// its Ambushes for attacks that would hurt, picks the best attack of all and braces before its turn ends.
 export const LEVELS = ['easy', 'normal', 'hard'];
 
 export function choose(d, side, level = 'normal') {
@@ -124,9 +126,12 @@ function deploy(d, side, level) {
     }
     const t = threat(d, side);
     if (level !== 'easy') {
-        // Stand up a defender that now out-muscles everything the opponent shows
+        // Stand up a defender that now out-muscles everything the opponent shows, or that can beat
+        // something this turn (or fulfil its promotion by attacking a leader)
+        const back = behind(d, side);
         for (const e of d.characters(side)) {
-            if (e.card.position === 'def' && d.canChangePosition(side, e.slot) && e.card.attack > t) {
+            if (e.card.position === 'def' && d.canChangePosition(side, e.slot)
+                && (e.card.attack > t || hasPrey(d, side, e.card.attack, back) || leaderPromotion(d, side, e.card))) {
                 return { kind: 'position', slot: e.slot };
             }
         }
@@ -145,7 +150,7 @@ function deploy(d, side, level) {
             const margin = level === 'hard' ? 300 : 600;
             if (fodder.length === n && deployValue(heavy) >= given + margin) {
                 return { kind: 'summon', uid: heavy.uid, slot: fodder[0].slot, tributes: fodder.map(f => f.slot),
-                    position: deployPosition(heavy, t) };
+                    position: deployPosition(d, side, heavy, t, level) };
             }
         }
     }
@@ -161,7 +166,7 @@ function deploy(d, side, level) {
             if (best == null || deployValue(c) > deployValue(best)) best = c;
         }
         if (best != null) {
-            return { kind: 'summon', uid: best.uid, slot: free[0], position: deployPosition(best, t) };
+            return { kind: 'summon', uid: best.uid, slot: free[0], position: deployPosition(d, side, best, t, level) };
         }
     } else if (level !== 'easy') {
         // Front row full: deploy over the character least worth keeping, for a clearly stronger one
@@ -175,7 +180,7 @@ function deploy(d, side, level) {
                 if (d.canSummon(side, c, weakest.slot, weakest.slot) && (best == null || deployValue(c) > deployValue(best))) best = c;
             }
             if (best != null && deployValue(best) >= weakest.v + (level === 'hard' ? 400 : 800)) {
-                return { kind: 'summon', uid: best.uid, slot: weakest.slot, tributes: [weakest.slot], position: deployPosition(best, t) };
+                return { kind: 'summon', uid: best.uid, slot: weakest.slot, tributes: [weakest.slot], position: deployPosition(d, side, best, t, level) };
             }
         }
     }
@@ -212,11 +217,11 @@ function activation(d, side, level = 'normal') {
             if (!d.fxHasTargets(side, slot, e)) continue;
             if (String(e.target ?? '') === 'all' && !allWorth(d, side, slot)) continue;
             if (cost === 'sacrifice') {
-                // Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
-                if (level !== 'hard') continue;
+                // When the one it would give up (the weakest, as the prompt offers) is Downed (Hard: or weak)
+                if (level === 'easy') continue;
                 const fodder = d.characters(side).filter(x => x.slot !== slot)
                     .sort((a, b) => (toAttackValue(a.card) - toAttackValue(b.card)) || a.slot - b.slot)[0];
-                if (!fodder || keepValue(fodder.card) > 600) continue;
+                if (!fodder || keepValue(fodder.card) > (level === 'hard' ? 600 : -1)) continue;
             }
             if (cost === 'morale' && s.morale <= n * 3) continue;
             if (cost === 'discard' && s.hand.length < n + 2) continue;
@@ -232,9 +237,9 @@ function activation(d, side, level = 'normal') {
             const cost = String(e.cost ?? '');
             if (String(e.target ?? '') === 'all' && !allWorth(d, side, -10)) continue;
             if (cost === 'sacrifice') {
-                if (level !== 'hard') continue;
+                if (level === 'easy') continue;
                 const fodder = d.characters(side).sort((a, b) => (toAttackValue(a.card) - toAttackValue(b.card)) || a.slot - b.slot)[0];
-                if (!fodder || keepValue(fodder.card) > 600) continue;
+                if (!fodder || keepValue(fodder.card) > (level === 'hard' ? 600 : -1)) continue;
             }
             if (cost === 'morale' && s.morale <= n * 3) continue;
             if (cost === 'discard' && s.hand.length < n + 2) continue;
@@ -259,6 +264,7 @@ function brawl(d, side, level) {
     if (act) return act;
     // Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
     let plan = {}, planScore = 0;
+    const back = level !== 'easy' && behind(d, side);
     for (const slot of FRONT) {
         if (!d.canAttackWith(side, slot)) continue;
         if (level === 'easy' && roll(d, side, slot) < 35) continue;   // an easy CPU sometimes forgets to attack
@@ -277,8 +283,10 @@ function brawl(d, side, level) {
                 } else if (t === LEADER) {
                     // Knock out a dormant leader when one hit does it; chipping its Influence is a last resort
                     score = att.attack >= d.sides[foe].leader.influence ? 4 : 0.5;
+                    // A Striver whose promotion is "attacks a leader" (Malachar): worth more than most hits
+                    if (level !== 'easy' && leaderPromotion(d, side, att)) score = Math.max(score, 3.5);
                 } else {
-                    score = targetScore(att, d.cardAt(foe, t), level);
+                    score = targetScore(att, d.cardAt(foe, t), level, back);
                     if (score > 0) score += focus * 0.5;
                 }
                 if (score > bestScore) {
@@ -315,13 +323,14 @@ function brace(d, side) {
 }
 
 /** How much the CPU wants to attack this enemy character (0 = not worth it). */
-function targetScore(att, df, level) {
+function targetScore(att, df, level, back = false) {
     let score = 0;
     if (df.face_down) score = att.attack >= 1600 ? 1 : 0;   // unknown DEF: only strong attackers try
     else if (df.downed) score = att.attack > df.defense ? 3 : 0;
     else if (df.position === 'def') score = att.attack > df.defense ? 2 : 0;
     else if (att.attack > df.attack) score = 2 + (att.attack - df.attack) / 1000;
     else if (level === 'hard' && att.attack === df.attack && att.base_attack < df.base_attack) score = 1.5;   // even trade, our weaker card
+    else if (back && att.attack === df.attack) score = 1.2;   // behind: an even trade (both go Down) still thins their side
     if (df.shield) score *= 0.5;   // the hit only pops the shield
     return score;
 }
@@ -349,11 +358,48 @@ function deployValue(c) {
     return v;
 }
 
-/** ATK unless it can't stand up to the biggest threat; a clear wall (DEF at least twice ATK) always DEF. */
-function deployPosition(c, t) {
+/** ATK unless it can't stand up to the biggest threat; a clear wall (DEF at least twice ATK) always DEF.
+ *  Above Easy, also ATK when it can beat something this turn (a trade, like a person would make) or
+ *  fulfil its promotion by attacking a leader. Same as _deploy_position in duel_ai.gd. */
+function deployPosition(d, side, c, t, level) {
     const atk = Math.trunc(Number(c.base_attack) || 0);
     if ((Number(c.base_defense) || 0) >= atk * 2) return 'def';
-    return atk >= t ? 'atk' : 'def';
+    if (atk >= t) return 'atk';
+    if (level !== 'easy' && (hasPrey(d, side, atk, behind(d, side)) || leaderPromotion(d, side, c))) return 'atk';
+    return 'def';
+}
+
+/** Whether a character with this ATK could beat one of the opponents' this turn (or hit them directly);
+ *  back (behind): an even trade counts too. Same as _has_prey in duel_ai.gd. */
+function hasPrey(d, side, atk, back) {
+    if (d.noAttacksYet()) return false;
+    for (const foe of d.foesOf(side)) {
+        for (const t of d.attackTargets(side, foe)) {
+            if (t === DIRECT) return true;
+            if (t === LEADER) continue;
+            const df = d.cardAt(foe, t);
+            if (df == null || df.face_down || df.shield) continue;
+            const guard = df.downed || df.position === 'def' ? df.defense : df.attack;
+            if (atk > guard || (back && atk === guard && !df.downed && df.position !== 'def')) return true;
+        }
+    }
+    return false;
+}
+
+/** A Striver that promotes when it attacks a leader (Malachar), its next level waiting, with a leader
+ *  it can attack this turn. Same as _leader_promotion in duel_ai.gd. */
+function leaderPromotion(d, side, c) {
+    if (c.subtype !== 'striver' || !(c.effects || []).some(e => String(e.when ?? '') === 'attack_leader' && String(e.do ?? '') === 'promote')) return false;
+    if (d.noAttacksYet() || !d._nextInHideout(side, c)) return false;
+    return d.foesOf(side).some(f => d.leaderDormant(f));
+}
+
+/** Whether the CPU is losing: less Morale than an opponent, or less standing ATK on its side than
+ *  one of theirs. Same as _behind in duel_ai.gd. */
+function behind(d, side) {
+    const power = (who) => d.characters(who).reduce((n, e) => n + (e.card.downed ? 0 : Math.trunc(Number(e.card.attack) || 0)), 0);
+    const mine = power(side);
+    return d.foesOf(side).some(f => d.sides[f].morale > d.sides[side].morale || power(f) > mine);
 }
 
 /** A repeatable 0-99 "dice roll" (must match duel_ai.gd). */

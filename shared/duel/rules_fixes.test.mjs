@@ -7,6 +7,7 @@
 import assert from 'node:assert';
 import { DuelState, DIRECT, LEADER } from './DuelState.js';
 import { CARD_CATALOG } from '../cards.js';
+import { choose } from './DuelAI.js';
 
 const answer = (st) => {
     while (st.pending && st.pending.kind) {
@@ -94,4 +95,34 @@ assert.equal(boss.sides.opponent.leader.influence, base * 2);
 assert.equal(boss.sides.opponent.leader.influence_max, base * 2);
 assert.equal(boss.sides.player.leader.influence, base, 'only that seat');
 
-console.log('Rules fixes (promote-then-hit, deployed first, INFILTRATE, FFA Authority, boss Influence): all good');
+// The CPU (above Easy) promotes Malachar by attacking the dormant leader rather than finishing a Downed character,
+// and deploys him in ATK to do it; a weaker card goes in ATK when it can beat something this turn
+st = duel('player');
+st.sides.player.field[0] = st.makeCard({ id: 'card_unde_014' });
+st.sides.player.hideout = [st.makeCard({ id: 'card_unde_015' }), st.makeCard({ id: 'card_unde_016' })];
+st.sides.opponent.field[1] = st.makeCard({ id: 'rf_grunt' });
+st.sides.opponent.field[1].downed = true;
+st._recalc();
+assert.ok(st.leaderDormant('opponent'));
+for (const level of ['normal', 'hard']) assert.equal(choose(st, 'player', level).target, LEADER, level + ': attacks the leader to promote');
+st.phase = 'deployment';
+st.sides.player.field[0] = null;
+st.sides.player.hand = [st.makeCard({ id: 'card_unde_014' })];
+st.sides.player.authority = 9;
+st.sides.opponent.field[2] = st.makeCard({ id: 'card_unde_014' });
+st.sides.opponent.field[2].attack = st.sides.opponent.field[2].base_attack = 3000;
+st._recalc();
+assert.equal(choose(st, 'player', 'normal').position, 'atk', 'Malachar deploys in ATK to promote');
+assert.equal(choose(st, 'player', 'easy').position, 'def', 'Easy: by raw strength');
+st.sides.player.hideout = [];
+st.sides.player.hand = [st.makeCard({ id: 'rf_grunt' })];
+st.sides.opponent.field[1] = null;
+st._recalc();
+assert.equal(choose(st, 'player', 'normal').position, 'def', 'nothing it can beat: DEF');
+st.sides.opponent.field[3] = st.makeCard({ id: 'rf_grunt' });
+st.sides.opponent.field[3].attack = st.sides.opponent.field[3].base_attack = 800;
+st._recalc();
+assert.equal(st.cardAt('opponent', 3).attack, 800);
+assert.equal(choose(st, 'player', 'normal').position, 'atk', 'a trade: it can down the 800 now');
+
+console.log('Rules fixes (promote-then-hit, deployed first, INFILTRATE, FFA Authority, boss Influence, CPU promotes and trades): all good');

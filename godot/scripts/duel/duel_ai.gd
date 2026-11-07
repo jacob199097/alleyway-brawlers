@@ -37,9 +37,12 @@ static func test_setup() -> Dictionary:
 		"leaders": {"player": leader, "opponent": leader},
 	}
 
-## Difficulty: "easy" misses attacks, picks the first target that works and never sacrifices for
-## a Heavy; "normal" is the standard CPU; "hard" sacrifices more readily (preferring Downed or
-## weakened characters) and takes even trades that cost it the weaker card.
+## Difficulty (same as DuelAI.js): "easy" misses attacks, picks the first target that works, deploys by
+## raw strength and never sacrifices; "normal" deploys (or stands up) attackers that can beat something
+## this turn, attacks leaders to fulfil a Striver's promotion, takes even trades when it's behind and pays
+## an Activate ability's sacrifice with a Downed character; "hard" also sacrifices more readily, takes even
+## trades that cost it the weaker card, keeps its Ambushes for attacks that would hurt, picks the best
+## attack of all and braces before its turn ends.
 const LEVELS := ["easy", "normal", "hard"]
 
 
@@ -106,10 +109,13 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			return {"kind": "hustle", "uid": c.uid}
 	var threat := _threat(d, side)
 	if level != "easy":
-		# Stand up a defender that now out-muscles everything the opponent shows
+		# Stand up a defender that now out-muscles everything the opponent shows, or that can beat
+		# something this turn (or fulfil its promotion by attacking a leader)
+		var back := _behind(d, side)
 		for e in d.characters(side):
 			var c: Dictionary = e.card
-			if c.position == "def" and d.can_change_position(side, e.slot) and c.attack > threat:
+			if c.position == "def" and d.can_change_position(side, e.slot) \
+					and (c.attack > threat or _has_prey(d, side, int(c.attack), back) or _leader_promotion(d, side, c)):
 				return {"kind": "position", "slot": e.slot}
 
 		# A Heavy is worth a sacrifice when it's clearly worth more than the characters we'd give up
@@ -129,7 +135,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 			var margin := 300 if level == "hard" else 600
 			if fodder.size() == n and _deploy_value(heavy) >= given + margin:
 				return {"kind": "summon", "uid": heavy.uid, "slot": fodder[0].slot, "tributes": fodder.map(func(f): return f.slot),
-					"position": _deploy_position(heavy, threat)}
+					"position": _deploy_position(d, side, heavy, threat, level)}
 
 	var free := SLOT_ORDER.filter(func(i): return s.field[i] == null)
 	if not free.is_empty():
@@ -142,7 +148,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 				if best == null or _deploy_value(c) > _deploy_value(best):
 					best = c
 		if best != null:
-			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": _deploy_position(best, threat)}
+			return {"kind": "summon", "uid": best.uid, "slot": free[0], "position": _deploy_position(d, side, best, threat, level)}
 	elif level != "easy":
 		# Front row full: deploy over the character least worth keeping, for a clearly stronger one
 		# (a Downed one counts half: it stands back up, if it isn't finished off first)
@@ -157,7 +163,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 					best = c
 			if best != null and _deploy_value(best) >= int(weakest.v) + (400 if level == "hard" else 800):
 				return {"kind": "summon", "uid": best.uid, "slot": weakest.slot, "tributes": [weakest.slot],
-					"position": _deploy_position(best, threat)}
+					"position": _deploy_position(d, side, best, threat, level)}
 
 	for slot in DuelState.BACK:
 		if s.field[slot] == null:
@@ -171,7 +177,7 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 
 
 ## Activated abilities (Card Forge "Activate"): use one when it has something to work on and its
-## cost is cheap enough. The CPU never sacrifices its own characters, and only gives up an attack
+## cost is cheap enough. It sacrifices only a Downed character (Hard: or a weak one), and only gives up an attack
 ## ("exhaust") with a character that can't attack anyway.
 ## Whether the attack on one of side's characters (an Ambush may answer it) would beat it.
 static func _attack_hurts(d: DuelState, side: String) -> bool:
@@ -205,13 +211,13 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 			if str(e.get("target", "")) == "all" and not _all_worth(d, side, slot):
 				continue
 			if cost == "sacrifice":
-				# Hard: when the one it would give up (the weakest, as the prompt offers) is Downed or weak
-				if level != "hard":
+				# When the one it would give up (the weakest, as the prompt offers) is Downed (Hard: or weak)
+				if level == "easy":
 					continue
 				var mine: Array = d.characters(side).filter(func(x): return x.slot != slot)
 				mine.sort_custom(func(a, b): return DuelState._attack_value(a.card) < DuelState._attack_value(b.card) \
 					or (DuelState._attack_value(a.card) == DuelState._attack_value(b.card) and a.slot < b.slot))
-				if mine.is_empty() or _keep_value(mine[0].card) > 600:
+				if mine.is_empty() or _keep_value(mine[0].card) > (600 if level == "hard" else -1):
 					continue
 			if cost == "morale" and s.morale <= n * 3:
 				continue
@@ -229,12 +235,12 @@ static func _activation(d: DuelState, side: String, level := "normal") -> Dictio
 			if str(e.get("target", "")) == "all" and not _all_worth(d, side, DuelState.NO_SLOT):
 				continue
 			if cost == "sacrifice":
-				if level != "hard":
+				if level == "easy":
 					continue
 				var mine: Array = d.characters(side)
 				mine.sort_custom(func(a, b): return DuelState._attack_value(a.card) < DuelState._attack_value(b.card) \
 					or (DuelState._attack_value(a.card) == DuelState._attack_value(b.card) and a.slot < b.slot))
-				if mine.is_empty() or _keep_value(mine[0].card) > 600:
+				if mine.is_empty() or _keep_value(mine[0].card) > (600 if level == "hard" else -1):
 					continue
 			if cost == "morale" and s.morale <= n * 3:
 				continue
@@ -255,6 +261,7 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 	# Easy and Normal take the first attacker's best hit; Hard picks the best hit of all
 	var plan := {}
 	var plan_score := 0.0
+	var back := level != "easy" and _behind(d, side)
 	for slot in DuelState.FRONT:
 		if not d.can_attack_with(side, slot):
 			continue
@@ -276,8 +283,11 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 					# Knock out a dormant leader when one hit does it (−1000 morale, no Dormant bonus);
 					# chipping its Influence is a last resort
 					score = 4.0 if att.attack >= d.sides[foe].leader.influence else 0.5
+					# A Striver whose promotion is "attacks a leader" (Malachar): worth more than most hits
+					if level != "easy" and _leader_promotion(d, side, att):
+						score = maxf(score, 3.5)
 				else:
-					score = _target_score(att, d.card_at(foe, t), level)
+					score = _target_score(att, d.card_at(foe, t), level, back)
 					if score > 0.0:
 						score += focus * 0.5
 				if score > best_score:
@@ -300,7 +310,7 @@ static func _brawl(d: DuelState, side: String, level: String) -> Dictionary:
 
 
 ## How much the CPU wants to attack this enemy character (0 = not worth it).
-static func _target_score(att: Dictionary, df: Dictionary, level: String) -> float:
+static func _target_score(att: Dictionary, df: Dictionary, level: String, back := false) -> float:
 	var score := 0.0
 	if df.face_down:
 		score = 1.0 if att.attack >= 1600 else 0.0   # unknown DEF: only strong attackers try
@@ -312,6 +322,8 @@ static func _target_score(att: Dictionary, df: Dictionary, level: String) -> flo
 		score = 2.0 + (att.attack - df.attack) / 1000.0
 	elif level == "hard" and att.attack == df.attack and att.base_attack < df.base_attack:
 		score = 1.5   # both go Down: a trade that costs us the weaker card
+	elif back and att.attack == df.attack:
+		score = 1.2   # behind: an even trade (both go Down) still thins their side
 	if df.get("shield", false):
 		score *= 0.5   # the hit only pops the shield
 	return score
@@ -331,11 +343,65 @@ static func _deploy_value(c: Dictionary) -> int:
 
 
 ## ATK unless it can't stand up to the biggest threat; a clear wall (DEF at least twice ATK) always DEF.
-static func _deploy_position(c: Dictionary, threat: int) -> String:
+## Above Easy, also ATK when it can beat something this turn (a trade, like a person would make) or
+## fulfil its promotion by attacking a leader. Same as deployPosition in DuelAI.js.
+static func _deploy_position(d: DuelState, side: String, c: Dictionary, threat: int, level: String) -> String:
 	var atk := int(c.get("base_attack", 0))
 	if int(c.get("base_defense", 0)) >= atk * 2:
 		return "def"
-	return "atk" if atk >= threat else "def"
+	if atk >= threat:
+		return "atk"
+	if level != "easy" and (_has_prey(d, side, atk, _behind(d, side)) or _leader_promotion(d, side, c)):
+		return "atk"
+	return "def"
+
+
+## Whether a character with this ATK could beat one of the opponents' this turn (or hit them directly);
+## back (behind): an even trade counts too. Same as hasPrey in DuelAI.js.
+static func _has_prey(d: DuelState, side: String, atk: int, back: bool) -> bool:
+	if d.no_attacks_yet():
+		return false
+	for foe in d.foes_of(side):
+		for t in d.attack_targets(side, foe):
+			if t == DuelState.DIRECT:
+				return true
+			if t == DuelState.LEADER:
+				continue
+			var df = d.card_at(foe, t)
+			if df == null or df.face_down or df.get("shield", false):
+				continue
+			var guard: int = int(df.defense) if df.downed or df.position == "def" else int(df.attack)
+			if atk > guard or (back and atk == guard and not df.downed and df.position != "def"):
+				return true
+	return false
+
+
+## A Striver that promotes when it attacks a leader (Malachar), its next level waiting, with a leader
+## it can attack this turn. Same as leaderPromotion in DuelAI.js.
+static func _leader_promotion(d: DuelState, side: String, c: Dictionary) -> bool:
+	var fx: Array = c.get("effects", []) if c.get("effects") is Array else []
+	if str(c.get("subtype", "")) != "striver" or not fx.any(func(e): return e is Dictionary \
+			and str(e.get("when", "")) == "attack_leader" and str(e.get("do", "")) == "promote"):
+		return false
+	if d.no_attacks_yet() or not d._next_in_hideout(side, c):
+		return false
+	return d.foes_of(side).any(func(f): return d.leader_dormant(f))
+
+
+## Whether the CPU is losing: less Morale than an opponent, or less standing ATK on its side than
+## one of theirs. Same as behind in DuelAI.js.
+static func _behind(d: DuelState, side: String) -> bool:
+	var power := func(who: String) -> int:
+		var n := 0
+		for e in d.characters(who):
+			if not e.card.downed:
+				n += int(e.card.attack)
+		return n
+	var mine: int = power.call(side)
+	for f in d.foes_of(side):
+		if d.sides[f].morale > d.sides[side].morale or power.call(f) > mine:
+			return true
+	return false
 
 
 static func _keep_value(c: Dictionary) -> int:
