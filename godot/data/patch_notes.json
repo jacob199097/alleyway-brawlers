@@ -1,5 +1,21 @@
 [
     {
+        "version": "0.9.125",
+        "notes": [
+            "Smarter CPU: it now puts characters in ATK when they can beat something that turn (trading instead of walling up), attacks a dormant leader to promote a Striver like Malachar, takes even trades when it's behind, and uses more of its abilities. Hard plays the most like a person; FFA CPUs play on Normal.",
+            "New keyword INFILTRATE: the character can attack your opponent directly even while they have standing characters, and past a Guard.",
+            "Fix: a character that promotes as it attacks (Malachar attacking a leader) now hits with its new form's ATK instead of 0.",
+            "Fix: \"when your opponent deploys\" effects (Nix LV3's STASIS) now offer the character just deployed first.",
+            "FFA: no extra Authority for going later (nobody can attack in the first round anyway). Turf Defense: the boss's leader has 1.5x / 2x / 3x Influence by level.",
+            "Casual Brawl is a best of 3 too when both players rematch (no Rank Points). Once a Casual or Ranked series is decided, find a new opponent to play again.",
+            "Statuses show their numbers (BRN 200, PSN 300, BLD 100). The FFA BARRICADE badge no longer gets cut off.",
+            "Profiles show your most played clan and its mastery level; in a duel each player's plate shows their clan and mastery. A friend's profile shows their clan mastery, best cards and recent matches, which you can watch.",
+            "New accounts pick a profile picture after choosing their clan.",
+            "Turf Defense's boss list and the Achievements look panel scroll, and each profile picture shows once.",
+            "Tutorial: pressing KEEP THIS HAND early no longer gets you stuck."
+        ]
+    },
+    {
         "version": "0.9.124",
         "notes": [
             "Gutter abilities: some cards can act from your Gutter (In your Gutter: ...). When one is ready your Gutter glows teal: click it and press USE under the card. Once per turn each, on your turn; some cost the card itself (it is EXILED).",
