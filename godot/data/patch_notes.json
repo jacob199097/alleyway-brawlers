@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.126",
+        "notes": [
+            "New clan: the PIRATES. Take what is theirs: PLUNDER cards from your opponent's hand, deck, Gutter and even their field, then play them against them. Their starter deck is in the Shop, along with their booster packs.",
+            "Turf Defense: a new boss, Captain Marlow, Harbour King, at the docks. Beat him for his prize, The Flying Dutchman.",
+            "CHARM and PLUNDER work with a full front row: replace one of your characters with the one you take (yours goes to the Gutter), or keep them all.",
+            "Pirates animations: a cannon fires when they attack, they rise from a wave when deployed, and sink into a whirlpool when KO'd. Their card back rolls with the tide."
+        ]
+    },
+    {
         "version": "0.9.125",
         "notes": [
             "Smarter CPU: it now puts characters in ATK when they can beat something that turn (trading instead of walling up), attacks a dormant leader to promote a Striver like Malachar, takes even trades when it's behind, and uses more of its abilities. Hard plays the most like a person; FFA CPUs play on Normal.",
