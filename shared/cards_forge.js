@@ -168,7 +168,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_009",
         "code": "NEBU-009",
         "flavourText": "Strike me, and time itself will answer.",
-        "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When your Authority reaches 8, this leader may take the field.\nWhen this leader Awakens: Swap the ATK and DEF of all enemy characters until the end of your opponent's next turn.",
+        "effectText": "Once per turn, when this leader is attacked while Dormant: Put one enemy character in STASIS.\nWhile this leader is Dormant, at the start of your turn: Switch one enemy character to DEF position.\nAWAKEN: When your Authority reaches 7, this leader may take the field.\nWhen this leader Awakens: Swap the ATK and DEF of all enemy characters until the end of your opponent's next turn.",
         "effects": [
             {
                 "when": "dormant_hit",
@@ -196,9 +196,9 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "awakenCondition": {
-            "authority": 8
+            "authority": 7
         },
-        "influence": 3000
+        "influence": 3500
     },
     "card_nebu_010": {
         "id": "card_nebu_010",
@@ -742,7 +742,7 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "attack": 2200,
-        "defense": 3000,
+        "defense": 3200,
         "level": 3,
         "subtype": "striver",
         "promotesTo": null
@@ -1387,7 +1387,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_011",
         "code": "MILI-011",
         "flavourText": "This city has chewed up better men than you. But while my flag still flies, this ground belongs to the Militia.",
-        "effectText": "While this leader is Dormant and you control 2 or more MILITIA characters: Your MILITIA characters gain +200 ATK.\nAWAKEN: When your Morale is 2000 or less, this leader may take the field.\nWhen this leader Awakens: SUPPRESS all enemy characters in ATK position for 400.",
+        "effectText": "While this leader is Dormant and you control 2 or more MILITIA characters: Your MILITIA characters gain +200 ATK.\nAWAKEN: When your Morale is 2000 or less, this leader may take the field.\nWhen this leader Awakens: SUPPRESS all enemy characters in ATK position for 300.",
         "effects": [
             {
                 "when": "dormant",
@@ -1404,7 +1404,7 @@ export const FORGE_CARDS = {
                 "do": "suppress",
                 "target": "enemies",
                 "only": "atk",
-                "amount": 400
+                "amount": 300
             }
         ],
         "clanName": "Militia",
@@ -2165,14 +2165,15 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_033",
         "code": "MILI-033",
         "flavourText": "Patch the holes. Load the rifle. Keep moving.",
-        "effectText": "When this card Downs a character: Put the first MILITIA Brawler from your deck onto the field in ATK position.",
+        "effectText": "Once per turn, when this card Downs a character: Put the first MILITIA Brawler from your deck onto the field in ATK position.",
         "effects": [
             {
                 "when": "down",
                 "do": "call",
                 "clan": "militia",
                 "role": "brawler",
-                "amount": 1
+                "amount": 1,
+                "once": true
             }
         ],
         "clanName": "Militia",
@@ -2283,7 +2284,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
-        "attack": 2200,
+        "attack": 2400,
         "defense": 2000,
         "level": 3,
         "subtype": "striver",
@@ -2342,7 +2343,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_035",
         "code": "MILI-035",
         "flavourText": "A Breaching charge costs supplies. My boot costs nothing.”",
-        "effectText": "When this card attacks: It has PIERCE for this attack.\nWhen this card KOs a character: Your opponent discards 1 card.",
+        "effectText": "When this card attacks: It has PIERCE for this attack.\nOnce per turn, when this card KOs a character: Your opponent discards 1 card.",
         "effects": [
             {
                 "when": "attack",
@@ -2351,7 +2352,8 @@ export const FORGE_CARDS = {
             {
                 "when": "ko",
                 "do": "discard",
-                "amount": 1
+                "amount": 1,
+                "once": true
             }
         ],
         "clanName": "Militia",
@@ -2367,7 +2369,7 @@ export const FORGE_CARDS = {
         "name": "Mortar Team",
         "clan": "militia",
         "cardType": "gang_member",
-        "authority": 4,
+        "authority": 3,
         "tributeCost": 0,
         "rarity": 1,
         "clanTag": "militia",
@@ -2375,19 +2377,19 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_036",
         "code": "MILI-036",
         "flavourText": "",
-        "effectText": "ACTIVATE (once per turn, this card can't attack this turn): Your opponent loses 500 Morale.",
+        "effectText": "ACTIVATE (once per turn, this card can't attack this turn): Your opponent loses 600 Morale.",
         "effects": [
             {
                 "when": "activate",
                 "do": "damage",
                 "cost": "exhaust",
-                "amount": 500
+                "amount": 600
             }
         ],
         "clanName": "Militia",
         "clanColor": "#a3e635",
-        "attack": 1000,
-        "defense": 2000,
+        "attack": 800,
+        "defense": 1800,
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null
@@ -3977,14 +3979,14 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_037",
         "code": "WILD-037",
         "flavourText": "Nice try. Show me your cards.",
-        "effectText": "When an enemy attacks one of your characters: Roll a die: the attacker loses 200 ATK for each pip rolled for this Brawl.",
+        "effectText": "When an enemy attacks one of your characters: Roll a die: the attacker loses 300 ATK for each pip rolled for this Brawl.",
         "effects": [
             {
                 "when": "defend",
                 "do": "buff",
                 "target": "attacker",
                 "per": "roll",
-                "atk": -200
+                "atk": -300
             }
         ],
         "clanName": "Wildcard",
@@ -4213,13 +4215,13 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_044",
         "code": "WILD-044",
         "flavourText": "Every wheel has a favourite number.",
-        "effectText": "Roll a die: your opponent loses 250 Morale for each pip rolled.",
+        "effectText": "Roll a die: your opponent loses 200 Morale for each pip rolled.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "damage",
                 "per": "roll",
-                "amount": 250
+                "amount": 200
             }
         ],
         "clanName": "Wildcard",
@@ -4957,7 +4959,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
-        "attack": 2700,
+        "attack": 2800,
         "defense": 2500,
         "level": 1,
         "subtype": "heavy",
@@ -5135,7 +5137,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_015",
         "code": "UNDE-015",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +500 ATK and +250 DEF for each UNDERWORLD character in your Gutter.\nAfter this card attacks 3 times: PROMOTE this card.",
+        "effectText": "This card gains +300 ATK for each UNDERWORLD character in your Gutter.\nAfter this card attacks 3 times: PROMOTE this card.",
         "effects": [
             {
                 "when": "passive",
@@ -5144,8 +5146,7 @@ export const FORGE_CARDS = {
                 "per": "gutter",
                 "per_clan": "underworld",
                 "per_kind": "gang_member",
-                "atk": 500,
-                "def": 250
+                "atk": 300
             },
             {
                 "when": "attack",
@@ -5175,7 +5176,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_016",
         "code": "UNDE-016",
         "flavourText": "Death came for me once. I broke its chains. Now I'll make the whole Underworld kneel!",
-        "effectText": "This card gains +700 ATK and +300 DEF for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
+        "effectText": "This card gains +450 ATK for each UNDERWORLD character in your Gutter.\nOnce per turn, when this card Downs a character: STUN one enemy character.",
         "effects": [
             {
                 "when": "passive",
@@ -5184,8 +5185,7 @@ export const FORGE_CARDS = {
                 "per": "gutter",
                 "per_clan": "underworld",
                 "per_kind": "gang_member",
-                "atk": 700,
-                "def": 300
+                "atk": 450
             },
             {
                 "when": "down",
