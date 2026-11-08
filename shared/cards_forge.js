@@ -9386,5 +9386,1106 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "subtype": "continuous"
+    },
+    "card_pira_001": {
+        "id": "card_pira_001",
+        "name": "Captain Marlow",
+        "clan": "pirates",
+        "cardType": "leader",
+        "authority": 10,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_001",
+        "code": "PIRA-001",
+        "flavourText": "Everything in this city floats. Everything that floats is mine.",
+        "effectText": "Once per turn, while this leader is Dormant, when you play a Hustle: PLUNDER the top card of your opponent's deck (into your hand).\nAWAKEN: When your Authority reaches 7 or your opponent's Morale is 3000 or less, this leader may take the field.\nWhen this leader Awakens: PLUNDER one enemy character: it fights for you from now on.",
+        "effects": [
+            {
+                "when": "dormant_hustle",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "awaken",
+                "do": "plunder",
+                "target": "enemy",
+                "from": "field"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3100,
+        "defense": 2100,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "awakenCondition": {
+            "authority": 7,
+            "foe_morale": 3000
+        },
+        "influence": 5000,
+        "forge": "forge2"
+    },
+    "card_pira_002": {
+        "id": "card_pira_002",
+        "name": "Bilge",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_002",
+        "code": "PIRA-002",
+        "flavourText": "Didn't steal it. Found it in your pocket.",
+        "effectText": "At the end of your turn: If you have 4 or more cards in hand, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "hand_ge",
+                "n": 4
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 400,
+        "defense": 300,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_pira_003",
+        "forge": "forge2"
+    },
+    "card_pira_003": {
+        "id": "card_pira_003",
+        "name": "Bilge",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_003",
+        "code": "PIRA-003",
+        "flavourText": "Didn't steal it. Found it in your pocket.",
+        "effectText": "When deployed: PLUNDER a random card from your opponent's hand.\nWhen this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1
+            },
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1500,
+        "defense": 800,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_pira_004",
+        "forge": "forge2"
+    },
+    "card_pira_004": {
+        "id": "card_pira_004",
+        "name": "Bilge",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_004",
+        "code": "PIRA-004",
+        "flavourText": "Didn't steal it. Found it in your pocket.",
+        "effectText": "Once per turn, when this card attacks: PLUNDER a random card from your opponent's hand.\nThis card gains +100 ATK for each card in your hand.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "self",
+                "per": "hand",
+                "atk": 100
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2600,
+        "defense": 1500,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_005": {
+        "id": "card_pira_005",
+        "name": "Tidewater Tess",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_005",
+        "code": "PIRA-005",
+        "flavourText": "The river always pays. Eventually.",
+        "effectText": "When this card is KO'd: PLUNDER the top card of your opponent's deck (into your hand).\nWhen this card is Downed: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "self_ko",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 1
+            },
+            {
+                "when": "self_downed",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 500,
+        "defense": 200,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_pira_006",
+        "forge": "forge2"
+    },
+    "card_pira_006": {
+        "id": "card_pira_006",
+        "name": "Tidewater Tess",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_006",
+        "code": "PIRA-006",
+        "flavourText": "The river always pays. Eventually.",
+        "effectText": "Once per turn, when this card attacks: PLUNDER the top card of your opponent's deck (into your hand).\nWhen this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1700,
+        "defense": 500,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_pira_007",
+        "forge": "forge2"
+    },
+    "card_pira_007": {
+        "id": "card_pira_007",
+        "name": "Tidewater Tess",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_007",
+        "code": "PIRA-007",
+        "flavourText": "The river always pays. Eventually.",
+        "effectText": "Once per turn, when this card attacks: PLUNDER the top 2 cards of your opponent's deck (into your hand).",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 2,
+                "once": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2700,
+        "defense": 900,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_008": {
+        "id": "card_pira_008",
+        "name": "Gil the Grave Robber",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_008",
+        "code": "PIRA-008",
+        "flavourText": "The dead don't need it. I do.",
+        "effectText": "At the end of your turn: If your opponent's Gutter has 3 or more cards, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "foe_gutter_ge",
+                "n": 3
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 300,
+        "defense": 600,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_pira_009",
+        "forge": "forge2"
+    },
+    "card_pira_009": {
+        "id": "card_pira_009",
+        "name": "Gil the Grave Robber",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_009",
+        "code": "PIRA-009",
+        "flavourText": "The dead don't need it. I do.",
+        "effectText": "When deployed: PLUNDER a card of your choice from your opponent's Gutter (into your hand).\nAt the end of your turn: If your opponent's Gutter has 7 or more cards, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 1,
+                "choose": true
+            },
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "foe_gutter_ge",
+                "n": 7
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1300,
+        "defense": 1800,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_pira_010",
+        "forge": "forge2"
+    },
+    "card_pira_010": {
+        "id": "card_pira_010",
+        "name": "Gil the Grave Robber",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_010",
+        "code": "PIRA-010",
+        "flavourText": "The dead don't need it. I do.",
+        "effectText": "At the end of your turn: PLUNDER the most recent character from your opponent's Gutter (into your hand).\nWhen this card is attacked: EXILE the 3 newest cards in your opponent's Gutter.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "plunder",
+                "kind": "gang_member",
+                "from": "gutter",
+                "amount": 1
+            },
+            {
+                "when": "defend",
+                "do": "exile_gutter",
+                "amount": 3
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2400,
+        "defense": 3200,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_011": {
+        "id": "card_pira_011",
+        "name": "Red Annie Rourke",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_011",
+        "code": "PIRA-011",
+        "flavourText": "Knock first? I'm the knock.",
+        "effectText": "When this card KOs a character: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 900,
+        "defense": 300,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_pira_012",
+        "forge": "forge2"
+    },
+    "card_pira_012": {
+        "id": "card_pira_012",
+        "name": "Red Annie Rourke",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_012",
+        "code": "PIRA-012",
+        "flavourText": "Knock first? I'm the knock.",
+        "effectText": "When this card KOs a character: PLUNDER a random card from your opponent's hand.\nWhen this card hits your opponent directly: PROMOTE this card.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1
+            },
+            {
+                "when": "direct",
+                "do": "promote"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2000,
+        "defense": 700,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_pira_013",
+        "forge": "forge2"
+    },
+    "card_pira_013": {
+        "id": "card_pira_013",
+        "name": "Red Annie Rourke",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_013",
+        "code": "PIRA-013",
+        "flavourText": "Knock first? I'm the knock.",
+        "effectText": "When this card attacks: It gains +100 ATK for each card in your hand (up to 8) for this Brawl.\nWhen this card KOs a character: Draw 1 card.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "per": "hand",
+                "atk": 100,
+                "per_max": 8
+            },
+            {
+                "when": "ko",
+                "do": "draw",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3000,
+        "defense": 1100,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_014": {
+        "id": "card_pira_014",
+        "name": "Silver Jack",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_014",
+        "code": "PIRA-014",
+        "flavourText": "Show me yours. Then it's mine.",
+        "effectText": "At the end of your turn: If your opponent has 4 or fewer cards in hand, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "foe_hand_le",
+                "n": 4
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 800,
+        "defense": 400,
+        "level": 1,
+        "subtype": "striver",
+        "promotesTo": "card_pira_015",
+        "forge": "forge2"
+    },
+    "card_pira_015": {
+        "id": "card_pira_015",
+        "name": "Silver Jack",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_015",
+        "code": "PIRA-015",
+        "flavourText": "Show me yours. Then it's mine.",
+        "effectText": "When deployed: Look at your opponent's hand and PLUNDER a card from it.\nAt the end of your turn: If you have 6 or more cards in hand, PROMOTE this card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1,
+                "choose": true
+            },
+            {
+                "when": "turn_end",
+                "do": "promote",
+                "if": "hand_ge",
+                "n": 6
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2100,
+        "defense": 1000,
+        "level": 2,
+        "subtype": "striver",
+        "promotesTo": "card_pira_016",
+        "forge": "forge2"
+    },
+    "card_pira_016": {
+        "id": "card_pira_016",
+        "name": "Silver Jack",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_016",
+        "code": "PIRA-016",
+        "flavourText": "Show me yours. Then it's mine.",
+        "effectText": "ACTIVATE (once per turn, pay 2 Authority): Look at your opponent's hand and PLUNDER a card from it.\nThis card can't be targeted by your opponent's effects.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "plunder",
+                "cost": "authority",
+                "from": "hand",
+                "amount": 1,
+                "cost_n": 2,
+                "choose": true
+            },
+            {
+                "when": "passive",
+                "do": "untargetable"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3000,
+        "defense": 1900,
+        "level": 3,
+        "subtype": "striver",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_017": {
+        "id": "card_pira_017",
+        "name": "Dock Rat",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_017",
+        "code": "PIRA-017",
+        "flavourText": "Small. Quick. Everywhere.",
+        "effectText": "When this card is KO'd: PLUNDER the top card of your opponent's deck (into your hand).",
+        "effects": [
+            {
+                "when": "self_ko",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 600,
+        "defense": 200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_018": {
+        "id": "card_pira_018",
+        "name": "Barnacle Bess",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_018",
+        "code": "PIRA-018",
+        "flavourText": "Thirty years on these docks. Nothing gets past me. Everything gets taken by me.",
+        "effectText": "ACTIVATE (once per turn, discard 1 card): Give one enemy character BLEED 200.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "bleed",
+                "target": "enemy",
+                "cost": "discard",
+                "amount": 200,
+                "cost_n": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 900,
+        "defense": 1000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_019": {
+        "id": "card_pira_019",
+        "name": "The Fence",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_019",
+        "code": "PIRA-019",
+        "flavourText": "Hot goods, cold cash. No questions.",
+        "effectText": "ACTIVATE (once per turn, discard 1 card): Gain 2 Authority this turn.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "authority",
+                "cost": "discard",
+                "amount": 2,
+                "cost_n": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 600,
+        "defense": 1100,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_020": {
+        "id": "card_pira_020",
+        "name": "Harpoon Hal",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_020",
+        "code": "PIRA-020",
+        "flavourText": "Everything comes up if you pull hard enough.",
+        "effectText": "When this card attacks a character in DEF position: This card gains +600 ATK for this Brawl.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "buff",
+                "target": "self",
+                "if": "vs_def",
+                "atk": 600
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1450,
+        "defense": 800,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_021": {
+        "id": "card_pira_021",
+        "name": "Lantern Lu",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_021",
+        "code": "PIRA-021",
+        "flavourText": "Lost something? Let me light the way. Then keep it.",
+        "effectText": "At the end of your turn: If an enemy character is Downed, PLUNDER the most recent card from your opponent's Gutter (into your hand).",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "plunder",
+                "if": "foe_downed",
+                "from": "gutter",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1100,
+        "defense": 1600,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_022": {
+        "id": "card_pira_022",
+        "name": "Cutlass Kai",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_022",
+        "code": "PIRA-022",
+        "flavourText": "Heavy pockets, sharp blade.",
+        "effectText": "This card gains +100 ATK for each card in your hand (up to 6).",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "buff",
+                "target": "self",
+                "per": "hand",
+                "atk": 100,
+                "per_max": 6
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1550,
+        "defense": 600,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_023": {
+        "id": "card_pira_023",
+        "name": "Fogbank Finn",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_023",
+        "code": "PIRA-023",
+        "flavourText": "You won't see me. You'll just notice what's gone.",
+        "effectText": "At the end of your turn: Destroy one of your opponent's face-down cards.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "break_ambush",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1500,
+        "defense": 900,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_024": {
+        "id": "card_pira_024",
+        "name": "Mutiny Mags",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_024",
+        "code": "PIRA-024",
+        "flavourText": "Captains come and go. I stay.",
+        "effectText": "When this card KOs a character: Put a BOUNTY 2 on one enemy character.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "bounty",
+                "target": "enemy",
+                "amount": 2
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2150,
+        "defense": 800,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_025": {
+        "id": "card_pira_025",
+        "name": "Old Salt",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_025",
+        "code": "PIRA-025",
+        "flavourText": "I've been robbed by better. Then I robbed them back.",
+        "effectText": "Once per turn, when this card is attacked: DOWN the attacker.\nYour opponent must attack this card first if it is standing.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "down",
+                "target": "attacker",
+                "once": true
+            },
+            {
+                "when": "passive",
+                "do": "guard"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1800,
+        "defense": 2500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_026": {
+        "id": "card_pira_026",
+        "name": "The Leviathan",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 7,
+        "tributeCost": 1,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_026",
+        "code": "PIRA-026",
+        "flavourText": "When it surfaces, the harbour changes hands.",
+        "effectText": "When deployed: KO the enemy character across from this card.\nACTIVATE (once per turn, discard 1 card): Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.\nThis card is immune to BURN, SUPPRESS and CHARM.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "ko",
+                "target": "opposite"
+            },
+            {
+                "when": "activate",
+                "do": "wreck",
+                "cost": "discard",
+                "amount": 1,
+                "cost_n": 1
+            },
+            {
+                "when": "passive",
+                "do": "immune",
+                "statuses": [
+                    "burn",
+                    "suppress",
+                    "charm"
+                ]
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3200,
+        "defense": 2500,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_027": {
+        "id": "card_pira_027",
+        "name": "Pickpocket",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_027",
+        "code": "PIRA-027",
+        "flavourText": "Two fingers, one second, no witnesses.",
+        "effectText": "PLUNDER a random card from your opponent's hand.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_028": {
+        "id": "card_pira_028",
+        "name": "Walk the Plank",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_028",
+        "code": "PIRA-028",
+        "flavourText": "Mind the gap.",
+        "effectText": "Return one enemy character to its owner's hand.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "bounce",
+                "target": "enemy"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_029": {
+        "id": "card_pira_029",
+        "name": "Buried Treasure",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_029",
+        "code": "PIRA-029",
+        "flavourText": "X marks the Gutter.",
+        "effectText": "PLUNDER up to 2 cards of your choice from your opponent's Gutter (into your hand).",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 2,
+                "choose": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_030": {
+        "id": "card_pira_030",
+        "name": "Boarding Party",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_030",
+        "code": "PIRA-030",
+        "flavourText": "Over the side, lads. Leave the furniture.",
+        "effectText": "PLUNDER one enemy character: it fights for you from now on.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "target": "enemy",
+                "from": "field"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_031": {
+        "id": "card_pira_031",
+        "name": "Black Flag",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_031",
+        "code": "PIRA-031",
+        "flavourText": "Nobody fights under that flag. They just run.",
+        "effectText": "When your opponent deploys a character: SILENCE one enemy character until the end of your next turn.",
+        "effects": [
+            {
+                "when": "foe_deployed",
+                "do": "silence",
+                "target": "enemy",
+                "until": "next_turn"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "subtype": "continuous",
+        "forge": "forge2"
+    },
+    "card_pira_032": {
+        "id": "card_pira_032",
+        "name": "Cutpurse",
+        "clan": "pirates",
+        "cardType": "ambush",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_032",
+        "code": "PIRA-032",
+        "flavourText": "Swing all you like. I am already gone.",
+        "effectText": "When an enemy attacks one of your characters: PLUNDER the top card of your opponent's deck (into your hand).",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 1
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_033": {
+        "id": "card_pira_033",
+        "name": "The Flying Dutchman",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 6,
+        "tributeCost": 0,
+        "rarity": 5,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_033",
+        "code": "PIRA-033",
+        "flavourText": "",
+        "effectText": "This card is UNDEAD.\nWhen deployed: PLUNDER a card of your choice from your opponent's Gutter (into your hand).\nACTIVATE (once per turn, discard 2 cards): KO one enemy character.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "undead"
+            },
+            {
+                "when": "deploy",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 1,
+                "choose": true
+            },
+            {
+                "when": "activate",
+                "do": "ko",
+                "target": "enemy",
+                "cost": "discard",
+                "cost_n": 2
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2600,
+        "defense": 0,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
     }
 };

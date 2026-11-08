@@ -148,6 +148,29 @@ const CURATED = {
             ['card_arso_015', 3], ['card_arso_016', 3],
         ],
     },
+    // 30 characters, 10 Hustles: steal from the opponent (PLUNDER their hand, deck, Gutter or characters)
+    // and play their cards. The list in docs/PIRATES_STARTER_PROMPTS.md; The Flying Dutchman is the Turf
+    // Defense prize.
+    pirates: {
+        blurb: 'Take what is theirs: PLUNDER cards from your opponent\'s hand, deck, Gutter and even their field, then play them against them.',
+        leader: 'card_pira_001',   // Captain Marlow
+        deck: [
+            // Strivers: Bilge, Tidewater Tess, Gil the Grave Robber, Red Annie Rourke, Silver Jack
+            ['card_pira_002', 2], ['card_pira_005', 2], ['card_pira_008', 2], ['card_pira_011', 2], ['card_pira_014', 2],
+            // Characters: Dock Rat, Barnacle Bess, The Fence, Harpoon Hal, Lantern Lu, Cutlass Kai, Fogbank Finn,
+            // Mutiny Mags, Old Salt; Heavy The Leviathan
+            ['card_pira_017', 3], ['card_pira_018', 2], ['card_pira_019', 2], ['card_pira_020', 2], ['card_pira_021', 2],
+            ['card_pira_022', 2], ['card_pira_023', 2], ['card_pira_024', 2], ['card_pira_025', 2], ['card_pira_026', 1],
+            // Hustles: Pickpocket, Walk the Plank, Buried Treasure, Boarding Party, Black Flag (Continuous); Ambush: Cutpurse
+            ['card_pira_027', 3], ['card_pira_028', 2], ['card_pira_029', 1], ['card_pira_030', 1],
+            ['card_pira_031', 2], ['card_pira_032', 1],
+        ],
+        hideout: [
+            ['card_pira_003', 3], ['card_pira_004', 3], ['card_pira_006', 3], ['card_pira_007', 3],
+            ['card_pira_009', 3], ['card_pira_010', 3], ['card_pira_012', 3], ['card_pira_013', 3],
+            ['card_pira_015', 3], ['card_pira_016', 3],
+        ],
+    },
 };
 
 // How a clan without a starter yet plays (shown when it can be chosen)

@@ -131,6 +131,32 @@
                         {"below": 2800, "label": "THE CITY BURNS", "fx": [{"do": "damage", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 700, "until": "forever"}]}],
                     "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
             ]
+        },
+        {
+            "id": "marlow", "clan": "pirates", "leader": "card_pira_001", "name": "Captain Marlow, Harbour King", "short": "Marlow", "title": "Terror of the Waterfront",
+            "color": "#2ec4b6", "arena": "docks", "portrait": "card_pira_001", "prize": "card_pira_033",
+            "lines": {
+                "intro": ["Welcome aboard. Leave your valuables at the gangplank.", "Everything in this city floats. Everything that floats is mine.", "Two of you? Good. Twice the plunder."],
+                "phase": {"1": "All hands on deck! Empty their pockets!", "2": "Grapples out! That one sails with us now!", "3": "Run out the guns! FULL BROADSIDE!"},
+                "low": "She's taking on water... hold her together, lads...",
+                "player_out": "Over the side with you. Mind the propellers.",
+                "defeat": "Take the ship, then. The sea always takes it back.",
+                "victory": "Strip them to the bone and sink what's left."
+            },
+            "levels": [
+                {"level": 1, "name": "Street", "morale": 13000, "ai": "hard", "draw": 0, "authority": 3, "influence": 1.5,
+                    "phases": [{"below": 6500, "label": "ALL HANDS ON DECK", "fx": [{"do": "plunder", "from": "hand", "amount": 1, "each_foe": true}, {"do": "draw", "amount": 1}]}],
+                    "first_clear": {"karat": 300, "xp": 400}, "clear": {"karat": 60, "xp": 200}},
+                {"level": 2, "name": "Hard", "morale": 17500, "ai": "hard", "draw": 1, "authority": 4, "influence": 2, "add": [["card_pira_026", 1], ["card_pira_030", 1]],
+                    "phases": [{"below": 11500, "label": "ALL HANDS ON DECK", "fx": [{"do": "plunder", "from": "hand", "amount": 1, "each_foe": true}, {"do": "draw", "amount": 1}]},
+                        {"below": 5800, "label": "BOARDING PARTY", "fx": [{"do": "plunder", "from": "field", "target": "enemy"}, {"do": "buff", "target": "allies", "atk": 600, "until": "forever"}]}],
+                    "first_clear": {"karat": 600, "xp": 700, "packs": 1}, "clear": {"karat": 90, "xp": 260}},
+                {"level": 3, "name": "Nightmare", "morale": 23500, "ai": "hard", "draw": 1, "authority": 5, "influence": 3, "add": [["card_pira_026", 1], ["card_pira_030", 1], ["card_pira_024", 2], ["card_pira_025", 1]],
+                    "phases": [{"below": 16500, "label": "ALL HANDS ON DECK", "fx": [{"do": "plunder", "from": "hand", "amount": 1, "each_foe": true}, {"do": "draw", "amount": 2}]},
+                        {"below": 9800, "label": "BOARDING PARTY", "fx": [{"do": "plunder", "from": "field", "target": "enemy"}, {"do": "buff", "target": "allies", "atk": 700, "until": "forever"}]},
+                        {"below": 4200, "label": "FULL BROADSIDE", "fx": [{"do": "damage", "amount": 1000, "each_foe": true}, {"do": "buff", "target": "allies", "atk": 800, "until": "forever"}]}],
+                    "first_clear": {"karat": 1200, "xp": 1200, "packs": 2}, "clear": {"karat": 130, "xp": 330}}
+            ]
         }
     ]
 }
