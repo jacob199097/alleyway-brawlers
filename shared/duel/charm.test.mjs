@@ -45,11 +45,47 @@ st._doFx('player', -1, src, { do: 'charm', target: 'enemy' });
 answer(st, '1');
 st._ko('player', 0);
 assert.ok(st.sides.opponent.gutter.includes(pawn) && !st.sides.player.gutter.includes(pawn), "KO'd: its owner's Gutter");
-// no room on your side: nothing happens
+// A full front row: you may replace one of your characters with it (it goes to the Gutter), or keep them all
+st = duel();
+for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l] = unit(st, 'Mine' + l, 1000 + l * 100);
+const far = unit(st, 'Far', 2500);
+st.sides.opponent.field[0] = far;
+assert.equal(st.fxCan('player', -1, src, { do: 'charm', target: 'enemy' }), true, 'a full row: CHARM still works');
+st._doFx('player', -1, src, { do: 'charm', target: 'enemy' });
+answer(st, '0');   // (whom to CHARM)
+let ask = answer(st, '3');
+assert.equal(ask.key, 'replace');
+assert.equal(ask.options[0].id, 'keep', 'a CPU keeps its characters for a CHARM (unless one is Downed)');
+assert.equal(st.sides.player.field[3], far, 'it takes the lane you gave up');
+assert.equal(st.sides.player.gutter.at(-1).name, 'Mine3');
+st._turnOver();
+assert.equal(st.sides.opponent.field[0], far, 'and goes home at the end of the turn');
+assert.equal(st.sides.player.field[3], null);
+// ... KEEP THEM ALL: nothing happens
 st = duel();
 for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l] = unit(st, 'Mine' + l);
 st.sides.opponent.field[0] = unit(st, 'Far');
-assert.equal(st.fxCan('player', -1, src, { do: 'charm', target: 'enemy' }), false, 'no empty lane: CHARM can do nothing');
+st._doFx('player', -1, src, { do: 'charm', target: 'enemy' });
+answer(st, '0');
+answer(st, 'keep');
+assert.ok(st.sides.opponent.field[0] && !st.sides.player.gutter.length, 'kept them all');
+// PLUNDER from the field, a full row: the CPU replaces its weakest for a stronger card
+st = duel();
+for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l] = unit(st, 'Mine' + l, 1000 + l * 100);
+const prize = unit(st, 'Prize', 2500);
+st.sides.opponent.field[1] = prize;
+st._doFx('player', -1, src, { do: 'plunder', from: 'field', target: 'enemy' });
+answer(st, '1');
+ask = answer(st);
+assert.equal(ask.options[0].id, '0', 'the weakest first');
+assert.equal(st.sides.player.field[0], prize, 'plundered into the lane it gave up');
+assert.equal(st.sides.opponent.field[1], null);
+// no character you can give up: nothing happens
+st = duel();
+for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l] = unit(st, 'Mine' + l, 1000, 1000, { effects: [{ when: 'passive', do: 'no_down' }] });
+for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l].cardType = 'leader';
+st.sides.opponent.field[0] = unit(st, 'Far');
+assert.equal(st.fxCan('player', -1, src, { do: 'charm', target: 'enemy' }), false, 'no room and nobody to replace: CHARM can do nothing');
 
 // UNDEAD: the first KO, it rises at the end of the turn, in DEF with half its ATK and DEF; the second, it stays
 st = duel();

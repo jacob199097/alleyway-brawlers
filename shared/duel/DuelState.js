@@ -562,7 +562,7 @@ export class DuelState {
             }
         }
         if (!('target' in e)) return true;
-        if (['charm', 'plunder'].includes(String(e.do ?? '')) && this._emptyLane(side) < 0) return false;   // (no lane to take it to)
+        if (['charm', 'plunder'].includes(String(e.do ?? '')) && !this._roomFor(side)) return false;   // (no lane to take it to, nor a character to replace)
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
             promote_ally: 'promotable', charm: 'charmable', plunder: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
@@ -2181,8 +2181,8 @@ export class DuelState {
     /** A card an effect puts onto the field (call, revive, token): in the first empty lane (place(lane)),
      *  or, the field full, the player may send one of their characters to the Gutter to make room (as
      *  deploying over one does) or keep them all (keep()). The CPU replaces its weakest character only
-     *  for a stronger card. Same as _ask_replace in duel_state.gd. */
-    _askReplace(side, c, card, place, keep) {
+     *  for a stronger card (better(weakest): when else to). Same as _ask_replace in duel_state.gd. */
+    _askReplace(side, c, card, place, keep, better = null) {
         const lane = this._emptyLane(side);
         if (lane >= 0) { place(lane); return; }
         const mine = FRONT.filter(l => this.canSacrifice(side, l)).map(l => ({ slot: l, card: this.cardAt(side, l) }));
@@ -2190,8 +2190,8 @@ export class DuelState {
         mine.sort((a, b) => attackValue(a.card) - attackValue(b.card) || a.slot - b.slot);
         const opts = mine.map(x => ({ id: String(x.slot), label: `REPLACE ${String(x.card.name).toUpperCase()}  (${x.card.attack} / ${x.card.defense})`, side, slot: x.slot }));
         const no = { id: 'keep', label: 'KEEP THEM ALL' };
-        const better = attackValue(card) > attackValue(mine[0].card);
-        this._ask(side, 'replace', `Your field is full. Replace one of your characters with ${card.name}?`, card, better ? [...opts, no] : [no, ...opts], (choice) => {
+        const worth = better ? better(mine[0].card) : attackValue(card) > attackValue(mine[0].card);
+        this._ask(side, 'replace', `Your field is full. Replace one of your characters with ${card.name}?`, card, worth ? [...opts, no] : [no, ...opts], (choice) => {
             if (this.winner !== '') return;
             const free = this._emptyLane(side);
             if (free >= 0) { place(free); return; }   // (a lane came free meanwhile)
@@ -2798,31 +2798,43 @@ export class DuelState {
                 break;
             case 'charm':   // CHARM: take control of an enemy character until the end of the turn
                 this._fxApply(side, slot, c, e, vs, 'charmable', 'CHARM', (x) => {
-                    const lane = this._emptyLane(side);
-                    if (lane < 0) return `${x.card.name} resists the CHARM (no room)`;
-                    this.sides[x.side].field[x.slot] = null;
-                    x.card.charmed = { owner: x.side, slot: x.slot, until: this.turn };
-                    x.card.has_attacked = false;
-                    delete x.card.rest_turn;
-                    this.sides[side].field[lane] = x.card;
-                    this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card) });
-                    this._recalc();
-                    return `${c.name} CHARMS ${x.card.name}: it fights for ${side === this.active ? 'its charmer' : 'the other side'} this turn`;
+                    // A full front row: one of yours may make room (the CPU gives up only a Downed one for a turn's loan)
+                    const said = { sync: true, text: '' };
+                    const say = (t, l) => { if (said.sync) said.text = t; else this._effect(side, c, t, l); };
+                    this._askReplace(side, c, x.card, (lane) => {
+                        if (this.cardAt(x.side, x.slot) !== x.card) { say(`${x.card.name} is gone: the CHARM fails`, NO_SLOT); return; }
+                        this.sides[x.side].field[x.slot] = null;
+                        x.card.charmed = { owner: x.side, slot: x.slot, until: this.turn };
+                        x.card.has_attacked = false;
+                        delete x.card.rest_turn;
+                        this.sides[side].field[lane] = x.card;
+                        this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card) });
+                        this._recalc();
+                        say(`${c.name} CHARMS ${x.card.name}: it fights for ${side === this.active ? 'its charmer' : 'the other side'} this turn`, lane);
+                    }, () => say(`${x.card.name} resists the CHARM (no room)`, NO_SLOT), (weakest) => !!weakest.downed);
+                    said.sync = false;
+                    return said.text || `${c.name} CHARMS ${x.card.name}: make room for it?`;
                 }, `${c.name} CHARMS %s`);
                 break;
             case 'plunder': {   // PLUNDER: an opponent's card becomes yours (from their hand, deck, Gutter or field)
                 const from = String(e.from ?? 'hand');
                 if (from === 'field') {   // one of their characters fights for you from now on (CHARM, for good)
                     this._fxApply(side, slot, c, e, vs, 'charmable', 'PLUNDER', (x) => {
-                        const lane = this._emptyLane(side);
-                        if (lane < 0) return `${x.card.name} can't be PLUNDERED (no room)`;
-                        this.sides[x.side].field[x.slot] = null;
-                        x.card.has_attacked = true;   // (it joins the crew: it can attack from next turn)
-                        delete x.card.rest_turn;
-                        this.sides[side].field[lane] = x.card;
-                        this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card), plunder: true });
-                        this._recalc();
-                        return `${c.name} PLUNDERS ${x.card.name}: it fights for its new crew`;
+                        // A full front row: one of yours may make room for it (for good: the CPU, for a stronger card)
+                        const said = { sync: true, text: '' };
+                        const say = (t, l) => { if (said.sync) said.text = t; else this._effect(side, c, t, l); };
+                        this._askReplace(side, c, x.card, (lane) => {
+                            if (this.cardAt(x.side, x.slot) !== x.card) { say(`${x.card.name} is gone: nothing to PLUNDER`, NO_SLOT); return; }
+                            this.sides[x.side].field[x.slot] = null;
+                            x.card.has_attacked = true;   // (it joins the crew: it can attack from next turn)
+                            delete x.card.rest_turn;
+                            this.sides[side].field[lane] = x.card;
+                            this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card), plunder: true });
+                            this._recalc();
+                            say(`${c.name} PLUNDERS ${x.card.name}: it fights for its new crew`, lane);
+                        }, () => say(`${x.card.name} can't be PLUNDERED (no room)`, NO_SLOT));
+                        said.sync = false;
+                        return said.text || `${c.name} PLUNDERS ${x.card.name}: make room for it?`;
                     }, `${c.name} PLUNDERS %s`);
                     break;
                 }

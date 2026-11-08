@@ -76,7 +76,9 @@ st.cardAt('player', stolen.slot).defense = 0;
 st._ko('player', stolen.slot);
 assert.ok(st.sides.player.gutter.some(c => c.name === 'Brute'), 'KO\'d, it goes to the plunderer\'s Gutter');
 st = board({ player: [{}, {}, {}, {}, {}], opponent: [{}] });
-assert.equal(st.fxCan('player', -10, src, { do: 'plunder', from: 'field', target: 'enemy' }), false, 'no room: can\'t');
+assert.equal(st.fxCan('player', -10, src, { do: 'plunder', from: 'field', target: 'enemy' }), true, 'a full row: you may replace one of yours (charm.test.mjs)');
+for (const l of [0, 1, 2, 3, 4]) st.sides.player.field[l].cardType = 'leader';   // (none you can give up)
+assert.equal(st.fxCan('player', -10, src, { do: 'plunder', from: 'field', target: 'enemy' }), false, 'no room and nobody to replace: can\'t');
 
 // Gutter abilities: from the Gutter, on your turn, once a turn each
 const ghost = (cost, extra = {}) => ({ name: 'Ghost', effects: [{ when: 'gutter', do: 'damage', amount: 300, cost, cost_n: 2, ...extra }] });

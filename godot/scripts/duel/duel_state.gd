@@ -627,7 +627,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 				return foes.any(func(x): return x.gutter.any(func(y): return not y.get("token", false) and _fx_kind_ok(y, e)))
 	if not e.has("target"):
 		return true
-	if str(e.get("do", "")) in ["charm", "plunder"] and _empty_lane(side) < 0:   # (no lane to take it to)
+	if str(e.get("do", "")) in ["charm", "plunder"] and not _room_for(side):   # (no lane to take it to, nor a character to replace)
 		return false
 	var pool: String = {"down": "standing", "stand": "downed", "force_def": "attackers", "force_atk": "defenders",
 		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "plunder": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
@@ -2502,8 +2502,8 @@ func _room_for(side: String) -> bool:
 ## A card an effect puts onto the field (call, revive, token): in the first empty lane (place(lane)),
 ## or, the field full, the player may send one of their characters to the Gutter to make room (as
 ## deploying over one does) or keep them all (keep()). The CPU replaces its weakest character only
-## for a stronger card. Same as _askReplace in DuelState.js.
-func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable, keep: Callable) -> void:
+## for a stronger card (better(weakest): when else to). Same as _askReplace in DuelState.js.
+func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable, keep: Callable, better := Callable()) -> void:
 	var lane := _empty_lane(side)
 	if lane >= 0:
 		place.call(lane)
@@ -2522,9 +2522,9 @@ func _ask_replace(side: String, c: Dictionary, card: Dictionary, place: Callable
 		opts.append({"id": str(x.slot), "label": "REPLACE %s  (%d / %d)" % [str(x.card.name).to_upper(), int(x.card.attack), int(x.card.defense)],
 			"side": side, "slot": x.slot})
 	var no := {"id": "keep", "label": "KEEP THEM ALL"}
-	var better := _attack_value(card) > _attack_value(mine[0].card)
+	var worth: bool = better.call(mine[0].card) if better.is_valid() else _attack_value(card) > _attack_value(mine[0].card)
 	_ask(side, "replace", "Your field is full. Replace one of your characters with %s?" % card.name, card,
-		opts + [no] if better else [no] + opts, func(choice: String) -> void:
+		opts + [no] if worth else [no] + opts, func(choice: String) -> void:
 			if winner != "":
 				return
 			var free := _empty_lane(side)
@@ -3203,32 +3203,55 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_fx_apply(side, slot, c, e, vs, "promotable", "PROMOTE", fn, "%s PROMOTES %%s" % c.name)
 		"charm":   # CHARM: take control of an enemy character until the end of the turn
 			var fn := func(x: Dictionary) -> String:
-				var lane := _empty_lane(side)
-				if lane < 0:
-					return "%s resists the CHARM (no room)" % x.card.name
-				sides[x.side].field[x.slot] = null
-				x.card.charmed = {"owner": x.side, "slot": x.slot, "until": turn}
-				x.card.has_attacked = false
-				x.card.erase("rest_turn")
-				sides[side].field[lane] = x.card
-				_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true)})
-				_recalc()
-				return "%s CHARMS %s: it fights for %s this turn" % [c.name, x.card.name, "its charmer" if side == active else "the other side"]
+				# A full front row: one of yours may make room (the CPU gives up only a Downed one for a turn's loan)
+				var said := {"sync": true, "text": ""}
+				var say := func(t: String, l: int) -> void:
+					if said.sync:
+						said.text = t
+					else:
+						_effect(side, c, t, l)
+				_ask_replace(side, c, x.card, func(lane: int) -> void:
+					if card_at(x.side, x.slot) != x.card:
+						say.call("%s is gone: the CHARM fails" % x.card.name, NO_SLOT)
+						return
+					sides[x.side].field[x.slot] = null
+					x.card.charmed = {"owner": x.side, "slot": x.slot, "until": turn}
+					x.card.has_attacked = false
+					x.card.erase("rest_turn")
+					sides[side].field[lane] = x.card
+					_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true)})
+					_recalc()
+					say.call("%s CHARMS %s: it fights for %s this turn" % [c.name, x.card.name, "its charmer" if side == active else "the other side"], lane),
+					func() -> void: say.call("%s resists the CHARM (no room)" % x.card.name, NO_SLOT),
+					func(weakest: Dictionary) -> bool: return weakest.get("downed", false))
+				said.sync = false
+				return said.text if said.text != "" else "%s CHARMS %s: make room for it?" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "charmable", "CHARM", fn, "%s CHARMS %%s" % c.name)
 		"plunder":   # PLUNDER: an opponent's card becomes yours (from their hand, deck, Gutter or field)
 			var from := str(e.get("from", "hand"))
 			if from == "field":   # one of their characters fights for you from now on (CHARM, for good)
 				var steal := func(x: Dictionary) -> String:
-					var lane := _empty_lane(side)
-					if lane < 0:
-						return "%s can't be PLUNDERED (no room)" % x.card.name
-					sides[x.side].field[x.slot] = null
-					x.card.has_attacked = true   # (it joins the crew: it can attack from next turn)
-					x.card.erase("rest_turn")
-					sides[side].field[lane] = x.card
-					_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true), "plunder": true})
-					_recalc()
-					return "%s PLUNDERS %s: it fights for its new crew" % [c.name, x.card.name]
+					# A full front row: one of yours may make room for it (for good: the CPU, for a stronger card)
+					var said := {"sync": true, "text": ""}
+					var say := func(t: String, l: int) -> void:
+						if said.sync:
+							said.text = t
+						else:
+							_effect(side, c, t, l)
+					_ask_replace(side, c, x.card, func(lane: int) -> void:
+						if card_at(x.side, x.slot) != x.card:
+							say.call("%s is gone: nothing to PLUNDER" % x.card.name, NO_SLOT)
+							return
+						sides[x.side].field[x.slot] = null
+						x.card.has_attacked = true   # (it joins the crew: it can attack from next turn)
+						x.card.erase("rest_turn")
+						sides[side].field[lane] = x.card
+						_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true), "plunder": true})
+						_recalc()
+						say.call("%s PLUNDERS %s: it fights for its new crew" % [c.name, x.card.name], lane),
+						func() -> void: say.call("%s can't be PLUNDERED (no room)" % x.card.name, NO_SLOT))
+					said.sync = false
+					return said.text if said.text != "" else "%s PLUNDERS %s: make room for it?" % [c.name, x.card.name]
 				_fx_apply(side, slot, c, e, vs, "charmable", "PLUNDER", steal, "%s PLUNDERS %%s" % c.name)
 			else:
 				# (a plundered card is shown to everyone: it goes into the plunderer's hand)
