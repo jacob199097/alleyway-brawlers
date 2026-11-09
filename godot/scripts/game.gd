@@ -17,6 +17,7 @@ const SCREENS := {
 	"duel": "res://scenes/duel.tscn",
 	"post_match": "res://scenes/post_match.tscn",
 	"shop": "res://scenes/shop.tscn",
+	"auction_house": "res://scenes/auction_house.tscn",
 	"contraband": "res://scenes/contraband.tscn",
 	"deck_builder": "res://scenes/deck_builder.tscn",
 	"card_library": "res://scenes/card_library.tscn",

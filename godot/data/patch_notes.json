@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.130",
+        "notes": [
+            "The Auction House (in the Shop): sell your cards to other players for Karat, and bid on theirs. Auctions run 24 hours; a bid in the last 2 minutes keeps one open 2 minutes more. Your bid's Karat is held until someone outbids you, then it comes back and your mailbox tells you.",
+            "To trade: level 5, an account at least 7 days old and a confirmed email (or a Steam account). Each rarity has a lowest and highest price, listing costs 5% of the starting price, and a sale pays a 10% fee.",
+            "Copies your decks use can't be sold, nor a boss's prize. Using more than one account to move cards or Karat between them is against the terms."
+        ]
+    },
+    {
         "version": "0.9.129",
         "notes": [
             "Captain Marlow: while Dormant, once per turn, when one of your characters Downs an enemy character, PLUNDER the top card of your opponent's deck (was: at the start of your turn).",

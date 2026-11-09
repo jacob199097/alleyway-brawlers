@@ -32,6 +32,9 @@
   (the server reads it via `shared/turf.js`); matches `backend/socket/coopMatch.js`, rewards `backend/economy/turf.js`.
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
+- The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number
+  (price floors and ceilings, fees, level / account-age limits) in `backend/economy/auction_settings.js`. Sales that look like one
+  person trading with their own accounts get flagged: `node backend/scripts/auction_report.mjs` on the server.
   Rank emblems made in ChatGPT come in with `godot/tools/import_rank_icons.gd`.
 - Steam (`docs/STEAM.md`): GodotSteam in `godot/addons/godotsteam`, `godot/scripts/steam.gd` (on only in the "Windows Steam"
   export, feature `steam`, or with `--steam`); server `backend/routes/steam.js`; `tools/steam_build.mjs` builds and uploads.

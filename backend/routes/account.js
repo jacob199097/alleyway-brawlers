@@ -59,6 +59,7 @@ async function deleteAccount(playerId) {
             `SELECT to_regclass('match_replays') IS NOT NULL AS replays, to_regclass('client_errors') IS NOT NULL AS errors`);
         if (t.replays) await client.query('DELETE FROM match_replays WHERE p1 = $1 OR p2 = $1', [String(playerId)]);
         if (t.errors) await client.query('DELETE FROM client_errors WHERE player_id = $1', [String(playerId)]);
+        await require('../economy/auction').forgetPlayer(client, playerId);   // (bids on their auctions are refunded)
         const { rowCount } = await client.query('DELETE FROM players WHERE id = $1', [playerId]);
         await client.query('COMMIT');
         return rowCount > 0;

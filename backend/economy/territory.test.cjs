@@ -52,15 +52,17 @@ const conn = (database) => new Client({
     let up = await veterans.record(ann, ['nebu_001', 'nebu_002'], true);   // nebu_001's 5th win
     assert.deepEqual(up, [{ id: 'nebu_001', tier: 1, name: 'Seasoned' }]);
     let all = await veterans.overview(ann);
-    assert.deepEqual(all.cards.nebu_001, { wins: 5, plays: 6, tier: 1 });
-    assert.deepEqual(all.cards.nebu_002, { wins: 1, plays: 2, tier: 0 });
+    assert.deepEqual(all.cards.nebu_001, { wins: 5, plays: 6, tier: 1, xp: 16 });   // (1 a match + 2 a win)
+    assert.deepEqual(all.cards.nebu_002, { wins: 1, plays: 2, tier: 0, xp: 4 });
     assert.deepEqual(await veterans.tiers(ann), { nebu_001: 1 });
     assert.deepEqual(await veterans.tiers(ann, ['nebu_002', 'mili_001']), {}, 'only the cards asked about');
     assert.deepEqual(await veterans.tiers(bob), {}, "someone else's cards aren't mine");
     for (let i = 0; i < 10; i++) up = await veterans.record(ann, ['nebu_001'], true);
     assert.deepEqual(up, [{ id: 'nebu_001', tier: 2, name: 'Battle-Scarred' }]);
-    assert.equal(veterans.tierOf(39), 2);
-    assert.equal(veterans.tierOf(40), 3);
+    assert.equal(veterans.tierOf(44), 1);
+    assert.equal(veterans.tierOf(45), 2);
+    assert.equal(veterans.tierOf(119), 2);
+    assert.equal(veterans.tierOf(120), 3);
 
     // ── The turf map ──
     const [d1, d2, d3] = territory.DISTRICTS.map(d => d.id);

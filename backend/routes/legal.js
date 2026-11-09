@@ -14,7 +14,7 @@
 const router = require('express').Router();
 
 const GAME = 'AlleyWay Brawlers';
-const UPDATED = '1 November 2026';
+const UPDATED = '9 November 2026';
 
 const contact = () => process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
 const contactLink = () => contact()
@@ -69,6 +69,10 @@ Questions: ${contactLink()}.</p>
   when you last played. For each card you have played: how many matches you played it in and how many of those you
   won (its card XP and veteran frame). On the turf map: the influence you won for a clan in each district each week, and the
   weekly rewards you claimed.</li>
+ <li><b>The auction house:</b> the cards you put up for auction, their starting prices, the bids you make, and who
+  bought what for how much. To spot one person using several accounts to move cards or Karat between them, we also
+  keep a scrambled form of the IP address you signed up from and of the ones you list and bid from: a one-way code
+  that shows when two accounts used the same connection, not the address itself.</li>
  <li><b>Friends and messages:</b> your friends list and friend requests, the direct messages you send and receive,
   and the messages in your in-game mailbox.</li>
  <li><b>Matches:</b> the result of each online match, and recordings of your 3 most recent matches (the decks,
@@ -102,7 +106,8 @@ phone number, contacts or location.</p>
 
 <h2>What other players can see</h2>
 <p>Your username, profile picture, title, level, rank and win record (on the leaderboard and your profile), the
-cards you play in a match and their veteran frames, and replays of matches you played against them. On the turf
+cards you play in a match and their veteran frames, replays of matches you played against them, and your username on the cards you sell in the auction house (bidders'
+names aren't shown). On the turf
 map, the player who won the most influence in a district for the clan holding it is shown by username. Direct messages are seen only by the
 person you send them to. Your email address and Steam ID aren't shown to other players.</p>
 
@@ -120,11 +125,14 @@ person you send them to. Your email address and Steam ID aren't shown to other p
 
 <h2>How long we keep it</h2>
 <p>We keep your account and game data for as long as your account exists. Error reports are deleted after 30 days,
+finished auctions and their bids are deleted 90 days after they end,
 and only your 3 most recent match recordings are kept (a replay you save to your own computer is yours to keep). When you delete your account, everything listed above
 that belongs to it is deleted straight away, except purchase records: a record of each purchase (the Stripe payment
 reference, or the Steam order with your Steam ID; the bundle and what it cost) is kept without your account, so a
 payment can't be claimed twice and so we can handle refunds and keep the accounts we have to. The anonymous match
-statistics are kept, and other players' match history keeps the match without your account in it. Deleting your
+statistics are kept, and other players' match history keeps the match without your account in it. Auctions you were
+running are cancelled (anyone who bid gets their Karat back), and auctions you finished stay in the other player's
+history without your account. Deleting your
 account here doesn't affect your Steam account.</p>
 
 <h2>Deleting your account and your other choices</h2>
@@ -184,6 +192,10 @@ may end the service; if we do, we'll give notice in the game first.</p>
  <li>Karat, Contraband, Dust, cards, packs and other in-game items are a licence to use them in the game. They
   aren't your property, have no value in real money, can't be exchanged for money, and can't be sold, traded or
   moved outside the game.</li>
+ <li>In the auction house you can sell cards to other players for Karat. A card you list leaves your collection
+  until the auction ends; a bid holds your Karat until you're outbid; sales are final. Listing costs a fee and each
+  sale pays one, and prices have a lowest and highest amount by rarity. We may undo trades, or remove cards and
+  Karat gained, that break these terms.</li>
  <li>We may change, rebalance or retire cards and items (for example to keep the game fair).</li>
  <li>Contraband bought with real money is delivered to your account straight away, and payments are handled by
   Stripe (in the Steam version, by Valve through your Steam Wallet). Purchases are final and aren't refundable once delivered, except where the law where you live gives you a
@@ -196,6 +208,8 @@ may end the service; if we do, we'll give notice in the game first.</p>
  <li>cheat, use bots or scripts, or modify, reverse-engineer or tamper with the game or its traffic to get an
   advantage;</li>
  <li>exploit bugs (please report them to us instead);</li>
+ <li>use more than one account to move cards, Karat or other items between them, for example through the auction
+  house;</li>
  <li>harass, threaten, abuse or spam other players, or send hateful, sexual or illegal content in messages or
   usernames;</li>
  <li>attack, overload or try to break into our servers or other players' accounts;</li>

@@ -98,6 +98,7 @@ app.use('/api/turf', require('./routes/turf'));   // Turf Defense bosses and pro
 app.use('/api/steam', require('./routes/steam'));   // Steam sign-in, linking and purchases (utils/steam.js)
 app.use('/api/territory', require('./routes/territory'));   // the turf map (economy/territory.js)
 app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (economy/veterans.js)
+app.use('/api/auction', require('./routes/auction'));   // the auction house (economy/auction.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -282,6 +283,11 @@ migrate(pool)
         console.log(`[Server] AlleyWay Brawlers running on port ${PORT}`);
         // Pre-launch: everyone gets every clan's starter deck (routes/onboarding.js GIVE_ALL_STARTERS)
         onboardingRoutes.grantStartersToEveryone().catch(err => console.error('[Onboarding] starters:', err.message));
+        // The auction house: finish auctions as their time runs out, and forget old ones once a day
+        const auction = require('./economy/auction');
+        setInterval(() => auction.settleDue().catch(err => console.error('[Auction] settle:', err.message)), 30 * 1000);
+        setInterval(() => auction.cleanup().catch(err => console.error('[Auction] cleanup:', err.message)), 24 * 3600 * 1000);
+        auction.cleanup().catch(() => {});
     }));
 
 module.exports = { app, io };

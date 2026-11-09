@@ -166,4 +166,4 @@ async function craft(playerId, gameId) {
     }
 }
 
-module.exports = { summary, scrap, scrapExtras, craft, CraftError, VALUES, MAX_COPIES };
+module.exports = { summary, scrap, scrapExtras, craft, copiesInDecks, CraftError, VALUES, MAX_COPIES };

@@ -51,6 +51,9 @@ func _ready() -> void:
 	var cb := UI.button("PURCHASE CONTRABAND", func(): Game.go("contraband"), Vector2(380, 64), UI.PURPLE)
 	cb.position = Vector2(1500, 990)
 	add_child(cb)
+	var ah := UI.button("AUCTION HOUSE", func(): Game.go("auction_house"), Vector2(300, 60), UI.GOLD)   # (screens/auction_house.gd)
+	ah.position = Vector2(1580, 26)
+	add_child(ah)
 	var packs: Array = PACKS.duplicate()
 	var r := await Api.request("GET", "/api/shop/packs")
 	if r.ok and r.data is Dictionary:

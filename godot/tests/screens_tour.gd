@@ -3,7 +3,9 @@ extends Node
 ## screenshot of each. Nothing is written to the player's saved settings or session.
 ## Run (windowed):  godot --path godot res://tests/screens_tour.tscn -- <out_dir> [server_url] [--ffa-only]
 ## Other modes: --fps (frames per second on each screen), --perf-library (what the Card Library's
-## frame time goes on), --craft-only (the card zoom and craft reveal in quick shots), --clans.
+## frame time goes on), --craft-only (the card zoom and craft reveal in quick shots), --clans,
+## --auction (the auction house's tabs: against a local backend/server.js with auctions in its database,
+## as the mock server has none).
 
 var _out := "user://tour"
 
@@ -169,6 +171,39 @@ func _screen() -> Node:
 	return get_tree().current_scene
 
 
+## The auction house: browse (an auction picked), sell (a card picked), my auctions (my listing picked).
+func _auction_shots() -> void:
+	Game.go("shop")
+	await _shot("a00_shop", 2.4)
+	Game.go("auction_house")
+	await _shot("a01_browse", 2.8)
+	var ah = _screen()
+	if not ah._auctions.is_empty():
+		ah._picked = ah._auctions[0]
+		ah._render()
+		await _shot("a02_browse_picked", 1.2)
+		for a in ah._auctions:
+			if not a.get("leading", false) and not a.get("mine", false):
+				ah._picked = a
+				ah._render()
+				await _shot("a03_browse_bid", 1.2)
+				break
+	ah._show("sell")
+	await _shot("a04_sell", 2.0)
+	if not ah._owned.is_empty():
+		ah._picked = CardDB.get_card(str(ah._owned[0].get("art_url", "")))
+		ah._render()
+		await _shot("a05_sell_picked", 1.2)
+	ah._show("mine")
+	await _shot("a06_mine", 2.0)
+	for a in ah._auctions:
+		if a.get("mine", false) and str(a.get("status", "")) == "active":
+			ah._picked = a
+			ah._render()
+			await _shot("a07_mine_picked", 1.2)
+			break
+
+
 ## A controller button pressed and let go (scripts/pad.gd).
 func _pad(button: int) -> void:
 	for down in [true, false]:
@@ -202,6 +237,10 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--auction" in OS.get_cmdline_user_args():
+		await _auction_shots()
 		get_tree().quit()
 		return
 	if "--school" in OS.get_cmdline_user_args():   # (every Street School page)

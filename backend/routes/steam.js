@@ -16,6 +16,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { pool } = require('../db/pool');
+const { ipHash } = require('../utils/ipHash');
 const { requireAuth } = require('./middleware');
 const steam = require('../utils/steam');
 const { CONTRABAND_BUNDLES, grantContraband } = require('./shop');
@@ -67,8 +68,8 @@ router.post('/login', async (req, res) => {
         if (!create) return res.status(404).json({ error: 'No player for this Steam account yet.', code: 'no_account' });
         const username = await freeName(await deps.personaName(steamId));
         const { rows: [player] } = await pool.query(
-            `INSERT INTO players (username, steam_id, email_verified, karat, contraband)
-             VALUES ($1, $2, true, 500, 0) RETURNING ${PLAYER_FIELDS}`, [username, steamId]);
+            `INSERT INTO players (username, steam_id, email_verified, karat, contraband, signup_ip)
+             VALUES ($1, $2, true, 500, 0, $3) RETURNING ${PLAYER_FIELDS}`, [username, steamId, ipHash(req)]);
         console.log(`[Steam] New player ${username} (Steam ${steamId})`);
         res.status(201).json({ token: sign(player), player, created: true });
     } catch (err) {

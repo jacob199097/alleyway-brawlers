@@ -20,6 +20,10 @@ Tick items off as you go. The steps that need a decision are marked **Decide**.
 - [ ] **Card payments outside Steam:** the server has a Stripe *test* key (`sk_test_…`), so no money can
   move. **Decide:** sell Contraband outside Steam at launch? If so, switch to the live key (`sk_live_…`).
   If not, leave it, and the Windows and Mac downloads stay free to play without a shop.
+- [ ] **Auction house and Steam:** **Decide:** trade only from accounts linked to Steam? Set `REQUIRE_STEAM: true`
+  in `backend/economy/auction_settings.js` only if Steam is the only way to get the game: email accounts from
+  the Windows and Mac downloads couldn't trade then. Either way, a Steam account costs money if the game does,
+  which makes throwaway accounts for moving cards expensive.
 - [ ] **Server:** set `NODE_ENV=production` in `backend/.env`. Today it isn't set, which only matters for
   the developer free-purchase switch (`DEV_FREE_PURCHASES`), but production should say so.
 - [ ] **Uptime:** the server is a home PC. A UPS (battery backup) and an uptime monitor (e.g. UptimeRobot,
@@ -36,6 +40,7 @@ what to keep. My suggestion:
 | Friends and chat | Karat, Dust, packs, gifts in the mail |
 | Anything bought with real money (none so far: Stripe has been in test mode) | Level, XP, rank and Rank Points (`backend/scripts/reset_progress.js` does these two) |
 | | Achievements, quests, mastery, veteran cards, turf map, match history and replays |
+| | The auction house: every auction and bid (the cards in running auctions go with the collections) |
 
 A wipe script doesn't exist yet: once you've decided, I'll write one like `reset_progress.js`. It will
 show what it would do first, and only change things with `--apply`.
@@ -86,3 +91,6 @@ same build:
   the Steam build included.
 - Backups: the server makes one every night, and the PC copies them every day at noon (the "AlleywayBrawlers
   DB backup copy" task in Windows Task Scheduler). Restoring one: `pg_restore -d <empty database> <file>`.
+- The auction house: every week or so, `node backend/scripts/auction_report.mjs` on the server lists sales that
+  look like one person trading with their own accounts (the same IP address, or the same two players again and
+  again). It only flags: look before acting, since two people in one home share an IP address.

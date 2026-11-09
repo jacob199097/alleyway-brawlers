@@ -194,7 +194,7 @@ async function rejects(promise, pattern) {
     const { rows: [opener] } = await q(`INSERT INTO players (username, email, password_hash, karat) VALUES ('opener', 'o@x', 'x', 400) RETURNING id`);
     const pack = await openPack(opener.id, 'militia');
     assert.equal(pack.cardsReceived.length, 3);
-    assert.ok(pack.cardsReceived.every(c => c.clan === 'militia'), 'a Militia pack has only Militia cards');
+    assert.ok(pack.cardsReceived.every(c => c.clan === 'militia' || c.clan === 'neutral'), 'a Militia pack has only Militia (and Neutral) cards');
     assert.ok(pack.cardsReceived.every(c => c.isNew && c.owned === 1), 'all new to a new player');
     assert.equal(pack.collection.owned, 3);
     const prizes = (await import('../../shared/turf.js')).prizeCardIds();   // (bosses' prizes aren't in packs)

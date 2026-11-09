@@ -6,6 +6,7 @@ const jwt      = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../db/pool');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/mailer');
+const { ipHash } = require('../utils/ipHash');
 
 const JWT_SECRET  = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -26,9 +27,9 @@ router.post('/register', async (req, res) => {
         const token = uuidv4();
 
         await pool.query(
-            `INSERT INTO players (username, email, password_hash, karat, contraband, email_token, email_verified)
-             VALUES ($1, $2, $3, 500, 0, $4, false)`,
-            [username.trim(), email.trim().toLowerCase(), hash, token]
+            `INSERT INTO players (username, email, password_hash, karat, contraband, email_token, email_verified, signup_ip)
+             VALUES ($1, $2, $3, 500, 0, $4, false, $5)`,
+            [username.trim(), email.trim().toLowerCase(), hash, token, ipHash(req)]
         );
 
         // Fire-and-log verification email — don't block registration on SMTP
