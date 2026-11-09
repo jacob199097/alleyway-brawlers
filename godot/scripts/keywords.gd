@@ -47,6 +47,7 @@ const PHRASE_ONLY := ["DOUBLE"]
 const STATUS_HELP := {
 	"DOWNED": [Color("ff5a5a"), "DOWNED: it lost a brawl (or was knocked down). It drops to DEF position and its effects stop working. Attacked again while Downed, it is KO'd. It stands back up, in DEF, at the start of its owner's turn after a full round."],
 	"RESTING": [Color("ffb35a"), "CAN'T ATTACK YET: it was deployed, promoted or Awakened this turn, so it can't attack until its owner's next turn."],
+	"GUARDED": [Color("a0d8ff"), "CAN'T BE ATTACKED: its owner has another character that can be, so attacks have to go there. It doesn't stop effects, and it's off while the card is Downed, SILENCED or face-down."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]

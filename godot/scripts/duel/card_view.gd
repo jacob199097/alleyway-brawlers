@@ -18,6 +18,7 @@ const STATUS_STYLE := {
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
 	"charm": [Color("ff6fb5"), "CHM", "CHARMED"], "undead": [Color("8dffb0"), "UND", "UNDEAD"],
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
+	"guarded": [Color("a0d8ff"), "SAFE", "CAN'T BE ATTACKED"],
 }
 
 
@@ -612,6 +613,10 @@ func _draw_statuses() -> void:
 			L.draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(0.1, 0.06, 0.02, 0.8), 4.5, true)
 			L.draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(1.0, 0.78, 0.35, glint), 2.5, true)
 		L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if statuses.has("guarded"):   # a soft blue edge: attacks can't reach it right now (DuelState "elusive")
+		var g := 0.6 + 0.25 * sin(t * 2.0)
+		L.draw_rect(r.grow(2.0), Color(0.63, 0.85, 1.0, g), false, 3.0)
+		L.draw_rect(r.grow(7.0), Color(0.63, 0.85, 1.0, g * 0.35), false, 4.0)
 	if statuses.has("stasis"):
 		_draw_time_bubble(L, r, t)
 	if statuses.has("bounty"):

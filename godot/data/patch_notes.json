@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.137",
+        "notes": [
+            "Cards that \"can't be attacked while you control another character that can be\" (Soot and the rest) show a blue SAFE tag and outline while that's working. It goes away when the card is Downed, SILENCED or face-down, or is its owner's only character, so you can see when it's open to attack. It never stopped effects (a KO or EXILE still gets it)."
+        ]
+    },
+    {
         "version": "0.9.136",
         "notes": [
             "Casual Brawls no longer show RANK UP: only Ranked moves your rank, and the rank-up screen only shows when you actually go up.",

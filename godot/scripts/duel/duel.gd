@@ -939,6 +939,7 @@ func _build_from_view() -> void:
 	_ui.turn_num.text = "TURN %d" % duel.turn
 	_ui.turn_who.text = _turn_text(duel.active == "player")
 	_set_phase_ui(duel.phase)
+	_refresh_guards()
 
 
 func _on_net_event(name: String, data) -> void:
@@ -1900,8 +1901,26 @@ func _pump() -> void:
 		await _play(ev)
 		counts = ev.counts
 		_refresh_hud()
+		_refresh_guards()
 	_playing = false
 	_after_events()
+
+
+## The "can't be attacked" marker (status "guarded"): on a character whose "can't be attacked while you
+## control another character that can be" is working right now, the way attack_targets sees it.
+func _refresh_guards() -> void:
+	for side in field:
+		if not duel.sides.has(side):
+			continue
+		var open := duel.characters(side).filter(func(e): return not duel.in_stasis(e.card) and duel._passive(side, e.slot, e.card, "elusive").is_empty())
+		for slot in field[side]:
+			var v: CardView = field[side][slot]
+			if v == null or slot >= 5:
+				continue
+			var c = duel.card_at(side, slot)
+			var on: bool = c != null and not open.is_empty() and not duel.in_stasis(c) and not duel._passive(side, slot, c, "elusive").is_empty()
+			if on != v.statuses.has("guarded"):
+				v.statuses = v.statuses.filter(func(k): return k != "guarded") + (["guarded"] if on else [])
 
 
 func _after_events() -> void:
@@ -6906,11 +6925,11 @@ func _show_keyword_tip(p: Control, tip: PanelContainer, tip_text: RichTextLabel,
 func _live_statuses(v: CardView) -> Array:
 	return (["downed"] if v.downed else []) + v.statuses
 
-const STATUS_WORDS := {"poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
+const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
 	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
-const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a"}
+const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}
 
 
 ## A status in the card panel, in its colour: "DOWNED" red, "STASIS" violet...
