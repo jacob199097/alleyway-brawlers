@@ -184,7 +184,7 @@ func _build_header() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	pill.add_child(row)
-	row.add_child(_coin(30))
+	row.add_child(_karat_icon(58))
 	_balance = UI.label("0", 34, HOT, true)
 	row.add_child(_balance)
 	row.add_child(UI.label("KARAT", 16, Color(HOT, 0.8), true))
@@ -209,7 +209,17 @@ func _neon_flicker(c: CanvasItem) -> void:
 	breathe.tween_property(c, "modulate", Color(0.92, 0.9, 0.9), 1.6).set_trans(Tween.TRANS_SINE)
 
 
-## A gold coin (drawn): the Karat mark.
+## The Karat coin from the main menu bar (assets/karat_icon.png, cut from main_menu_bar.png), or a drawn one.
+func _karat_icon(d: float) -> Control:
+	var t := UI.tex("karat_icon.png")
+	if t == null:
+		return _coin(d * 0.6)
+	var r := UI.texture_rect(t, Vector2(d, d))
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return r
+
+
+## A gold coin (drawn): the Karat flying between places.
 func _coin(d: float) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(d, d)
@@ -817,7 +827,7 @@ func _auction_panel(a: Dictionary) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	left.add_child(row)
-	row.add_child(_coin(34))
+	row.add_child(_karat_icon(60))
 	_price_big = UI.label("0", 56, HOT, true)
 	_price_big.label_settings.shadow_color = Color(1.0, 0.6, 0.1, 0.45)
 	_price_big.label_settings.shadow_size = 10
