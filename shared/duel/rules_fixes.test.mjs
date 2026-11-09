@@ -125,4 +125,17 @@ st._recalc();
 assert.equal(st.cardAt('opponent', 3).attack, 800);
 assert.equal(choose(st, 'player', 'normal').position, 'atk', 'a trade: it can down the 800 now');
 
+// A Hustle that only takes cards (Pickpocket) waits while a character can take an empty lane; Easy plays it first
+st = duel('player');
+st.phase = 'deployment';
+st.sides.player.authority = 9;
+st.sides.player.hand = [st.makeCard({ id: 'card_pira_027' }), st.makeCard({ id: 'rf_grunt' })];
+st.sides.opponent.hand = [st.makeCard({ id: 'rf_grunt' })];
+st._recalc();
+assert.equal(choose(st, 'player', 'normal').kind, 'summon', 'board first');
+assert.equal(choose(st, 'player', 'easy').kind, 'hustle', 'Easy: the Hustle first');
+for (const i of [0, 1, 2, 3, 4]) st.sides.player.field[i] = st.makeCard({ id: 'rf_grunt' });
+st._recalc();
+assert.equal(choose(st, 'player', 'normal').kind, 'hustle', 'no empty lane: the Hustle');
+
 console.log('Rules fixes (promote-then-hit, deployed first, INFILTRATE, FFA Authority, boss Influence, CPU promotes and trades): all good');

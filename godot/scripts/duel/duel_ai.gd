@@ -91,6 +91,19 @@ static func _brace(d: DuelState, side: String) -> Dictionary:
 	return {}
 
 
+## A Hustle whose effects only take cards (PLUNDER from a hand, deck or Gutter) or SILENCE, so it does
+## nothing for the board this turn (cardsOnly in DuelAI.js).
+static func _cards_only(c: Dictionary) -> bool:
+	var effects: Array = c.get("effects", []) if c.get("effects") is Array else []
+	if effects.is_empty():
+		return false
+	for e in effects:
+		var what := str(e.get("do", ""))
+		if not ((what == "plunder" and str(e.get("from", "")) != "field") or what == "silence"):
+			return false
+	return true
+
+
 static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	var s: Dictionary = d.sides[side]
 	for slot in DuelState.FRONT:
@@ -99,8 +112,16 @@ static func _deploy(d: DuelState, side: String, level: String) -> Dictionary:
 	var act := _activation(d, side, level)
 	if not act.is_empty():
 		return act
+	# A Hustle that only takes cards or SILENCEs waits while a character could take an empty lane (board first)
+	var lanes: Array = SLOT_ORDER.filter(func(i): return s.field[i] == null)
+	var deployable := false
+	if not lanes.is_empty():
+		for h in s.hand:
+			if d.can_summon(side, h, lanes[0]):
+				deployable = true
+				break
 	for c in s.hand:
-		if d.can_hustle(side, c) and _hustle_useful(d, side, c):
+		if d.can_hustle(side, c) and _hustle_useful(d, side, c) and not (deployable and level != "easy" and _cards_only(c)):
 			return {"kind": "hustle", "uid": c.uid}
 	# A Hustle it set on an earlier turn, once it would do something
 	for slot in DuelState.BACK:

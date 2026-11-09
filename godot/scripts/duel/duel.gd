@@ -2151,6 +2151,12 @@ func _ev_turn(ev: Dictionary) -> void:
 	var mine: bool = ev.side == "player"
 	_cancel_interaction()
 	_ui.turn_num.text = "TURN %d" % ev.turn
+	_ui.turn_num.pivot_offset = Vector2(0, _ui.turn_num.size.y / 2)   # (the new number punches in)
+	_ui.turn_num.scale = Vector2.ONE * 1.3
+	_ui.turn_num.modulate = Color(1.6, 1.6, 1.6) if mine else Color(1.3, 1.1, 1.1)
+	var punch: Tween = _ui.turn_num.create_tween().set_parallel()
+	punch.tween_property(_ui.turn_num, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	punch.tween_property(_ui.turn_num, "modulate", Color.WHITE, 0.5)
 	_ui.turn_who.text = _turn_text(mine, ev.side)
 	_ui.turn_who.label_settings.font_color = BLUE if mine else _side_color(ev.side)
 	Sfx.play("turn_yours" if mine else "turn_theirs")

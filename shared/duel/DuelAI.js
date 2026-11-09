@@ -113,12 +113,24 @@ function hustleUseful(d, side, c) {
     return false;
 }
 
+/** Same as _cards_only in duel_ai.gd: a Hustle whose effects only take cards (PLUNDER from a hand, deck or
+ *  Gutter) or SILENCE, so it does nothing for the board this turn. */
+function cardsOnly(c) {
+    const effects = c.effects || [];
+    return effects.length > 0 && effects.every(e => (String(e.do ?? '') === 'plunder' && String(e.from ?? '') !== 'field') || String(e.do ?? '') === 'silence');
+}
+
 function deploy(d, side, level) {
     const s = d.sides[side];
     for (const slot of FRONT) if (d.canPromote(side, slot)) return { kind: 'promote', slot };
     const act = activation(d, side, level);
     if (act) return act;
-    for (const c of s.hand) if (d.canHustle(side, c) && hustleUseful(d, side, c)) return { kind: 'hustle', uid: c.uid };
+    // A Hustle that only takes cards or SILENCEs waits while a character could take an empty lane (board first)
+    const lane = SLOT_ORDER.find(i => s.field[i] == null);
+    const deployable = lane !== undefined && s.hand.some(h => d.canSummon(side, h, lane));
+    for (const c of s.hand) {
+        if (d.canHustle(side, c) && hustleUseful(d, side, c) && !(deployable && level !== 'easy' && cardsOnly(c))) return { kind: 'hustle', uid: c.uid };
+    }
     // A Hustle it set on an earlier turn, once it would do something
     for (const slot of BACK) {
         const c = s.field[slot];

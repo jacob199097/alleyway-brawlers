@@ -27,28 +27,64 @@ func _ready() -> void:
 	if not needs_server("Purchasing"):
 		return
 	var slab := UI.glass(UI.panel(UI.PURPLE, Color(0, 0, 0, 0.9)), Color(0.04, 0.01, 0.06, 0.62))
-	slab.position = Vector2(60, 200)
-	slab.custom_minimum_size = Vector2(1800, 700)
+	slab.position = Vector2(60, 300)
+	slab.custom_minimum_size = Vector2(1800, 0)
 	add_child(slab)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 26)
 	slab.add_child(row)
-	for b in BUNDLES:
+	for i in BUNDLES.size():
+		var b: Dictionary = BUNDLES[i]
 		var col := VBoxContainer.new()
 		col.add_theme_constant_override("separation", 12)
 		row.add_child(col)
 		var tag := UI.label(b.get("tag", " "), 22, UI.GOLD, true)
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(tag)
-		col.add_child(UI.texture_rect(UI.tex(b.image), Vector2(330, 450)))
+		col.add_child(_bundle_art(b, i))
 		var l := UI.label(b.label, 22, Color.WHITE, true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(l)
 		col.add_child(UI.button("PURCHASE", _purchase.bind(b), Vector2(330, 60), UI.PURPLE))
+	UI.stagger(row.get_children(), 0.1, 0.07)
 
 
-func _refresh() -> void:
-	_balance.text = "BALANCE  %d CB" % int(Game.player.get("contraband", 0))
+## A bundle's picture: it floats gently (each on its own beat), and lifts and brightens under the
+## mouse (buying stays on the button under it).
+func _bundle_art(b: Dictionary, i: int) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(330, 330)
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	var art := UI.texture_rect(UI.tex(b.image), Vector2(330, 330))
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.pivot_offset = Vector2(165, 165)
+	holder.add_child(art)
+	if not Game.photosafe():
+		var bob := art.create_tween().set_loops()
+		bob.tween_interval(i * 0.37)   # (out of step with the others)
+		bob.tween_property(art, "position:y", -7.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		bob.tween_property(art, "position:y", 0.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	holder.mouse_entered.connect(func():
+		Sfx.play("hover", randf_range(0.96, 1.04), -6.0)
+		var t := art.create_tween().set_parallel()
+		t.tween_property(art, "scale", Vector2.ONE * 1.07, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(art, "modulate", Color(1.25, 1.15, 1.3), 0.14))
+	holder.mouse_exited.connect(func():
+		var t := art.create_tween().set_parallel()
+		t.tween_property(art, "scale", Vector2.ONE, 0.16)
+		t.tween_property(art, "modulate", Color.WHITE, 0.2))
+	return holder
+
+
+func _refresh(from := -1) -> void:
+	var now := int(Game.player.get("contraband", 0))
+	if from >= 0 and from != now:
+		UI.count_up(_balance, from, now, 0.8, "BALANCE  %d CB", "click")
+		_balance.pivot_offset = _balance.size / 2
+		_balance.scale = Vector2.ONE * 1.12
+		_balance.create_tween().tween_property(_balance, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		_balance.text = "BALANCE  %d CB" % now
 
 
 func _purchase(b: Dictionary) -> void:
@@ -59,8 +95,9 @@ func _purchase(b: Dictionary) -> void:
 	if not r.ok:
 		UI.toast(self, r.error, UI.RED)
 		return
+	var was := int(Game.player.get("contraband", 0))
 	Game.player.contraband = r.data.get("newContraband", Game.player.get("contraband", 0))
-	_refresh()
+	_refresh(was)
 	Sfx.play("promote")
 	UI.toast(self, "+%d Contraband added!" % int(r.data.get("contrabandGranted", 0)), UI.PURPLE)
 
@@ -104,7 +141,8 @@ func _steam_purchase(b: Dictionary) -> void:
 	if not f.ok:
 		UI.toast(self, f.error, UI.RED)
 		return
+	var was := int(Game.player.get("contraband", 0))
 	Game.player.contraband = f.data.get("newContraband", Game.player.get("contraband", 0))
-	_refresh()
+	_refresh(was)
 	Sfx.play("promote")
 	UI.toast(self, "+%d Contraband added!" % int(f.data.get("contrabandGranted", 0)), UI.PURPLE)

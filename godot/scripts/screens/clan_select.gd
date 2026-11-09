@@ -46,7 +46,12 @@ func _ready() -> void:
 		add_child(tile)
 		var art := UI.texture_rect(c.image, Vector2(w - 40, art_h))
 		art.position = Vector2(20, 20)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tile.add_child(art)
+		var bob := art.create_tween().set_loops()   # (the leader card floats, each on its own beat)
+		bob.tween_interval(0.2 + i * 0.29)
+		bob.tween_property(art, "position:y", 12.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		bob.tween_property(art, "position:y", 20.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		var name := UI.label(c.label, int(minf(32.0 if two else 48.0, w / 6.0)), c.color, true)
 		name.size = Vector2(w, 60)
 		name.position = Vector2(0, art_h + (20 if two else 30))
@@ -78,6 +83,18 @@ func _ready() -> void:
 		UI.juice(tile)
 		tile.pressed.connect(_select.bind(c.id))
 		_tiles[c.id] = tile
+	# The tiles are dealt in, one after another
+	var order: Array = _tiles.values()
+	for i in order.size():
+		var t: Button = order[i]
+		var to := t.position
+		t.position.y += 70.0
+		t.modulate.a = 0.0
+		var at := 0.08 + i * 0.07
+		var deal := t.create_tween().set_parallel()
+		deal.tween_property(t, "position:y", to.y, 0.45).set_delay(at).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		deal.tween_property(t, "modulate:a", 1.0, 0.25).set_delay(at)
+		deal.tween_callback(Sfx.play.bind("set", 1.0 + i * 0.06, -12.0)).set_delay(at)
 	_confirm = UI.button("CONFIRM", _do_confirm, Vector2(360, 70), UI.GREEN)
 	_confirm.position = Vector2(780, 975)
 	_confirm.disabled = true
