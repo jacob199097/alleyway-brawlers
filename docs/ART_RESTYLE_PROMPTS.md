@@ -49,7 +49,8 @@ only if you want one style across the whole game.
 
 Attach, in this order:
 
-1. **The card to redo.** The art alone if you have it (the Forge's Art library), or the card PNG.
+1. **The card to redo.** The art alone: open the card in its Forge and press **Download this card's
+   art** under the preview (or use the card PNG).
 2. **Two style references** from the table above (card PNGs are fine).
 
 Then paste this, with the clan's colours filled in from the list below:
