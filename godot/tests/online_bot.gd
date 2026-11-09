@@ -5,7 +5,7 @@ extends Node
 ##   godot --headless --path godot res://tests/online_bot.tscn -- <email> [server] [--autoplay]
 ## Flags after the email: "--autoplay" (required for the bot to play), "--drop" (disconnects once
 ## mid-match to test reconnecting), "--concede" (concedes after a few turns), "--cpu" (plays the
-## server's CPU instead of queueing; add "--ranked" for a Ranked CPU match), "--ffa" (joins a
+## server's CPU instead of queueing; Ranked is against players only), "--ffa" (joins a
 ## free-for-all lobby, readies up, and plays its seat), "--turf=<boss>:<level>" (quick-matches Turf Defense
 ## for that boss level and plays its seat with its partner).
 
@@ -39,7 +39,7 @@ func _run() -> void:
 	Net.connect_to_server()
 	var args := OS.get_cmdline_user_args()
 	if "--cpu" in args:
-		var why := await Game.request_cpu_match("--ranked" in args)
+		var why := await Game.request_cpu_match(false)
 		if why != "":
 			_finish(1, why)
 	elif "--ffa" in args:

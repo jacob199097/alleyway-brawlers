@@ -66,6 +66,8 @@ jobs:
         run: node shared/duel/turf.test.mjs
       - name: Card Forge combos (new triggers, targets, conditions, counts, TAX, reshuffle)
         run: node shared/duel/combos.test.mjs
+      - name: Random moves (every card, 2-4 players, junk input) never break the rules
+        run: node shared/duel/fuzz.test.mjs
 
   database:
     runs-on: ubuntu-24.04   # (pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19)

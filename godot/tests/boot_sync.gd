@@ -22,15 +22,26 @@ func _ready() -> void:
 		waited += get_process_delta_time()
 		if waited > 60.0:
 			break
-	var state := FileAccess.get_file_as_string(CardDB.CONTENT_DIR + "/state.json")
-	print("Boot sync: now on %s; state %s; cards known %d; astra_lv1 %s" % [
-		get_tree().current_scene.scene_file_path if get_tree().current_scene else "?", state,
-		CardDB.all().size(), "yes" if not CardDB.get_card("astra_lv1").is_empty() else "no"])
-	print("  art for astra_lv1 loads: %s" % (CardDB.art("astra_lv1") != null))
-	print("  downloaded card back for testclan loads: %s" % (FileAccess.file_exists(CardDB.CONTENT_DIR + "/backs/card_back_testclan.png") and CardDB.back("testclan") != CardDB.back()))
-	print("  downloaded sound testsound plays: %s (built-in sounds downloaded again: %s)" % [
-		FileAccess.file_exists(CardDB.CONTENT_DIR + "/sfx/testsound_1.ogg") and not Sfx._stream("testsound").is_empty(),
-		FileAccess.file_exists(CardDB.CONTENT_DIR + "/sfx/hit_1.ogg")])
+	var state = JSON.parse_string(FileAccess.get_file_as_string(CardDB.CONTENT_DIR + "/state.json"))
+	if not (state is Dictionary):
+		state = {}
+	var arts: Array = state.get("art", {}).keys()
+	var backs: Array = state.get("backs", {}).keys()
+	var sounds: Array = state.get("sfx", {}).keys()
+	print("Boot sync: now on %s; cards known %d; downloaded %d card arts, %d card backs, %d sounds" % [
+		get_tree().current_scene.scene_file_path if get_tree().current_scene else "?",
+		CardDB.all().size(), arts.size(), backs.size(), sounds.size()])
+	# (what downloads depends on how the server's assets differ from this build's: none is fine)
+	if not arts.is_empty():
+		var id: String = arts[0]
+		print("  downloaded art %s loads: %s" % [id, FileAccess.file_exists(CardDB.CONTENT_DIR + "/cards/%s.png" % id) and CardDB.art(id) != null])
+	for f in backs:
+		var clan: String = str(f).get_basename().trim_prefix("card_back_")
+		print("  downloaded card back %s loads: %s" % [clan, CardDB.back(clan) != CardDB.back()])
+	if not sounds.is_empty():
+		var name: String = str(sounds[0]).get_basename().split("_")[0] if not str(sounds[0]).begins_with("music_") else str(sounds[0]).get_basename()
+		print("  downloaded sound %s loads: %s" % [name, not Sfx.streams(name).is_empty()])
+	print("  built-in sounds downloaded again: %s" % FileAccess.file_exists(CardDB.CONTENT_DIR + "/sfx/hit_1.ogg"))
 	if not keep:
 		for f in DirAccess.get_files_at(CardDB.CONTENT_DIR + "/cards"):
 			DirAccess.remove_absolute(CardDB.CONTENT_DIR + "/cards/" + f)
