@@ -9766,7 +9766,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 900,
+        "attack": 1000,
         "defense": 300,
         "level": 1,
         "subtype": "striver",
@@ -9801,7 +9801,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 2000,
+        "attack": 2200,
         "defense": 700,
         "level": 2,
         "subtype": "striver",
@@ -9821,7 +9821,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_013",
         "code": "PIRA-013",
         "flavourText": "Knock first? I'm the knock.",
-        "effectText": "When this card attacks: It gains +100 ATK for each card in your hand (up to 8) for this Brawl.\nWhen this card KOs a character: Draw 1 card.",
+        "effectText": "When this card attacks: It gains +100 ATK for each card in your hand (up to 8) for this Brawl.\nWhen this card KOs a character: Draw 1 card.\nThis card has PIERCE.",
         "effects": [
             {
                 "when": "attack",
@@ -9835,12 +9835,16 @@ export const FORGE_CARDS = {
                 "when": "ko",
                 "do": "draw",
                 "amount": 1
+            },
+            {
+                "when": "passive",
+                "do": "pierce"
             }
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 3000,
-        "defense": 1100,
+        "attack": 3200,
+        "defense": 1500,
         "level": 3,
         "subtype": "striver",
         "promotesTo": null,
@@ -10432,13 +10436,14 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_032",
         "code": "PIRA-032",
         "flavourText": "Swing all you like. I am already gone.",
-        "effectText": "When an enemy attacks one of your characters: PLUNDER the top card of your opponent's deck (into your hand).",
+        "effectText": "When an enemy attacks one of your characters: PLUNDER the top card of your opponent's deck (into your hand) and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "plunder",
                 "from": "deck",
-                "amount": 1
+                "amount": 1,
+                "negate": true
             }
         ],
         "clanName": "Pirates",
