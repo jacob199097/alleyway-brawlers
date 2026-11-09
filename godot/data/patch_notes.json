@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.133",
+        "notes": [
+            "The Auction House has its own neon sign on the main menu."
+        ]
+    },
+    {
         "version": "0.9.132",
         "notes": [
             "The Auction House has a new look: a neon black-market room with lots laid out as cards, a live ticker of what's ending soon and where the bidding wars are, and lots that flash when someone bids (it checks every few seconds).",
