@@ -5,7 +5,10 @@
  * Players sell cards to each other for Karat. The numbers are in economy/auction_settings.js.
  *
  *   List a card:  it leaves your collection at once (copies your saved decks use can't be listed, nor a
- *                 boss's prize), you pay the listing fee, and the auction runs DURATION_HOURS.
+ *                 boss's prize), you pay the listing fee, and the auction runs DURATION_HOURS. The seller
+ *                 sets a reserve (the lowest bid it takes: start_price) and may set a Buy Now price.
+ *   Buy Now:      anyone may buy it outright at the Buy Now price until the first bid; after that it's
+ *                 a bidding war to the end.
  *   Bid:          the bid's Karat is held from your balance; when someone outbids you it comes back and
  *                 the mailbox says so. A bid in the last SNIPE_SECONDS pushes the end back.
  *   The end:      settleDue() (every 30 s from server.js) gives the card to the top bidder and the price,
@@ -71,6 +74,7 @@ function view(a, playerId) {
         id: Number(a.id), card: a.game_id, name: a.card_name, rarity: a.rarity,
         seller: a.seller_name || null, mine: a.seller_id === playerId,
         startPrice: a.start_price, highBid: a.high_bid, bids: a.bids, minBid: a.status === 'active' ? minBid(a) : null,
+        buyNow: a.buy_now, canBuyNow: a.status === 'active' && a.buy_now != null && a.high_bidder == null && a.bids === 0,
         maxPrice: priceRange(a.rarity).max, leading: a.high_bidder != null && a.high_bidder === playerId,
         status: a.status, endsAt: a.ends_at, settledAt: a.settled_at, saleFee: a.sale_fee,
     };
@@ -123,9 +127,11 @@ async function mine(playerId) {
     };
 }
 
-/** Put one copy of a card up for auction. → { auction, karat } */
-async function list(playerId, gameId, startPrice, ip = null) {
-    if (!Number.isInteger(startPrice)) throw new AuctionError('Choose a starting price.');
+/** Put one copy of a card up for auction at a reserve (startPrice: the lowest bid it takes), with an
+ *  optional Buy Now price. → { auction, karat } */
+async function list(playerId, gameId, startPrice, ip = null, buyNow = null) {
+    if (!Number.isInteger(startPrice)) throw new AuctionError('Choose a reserve price.');
+    if (buyNow != null && !Number.isInteger(buyNow)) throw new AuctionError('Choose a Buy Now price, or leave it off.');
     if ((await import('../../shared/turf.js')).prizeCardIds().has(gameId)) {
         throw new AuctionError("A boss's prize can't be sold.");
     }
@@ -150,7 +156,10 @@ async function list(playerId, gameId, startPrice, ip = null) {
         }
         const { min, max } = priceRange(row.rarity);
         if (startPrice < min || startPrice > max) {
-            throw new AuctionError(`${row.name} can start between ${min} and ${max} Karat.`);
+            throw new AuctionError(`${row.name}'s reserve can be ${min} to ${max} Karat.`);
+        }
+        if (buyNow != null && (buyNow <= startPrice || buyNow > max)) {
+            throw new AuctionError(`The Buy Now price has to be above the reserve and at most ${max} Karat.`);
         }
         const fee = listingFee(startPrice);
         const { rows: [p] } = await client.query(
@@ -162,9 +171,9 @@ async function list(playerId, gameId, startPrice, ip = null) {
             await client.query('DELETE FROM player_inventory WHERE player_id = $1 AND card_id = $2', [playerId, row.id]);
         }
         const { rows: [a] } = await client.query(
-            `INSERT INTO auctions (seller_id, card_id, rarity, start_price, listing_fee, seller_ip, ends_at)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW() + make_interval(hours => $7)) RETURNING id`,
-            [playerId, row.id, row.rarity, startPrice, fee, ip, S.DURATION_HOURS]);
+            `INSERT INTO auctions (seller_id, card_id, rarity, start_price, buy_now, listing_fee, seller_ip, ends_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + make_interval(hours => $8)) RETURNING id`,
+            [playerId, row.id, row.rarity, startPrice, buyNow, fee, ip, S.DURATION_HOURS]);
         await client.query('COMMIT');
         const { rows: [full] } = await pool.query(`${SELECT} WHERE a.id = $1`, [a.id]);
         return { auction: view(full, playerId), karat: p.karat };
@@ -218,6 +227,54 @@ async function bid(playerId, auctionId, amount, ip = null) {
         throw err;
     } finally {
         client.release();
+    }
+}
+
+/** Buy a card outright at its Buy Now price (only before the first bid). → { auction, karat } */
+async function buyNow(playerId, auctionId, ip = null) {
+    const mail = [];
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows: [a] } = await client.query(`${SELECT} WHERE a.id = $1 FOR UPDATE OF a`, [auctionId]);
+        if (!a || a.status !== 'active' || new Date(a.ends_at) <= new Date()) throw new AuctionError('That auction has ended.');
+        if (a.seller_id === playerId) throw new AuctionError("You can't buy your own auction.");
+        if (a.buy_now == null) throw new AuctionError(`${a.card_name} has no Buy Now price: bid on it.`);
+        if (a.high_bidder || a.bids > 0) throw new AuctionError('Someone has bid on it, so Buy Now is gone: outbid them instead.');
+        await requireEligible(playerId, client);
+        const { rows: [p] } = await client.query(
+            'UPDATE players SET karat = karat - $1 WHERE id = $2 AND karat >= $1 RETURNING karat', [a.buy_now, playerId]);
+        if (!p) throw new AuctionError(`You need ${a.buy_now} Karat to buy it now.`);
+        await client.query('INSERT INTO auction_bids (auction_id, bidder_id, amount, ip) VALUES ($1, $2, $3, $4)', [a.id, playerId, a.buy_now, ip]);
+        await completeSale(client, { ...a, high_bid: a.buy_now, high_bidder: playerId }, mail, true);
+        await client.query('COMMIT');
+        await sendAll(mail);
+        const { rows: [full] } = await pool.query(`${SELECT} WHERE a.id = $1`, [a.id]);
+        return { auction: view(full, playerId), karat: p.karat };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+/** The card to the buyer (a.high_bidder) and the price (a.high_bid), less the sale fee, to the seller.
+ *  The buyer's Karat has already been taken. Adds the mail to send once it commits. */
+async function completeSale(client, a, mail, bought = false) {
+    const fee = saleFee(a.high_bid);
+    const flags = a.seller_id ? await flagsFor(client, a) : [];
+    await giveCard(client, a.high_bidder, a.card_id);
+    if (a.seller_id) await client.query('UPDATE players SET karat = karat + $1 WHERE id = $2', [a.high_bid - fee, a.seller_id]);
+    await client.query(
+        `UPDATE auctions SET status = 'sold', high_bid = $1, high_bidder = $2, sale_fee = $3, flags = $4, settled_at = NOW() WHERE id = $5`,
+        [a.high_bid, a.high_bidder, fee, flags, a.id]);
+    mail.push([a.high_bidder, `You won ${a.card_name}`, bought
+        ? `You bought ${a.card_name} with Buy Now for ${a.high_bid} Karat: it's in your collection.`
+        : `You won the auction for ${a.card_name} with your bid of ${a.high_bid} Karat: it's in your collection.`]);
+    if (a.seller_id) {
+        mail.push([a.seller_id, `Sold: ${a.card_name}`,
+            `${a.card_name} sold for ${a.high_bid} Karat${bought ? ' (Buy Now)' : ''}. After the ${S.SALE_FEE_PCT}% fee (${fee}), ${a.high_bid - fee} Karat is in your balance.`]);
     }
 }
 
@@ -292,18 +349,7 @@ async function settleDue() {
                 return done;
             }
             if (a.high_bidder) {
-                const fee = saleFee(a.high_bid);
-                const flags = a.seller_id ? await flagsFor(client, a) : [];
-                await giveCard(client, a.high_bidder, a.card_id);
-                if (a.seller_id) await client.query('UPDATE players SET karat = karat + $1 WHERE id = $2', [a.high_bid - fee, a.seller_id]);
-                await client.query(
-                    `UPDATE auctions SET status = 'sold', sale_fee = $1, flags = $2, settled_at = NOW() WHERE id = $3`, [fee, flags, a.id]);
-                mail.push([a.high_bidder, `You won ${a.card_name}`,
-                    `Your bid of ${a.high_bid} Karat won the auction: ${a.card_name} is in your collection.`]);
-                if (a.seller_id) {
-                    mail.push([a.seller_id, `Sold: ${a.card_name}`,
-                        `${a.card_name} sold for ${a.high_bid} Karat. After the ${S.SALE_FEE_PCT}% fee (${fee}), ${a.high_bid - fee} Karat is in your balance.`]);
-                }
+                await completeSale(client, a, mail);
             } else {
                 if (a.seller_id) await giveCard(client, a.seller_id, a.card_id);
                 await client.query(`UPDATE auctions SET status = 'unsold', settled_at = NOW() WHERE id = $1`, [a.id]);
@@ -370,6 +416,6 @@ async function report(days = 30) {
 }
 
 module.exports = {
-    eligibility, overview, browse, mine, list, bid, cancel, settleDue, forgetPlayer, cleanup, report,
+    eligibility, overview, browse, mine, list, bid, buyNow, cancel, settleDue, forgetPlayer, cleanup, report,
     minBid, listingFee, saleFee, AuctionError, SETTINGS: S,
 };

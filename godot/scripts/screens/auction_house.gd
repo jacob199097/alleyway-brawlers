@@ -1,8 +1,8 @@
 extends Screen
 ## The auction house: players sell cards to each other for Karat (backend/economy/auction.js, which
 ## decides everything: prices, fees, who may trade; this screen shows it and asks).
-##   BROWSE       running auctions, soonest to end first: pick one, bid
-##   SELL         your cards: pick one, set a starting price, list it
+##   BROWSE       running auctions, soonest to end first: pick one, bid (or Buy Now, before the first bid)
+##   SELL         your cards: pick one, set a reserve (the lowest bid) and maybe a Buy Now price, list it
 ##   MY AUCTIONS  what you're selling and bidding on (and the last 7 days' results)
 
 const ROW := Vector2(880, 118)
@@ -216,7 +216,9 @@ func _auction_row(a: Dictionary) -> Button:
 	var price = a.get("highBid")
 	var bids := int(a.get("bids", 0))
 	_put(b, "%d" % int(price if price != null else a.get("startPrice", 0)), Vector2(600, 14), 30, UI.GOLD, true)
-	_put(b, ("%d bid%s" % [bids, "" if bids == 1 else "s"]) if price != null else "starting price", Vector2(600, 56), 16, UI.MUTED)
+	_put(b, ("%d bid%s" % [bids, "" if bids == 1 else "s"]) if price != null else "reserve", Vector2(600, 56), 16, UI.MUTED)
+	if a.get("canBuyNow", false):
+		_put(b, "BUY NOW  %d" % int(a.get("buyNow", 0)), Vector2(100, 80), 17, UI.GREEN, true)
 	var status := str(a.get("status", "active"))
 	var state := _put(b, "", Vector2(740, 16), 18, UI.BLUE, true, 130)
 	if status == "active":
@@ -267,10 +269,10 @@ func _render_side() -> void:
 		var help := ""
 		match _tab:
 			"browse":
-				help = "Pick an auction to bid on it.\n\nYour bid's Karat is held until someone outbids you: then it comes back and your mailbox says so. A bid in the last %d minutes keeps the auction open %d minutes more." % [_snipe_min(), _snipe_min()]
+				help = "Pick an auction to bid on it, or buy it outright at its Buy Now price before anyone bids. Once someone bids, Buy Now is gone and it's a bidding war: the top bid when time runs out wins, and the winner gets a mail.\n\nYour bid's Karat is held until someone outbids you: then it comes back and your mailbox says so. A bid in the last %d minutes keeps the auction open %d minutes more." % [_snipe_min(), _snipe_min()]
 			"sell":
 				var lim: Dictionary = _info.get("limits", {})
-				help = "Pick a card to sell. It leaves your collection while the auction runs (copies your decks use can't be sold).\n\nAuctions run %d hours. Listing costs %d%% of the starting price (at least %d Karat), and a sale pays a %d%% fee.\n\nYou can run %d auctions at once and start %d a day (%d running, %d started today)." % [
+				help = "Pick a card to sell. It leaves your collection while the auction runs (copies your decks use can't be sold). Set a reserve (the lowest bid you'll take) and, if you like, a Buy Now price anyone can pay to take it at once, until the first bid.\n\nAuctions run %d hours. Listing costs %d%% of the reserve (at least %d Karat), and a sale pays a %d%% fee.\n\nYou can run %d auctions at once and start %d a day (%d running, %d started today)." % [
 					int(_rules().get("durationHours", 24)), int(_rules().get("listingFeePct", 5)), int(_rules().get("listingFeeMin", 5)),
 					int(_rules().get("saleFeePct", 10)), int(lim.get("active", 0)), int(lim.get("perDay", 0)), int(lim.get("activeUsed", 0)), int(lim.get("todayUsed", 0))]
 			"mine":
@@ -312,7 +314,11 @@ func _auction_panel(col: VBoxContainer, a: Dictionary) -> void:
 	if price != null:
 		col.add_child(UI.label("Top bid: %d Karat  (%d bid%s)" % [int(price), bids, "" if bids == 1 else "s"], 24, UI.GOLD, true))
 	else:
-		col.add_child(UI.label("Starting price: %d Karat" % int(a.get("startPrice", 0)), 24, UI.GOLD, true))
+		col.add_child(UI.label("Reserve: %d Karat  (no bids yet)" % int(a.get("startPrice", 0)), 24, UI.GOLD, true))
+	if a.get("canBuyNow", false):
+		col.add_child(UI.label("Buy Now: %d Karat" % int(a.get("buyNow", 0)), 24, UI.GREEN, true))
+	elif a.get("buyNow") != null and str(a.get("status", "")) == "active":
+		col.add_child(_small("Buy Now (%d Karat) is gone: it has bids." % int(a.get("buyNow", 0))))
 	col.add_child(UI.label("Highest price: %d Karat" % int(a.get("maxPrice", 0)), 18, UI.MUTED))
 	var status := str(a.get("status", "active"))
 	if status != "active":
@@ -347,6 +353,9 @@ func _auction_panel(col: VBoxContainer, a: Dictionary) -> void:
 	row.add_child(amount)
 	row.add_child(UI.button("BID", func(): _bid(a, int(amount.value)), Vector2(160, 56), UI.GOLD))
 	col.add_child(_small("At least %d Karat. You have %d." % [int(a.minBid), int(_info.get("karat", 0))]))
+	if a.get("canBuyNow", false):
+		col.add_child(UI.button("BUY NOW FOR %d" % int(a.buyNow), _buy_now.bind(a), Vector2(360, 56), UI.GREEN))
+		col.add_child(_small("Takes it at once and ends the auction. Once anyone bids, Buy Now is gone."))
 
 
 func _sell_panel(col: VBoxContainer, card: Dictionary) -> void:
@@ -354,25 +363,49 @@ func _sell_panel(col: VBoxContainer, card: Dictionary) -> void:
 	var band: Dictionary = _rules().get("prices", {}).get(str(rarity), {"min": 10, "max": 150})
 	var lo := int(band.get("min", 10))
 	var hi := int(band.get("max", 150))
-	col.add_child(UI.label("Starting price: %d to %d Karat" % [lo, hi], 20, UI.MUTED))
+	col.add_child(UI.label("Prices for this rarity: %d to %d Karat" % [lo, hi], 20, UI.MUTED))
 	if not _info.get("eligible", false):
 		col.add_child(_small("You can't sell yet: " + " ".join(_info.get("reasons", []))))
 		return
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 8)
+	col.add_child(grid)
+	grid.add_child(UI.label("Reserve", 22, Color.WHITE, true))
 	var amount := _amount_box(lo, hi, lo)
-	col.add_child(amount)
+	grid.add_child(amount)
+	var offer := CheckBox.new()
+	offer.text = "Buy Now"
+	offer.add_theme_font_size_override("font_size", 20)
+	grid.add_child(offer)
+	var buy := _amount_box(mini(hi, lo + 1), hi, mini(hi, lo * 3))
+	buy.editable = false
+	buy.modulate.a = 0.45
+	grid.add_child(buy)
 	var fees := UI.label("", 20, Color(0.85, 0.85, 0.95))
 	fees.autowrap_mode = TextServer.AUTOWRAP_WORD
 	fees.custom_minimum_size = Vector2(540, 0)
 	col.add_child(fees)
-	var show_fees := func(v: float):
-		var start := int(v)
+	var keep := func(price: int) -> int:   # (what the seller gets after the sale fee)
+		return price - ceili(price * float(_rules().get("saleFeePct", 10)) / 100.0)
+	var show_fees := func(_v: float = 0.0):
+		var start := int(amount.value)
+		buy.min_value = mini(hi, start + 1)   # (Buy Now is above the reserve)
 		var fee := maxi(int(_rules().get("listingFeeMin", 5)), ceili(start * float(_rules().get("listingFeePct", 5)) / 100.0))
-		var cut := ceili(start * float(_rules().get("saleFeePct", 10)) / 100.0)
-		fees.text = "Listing fee: %d Karat now.\nSold at %d, you'd get %d (after the %d%% fee): more if bids go higher." % [
-			fee, start, start - cut, int(_rules().get("saleFeePct", 10))]
+		fees.text = "Listing fee: %d Karat now.\nIf the top bid is the reserve (%d), you get %d after the %d%% fee: more if bids go higher." % [
+			fee, start, keep.call(start), int(_rules().get("saleFeePct", 10))]
+		if offer.button_pressed:
+			fees.text += "\nIf someone buys it now (%d), you get %d." % [int(buy.value), keep.call(int(buy.value))]
 	amount.value_changed.connect(show_fees)
-	show_fees.call(amount.value)
-	col.add_child(UI.button("LIST FOR AUCTION", func(): _list_card(card, int(amount.value)), Vector2(320, 60), UI.GOLD))
+	buy.value_changed.connect(show_fees)
+	offer.toggled.connect(func(on: bool):
+		buy.editable = on
+		buy.modulate.a = 1.0 if on else 0.45
+		show_fees.call())
+	show_fees.call()
+	col.add_child(UI.button("LIST FOR AUCTION", func():
+		_list_card(card, int(amount.value), int(buy.value) if offer.button_pressed and amount.value < hi else 0), Vector2(320, 60), UI.GOLD))
 	col.add_child(_small("Runs %d hours. No bids: the card comes back." % int(_rules().get("durationHours", 24))))
 
 
@@ -414,17 +447,42 @@ func _bid(a: Dictionary, amount: int) -> void:
 	_reselect()
 
 
-func _list_card(card: Dictionary, price: int) -> void:
+func _buy_now(a: Dictionary) -> void:
+	UI.dialog(self, "BUY %s NOW?" % str(a.get("name", "")).to_upper(),
+		"%d Karat, and it's yours at once. You have %d." % [int(a.buyNow), int(_info.get("karat", 0))],
+		[["BUY IT", func():
+			if _busy:
+				return
+			_busy = true
+			var r := await Api.request("POST", "/api/auction/%d/buy" % int(a.id))
+			_busy = false
+			if not r.ok:
+				UI.toast(self, r.error, UI.RED)
+				_load()
+				return
+			Sfx.play("karat", 1.0, -6.0)
+			_set_karat(int(r.data.get("karat", 0)))
+			UI.toast(self, "%s is yours." % str(a.get("name", "")), UI.GREEN)
+			_picked = {}
+			_load(), UI.GREEN], ["CANCEL", func(): pass]])
+
+
+## price: the reserve; buy_now: 0 = none
+func _list_card(card: Dictionary, price: int, buy_now: int) -> void:
 	if _busy:
 		return
-	UI.dialog(self, "LIST %s?" % str(card.get("name", "")).to_upper(),
-		"It leaves your collection for %d hours, starting at %d Karat. The listing fee isn't refunded." % [int(_rules().get("durationHours", 24)), price],
-		[["LIST IT", func(): _do_list(card, price), UI.GOLD], ["CANCEL", func(): pass]])
+	var text := "It leaves your collection for %d hours, with a reserve of %d Karat%s. The listing fee isn't refunded." % [
+		int(_rules().get("durationHours", 24)), price, (" and Buy Now at %d" % buy_now) if buy_now > 0 else ""]
+	UI.dialog(self, "LIST %s?" % str(card.get("name", "")).to_upper(), text,
+		[["LIST IT", func(): _do_list(card, price, buy_now), UI.GOLD], ["CANCEL", func(): pass]])
 
 
-func _do_list(card: Dictionary, price: int) -> void:
+func _do_list(card: Dictionary, price: int, buy_now: int) -> void:
 	_busy = true
-	var r := await Api.request("POST", "/api/auction/list", {"card": str(card.get("id", "")), "startPrice": price})
+	var body := {"card": str(card.get("id", "")), "startPrice": price}
+	if buy_now > 0:
+		body["buyNow"] = buy_now
+	var r := await Api.request("POST", "/api/auction/list", body)
 	_busy = false
 	if not r.ok:
 		UI.toast(self, r.error, UI.RED)

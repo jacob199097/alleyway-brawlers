@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.131",
+        "notes": [
+            "Auction House: sellers set a reserve (the lowest bid they'll take) and can add a Buy Now price. Anyone can buy the card outright at that price until the first bid; once someone bids, Buy Now is gone and it's a bidding war to the end.",
+            "Whoever wins an auction, or buys one now, gets a mail saying they won, and the card is in their collection straight away."
+        ]
+    },
+    {
         "version": "0.9.130",
         "notes": [
             "The Auction House (in the Shop): sell your cards to other players for Karat, and bid on theirs. Auctions run 24 hours; a bid in the last 2 minutes keeps one open 2 minutes more. Your bid's Karat is held until someone outbids you, then it comes back and your mailbox tells you.",

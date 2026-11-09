@@ -69,7 +69,7 @@ Questions: ${contactLink()}.</p>
   when you last played. For each card you have played: how many matches you played it in and how many of those you
   won (its card XP and veteran frame). On the turf map: the influence you won for a clan in each district each week, and the
   weekly rewards you claimed.</li>
- <li><b>The auction house:</b> the cards you put up for auction, their starting prices, the bids you make, and who
+ <li><b>The auction house:</b> the cards you put up for auction, their reserve and Buy Now prices, the bids you make, and who
   bought what for how much. To spot one person using several accounts to move cards or Karat between them, we also
   keep a scrambled form of the IP address you signed up from and of the ones you list and bid from: a one-way code
   that shows when two accounts used the same connection, not the address itself.</li>
@@ -193,7 +193,8 @@ may end the service; if we do, we'll give notice in the game first.</p>
   aren't your property, have no value in real money, can't be exchanged for money, and can't be sold, traded or
   moved outside the game.</li>
  <li>In the auction house you can sell cards to other players for Karat. A card you list leaves your collection
-  until the auction ends; a bid holds your Karat until you're outbid; sales are final. Listing costs a fee and each
+  until the auction ends; a bid holds your Karat until you're outbid; a card with a Buy Now price can be bought
+  outright until the first bid; sales are final. Listing costs a fee and each
   sale pays one, and prices have a lowest and highest amount by rarity. We may undo trades, or remove cards and
   Karat gained, that break these terms.</li>
  <li>We may change, rebalance or retire cards and items (for example to keep the game fair).</li>

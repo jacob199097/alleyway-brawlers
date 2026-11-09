@@ -2,7 +2,7 @@
 
 /**
  * The auction house against a real Postgres (economy/auction.js): listing, bidding, outbids, the end of an
- * auction, cancelling, the limits and requirements, the abuse flags and deleting an account mid-auction.
+ * auction, Buy Now, cancelling, the limits and requirements, the abuse flags and deleting an account mid-auction.
  * Like progression.test.cjs it builds a scratch database (DB_NAME, default turf_war_test):
  *
  *   DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASS=... node backend/economy/auction.test.cjs
@@ -96,8 +96,8 @@ async function rejects(promise, pattern) {
 
     // ── Listing ──
     await give(seller, legend, 2);
-    await rejects(auction.list(seller, legend, legendPrice.min - 1), /can start between/);
-    await rejects(auction.list(seller, legend, legendPrice.max + 1), /can start between/);
+    await rejects(auction.list(seller, legend, legendPrice.min - 1), /reserve can be/);
+    await rejects(auction.list(seller, legend, legendPrice.max + 1), /reserve can be/);
     await rejects(auction.list(seller, commons[7], S.PRICES[1].min), /don't own/);
     const prize = [...prizes][0];
     if (prize) await rejects(auction.list(seller, prize, 100), /prize can't be sold/);
@@ -155,8 +155,41 @@ async function rejects(promise, pattern) {
     assert.ok((await mails(rival)).some(s => /^You won/.test(s)));
     assert.ok((await mails(seller)).some(s => /^Sold/.test(s)));
     await rejects(auction.bid(buyer, big, legendPrice.max), /has ended/);
-    let mine = await auction.mine(rival);
+    let mine = await auction.mine(rival);   // (and below)
     assert.ok(mine.bidding.find(a => a.id === big).won);
+
+    // ── Buy Now: only above the reserve and up to the rarity's highest price; gone once someone bids ──
+    await give(seller, commons[0], 3);
+    const c1 = S.PRICES[1];
+    await rejects(auction.list(seller, commons[0], c1.min, null, c1.min), /above the reserve/);
+    await rejects(auction.list(seller, commons[0], c1.min, null, c1.max + 1), /above the reserve and at most/);
+    r = await auction.list(seller, commons[0], c1.min, null, c1.min + 40);
+    assert.equal(r.auction.buyNow, c1.min + 40);
+    assert.equal(r.auction.canBuyNow, true);
+    await rejects(auction.buyNow(seller, r.auction.id), /your own auction/);
+    await rejects(auction.buyNow(poor, r.auction.id), /need \d+ Karat to buy it now/);
+    let kBuy = await karat(buyer);
+    let kSell = await karat(seller);
+    const bought = await auction.buyNow(buyer, r.auction.id);
+    assert.equal(bought.karat, kBuy - (c1.min + 40), 'Buy Now costs its price');
+    assert.equal(bought.auction.status, 'sold');
+    assert.equal(await karat(seller), kSell + c1.min + 40 - auction.saleFee(c1.min + 40), 'the seller is paid at once');
+    assert.equal(await owned(buyer, commons[0]), 1, 'the card is the buyer\'s at once');
+    assert.ok((await mails(buyer)).some(m => /^You won/.test(m)), 'the buyer gets the winner\'s mail');
+    await rejects(auction.buyNow(rival, r.auction.id), /has ended/);
+    mine = await auction.mine(buyer);
+    assert.ok(mine.bidding.find(a => a.id === r.auction.id).won, 'it shows as won in My Auctions');
+    // A bid takes Buy Now away: then it's a bidding war
+    r = await auction.list(seller, commons[0], c1.min, null, c1.max);
+    await auction.bid(buyer, r.auction.id, c1.min);
+    await rejects(auction.buyNow(rival, r.auction.id), /Buy Now is gone/);
+    assert.equal((await auction.browse(rival)).find(a => a.id === r.auction.id).canBuyNow, false);
+    await auction.bid(rival, r.auction.id, auction.minBid({ rarity: 1, high_bid: c1.min, start_price: c1.min }));
+    await expire(r.auction.id);
+    await auction.settleDue();
+    assert.ok((await mails(rival)).filter(m => /^You won/.test(m)).length >= 2, 'the bidding war\'s winner gets the winner\'s mail');
+    await rejects(auction.buyNow(buyer, big), /has ended/);
+    await q(`UPDATE auctions SET created_at = NOW() - INTERVAL '2 days' WHERE seller_id = $1`, [seller]);   // (these don't count against the limits below)
 
     // ── No bids: the card goes back. Cancelling only before the first bid ──
     await give(seller, commons[0], 3);
@@ -173,7 +206,7 @@ async function rejects(promise, pattern) {
     // ── Limits: auctions per day, and running at once (newer accounts get fewer) ──
     const reg = S.LIMITS.regular;
     const today = (await auction.overview(seller)).limits.todayUsed;
-    assert.equal(today, 3, 'every listing today counts, ended or not');
+    assert.equal(today, 2, 'every listing today counts, ended or not');
     await q(`UPDATE auctions SET created_at = NOW() - INTERVAL '2 days' WHERE seller_id = $1`, [seller]);
     for (let i = 0; i < reg.active; i++) {
         await give(seller, commons[1 + i], 1);
@@ -223,7 +256,7 @@ async function rejects(promise, pattern) {
     assert.deepEqual(sale.flags, ['repeat_pair']);
     const rep = await auction.report(30);
     assert.ok(rep.flagged.length >= 2);
-    assert.ok(rep.pairs.some(p => [p.a, p.b].includes('buyer') && p.sales === S.REPEAT_PAIR_SALES));
+    assert.ok(rep.pairs.some(p => [p.a, p.b].includes('buyer') && p.sales >= S.REPEAT_PAIR_SALES));
     assert.ok(rep.sharedSignups.some(g => g.includes('seller') && g.includes('twin')));
 
     // ── Deleting an account mid-auction ──

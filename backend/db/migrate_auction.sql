@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS auctions (
     ends_at      TIMESTAMPTZ NOT NULL,
     settled_at   TIMESTAMPTZ
 );
+-- A Buy Now price (optional): anyone may buy it outright at that price until the first bid
+ALTER TABLE auctions ADD COLUMN IF NOT EXISTS buy_now INTEGER;
 CREATE INDEX IF NOT EXISTS auctions_active_idx ON auctions (ends_at) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS auctions_seller_idx ON auctions (seller_id, created_at);
 CREATE INDEX IF NOT EXISTS auctions_bidder_idx ON auctions (high_bidder) WHERE status = 'active';

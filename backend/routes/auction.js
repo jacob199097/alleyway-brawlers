@@ -4,8 +4,9 @@
 //   GET  /api/auction                      → { eligible, reasons, karat, limits, rules }
 //   GET  /api/auction/browse?rarity=&clan=&search=   → { auctions: [...] }   running auctions, soonest to end first
 //   GET  /api/auction/mine                 → { selling: [...], bidding: [...] }   yours, running and the last 7 days'
-//   POST /api/auction/list   {card, startPrice}  → { auction, karat }
+//   POST /api/auction/list   {card, startPrice, buyNow?}  → { auction, karat }   startPrice = the reserve (lowest bid)
 //   POST /api/auction/:id/bid  {amount}          → { auction, karat }
+//   POST /api/auction/:id/buy                    → { auction, karat }   Buy Now, only before the first bid
 //   POST /api/auction/:id/cancel                 → { ok }   only before the first bid
 
 const router = require('express').Router();
@@ -45,10 +46,10 @@ router.get('/mine', requireAuth, async (req, res) => {
 });
 
 router.post('/list', requireAuth, async (req, res) => {
-    const { card, startPrice } = req.body || {};
+    const { card, startPrice, buyNow } = req.body || {};
     if (typeof card !== 'string') return res.status(400).json({ error: 'Which card?' });
     try {
-        res.json(await auction.list(req.playerId, card, Number(startPrice), ipHash(req)));
+        res.json(await auction.list(req.playerId, card, Number(startPrice), ipHash(req), buyNow == null || buyNow === 0 ? null : Number(buyNow)));
     } catch (err) {
         fail(res, err);
     }
@@ -59,6 +60,16 @@ router.post('/:id/bid', requireAuth, async (req, res) => {
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Which auction?' });
     try {
         res.json(await auction.bid(req.playerId, id, Number((req.body || {}).amount), ipHash(req)));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.post('/:id/buy', requireAuth, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Which auction?' });
+    try {
+        res.json(await auction.buyNow(req.playerId, id, ipHash(req)));
     } catch (err) {
         fail(res, err);
     }

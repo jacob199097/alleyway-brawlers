@@ -171,7 +171,8 @@ func _screen() -> Node:
 	return get_tree().current_scene
 
 
-## The auction house: browse (an auction picked), sell (a card picked), my auctions (my listing picked).
+## The auction house: browse (an auction picked, one with Buy Now), sell (a card picked, Buy Now offered),
+## my auctions (my listing picked).
 func _auction_shots() -> void:
 	Game.go("shop")
 	await _shot("a00_shop", 2.4)
@@ -188,12 +189,21 @@ func _auction_shots() -> void:
 				ah._render()
 				await _shot("a03_browse_bid", 1.2)
 				break
+		for a in ah._auctions:
+			if a.get("canBuyNow", false) and not a.get("mine", false):
+				ah._picked = a
+				ah._render()
+				await _shot("a03b_buy_now", 1.2)
+				break
 	ah._show("sell")
 	await _shot("a04_sell", 2.0)
 	if not ah._owned.is_empty():
 		ah._picked = CardDB.get_card(str(ah._owned[0].get("art_url", "")))
 		ah._render()
 		await _shot("a05_sell_picked", 1.2)
+		for c in ah._side.find_children("*", "CheckBox", true, false):
+			(c as CheckBox).button_pressed = true   # (Buy Now offered)
+		await _shot("a05b_sell_buy_now", 0.8)
 	ah._show("mine")
 	await _shot("a06_mine", 2.0)
 	for a in ah._auctions:
