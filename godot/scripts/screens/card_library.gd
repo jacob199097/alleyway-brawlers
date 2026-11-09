@@ -187,6 +187,7 @@ func _entries() -> Array:
 	var out: Array = []
 	var seen := {}
 	for id in CardDB.all():
+		seen[id] = true   # (before the skip: an owned token isn't an unknown card either)
 		if CardDB.get_card(id).get("token", false) != (_sub == "token"):   # tokens (made only by effects): only under TOKENS
 			continue
 		var c: Dictionary = CardDB.get_card(id).duplicate()
@@ -196,7 +197,6 @@ func _entries() -> Array:
 				if row.get(key) != null:
 					c[key] = row[key]
 			c.quantity = int(row.get("quantity", 0))
-		seen[id] = true
 		if _show_all or row != null or _sub == "token":
 			out.append(c)
 	for id in _owned:   # owned cards the rules data doesn't know yet

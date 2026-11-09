@@ -3031,9 +3031,11 @@ export class DuelState {
         if ((target === 'ally' || target === 'enemy') && this._equippedEntry(c)) {   // an Equip: its own character, no choice
             for (const x of entries) this._effect(side, c, fn(x), slot);
         } else if (target === 'ally' || target === 'enemy') {
+            // ("when your opponent deploys": the character just deployed comes first, except for a SILENCE,
+            // which goes where it switches the most off)
+            const first = vs.deployed != null && String(e.do ?? '') !== 'silence' ? vs.deployed : null;
             entries.sort((a, b) => {
-                // ("when your opponent deploys": the character just deployed comes first)
-                const da = vs.deployed != null && a.card === vs.deployed ? 1 : 0, db = vs.deployed != null && b.card === vs.deployed ? 1 : 0;
+                const da = first != null && a.card === first ? 1 : 0, db = first != null && b.card === first ? 1 : 0;
                 if (da !== db) return db - da;
                 const va = this._targetValue(side, e, a), vb = this._targetValue(side, e, b);
                 return va !== vb ? vb - va : (this.seats.indexOf(a.side) - this.seats.indexOf(b.side)) || a.slot - b.slot;
@@ -3212,6 +3214,17 @@ export class DuelState {
             case 'shield':
                 if (c.shield) return value - 50000;
                 break;
+            case 'silence': {
+                if (toInt(c.silence_until ?? 0) >= this.turn) return value - 50000;
+                // What it switches off: effects still to come (a "when deployed" one is done; PROMOTE still works)
+                let worth = 0;
+                for (const f of c.effects || []) {
+                    const when = String(f?.when ?? '');
+                    if (when === 'deploy' || String(f?.do ?? '') === 'promote') continue;
+                    worth += when === 'passive' || when === 'activate' ? 3 : 2;
+                }
+                return worth > 0 ? 100000 + worth * 10000 + value : value - 50000;
+            }
         }
         return value;
     }

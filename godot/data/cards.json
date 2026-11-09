@@ -9395,14 +9395,13 @@
   "art_url": "card_pira_001",
   "code": "PIRA-001",
   "flavourText": "Everything in this city floats. Everything that floats is mine.",
-  "effectText": "Once per turn, while this leader is Dormant, when you play a Hustle: PLUNDER the top card of your opponent's deck (into your hand).\nAWAKEN: When your Authority reaches 7 or your opponent's Morale is 3000 or less, this leader may take the field.\nWhen this leader Awakens: PLUNDER one enemy character: it fights for you from now on.",
+  "effectText": "While this leader is Dormant, at the start of your turn: PLUNDER the top card of your opponent's deck (into your hand).\nAWAKEN: When your Authority reaches 7 or your opponent's Morale is 3000 or less, this leader may take the field.\nWhen this leader Awakens: PLUNDER one enemy character: it fights for you from now on.",
   "effects": [
    {
-    "when": "dormant_hustle",
+    "when": "dormant_turn_start",
     "do": "plunder",
     "from": "deck",
-    "amount": 1,
-    "once": true
+    "amount": 1
    },
    {
     "when": "awaken",

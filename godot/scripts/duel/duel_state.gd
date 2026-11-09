@@ -3463,10 +3463,12 @@ func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictio
 		for x in entries:
 			_effect(side, c, fn.call(x), slot)
 	elif target == "ally" or target == "enemy":
+		# ("when your opponent deploys": the character just deployed comes first, except for a SILENCE,
+		# which goes where it switches the most off)
+		var first = vs.get("deployed") if vs.get("deployed") is Dictionary and str(e.get("do", "")) != "silence" else null
 		var best_first := func(a: Dictionary, b: Dictionary) -> bool:
-			# ("when your opponent deploys": the character just deployed comes first)
-			var da: bool = vs.get("deployed") is Dictionary and is_same(a.card, vs.deployed)
-			var db: bool = vs.get("deployed") is Dictionary and is_same(b.card, vs.deployed)
+			var da: bool = first != null and is_same(a.card, first)
+			var db: bool = first != null and is_same(b.card, first)
 			if da != db:
 				return da
 			var va := _target_value(side, e, a)
@@ -3674,6 +3676,19 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 		"shield":
 			if c.get("shield", false):
 				return value - 50000
+		"silence":
+			if int(c.get("silence_until", 0)) >= turn:
+				return value - 50000
+			# What it switches off: effects still to come (a "when deployed" one is done; PROMOTE still works)
+			var worth := 0
+			for f in (c.get("effects") if c.get("effects") is Array else []):
+				if not f is Dictionary:
+					continue
+				var when := str(f.get("when", ""))
+				if when == "deploy" or str(f.get("do", "")) == "promote":
+					continue
+				worth += 3 if when in ["passive", "activate"] else 2
+			return 100000 + worth * 10000 + value if worth > 0 else value - 50000
 	return value
 
 
