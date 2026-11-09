@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.135",
+        "notes": [
+            "The Auction House has its own room: a hidden warehouse with the auctioneer's podium under a spotlight."
+        ]
+    },
+    {
         "version": "0.9.134",
         "notes": [
             "The Auction House shows your Karat with the same neon K coin as the main menu."
