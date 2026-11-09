@@ -185,6 +185,11 @@ func _on_global_event(name: String, data) -> void:
 		"coop:looking":
 			if data is Dictionary:
 				_coop_looking(data)
+		"coop:invite":
+			if data is Dictionary:
+				_coop_invite(data)
+		"coop:inviteDeclined":
+			_toast("%s can't make it this time." % data.get("byUsername", "Your friend"), UI.RED)
 		"coop:start":
 			inbox.clear()
 			coop_inbox.clear()
@@ -384,6 +389,21 @@ func _coop_looking(data: Dictionary) -> void:
 			coop_join = {"boss": str(data.get("boss", "")), "level": int(data.get("level", 1))}
 			Game.go("turf_defense"), UI.GREEN],
 		["NOT NOW", func(): pass],
+	], UI.GOLD)
+
+
+## A friend invites you to fight a Turf Defense boss with them (coop:invite).
+func _coop_invite(data: Dictionary) -> void:
+	var scene := get_tree().current_scene
+	if not (scene is Control) or scene.name == "Duel":
+		send("coop:invite_decline", {"fromPlayerId": data.get("fromPlayerId", "")})
+		return
+	Game.alert(false)
+	Sfx.play("ambush", 1.2)
+	UI.dialog(scene, "🛡  TURF DEFENSE", "%s wants you by their side against %s (%s). Use your active deck?" % [
+		str(data.get("fromUsername", "A friend")), str(data.get("boss_name", "a boss")), str(data.get("level_name", ""))], [
+		["FIGHT TOGETHER", func(): send("coop:invite_accept", {"fromPlayerId": data.get("fromPlayerId", "")}), UI.GREEN],
+		["NOT NOW", func(): send("coop:invite_decline", {"fromPlayerId": data.get("fromPlayerId", "")}), UI.RED],
 	], UI.GOLD)
 
 

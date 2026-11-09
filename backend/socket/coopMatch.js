@@ -14,9 +14,17 @@
  * their partner fights; both win when the boss's Morale is gone, both lose when both are out.
  * Rewards are paid at the end, to both (economy/turf.js).
  *
+ * Or with a friend: coop:invite {targetPlayerId, boss, level} sends them coop:invite; their
+ * coop:invite_accept {fromPlayerId} starts the match for the two of them (each must have that level
+ * open, as in the queue), coop:invite_decline tells the inviter. An invite lasts INVITE_SECS.
+ *
  *   client → server  coop:queue {boss, level}, coop:leave, coop:action {matchId, action},
  *                    coop:emote {matchId, key}, coop:concede {matchId}, coop:quit, coop:resync
+ *                    coop:invite {targetPlayerId, boss, level}, coop:invite_accept {fromPlayerId},
+ *                    coop:invite_decline {fromPlayerId}
  *   server → client  coop:queue {boss, level, since}, coop:left {reason}, coop:error {message}, coop:none,
+ *                    coop:invite {fromPlayerId, fromUsername, boss, level, boss_name, level_name},
+ *                    coop:inviteSent {targetPlayerId, boss, level}, coop:inviteDeclined {byUsername},
  *                    coop:looking {username, boss, level, boss_name, level_name} (to everyone else),
  *                    coop:start {matchId, mode: 'coop', resync, boss: bossInfo, players: {player, ally, boss}, view, clock},
  *                    coop:update {matchId, events, view, clock, away}, coop:emote {matchId, key},
@@ -35,6 +43,7 @@ const BOT_MOVE_MS  = 450;
 const BOT_EVENT_MS = 160;   // and this much more for each event its last move made (the players' screens animate them)
 const BOT_MAX_MS   = 3200;
 const LOOKING_GAP_MS = 60 * 1000;   // a player's "looking for a partner" news goes out at most this often
+const INVITE_SECS = 60;
 // Quick messages to your partner (no free text), at most one every EMOTE_GAP_MS and MAX_EMOTES a match
 const EMOTES = ['boss', 'help', 'nice', 'tank', 'wait', 'thanks', 'go', 'gg'];
 const EMOTE_GAP_MS = 2000;
@@ -66,6 +75,7 @@ function actionFrom(action, seat) {
  * @param {(args) => Promise<object>} deps.resolveTurf      {playerId, bossId, level, won, turns} → rewards
  * @param {(playerId) => boolean} [deps.isBusyElsewhere]    in another match or queue
  * @param {(playerId) => void} [deps.leaveOtherQueue]
+ * @param {(a, b) => Promise<boolean>} [deps.areFriends]   invites go to friends only
  * @param {(m) => Promise<Array>} [deps.recordMatch]        achievements
  * @param {(playerId, clan, outcome) => Promise} [deps.masteryProgress]
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  veteran cards' tiers {cardId: tier}
@@ -82,6 +92,7 @@ function createCoopService(io, deps) {
     const byPlayer = new Map();       // playerId → match (until they leave it)
     const matches = new Map();
     const lastLooking = new Map();    // playerId → when their last coop:looking went out
+    const invites = new Map();        // "from:to" → {boss, level, expires}
     const emitTo = (id, ev, data) => sockets.get(id)?.emit(ev, data);
     const busy = (id) => queued.has(id) || byPlayer.has(id);
     const secs = (k, d) => deps[k] ?? d;
@@ -108,25 +119,31 @@ function createCoopService(io, deps) {
         return Object.fromEntries([...queues.entries()].map(([k, q]) => [k, q.length]));
     }
 
+    /** A player ready for a boss level (it's open to them, their deck loads): {entry} or {error}. */
+    async function loadEntry(playerId, boss, lv) {
+        const { bossLevel } = await turf;
+        try {
+            const clears = await deps.loadClears(playerId);
+            if (lv.level > 1 && !(clears?.[boss.id]?.[lv.level - 1]?.clears > 0)) {
+                return { error: `Beat ${boss.name} on ${bossLevel(boss, lv.level - 1).name} first.` };
+            }
+            const [setup, profile] = await Promise.all([deps.loadSetup(playerId), deps.loadProfile(playerId)]);
+            if (setup.error) throw new Error(setup.error);
+            return { entry: { playerId, setup, profile, since: Date.now() } };
+        } catch (err) {
+            return { error: err.message || 'Could not load your deck.' };
+        }
+    }
+
     async function queue(me, socket, bossId, level) {
         if (busy(me) || deps.isBusyElsewhere?.(me)) return socket.emit('coop:error', { message: 'You are already in a match.' });
         const { findBoss, bossLevel } = await turf;
         const boss = findBoss(String(bossId ?? ''));
         const lv = bossLevel(boss, level);
         if (!boss || !lv) return socket.emit('coop:error', { message: 'That boss isn\'t on the streets.' });
-        let entry;
-        try {
-            const clears = await deps.loadClears(me);
-            if (lv.level > 1 && !(clears?.[boss.id]?.[lv.level - 1]?.clears > 0)) {
-                const before = bossLevel(boss, lv.level - 1);
-                return socket.emit('coop:error', { message: `Beat ${boss.name} on ${before.name} first.` });
-            }
-            const [setup, profile] = await Promise.all([deps.loadSetup(me), deps.loadProfile(me)]);
-            if (setup.error) throw new Error(setup.error);
-            entry = { playerId: me, setup, profile, since: Date.now() };
-        } catch (err) {
-            return socket.emit('coop:error', { message: err.message || 'Could not load your deck.' });
-        }
+        const got = await loadEntry(me, boss, lv);
+        if (got.error) return socket.emit('coop:error', { message: got.error });
+        const entry = got.entry;
         if (busy(me) || deps.isBusyElsewhere?.(me)) return;
         deps.leaveOtherQueue?.(me);
         const key = `${boss.id}:${lv.level}`;
@@ -154,6 +171,64 @@ function createCoopService(io, deps) {
                 }
             }
         }
+    }
+
+    // ── With a friend ──
+    const inMatch = (id) => byPlayer.has(id) || !!deps.isBusyElsewhere?.(id);
+
+    async function invite(me, myName, socket, targetPlayerId, bossId, level) {
+        if (typeof targetPlayerId !== 'string' || targetPlayerId === me) return;
+        const { findBoss, bossLevel } = await turf;
+        const boss = findBoss(String(bossId ?? ''));
+        const lv = bossLevel(boss, level);
+        if (!boss || !lv) return socket.emit('coop:error', { message: 'That boss isn\'t on the streets.' });
+        if (inMatch(me)) return socket.emit('coop:error', { message: 'You are already in a match.' });
+        if (!sockets.get(targetPlayerId)?.connected) return socket.emit('coop:error', { message: 'That player is offline.' });
+        if (inMatch(targetPlayerId)) return socket.emit('coop:error', { message: 'That player is in a match.' });
+        try {
+            if (deps.areFriends && !(await deps.areFriends(me, targetPlayerId))) {
+                return socket.emit('coop:error', { message: 'You can only invite your friends.' });
+            }
+        } catch (err) {
+            return socket.emit('coop:error', { message: 'Could not check your friends list.' });
+        }
+        const mine = await loadEntry(me, boss, lv);   // (the level is open to you and your deck is ready)
+        if (mine.error) return socket.emit('coop:error', { message: mine.error });
+        invites.set(`${me}:${targetPlayerId}`, { boss: boss.id, level: lv.level, expires: Date.now() + INVITE_SECS * 1000 });
+        emitTo(targetPlayerId, 'coop:invite', { fromPlayerId: me, fromUsername: myName, boss: boss.id, level: lv.level,
+            boss_name: boss.name, level_name: lv.name });
+        socket.emit('coop:inviteSent', { targetPlayerId, boss: boss.id, level: lv.level });
+    }
+
+    async function acceptInvite(me, myName, socket, fromPlayerId) {
+        const key = `${fromPlayerId}:${me}`;
+        const inv = invites.get(key);
+        invites.delete(key);
+        if (!inv || inv.expires < Date.now()) return socket.emit('coop:error', { message: 'That invite has expired.' });
+        if (!sockets.get(fromPlayerId)?.connected) return socket.emit('coop:error', { message: 'Your friend went offline.' });
+        if (inMatch(me) || inMatch(fromPlayerId)) return socket.emit('coop:error', { message: 'A player is already in a match.' });
+        const { findBoss, bossLevel } = await turf;
+        const boss = findBoss(inv.boss);
+        const lv = bossLevel(boss, inv.level);
+        if (!boss || !lv) return socket.emit('coop:error', { message: 'That boss isn\'t on the streets.' });
+        const [theirs, mine] = await Promise.all([loadEntry(fromPlayerId, boss, lv), loadEntry(me, boss, lv)]);
+        if (mine.error) {
+            emitTo(fromPlayerId, 'coop:error', { message: `${myName} can't join: ${mine.error}` });
+            return socket.emit('coop:error', { message: mine.error });
+        }
+        if (theirs.error) {
+            emitTo(fromPlayerId, 'coop:error', { message: theirs.error });
+            return socket.emit('coop:error', { message: 'Your friend can\'t start that fight right now.' });
+        }
+        if (inMatch(me) || inMatch(fromPlayerId)) return socket.emit('coop:error', { message: 'A player is already in a match.' });
+        for (const id of [fromPlayerId, me]) {
+            leaveQueue(id);
+            deps.leaveOtherQueue?.(id);
+        }
+        startMatch(boss, lv, [theirs.entry, mine.entry]).catch(err => {
+            console.error('[Turf] Start failed:', err);
+            for (const id of [fromPlayerId, me]) emitTo(id, 'coop:error', { message: 'The match could not start.' });
+        });
     }
 
     // ── Match ──
@@ -368,6 +443,12 @@ function createCoopService(io, deps) {
         sockets.set(me, socket);
 
         socket.on('coop:queue', ({ boss, level } = {}) => queue(me, socket, boss, level));
+
+        socket.on('coop:invite', ({ targetPlayerId, boss, level } = {}) => invite(me, playerData.username, socket, targetPlayerId, boss, level));
+        socket.on('coop:invite_accept', ({ fromPlayerId } = {}) => acceptInvite(me, playerData.username, socket, fromPlayerId));
+        socket.on('coop:invite_decline', ({ fromPlayerId } = {}) => {
+            if (invites.delete(`${fromPlayerId}:${me}`)) emitTo(fromPlayerId, 'coop:inviteDeclined', { byUsername: playerData.username });
+        });
 
         socket.on('coop:leave', () => {
             leaveQueue(me);

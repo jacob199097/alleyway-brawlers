@@ -122,6 +122,10 @@ io.use((socket, next) => {
 });
 
 // ── Online matches (server-authoritative rules, socket/onlineMatch.js) ───────
+/** Whether two players are friends (watching a match, inviting to Turf Defense). */
+const areFriends = async (a, b) => (await pool.query(
+    `SELECT 1 FROM friendships WHERE status = 'accepted'
+     AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0;
 let ffa = null;    // free-for-all lobbies and matches (below)
 let coop = null;   // Turf Defense quick match and matches (below)
 const online = createOnlineService(io, {
@@ -146,9 +150,7 @@ const online = createOnlineService(io, {
         'INSERT INTO match_stats (id, mode, version, data) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING',
         [row.id, row.mode, row.version, JSON.stringify(row.data)]),
     claimChallenge: (playerId, week) => require('./economy/challenge').claim(playerId, week),
-    areFriends: async (a, b) => (await pool.query(
-        `SELECT 1 FROM friendships WHERE status = 'accepted'
-         AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))`, [a, b])).rowCount > 0,
+    areFriends,
 });
 app.locals.online = online;   // routes/social.js: which friends are in a match
 
@@ -177,6 +179,7 @@ coop = createCoopService(io, {
     recordInfluence: territory.record,
     isBusyElsewhere: (playerId) => online.isBusyHere(playerId) || ffa.isBusy(playerId),
     leaveOtherQueue: (playerId) => online.leaveQueue(playerId),
+    areFriends,
     recordMatch: achievements.recordMatch,
     masteryProgress: require('./economy/mastery').progress,
     recordDeck: (deckId, outcome) => pool.query(

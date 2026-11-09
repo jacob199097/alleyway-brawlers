@@ -116,6 +116,26 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check(await until(() => m2.over), 'both out: the boss wins');
     check(await until(() => last(c, 'coop:over')?.won === false && last(a, 'coop:over')?.won === false), 'both hear they lost');
 
+    // 6. Inviting a friend: declined, then accepted (straight into a match for the two of them); a level
+    // the friend hasn't opened is refused for both
+    await until(() => !svc.isBusy('ann') && !svc.isBusy('cat'));
+    await d.handlers['coop:invite']({ targetPlayerId: 'ben', boss: 'archon', level: 2 });
+    check(last(b, 'coop:invite')?.fromUsername === 'dan' && last(b, 'coop:invite').level === 2, 'ben is invited by dan (Archon, level 2)');
+    check(last(d, 'coop:inviteSent')?.targetPlayerId === 'ben', 'dan hears the invite went');
+    await b.handlers['coop:invite_accept']({ fromPlayerId: 'dan' });
+    check(/first/.test(last(b, 'coop:error')?.message || '') && /can't join/.test(last(d, 'coop:error')?.message || ''),
+        "ben hasn't opened level 2: both are told");
+    await d.handlers['coop:invite']({ targetPlayerId: 'ben', boss: 'archon', level: 1 });
+    b.handlers['coop:invite_decline']({ fromPlayerId: 'dan' });
+    check(last(d, 'coop:inviteDeclined')?.byUsername === 'ben', 'ben declines: dan hears');
+    await b.handlers['coop:invite_accept']({ fromPlayerId: 'dan' });
+    check(/expired/.test(last(b, 'coop:error')?.message || ''), 'a declined invite is gone');
+    await d.handlers['coop:invite']({ targetPlayerId: 'ben', boss: 'archon', level: 1 });
+    await b.handlers['coop:invite_accept']({ fromPlayerId: 'dan' });
+    check(await until(() => last(b, 'coop:start')?.boss.id === 'archon' && last(d, 'coop:start')?.boss.id === 'archon'), 'accepted: dan and ben fight the Archon');
+    await a.handlers['coop:invite']({ targetPlayerId: 'ben', boss: 'archon', level: 1 });
+    check(/in a match/.test(last(a, 'coop:error')?.message || ''), "a friend already fighting can't be invited");
+
     console.log(bad ? `\n${bad} check(s) FAILED` : '\ncoop: all ok');
     process.exit(bad ? 1 : 0);
 })().catch(err => { console.error(err); process.exit(1); });

@@ -159,6 +159,8 @@ var _catch_up := 1.0      # faster while a backlog of events waits (a free-for-a
 var _replay_seek := -1    # replay: jump to this update once the current one has finished animating
 var _log_text: RichTextLabel   # the battle log (L)
 var _log_lines := 0
+var _recent: Array = []        # the last few log lines ([colour, text]): the card panel shows them when idle
+var _last_played := {}        # {card, side}: the card panel shows it when nothing is hovered
 var _over := {}           # mp:over from the server
 var _clock_left := 0.0
 var _post: ColorRect                # full-screen hit effects (shaders/post.gdshader)
@@ -313,6 +315,7 @@ func _ready() -> void:
 		_clan_line($HUD/UI/OppPanel, online_start.get("opponent", {}))
 	_build_phase_bar()
 	_build_turn_box()
+	_build_status()
 	_build_log()
 	# The HUD is glass: the arena shows through it
 	for p in [$HUD/UI/Detail, $HUD/UI/OppPanel, $HUD/UI/PlayerPanel, $HUD/UI/PhaseBar, $HUD/UI/TurnBox]:
@@ -408,11 +411,6 @@ func _setup_online(start: Dictionary) -> void:
 		_build_spectate_bar()
 	elif _coop or (not str(start.get("mode", "")).begins_with("cpu") and not _ffa):
 		_build_emote_button()
-	_ui.clock = _label(20, GOLD, true)
-	_ui.clock.position = Vector2(16, 116)
-	_ui.clock.size = Vector2(214, 28)
-	_ui.clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	$HUD/UI/TurnBox.add_child(_ui.clock)
 	_clock_left = float(start.get("clock", ONLINE_TURN_SECS))
 	if not start.get("resync", false) and not _spectating:
 		Game.alert()
@@ -620,6 +618,12 @@ func _log(text: String, side: String) -> void:
 	var color := "#8fd3ff" if side == "player" else "#7af0de" if _coop and side == "ally" else "#ff8a94" if side != "" else "#f4d35e"
 	_log_text.append_text("[color=%s]%s[/color]\n" % [color, text.replace("[", "[lb]")])
 	_log_lines += 1
+	if not text.begins_with("──"):   # (a turn heading isn't news)
+		_recent.append([color, text])
+		if _recent.size() > 3:
+			_recent.pop_front()
+	if _detail_key.begins_with("idle:"):   # (the idle panel keeps up)
+		_show_detail({})
 	if _log_lines > 400:
 		_log_text.remove_paragraph(0)
 		_log_lines -= 1
@@ -1110,7 +1114,7 @@ func _process(delta: float) -> void:
 		_tutorial.update()
 	_update_peek()
 	if _ui.has("detail_art"):
-		if _detail_key == "back:" and duel != null:   # (the match is here: show the player's own back)
+		if _detail_key.begins_with("idle::") and duel != null:   # (the match is here: show the player's own back)
 			_show_detail({})
 		# The featured card floats gently, catching the light
 		var tm := Time.get_ticks_msec() / 1000.0
@@ -1133,10 +1137,9 @@ func _process(delta: float) -> void:
 			var msg: Array = Net.inbox.pop_front()
 			_on_net_event(msg[0], msg[1])
 		# Whoever has to act has the server's clock (data.clock) before it plays a safe move for them
-		if duel.winner == "" and _mode != "over" and _ui.has("clock"):
+		if duel.winner == "" and _mode != "over":
 			_clock_left = maxf(0.0, _clock_left - delta / maxf(Engine.time_scale, 0.01))   # real seconds
-			_ui.clock.text = "⏱ %d%s" % [ceili(_clock_left), "  AWAY" if _ui.get("away", false) else ""]
-			_ui.clock.label_settings.font_color = RED if _clock_left < 15.0 else GOLD
+	_update_status()
 
 
 # ── Board geometry ───────────────────────────────────────────────────────────
@@ -2087,12 +2090,7 @@ func _play(ev: Dictionary) -> void:
 		"recycle":
 			await _ev_recycle(ev)
 		"prompt":
-			if ev.side != "player" or ev.side in ai_sides:
-				var who: String = ("%s IS DECIDING…" % str(_names.get(ev.side, "OPPONENT")).to_upper()) if _ffa \
-					else "OPPONENT IS DECIDING…" if _online else "CPU IS DECIDING…"
-				var out_up: bool = _ui.has("out_panel") and is_instance_valid(_ui.out_panel)
-				_float_text((FFA_MID if _coop else Vector2(1080, DIVIDER_Y)) - Vector2(0, 170 if out_up else 0), who, Color(1, 1, 1, 0.8), 30)
-				await _wait(0.35)
+			pass   # (whoever is deciding: the status under the phase panel, _update_status)
 
 
 func _ev_draw(ev: Dictionary) -> void:
@@ -2203,6 +2201,7 @@ func _ev_authority(ev: Dictionary) -> void:
 func _ev_summon(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var c: Dictionary = ev.card
+	_last_played = {"card": c, "side": side}
 	var slot: int = ev.slot
 	var target := slot_pos(side, slot)
 	var v: CardView
@@ -2342,6 +2341,7 @@ func _from_set(ev: Dictionary) -> CardView:
 func _ev_hustle(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var c: Dictionary = ev.card
+	_last_played = {"card": c, "side": side}
 	var v := _from_set(ev) if ev.get("set", false) else _take_from_hand(side, c.uid, c)
 	v.z_index = 450
 	_show_detail(c)
@@ -6927,13 +6927,16 @@ func _status_word(k, amt := "") -> String:
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
-	# (nothing hovered: the player's own card back, once the match is here)
+	# (nothing hovered: the last card played and what just happened, else the player's own card back)
 	var mine := duel != null and duel.sides.has("player")
 	var key := "%s:%s:%s" % [c.get("uid", c.get("id", "")), live_stats, live_status] if not c.is_empty() \
-		else "back:%s" % (_back_clan("player") if mine else "")
+		else "idle:%s:%s:%d" % [_back_clan("player") if mine else "", _last_played.get("card", {}).get("uid", ""), _log_lines]
 	if key == _detail_key:
 		return
 	_detail_key = key
+	if c.is_empty() and not _last_played.is_empty():
+		_show_idle()
+		return
 	if c.is_empty():
 		_detail_spin = CardDB.back_style(_back_clan("player")) if mine else ""
 		for style in CardDB.BACK_STYLES.values():
@@ -6943,7 +6946,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_title.text = ""
 		_ui.detail_kind.text = ""
 		_ui.detail_stats.text = ""
-		_ui.detail_text.text = "[color=#8a8aa0]Hover a card to see it here. Right-click it to zoom in.[/color]"
+		_ui.detail_text.text = "\n".join(["[color=#8a8aa0]Hover a card to see it here. Right-click it to zoom in.[/color]"] + _rival_leader_lines())
 		return
 	var tex := CardDB.art_for(c)   # (a token shows the same one of its artworks as on the field)
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
@@ -6965,6 +6968,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	if not token:   # (a token isn't played from the hand: no cost)
 		parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
 	_ui.detail_kind.text = "  ·  ".join(parts)
+	_ui.detail_kind.label_settings.font_color = Color(0.62, 0.66, 0.82)   # (the idle panel colours it by side)
 	_fit_label(_ui.detail_kind, 15, 10)
 	if c.get("cardType") in ["gang_member", "leader"]:
 		var base_atk := int(c.get("base_attack", c.get("attack", 0)))
@@ -6984,6 +6988,46 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	if c.get("note") is String:   # (where the card is: shown above its text, not part of it)
 		body = "[color=#8a8aa0]%s[/color]\n\n%s" % [Keywords._escape(c.note), body]
 	_ui.detail_text.text = body
+
+
+## Nothing hovered, once a card has been played: that card ("LAST PLAYED · OPPONENT"), the last few
+## things that happened, and when the rival leader Awakens (or that it already has).
+func _show_idle() -> void:
+	var c: Dictionary = _last_played.card
+	var side: String = _last_played.side
+	var tex := CardDB.art_for(c)
+	_ui.detail_art.texture = tex if tex else _back_for(side)
+	UI.rarity_fx(_ui.detail_art.material, int(c.get("rarity", 1)) if tex else 1, 0.37)
+	_detail_spin = ""
+	for style in CardDB.BACK_STYLES.values():
+		_ui.detail_art.material.set_shader_parameter(style, 0.0)
+	_ui.detail_title.text = str(c.get("name", "?"))
+	_ui.detail_kind.text = "LAST PLAYED  ·  %s" % _who(side).to_upper()
+	_ui.detail_kind.label_settings.font_color = _side_color(side)
+	if c.get("cardType") in ["gang_member", "leader"]:
+		_ui.detail_stats.text = "[color=#ffd86b]ATK %d[/color]   [color=#9ddcff]DEF %d[/color]" % [int(c.get("attack", 0)), int(c.get("defense", 0))]
+	else:
+		_ui.detail_stats.text = ""
+	var lines: Array = []
+	for r in _recent:
+		lines.append("[color=%s]%s[/color]" % [r[0], Keywords._escape(str(r[1]))])
+	_ui.detail_text.text = "\n".join(lines + _rival_leader_lines())
+
+
+## When the rival leader Awakens (or that it already has): for the idle card panel.
+func _rival_leader_lines() -> Array:
+	var rival := "boss" if _coop else "" if _ffa else "opponent"
+	if rival == "" or duel == null or not duel.sides.has(rival) or not duel.sides[rival].get("leader") is Dictionary:
+		return []
+	var ld: Dictionary = duel.sides[rival].leader
+	var who := str(_names.get(rival, "Rival")) if _coop else "Rival"
+	if not duel.leader_dormant(rival):
+		return ["[color=#ff8a94]%s leader %s is on the field.[/color]" % [who, Keywords._escape(str(ld.get("name", "")))]]
+	for line in str(ld.get("effectText", "")).split("\n"):
+		if line.begins_with("AWAKEN"):
+			return ["[color=#8a8aa0]%s leader %s: %s[/color]" % [who, Keywords._escape(str(ld.get("name", ""))),
+				Keywords._escape(line.trim_prefix("AWAKEN:").strip_edges())]]
+	return []
 
 
 ## stars: a turf map gang's rating (1..5), along the bottom of its picture.
@@ -7189,6 +7233,117 @@ func _update_next_btn() -> void:
 				b.text = "TO REGROUP  ▶"
 			_:
 				b.text = "END TURN  ▶"
+
+
+## Under the phase panel, for as long as it lasts: whose move it is ("YOUR MOVE", or "<NAME> IS
+## DECIDING…"), and online, the server's clock as a ring round the seconds left. It turns red in the last
+## 15 seconds and beats in the last 10 of your own.
+func _build_status() -> void:
+	var box := Control.new()
+	box.position = Vector2(1650, 652)
+	box.size = Vector2(246, 240)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD/UI.add_child(box)
+	var ring := Control.new()
+	ring.position = Vector2(61, 0)
+	ring.size = Vector2(124, 124)
+	ring.pivot_offset = ring.size / 2
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.draw.connect(_draw_clock_ring.bind(ring))
+	box.add_child(ring)
+	var secs := _label(46, Color.WHITE, true)
+	secs.size = ring.size
+	secs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	secs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ring.add_child(secs)
+	var plate := PanelContainer.new()   # (edged in the colour of whoever is deciding)
+	var sb := _box(Color(0.02, 0.02, 0.06, 0.84), BLUE, 2, 10)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	plate.add_theme_stylebox_override("panel", sb)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.custom_minimum_size = Vector2(246, 0)
+	plate.pivot_offset = Vector2(123, 22)
+	box.add_child(plate)
+	var who := _label(24, BLUE, true)
+	who.custom_minimum_size = Vector2(226, 0)
+	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	plate.add_child(who)
+	_ui.status = box
+	_ui.status_plate = plate
+	_ui.status_ring = ring
+	_ui.status_secs = secs
+	_ui.status_who = who
+	_ui.status_sec = -1
+	_ui.status_color = BLUE
+
+
+func _draw_clock_ring(ring: Control) -> void:
+	var c := ring.size / 2
+	var r := 52.0
+	ring.draw_circle(c, r + 9.0, Color(0.02, 0.02, 0.06, 0.8))
+	ring.draw_arc(c, r, 0.0, TAU, 72, Color(1, 1, 1, 0.12), 8.0, true)
+	var k := clampf(_clock_left / ONLINE_TURN_SECS, 0.0, 1.0)
+	if k > 0.0:
+		ring.draw_arc(c, r, -PI / 2, -PI / 2 + TAU * k, 72, _ui.status_color, 8.0, true)
+
+
+## Who has to act now: whoever a prompt is waiting on, else whoever's turn it is.
+func _acting_side() -> String:
+	if not duel.pending.is_empty() and str(duel.pending.get("side", "")) != "":
+		return str(duel.pending.side)
+	return duel.active
+
+
+func _update_status() -> void:
+	if not _ui.has("status"):
+		return
+	var shown: bool = duel.winner == "" and _mode != "over" and _replay.is_empty()
+	_ui.status.visible = shown
+	if not shown:
+		return
+	var side := _acting_side()
+	var mine: bool = side == "player" and not _spectating
+	var away: bool = _online and _ui.get("away", false)
+	var text: String
+	var col: Color
+	if mine:
+		text = "YOUR CHOICE" if not duel.pending.is_empty() else "YOUR MOVE"
+		col = BLUE
+	else:
+		var name := str(_names[side]).to_upper() if _names.has(side) else ("OPPONENT" if _online and not side in ai_sides else "CPU")
+		text = ("%s IS AWAY…" if away else "%s IS DECIDING…") % name
+		col = RED if away else _side_color(side) if side != "opponent" or _ffa else GOLD
+	var who: Label = _ui.status_who
+	var plate: PanelContainer = _ui.status_plate
+	if who.text != text:   # (a new name pops in)
+		who.text = text
+		who.label_settings.font_color = col
+		(plate.get_theme_stylebox("panel") as StyleBoxFlat).border_color = col
+		plate.reset_size()
+		plate.scale = Vector2.ONE * 1.12
+		plate.create_tween().tween_property(plate, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# The clock (online only; offline nobody is timed): the words sit under it, or alone in its place
+	var ring: Control = _ui.status_ring
+	ring.visible = _online and not _watching()
+	plate.position.y = 134.0 if ring.visible else 60.0
+	if not ring.visible:
+		return
+	var left := ceili(_clock_left)
+	_ui.status_color = RED if _clock_left < 15.0 else col
+	var secs: Label = _ui.status_secs
+	secs.text = str(left)
+	secs.label_settings.font_color = RED if _clock_left < 15.0 else Color.WHITE
+	ring.queue_redraw()
+	if left != int(_ui.status_sec):
+		_ui.status_sec = left
+		if mine and left <= 10 and left > 0:   # (your last ten seconds: it beats)
+			ring.scale = Vector2.ONE * 1.12
+			ring.create_tween().tween_property(ring, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			Sfx.play("click", 1.5 + (10 - left) * 0.03, -12.0)
 
 
 func _build_turn_box() -> void:

@@ -384,14 +384,16 @@ func _build_detail(animate: bool) -> void:
 		info.add_child(row)
 	# What beating it pays
 	var pay := _pay_box(lv, col)
-	pay.position = Vector2(x, 500)
+	pay.position = Vector2(x, 466)
 	root.add_child(pay)
 	# Record, who's waiting, and the button
 	var rec := UI.label(_record(lv), 16, UI.MUTED)
-	rec.position = Vector2(x, 694)
+	rec.position = Vector2(x, 763)
 	root.add_child(rec)
 	var waiting := UI.label("", 18, UI.GOLD, true)
-	waiting.position = Vector2(x, 720)
+	waiting.position = Vector2(DETAIL.size.x - 436 - 200, 761)
+	waiting.size = Vector2(600, 24)
+	waiting.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	root.add_child(waiting)
 	root.set_meta("waiting", waiting)
 	var pulse := waiting.create_tween().set_loops()
@@ -400,8 +402,12 @@ func _build_detail(animate: bool) -> void:
 	var open: bool = lv.get("unlocked", false)
 	var go := UI.button("QUICK MATCH" if open else "🔒  " + _lock_text(), _quick_match, Vector2(400, 76), UI.GREEN if open else UI.MUTED)
 	go.disabled = not open
-	go.position = Vector2(DETAIL.size.x - 436, 680)
+	go.position = Vector2(DETAIL.size.x - 436, 684)
 	root.add_child(go)
+	var pal := UI.button("INVITE A FRIEND", _invite_friend, Vector2(330, 76), UI.BLUE if open else UI.MUTED)
+	pal.disabled = not open
+	pal.position = Vector2(go.position.x - 346, 684)
+	root.add_child(pal)
 	_paint_waiting()
 	if animate:
 		root.modulate.a = 0.0
@@ -535,6 +541,48 @@ func _quick_match() -> void:
 	Sfx.play("ambush", 1.1, -4.0)
 	_queue_sent = {"boss": str(_boss.get("id", "")), "level": _level}
 	_show_queue(Time.get_unix_time_from_system())
+
+
+## Fight this boss level with a friend: pick one who's online (and not in a match); they get an invite
+## (net.gd), and accepting starts the match for the two of you (coop:invite in backend/socket/coopMatch.js).
+func _invite_friend() -> void:
+	if _queue or not _level_data().get("unlocked", false):
+		return
+	var spin := UI.spinner(self, Vector2(1236, 980), "CHECKING YOUR DECK…")
+	var deck := await Game.load_duel_deck()
+	var r := await Api.request("GET", "/api/social/friends")
+	spin.queue_free()
+	if not is_inside_tree():
+		return
+	if deck.has("error"):
+		var buttons := [["CLOSE", func(): pass]]
+		if deck.get("gate", false):
+			buttons.push_front(["DECK EDITOR", func(): Game.go("deck_builder"), UI.BLUE])
+		UI.dialog(self, "CAN'T START", deck.error, buttons, UI.RED)
+		return
+	if not r.ok or not r.data is Array:
+		UI.toast(self, r.error if not r.ok else "Couldn't load your friends.", UI.RED)
+		return
+	var free: Array = r.data.filter(func(f): return f is Dictionary and f.get("status") != "pending" and f.get("is_online", false) and not f.get("in_match", false))
+	if free.is_empty():
+		UI.dialog(self, "INVITE A FRIEND", "None of your friends are online and free right now. Add friends in Social, or try QUICK MATCH.",
+			[["OK", func(): pass]], UI.BLUE)
+		return
+	var boss_id := str(_boss.get("id", ""))
+	var level := _level
+	var buttons: Array = []
+	for f in free.slice(0, 4):   # (one row of buttons)
+		var who := str(f.get("friend_username", "?"))
+		var id := str(f.get("friend_id", ""))
+		buttons.append([who.to_upper(), func():
+			if Net.send("coop:invite", {"targetPlayerId": id, "boss": boss_id, "level": level}):
+				Sfx.play("ambush", 1.1, -4.0)
+				UI.toast(self, "Invite sent to %s: waiting for them to accept." % who, UI.GOLD)
+			else:
+				UI.toast(self, "Not connected to the server.", UI.RED), UI.BLUE])
+	buttons.append(["CANCEL", func(): pass])
+	UI.dialog(self, "INVITE A FRIEND", "Who do you want to fight %s (%s) with?" % [str(_boss.get("name", "the boss")), str(_level_data().get("name", ""))],
+		buttons, UI.BLUE)
 
 
 ## Waiting for a partner: the boss looms, a clock counts up, and you can stop looking.

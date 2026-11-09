@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.9.128",
+        "notes": [
+            "Turf Defense with a friend: pick a boss level and press INVITE A FRIEND. Your friend gets an invite, and the two of you go straight in together.",
+            "A turn clock you can see: online, the seconds left sit in a ring on the right of the board, under the phases, and turn red in your last 15. Under it, the game says whose move it is for as long as it lasts (YOUR MOVE, or who is deciding), so you always know when you're waiting on someone.",
+            "The card panel on the left is useful when you're not hovering a card: the last card played and by whom, the last few things that happened, and when the rival leader Awakens.",
+            "Captain Marlow: while Dormant, at the start of your turn, PLUNDER the top card of your opponent's deck (was: once a turn when you play a Hustle).",
+            "Smarter SILENCE: the CPU (and the order targets are offered in) now silences the character with the most effects still to come, not the card that was just deployed. Black Flag plays much better for it.",
+            "Fix: the Card Library counted an owned token as an extra card (314 shown, 313 in your collection)."
+        ]
+    },
+    {
         "version": "0.9.127",
         "notes": [
             "Smarter CPU: it puts characters on the board before playing Hustles that only steal cards or SILENCE (like Pickpocket and Black Flag), instead of spending its turn on them with an empty front row. Easy still plays them first.",
