@@ -1363,6 +1363,8 @@ export class DuelState {
                 this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo);
             }
         }
+        // "While Dormant, when one of your characters Downs an enemy character" (a tie counts)
+        if (result === 'downed') this._leaderFx(side, 'dormant_down', def);
         this._bleed(side, att);
         this._bleed(foe, def);
     }

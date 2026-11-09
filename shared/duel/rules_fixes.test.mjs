@@ -138,4 +138,24 @@ for (const i of [0, 1, 2, 3, 4]) st.sides.player.field[i] = st.makeCard({ id: 'r
 st._recalc();
 assert.equal(choose(st, 'player', 'normal').kind, 'hustle', 'no empty lane: the Hustle');
 
-console.log('Rules fixes (promote-then-hit, deployed first, INFILTRATE, FFA Authority, boss Influence, CPU promotes and trades): all good');
+// Captain Marlow, Dormant: when one of your characters Downs an enemy character, PLUNDER the top card of
+// the opponent's deck (once per turn)
+st = duel('player', { leaders: { player: 'card_pira_001', opponent: 'card_unde_001' } });
+for (const i of [0, 1]) {
+    st.sides.player.field[i] = st.makeCard({ id: 'rf_grunt' });
+    st.sides.opponent.field[i] = st.makeCard({ id: 'rf_grunt' });
+    st.sides.opponent.field[i].position = 'def';
+}
+st._recalc();
+let hand = st.sides.player.hand.length, deck = st.sides.opponent.deck.length;
+assert.ok(st.doAction('player', { kind: 'attack', from: 0, target: 0 }));
+answer(st);
+assert.ok(st.cardAt('opponent', 0).downed, 'the enemy goes Down');
+assert.equal(st.sides.player.hand.length, hand + 1, 'Marlow plunders a card');
+assert.equal(st.sides.opponent.deck.length, deck - 1, 'from the top of their deck');
+assert.ok(st.doAction('player', { kind: 'attack', from: 1, target: 1 }));
+answer(st);
+assert.ok(st.cardAt('opponent', 1).downed);
+assert.equal(st.sides.player.hand.length, hand + 1, 'once per turn');
+
+console.log('Rules fixes (promote-then-hit, deployed first, INFILTRATE, FFA Authority, boss Influence, CPU promotes and trades, Marlow): all good');

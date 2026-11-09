@@ -270,6 +270,7 @@ const LEADER_SAMPLES := [
 	{"effectKey": "", "awakenCondition": {"chars": 3, "influence": 1500, "ready": true}, "effects": [
 		{"when": "dormant", "do": "buff", "target": "allies", "atk": 200}, {"when": "dormant", "do": "pierce"},
 		{"when": "dormant_turn_start", "do": "heal", "amount": 200}, {"when": "dormant_hit", "do": "draw", "amount": 1},
+		{"when": "dormant_down", "do": "plunder", "from": "deck", "amount": 1, "once": true},
 		{"when": "awaken", "do": "down", "target": "enemy"}]},
 	{"effectKey": "", "awakenCondition": {"authority": 6, "gutter": 4}, "effects": [
 		{"when": "dormant", "do": "cost_down", "amount": 1}, {"when": "dormant", "do": "immune"},

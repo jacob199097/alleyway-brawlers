@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.129",
+        "notes": [
+            "Captain Marlow: while Dormant, once per turn, when one of your characters Downs an enemy character, PLUNDER the top card of your opponent's deck (was: at the start of your turn).",
+            "Pirates cards: Pickpocket and Buried Treasure cost 1 Authority (were 2), Black Flag 3 (was 4). Barnacle Bess 1100 / 1100 and BLEED 300 (was 900 / 1000, BLEED 200). Bilge LV1 600 / 400, Gil the Grave Robber LV1 500 / 700, Dock Rat 700 / 400, The Fence 900 / 1200, Fogbank Finn 1700 / 1100.",
+            "Turf Defense: Captain Marlow gets 1 less Authority a turn on every level, so his crew's cheaper cards don't make him harder."
+        ]
+    },
+    {
         "version": "0.9.128",
         "notes": [
             "Turf Defense with a friend: pick a boss level and press INVITE A FRIEND. Your friend gets an invite, and the two of you go straight in together.",

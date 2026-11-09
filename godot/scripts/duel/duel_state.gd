@@ -1585,6 +1585,9 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		elif result == "downed":
 			_on_down(side, from, att, foe)
 			_run_fx(side, _slot_of(side, att, from), att, "down", def_info)
+	# "While Dormant, when one of your characters Downs an enemy character" (a tie counts)
+	if result == "downed":
+		_leader_fx(side, "dormant_down", def)
 	_bleed(side, att)
 	_bleed(foe, def)
 
