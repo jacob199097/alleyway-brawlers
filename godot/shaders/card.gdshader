@@ -52,8 +52,8 @@ uniform vec4 molotov_flame = vec4(0.03, -0.175, 0.16, 0.095);
 // puddles at the bottom. Brighter while hovered (galaxy_glow). Slow on purpose: no flicker.
 uniform float streetlight = 0.0;
 uniform float street_light_y = -0.04;   // the light's (and the logo's) centre, as uv.y (card centre = 0)
-// tide: the Pirates back: the night sea around the ship's-wheel emblem rolls gently, light slides along
-// the wave crests, the emblem's teal glow breathes and a glint runs over its brass every few seconds.
+// tide: the Pirates back: the night sea around the ship's-wheel emblem swells, its waves rolling across
+// the card, light runs along the wave crests, the emblem's teal glow breathes and a glint runs over its brass every few seconds.
 // Brighter while hovered (galaxy_glow). Slow on purpose: no flicker.
 uniform float tide = 0.0;
 uniform float tide_center_y = -0.033;   // the emblem's centre, as uv.y (card centre = 0)
@@ -342,17 +342,26 @@ void fragment() {
 		float inner = (1.0 - smoothstep(0.44, 0.452, abs(uv.x))) * (1.0 - smoothstep(0.458, 0.468, abs(uv.y)));   // (inside the brass border)
 		// The emblem is brass and bone (warm); the sea is teal and navy (cool)
 		float warm = smoothstep(0.02, 0.12, col.r - col.b);
-		// The sea rolls: the art redrawn through a slow, wide swell (none on the emblem or the border)
+		// The sea swells: the art redrawn through waves that roll across the card, each rising and
+		// falling as it passes, over a slow drifting chop (none on the emblem or the border)
+		float calm_edge = (1.0 - smoothstep(0.40, 0.44, abs(uv.x))) * (1.0 - smoothstep(0.42, 0.458, abs(uv.y)));   // (fades out at the border)
+		float open_sea = smoothstep(0.33, 0.40, r);   // (and round the wheel)
 		vec2 sq = vec2(p.x * 3.0, p.y * 5.0);
-		vec2 off = vec2(vnoise(sq + vec2(TIME * 0.25, 0.0)) - 0.5, vnoise(sq + vec2(3.7, TIME * 0.18)) - 0.5) * vec2(0.010, 0.006);
-		off.y += 0.0025 * sin(TIME * 0.9 + p.x * 9.0 + p.y * 4.0);
+		vec2 off = vec2(vnoise(sq + vec2(TIME * 0.35, 0.0)) - 0.5, vnoise(sq + vec2(3.7, TIME * 0.25)) - 0.5) * vec2(0.018, 0.010);
+		float roll = TIME * 1.1 - p.x * 11.0 + p.y * 3.0;
+		off.y += 0.008 * sin(roll) + 0.004 * sin(roll * 1.9 + 1.3 - p.y * 7.0);
+		off.x += 0.010 * cos(roll * 0.8 + p.y * 5.0);
+		off *= calm_edge * open_sea;
 		vec4 rolled = texture(TEXTURE, uv + 0.5 + off);
 		float sea = (1.0 - warm) * (1.0 - smoothstep(0.02, 0.12, rolled.r - rolled.b)) * inner;
 		col.rgb = mix(col.rgb, rolled.rgb, sea * tide);
 		// Light slides along the crests (the brighter teal), in long slow bands
 		float crest = smoothstep(0.18, 0.45, col.g) * (1.0 - warm);
-		float band = 0.5 + 0.5 * sin(p.x * 7.0 - p.y * 2.0 + TIME * 0.7 + vnoise(p * 4.0 + TIME * 0.15) * 4.0);
-		col.rgb += vec3(0.45, 1.0, 0.9) * crest * band * band * 0.18 * inner * (1.0 + 0.8 * galaxy_glow) * tide;
+		float band = 0.5 + 0.5 * sin(p.x * 7.0 - p.y * 2.0 - TIME * 0.9 + vnoise(p * 4.0 + TIME * 0.2) * 4.0);
+		col.rgb += vec3(0.45, 1.0, 0.9) * crest * band * band * 0.26 * inner * (1.0 + 0.8 * galaxy_glow) * tide;
+		// ...and foam glints on the swell as each wave peaks
+		float peak = smoothstep(0.75, 1.0, sin(roll)) * smoothstep(0.12, 0.35, col.g);
+		col.rgb += vec3(0.6, 1.0, 0.95) * peak * 0.12 * calm_edge * open_sea * (1.0 - warm) * tide;
 		// The emblem's teal glow breathes: the halo round the wheel swells and settles
 		float halo = exp(-pow((r - 0.30) / 0.09, 2.0)) * (1.0 - warm);
 		float breathe = 0.5 + 0.5 * sin(TIME * 1.2);

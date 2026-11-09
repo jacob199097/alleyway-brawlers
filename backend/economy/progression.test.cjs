@@ -195,8 +195,9 @@ async function rejects(promise, pattern) {
     const pack = await openPack(opener.id, 'militia');
     assert.equal(pack.cardsReceived.length, 3);
     assert.ok(pack.cardsReceived.every(c => c.clan === 'militia' || c.clan === 'neutral'), 'a Militia pack has only Militia (and Neutral) cards');
-    assert.ok(pack.cardsReceived.every(c => c.isNew && c.owned === 1), 'all new to a new player');
-    assert.equal(pack.collection.owned, 3);
+    const kinds = new Set(pack.cardsReceived.map(c => c.id)).size;   // (a pack can hold the same card twice)
+    assert.ok(kinds === 3 ? pack.cardsReceived.every(c => c.isNew && c.owned === 1) : pack.cardsReceived[0].isNew, 'all new to a new player');
+    assert.equal(pack.collection.owned, new Set(pack.cardsReceived.filter(c => c.clan === 'militia').map(c => c.id)).size, 'the clan collection (not Neutral)');
     const prizes = (await import('../../shared/turf.js')).prizeCardIds();   // (bosses' prizes aren't in packs)
     assert.equal(pack.collection.total, Object.values(CARD_CATALOG).filter(c => c.clan === 'militia' && !c.token && !prizes.has(c.id)).length);
     assert.equal(pack.newKarat, 200);
@@ -215,6 +216,15 @@ async function rejects(promise, pattern) {
     assert.deepEqual([rec.wins, rec.losses], [1, 2], 'a win and two losses');
     const vsCpu = await resolveFfaMatch({ playerId: ffaP.id, place: 1, humans: 1 });
     assert.ok(vsCpu.karatEarned < first.karatEarned, 'against CPUs only it pays like a CPU match');
+
+    // A Casual match against a player moves no Rank Points and changes no rank (a Ranked one can)
+    const { resolveMatch } = require('./postMatch');
+    const pvp = [];
+    for (const n of ['pvp_a', 'pvp_b']) pvp.push((await q(`INSERT INTO players (username, email, password_hash, rank, rank_points) VALUES ($1, $2, 'x', 'street_tough', 250) RETURNING id`, [n, n + '@x'])).rows[0].id);
+    let pr = await resolveMatch({ winnerId: pvp[0], loserId: pvp[1], p1Id: pvp[0], p2Id: pvp[1], matchMeta: { ranked: false } });
+    assert.deepEqual([pr[pvp[0]].rankPointDelta, pr[pvp[0]].rankChanged, pr[pvp[1]].rankChanged], [0, false, false], 'Casual: no Rank Points, no rank up');
+    pr = await resolveMatch({ winnerId: pvp[0], loserId: pvp[1], p1Id: pvp[0], p2Id: pvp[1], matchMeta: { ranked: true } });
+    assert.ok(pr[pvp[0]].rankPointDelta > 0 && !pr[pvp[0]].rankChanged, 'Ranked: points, but still the same rank');
 
     // The leaderboard: by Rank Points, then wins; everyone sees where they stand, and no currencies
     const { leaderboard } = require('./leaderboard');

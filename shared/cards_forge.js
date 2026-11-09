@@ -5402,7 +5402,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_024",
         "code": "UNDE-024",
         "flavourText": "The dead want you down here with them.",
-        "effectText": "When an enemy attacks one of your characters: DOWN the attacker.",
+        "effectText": "When an enemy attacks one of your UNDERWORLD characters: DOWN the attacker.",
         "effects": [
             {
                 "when": "defend",
@@ -5411,7 +5411,8 @@ export const FORGE_CARDS = {
             }
         ],
         "clanName": "Underworld",
-        "clanColor": "#4f1c5e"
+        "clanColor": "#4f1c5e",
+        "ambushClan": "underworld"
     },
     "card_unde_025": {
         "id": "card_unde_025",
@@ -7418,7 +7419,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Arsonists",
         "clanColor": "#f45815",
-        "attack": 1600,
+        "attack": 1700,
         "defense": 800,
         "level": 2,
         "subtype": "striver",
@@ -7779,11 +7780,11 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_014",
         "code": "ARSO-014",
         "flavourText": "Every building has a weak point. I bring the match.",
-        "effectText": "When deployed: Destroy one of your opponent's face-down cards. If you do, PROMOTE this card.",
+        "effectText": "When deployed: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down. If you do, PROMOTE this card.",
         "effects": [
             {
                 "when": "deploy",
-                "do": "break_ambush",
+                "do": "wreck",
                 "amount": 1
             },
             {
@@ -7990,7 +7991,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Arsonists",
         "clanColor": "#f45815",
-        "attack": 1300,
+        "attack": 1450,
         "defense": 900,
         "level": 1,
         "subtype": "brawler",
@@ -8069,14 +8070,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_023",
         "code": "ARSO-023",
         "flavourText": "Live wire? Nah. Live fire.",
-        "effectText": "When deployed: Your opponent loses 200 Morale for each BURNING enemy character (up to 3).\nWhen this card is attacked: SHOCK the attacker for 500.",
+        "effectText": "When deployed: Your opponent loses 200 Morale for each BURNING enemy character.\nWhen this card is attacked: SHOCK the attacker for 500.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "damage",
                 "per": "burning",
-                "amount": 200,
-                "per_max": 3
+                "amount": 200
             },
             {
                 "when": "defend",
@@ -8257,14 +8257,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_029",
         "code": "ARSO-029",
         "flavourText": "Smell that? No? Good.",
-        "effectText": "Your opponent loses 300 Morale for each BURNING enemy character (up to 3).",
+        "effectText": "Your opponent loses 300 Morale for each BURNING enemy character.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "damage",
                 "per": "burning",
-                "amount": 300,
-                "per_max": 3
+                "amount": 300
             }
         ],
         "clanName": "Arsonists",
@@ -9508,11 +9507,12 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_004",
         "code": "PIRA-004",
         "flavourText": "Didn't steal it. Found it in your pocket.",
-        "effectText": "Once per turn, when this card attacks: PLUNDER a random card from your opponent's hand.\nThis card gains +100 ATK for each card in your hand.",
+        "effectText": "Once per turn, when this card attacks: If an enemy character is Downed, PLUNDER a random card from your opponent's hand.\nThis card gains +100 ATK for each card in your hand.",
         "effects": [
             {
                 "when": "attack",
                 "do": "plunder",
+                "if": "foe_downed",
                 "from": "hand",
                 "amount": 1,
                 "once": true
@@ -9618,7 +9618,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_007",
         "code": "PIRA-007",
         "flavourText": "The river always pays. Eventually.",
-        "effectText": "Once per turn, when this card attacks: PLUNDER the top 2 cards of your opponent's deck (into your hand).",
+        "effectText": "Once per turn, when this card attacks: PLUNDER the top 2 cards of your opponent's deck (into your hand).\nACTIVATE (once per turn, discard 1 card): This card gains +400 ATK permanently.",
         "effects": [
             {
                 "when": "attack",
@@ -9626,6 +9626,15 @@ export const FORGE_CARDS = {
                 "from": "deck",
                 "amount": 2,
                 "once": true
+            },
+            {
+                "when": "activate",
+                "do": "buff",
+                "target": "self",
+                "until": "forever",
+                "cost": "discard",
+                "atk": 400,
+                "cost_n": 1
             }
         ],
         "clanName": "Pirates",
@@ -9911,7 +9920,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 2100,
+        "attack": 1800,
         "defense": 1000,
         "level": 2,
         "subtype": "striver",
@@ -9931,7 +9940,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_016",
         "code": "PIRA-016",
         "flavourText": "Show me yours. Then it's mine.",
-        "effectText": "ACTIVATE (once per turn, pay 2 Authority): Look at your opponent's hand and PLUNDER a card from it.\nThis card can't be targeted by your opponent's effects.",
+        "effectText": "ACTIVATE (once per turn, pay 3 Authority): Look at your opponent's hand and PLUNDER a card from it.\nThis card can't be targeted by your opponent's effects.",
         "effects": [
             {
                 "when": "activate",
@@ -9939,7 +9948,7 @@ export const FORGE_CARDS = {
                 "cost": "authority",
                 "from": "hand",
                 "amount": 1,
-                "cost_n": 2,
+                "cost_n": 3,
                 "choose": true
             },
             {
@@ -10142,7 +10151,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 1550,
+        "attack": 1350,
         "defense": 600,
         "level": 1,
         "subtype": "brawler",
@@ -10296,7 +10305,7 @@ export const FORGE_CARDS = {
         "name": "Pickpocket",
         "clan": "pirates",
         "cardType": "hustle",
-        "authority": 1,
+        "authority": 2,
         "tributeCost": 0,
         "rarity": 1,
         "clanTag": "pirates",

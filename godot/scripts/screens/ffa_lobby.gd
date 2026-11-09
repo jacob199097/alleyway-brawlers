@@ -170,11 +170,19 @@ func _seat(at: Vector2) -> Dictionary:
 	name.position = Vector2(0, 226)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.add_child(name)
+	var row := HBoxContainer.new()   # their level emblem, then "LV n · TITLE"
+	row.size = Vector2(SEAT.x, 30)
+	row.position = Vector2(0, 266)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(row)
+	var lv := UI.texture_rect(null, Vector2(28, 28))
+	lv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(lv)
 	var sub := UI.label("", 18, UI.MUTED)
-	sub.size = Vector2(SEAT.x, 26)
-	sub.position = Vector2(0, 268)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	p.add_child(sub)
+	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(sub)
 	var badge := UI.label("", 28, UI.MUTED, true)
 	badge.size = Vector2(SEAT.x, 40)
 	badge.position = Vector2(0, 330)
@@ -183,7 +191,7 @@ func _seat(at: Vector2) -> Dictionary:
 	var you := UI.label("YOU", 18, ACCENT, true)
 	you.position = Vector2(14, 10)
 	p.add_child(you)
-	return {"root": p, "avatar": av, "name": name, "sub": sub, "badge": badge, "you": you, "filled": false}
+	return {"root": p, "avatar": av, "name": name, "sub": sub, "lv": lv, "badge": badge, "you": you, "filled": false}
 
 
 func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
@@ -195,6 +203,7 @@ func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
 		seat.name.text = "OPEN SEAT"
 		seat.name.label_settings.font_color = Color(1, 1, 1, 0.35)
 		seat.sub.text = "a CPU takes it if nobody does"
+		seat.lv.visible = false
 		seat.badge.text = "SEARCHING…"
 		seat.badge.label_settings.font_color = Color(ACCENT, 0.7)
 		root.modulate = Color(1, 1, 1, 0.75)
@@ -212,6 +221,8 @@ func _fill_seat(seat: Dictionary, p: Dictionary) -> void:
 	seat.name.label_settings.font_color = Color.WHITE
 	var title = p.get("title")
 	seat.sub.text = "LV %d%s" % [int(p.get("level", 1)), "  ·  %s" % str(title).to_upper() if title is String and title != "" else ""]
+	seat.lv.texture = UI.level_icon(int(p.get("level", 1)))
+	seat.lv.visible = true
 	var ready: bool = p.get("ready", false)
 	seat.badge.text = "✓ READY" if ready else "NOT READY"
 	seat.badge.label_settings.font_color = UI.GREEN if ready else UI.MUTED

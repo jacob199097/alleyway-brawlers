@@ -40,6 +40,7 @@ var _side_panel: Control
 var _filters: HBoxContainer
 var _ticker: Label
 var _ticker_x := 0.0
+var _ticker_w := 0.0   # one pass of the ticker's line: it scrolls by that much, then round again
 var _live_dot: ColorRect
 var _countdowns: Array = []      # [[Label, ends_at unix, prefix]]: the time left, ticking
 var _time_bar: ColorRect         # the picked lot's time left, as a bar
@@ -110,11 +111,10 @@ func _process(delta: float) -> void:
 		_time_bar.color = HOT.lerp(UI.RED, clampf(1.0 - frac * 12.0, 0.0, 1.0))
 	if is_instance_valid(_live_dot):
 		_live_dot.modulate.a = 0.35 + 0.65 * pulse
-	if is_instance_valid(_ticker) and _ticker.size.x > 0:
+	if is_instance_valid(_ticker) and _ticker_w > 0:
 		_ticker_x -= delta * 70.0
-		var w := _ticker.size.x / 2.0
-		if _ticker_x < -w:
-			_ticker_x += w
+		if _ticker_x < -_ticker_w:
+			_ticker_x = fmod(_ticker_x, _ticker_w)
 		_ticker.position.x = _ticker_x
 	if is_instance_valid(_spot):
 		_spot.modulate.a = 0.75 + 0.25 * sin(Time.get_ticks_msec() / 1000.0 * 1.4)
@@ -270,8 +270,14 @@ func _fill_ticker(list: Array) -> void:
 		items.append("THE BLOCK IS QUIET  ·  LIST A CARD IN SELL AND BE THE FIRST")
 	items.append("SALES PAY A %d%% FEE  ·  A LATE BID KEEPS THE AUCTION OPEN" % int(_rules().get("saleFeePct", 10)))
 	var line := "      ✦      ".join(items) + "      ✦      "
-	_ticker.text = line + line   # (twice over: it scrolls round without a gap)
+	# Over and over, enough to fill the band while it scrolls one pass along: no gap
+	_ticker.text = line
+	var one := _ticker.get_minimum_size().x
+	_ticker.text = line + line
+	_ticker_w = _ticker.get_minimum_size().x - one   # (two minus one: trailing spaces and all)
+	_ticker.text = line.repeat(int(ceil(1920.0 / maxf(1.0, _ticker_w))) + 1)
 	_ticker.reset_size()
+	_ticker_x = fmod(_ticker_x, maxf(1.0, _ticker_w))
 
 
 ## Gold dust drifting up through the room.

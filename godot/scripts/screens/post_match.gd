@@ -973,7 +973,7 @@ func _show_rewards(rw: Dictionary) -> void:
 	reveal.tween_interval(1.0 + INTRO)
 	reveal.tween_callback(func(): Sfx.play("karat", 1.0, -2.0))
 	reveal.tween_property(_rewards, "visible_ratio", 1.0, 0.5)
-	if rw.get("rankChanged", false):
+	if rw.get("rankChanged", false) and rp > 0:   # (up, not down)
 		_rank_up(str(rw.get("newRank", "")))
 	# Achievements this match unlocked (sent with the result)
 	var got = Game.match_result.get("achievements", [])

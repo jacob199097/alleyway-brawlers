@@ -8751,7 +8751,20 @@ func _build_my_tag(players: Dictionary) -> void:
 	var sub := _label(12, BLUE)
 	sub.text = "YOU"
 	sub.position = Vector2(68, 30)
+	_plate_level(tag, sub, prof, "LV %d  ·  YOU")
 	tag.add_child(sub)
+
+
+## A free-for-all plate's level: the emblem, then the text (fmt takes the level).
+func _plate_level(p: Control, sub: Label, prof: Dictionary, fmt: String) -> void:
+	var level := int(prof.get("level", 0))
+	if level <= 0:
+		return
+	var emblem := UI.texture_rect(UI.level_icon(level), Vector2(20, 20))
+	emblem.position = Vector2(68, 28)
+	p.add_child(emblem)
+	sub.text = fmt % level
+	sub.position.x = 92
 
 
 ## A compact plate: picture, name, Morale (and its bar), Authority, hand and deck.
@@ -8770,8 +8783,10 @@ func _build_plate(side: String, p: Panel, prof: Dictionary, accent: Color) -> vo
 	n.position = Vector2(68, 4)
 	p.add_child(n)
 	var sub := _label(12, accent)
-	sub.text = "CPU" if prof.get("cpu", false) else "LV %d" % int(prof.get("level", 1))
+	sub.text = "CPU"
 	sub.position = Vector2(68, 30)
+	if not prof.get("cpu", false):
+		_plate_level(p, sub, prof, "LV %d")
 	p.add_child(sub)
 	var morale := _label(30, Color.WHITE, true)
 	morale.text = str(DuelState.START_MORALE)

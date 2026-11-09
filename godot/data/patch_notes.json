@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.9.136",
+        "notes": [
+            "Casual Brawls no longer show RANK UP: only Ranked moves your rank, and the rank-up screen only shows when you actually go up.",
+            "Rematch no longer brings the main menu music into the new match.",
+            "Free-for-all: every player's level emblem shows next to their level, in the lobby and on the table.",
+            "The Auction House ticker loops round with no gap.",
+            "The waves on the Pirates card back roll across the card.",
+            "Card changes: Kindle, Fuse, The Pyre Twins, Sparky, Gas Leak, Grasping Hands (only for your Underworld characters), Bilge, Tidewater Tess, Silver Jack, Cutlass Kai and Pickpocket."
+        ]
+    },
+    {
         "version": "0.9.135",
         "notes": [
             "The Auction House has its own room: a hidden warehouse with the auctioneer's podium under a spotlight."

@@ -39,6 +39,7 @@ func _player(bus: String) -> AudioStreamPlayer:
 
 ## Crossfade to a track: "menu", "duel", "duel_tense", ... ("" fades the music out).
 func music(track: String, fade := 1.6) -> void:
+	_resume = ""   # (a sting's "then" is old news once something asks for music, e.g. a rematch's duel)
 	if track == _now.music and (track == "" or _music[_use.music].playing):
 		return
 	_now.music = track

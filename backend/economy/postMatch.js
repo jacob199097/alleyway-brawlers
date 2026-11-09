@@ -119,7 +119,7 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                 : reward.rankPoints;
 
             const { rows } = await client.query(
-                `SELECT karat, xp, level, rank_points, wins, losses, draws, first_win_date
+                `SELECT karat, xp, level, rank_points, rank, wins, losses, draws, first_win_date
                  FROM   players
                  WHERE  id = $1
                  FOR UPDATE`,
