@@ -8800,7 +8800,7 @@ export const FORGE_CARDS = {
         "id": "card_neut_014",
         "name": "Cheap Shot",
         "clan": "neutral",
-        "cardType": "hustle",
+        "cardType": "ambush",
         "authority": 1,
         "tributeCost": 0,
         "rarity": 1,
@@ -8809,14 +8809,13 @@ export const FORGE_CARDS = {
         "art_url": "card_neut_014",
         "code": "NEUT-014",
         "flavourText": "There's no ref in the alley.",
-        "effectText": "One of your characters gains +500 ATK until the end of your turn.",
+        "effectText": "When an enemy attacks one of your characters: The attacker loses 500 ATK for this Brawl.",
         "effects": [
             {
-                "when": "deploy",
+                "when": "defend",
                 "do": "buff",
-                "target": "ally",
-                "until": "turn",
-                "atk": 500
+                "target": "attacker",
+                "atk": -500
             }
         ],
         "clanName": "Neutral",
