@@ -174,8 +174,8 @@ func _screen() -> Node:
 ## The auction house: browse (an auction picked, one with Buy Now), sell (a card picked, Buy Now offered),
 ## my auctions (my listing picked).
 func _auction_shots() -> void:
-	Game.go("shop")
-	await _shot("a00_shop", 2.4)
+	Game.go("main_menu")
+	await _shot("a00_main_menu", 3.0)
 	Game.go("auction_house")
 	await _shot("a01_browse", 2.8)
 	var ah = _screen()
@@ -195,15 +195,26 @@ func _auction_shots() -> void:
 				ah._render()
 				await _shot("a03b_buy_now", 1.2)
 				break
+		for a in ah._auctions:   # (a real bid on the local server: coins, the price punching, the balance ticking)
+			if not a.get("leading", false) and not a.get("mine", false) and a.get("minBid") != null:
+				ah._pick(a)
+				await get_tree().create_timer(0.6).timeout
+				ah._bid(a, int(a.minBid))
+				await _shot("a03c_bid_coins", 0.45)
+				await _shot("a03d_bid_done", 1.4)
+				break
 	ah._show("sell")
 	await _shot("a04_sell", 2.0)
 	if not ah._owned.is_empty():
 		ah._picked = CardDB.get_card(str(ah._owned[0].get("art_url", "")))
 		ah._render()
 		await _shot("a05_sell_picked", 1.2)
-		for c in ah._side.find_children("*", "CheckBox", true, false):
-			(c as CheckBox).button_pressed = true   # (Buy Now offered)
+		for c in ah._side.find_children("*", "CheckButton", true, false):
+			(c as CheckButton).button_pressed = true   # (Buy Now offered)
 		await _shot("a05b_sell_buy_now", 0.8)
+		ah._do_list(ah._picked, 500 if int(ah._picked.get("rarity", 1)) >= 5 else 160, 0)   # (a real listing: the LISTED stamp)
+		await _shot("a05c_listed", 0.6)
+		await get_tree().create_timer(1.6).timeout
 	ah._show("mine")
 	await _shot("a06_mine", 2.0)
 	for a in ah._auctions:

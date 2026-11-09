@@ -453,7 +453,7 @@ func _build_center() -> void:
 func _build_right() -> void:
 	# The turf map (screens/territory.gd) as a fourth neon sign once assets/turf_map_menu.png exists
 	# (the four packed closer: the signs' frames fill only the middle of their pictures), a button until then
-	var items := [["shop_menu.png", "SHOP", "shop"], ["profile_menu.png", "PROFILE", "profile"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar (library_menu: patches skip names starting with c)
+	var items := [["shop_menu.png", "SHOP", "shop"], ["auction_house_menu.png", "AUCTION HOUSE", "auction_house"], ["library_menu.png", "CARD LIBRARY", "card_library"]]   # Social is the chat bubble on the bar, Profile the avatar (library_menu: patches skip names starting with c)
 	var sign := UI.tex("turf_map_menu.png") != null
 	if sign:
 		items.append(["turf_map_menu.png", "TURF MAP", "territory"])
@@ -468,7 +468,7 @@ func _build_right() -> void:
 		var it: Array = items[i]
 		var b := UI.image_button(it[0], Vector2(420, 229), func(): Game.go(it[2]), it[1])
 		b.position = Vector2(1470, top + i * step)
-		if it[2] == "territory":
+		if it[2] in ["territory", "auction_house"]:
 			b.disabled = Game.offline
 		add_child(b)
 		var free := int(Game.player.get("free_packs", 0))

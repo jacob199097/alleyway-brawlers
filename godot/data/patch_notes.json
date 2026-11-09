@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.132",
+        "notes": [
+            "The Auction House has a new look: a neon black-market room with lots laid out as cards, a live ticker of what's ending soon and where the bidding wars are, and lots that flash when someone bids (it checks every few seconds).",
+            "Quick bid buttons (+10%, +25%, +50%), a countdown that turns red in the last minutes, coins flying when you bid, and SOLD, WON and LISTED stamps. Selling has sliders and a receipt showing what you'll get.",
+            "The Auction House is on the main menu now, where Profile was: your profile is the picture at the top left."
+        ]
+    },
+    {
         "version": "0.9.131",
         "notes": [
             "Auction House: sellers set a reserve (the lowest bid they'll take) and can add a Buy Now price. Anyone can buy the card outright at that price until the first bid; once someone bids, Buy Now is gone and it's a bidding war to the end.",
