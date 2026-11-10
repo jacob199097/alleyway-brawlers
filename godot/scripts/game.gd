@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS := {
 	"vsync": true,
 	"fps_cap": 0,                   # 0 = unlimited
 	"show_fps": false,
-	"server_url": "https://alleywaybrawlers.duckdns.org",   # LAN: http://192.168.0.200:3000
+	"server_url": "https://play.alleywaybrawlers.com",   # LAN: http://192.168.0.200:3000
 	"tutorial_done": false,         # finished or skipped the guided first duel
 	"tutorial_offered": false,      # the main menu has suggested it once
 	"anim_speed": 1.0,              # duel animation speed (1, 1.5 or 2)
@@ -52,6 +52,8 @@ const DEFAULT_SETTINGS := {
 	"last_seen_version": "",        # patch notes are shown once per new version (screens/main_menu.gd)
 	"display_version": 1,           # settings saved before 1 had the old 1600×900 window: moved to the new default once
 }
+## The server's address before the game had its own domain (still works, for older builds)
+const OLD_SERVER_URL := "https://alleywaybrawlers.duckdns.org"
 ## Settings that resize or move the window. Changing the window in the middle of a button's click
 ## left the button stuck (the next clicks on it did nothing), so these apply a moment later.
 const DISPLAY_KEYS := ["window_mode", "resolution"]
@@ -495,6 +497,9 @@ func _load_settings() -> void:
 		settings.window_mode = DEFAULT_SETTINGS.window_mode
 		settings.resolution = DEFAULT_SETTINGS.resolution
 		settings.display_version = DEFAULT_SETTINGS.display_version
+		_save_settings()
+	if str(settings.server_url).strip_edges().trim_suffix("/") == OLD_SERVER_URL:   # (the old default: to the new address)
+		settings.server_url = DEFAULT_SETTINGS.server_url
 		_save_settings()
 
 

@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.140",
+        "notes": [
+            "The game has its own address now and connects to play.alleywaybrawlers.com. Nothing changes for you: same account, same cards, same matches.",
+            "The game has a website, alleywaybrawlers.com: every clan and card, the Striver lines, How to Play and the news."
+        ]
+    },
+    {
         "version": "0.9.139",
         "notes": [
             "A fresh full download for PC and Mac: updates after this one are small again (they had grown to hundreds of MB)."

@@ -19,7 +19,7 @@ Ticked when done in the Godot client (`godot/`), however it was done there. The 
   - [ ] Still open: 1–9 to pick a hand card, rebindable keys.
 - [x] **Phase 5, Steam:** built with GodotSteam against the test App ID 480 (sign-in and linking, Steam wallet purchases, achievements, overlay, Steam Deck keyboard, the Steam build and upload). What is left needs the Steamworks account: see `docs/STEAM.md`.
 - [ ] **Phase 6, release readiness:**
-  - [x] Public server address over HTTPS (https://alleywaybrawlers.duckdns.org).
+  - [x] Public server address over HTTPS (https://play.alleywaybrawlers.com since 0.9.140; the older https://alleywaybrawlers.duckdns.org still works).
   - [x] Multiplayer runs on the server (`backend/socket/onlineMatch.js`).
   - [x] Privacy policy, terms and account deletion (0.9.72, `backend/routes/legal.js`, `account.js`).
   - [x] Lock CORS down: only the game (no Origin header) and the server's own pages (`backend/utils/origins.js`).

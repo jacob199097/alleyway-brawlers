@@ -9,7 +9,8 @@
   (`duel/DuelState.js`, must match `godot/scripts/duel/duel_state.gd`; the golden test checks) and the
   server CPU (`duel/DuelAI.js`, matches `duel_ai.gd`). `game_version.json` = latest/minimum game version.
 - `backend/` — Node/Express/Socket.io + Postgres. Runs on the Linux server (192.168.0.200) as the
-  `alleyway-backend` systemd service, public at https://alleywaybrawlers.duckdns.org (Apache proxy).
+  `alleyway-backend` systemd service, public at https://play.alleywaybrawlers.com (Apache proxy; the older https://alleywaybrawlers.duckdns.org
+  still works: builds before 0.9.140 call it).
   It is the authority for auth, economy, matches (online and CPU) and decks.
   Never move reward/currency/card logic into the client.
   Pre-launch, every player gets every clan's starter deck (`GIVE_ALL_STARTERS` in `backend/routes/onboarding.js`):

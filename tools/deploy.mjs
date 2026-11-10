@@ -106,4 +106,4 @@ if (status !== 0) {
     ssh('journalctl -u alleyway-backend -n 30 --no-pager');
     process.exit(status);
 }
-console.log('\nDeployed. https://alleywaybrawlers.duckdns.org is running the latest code.');
+console.log('\nDeployed. https://play.alleywaybrawlers.com (the game server) and https://alleywaybrawlers.com (the website) are running the latest code.');

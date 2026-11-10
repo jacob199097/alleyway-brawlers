@@ -5,7 +5,7 @@ extends Node
 ##   var r := await Api.request("GET", "/api/profile/me")
 ##   if r.ok: print(r.data) else: print(r.error)
 
-const DEFAULT_URL := "https://alleywaybrawlers.duckdns.org"
+const DEFAULT_URL := "https://play.alleywaybrawlers.com"
 const TIMEOUT := 10.0
 const METHODS := {
 	"GET": HTTPClient.METHOD_GET, "POST": HTTPClient.METHOD_POST, "PUT": HTTPClient.METHOD_PUT,

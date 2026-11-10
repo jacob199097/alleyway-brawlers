@@ -12,7 +12,7 @@ which stays in charge of accounts, currency, cards, decks and match rewards.
    ```
    On Linux, run `sh godot/tools/sync_assets.sh` instead.
 2. Open Godot. Click **Import**, choose `godot/project.godot`, then press **F5** to play.
-3. The default server is `https://alleywaybrawlers.duckdns.org` (the home server behind Apache, so
+3. The default server is `https://play.alleywaybrawlers.com` (the home server behind Apache, so
    friends can play from anywhere). To change it, open **Settings → Server** on the login screen;
    on the home network `http://192.168.0.200:3000` also works.
 

@@ -29,7 +29,7 @@ node tools/deploy.mjs --build-android
 ```
 
 copies the APK into `downloads/` on the server (older APKs are deleted). Then on the phone, open
-**https://alleywaybrawlers.duckdns.org/download/android** in the browser (or just `/download`: an
+**https://play.alleywaybrawlers.com/download/android** in the browser (or just `/download`: an
 Android browser gets the APK), and open the downloaded file. The first time, Android asks to allow
 installing apps from the browser ("Install unknown apps"); allow it for that browser.
 

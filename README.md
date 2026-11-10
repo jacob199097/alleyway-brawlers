@@ -6,7 +6,7 @@ A street-gang trading card game. The game is the Godot desktop client in `godot/
 ## Playing / developing the game
 1. Copy the art in: `powershell -ExecutionPolicy Bypass -File godot/tools/sync_assets.ps1`
 2. Open Godot 4.7, **Import** `godot/project.godot`, press **F5**.
-3. The default server is https://alleywaybrawlers.duckdns.org (on the home network
+3. The default server is https://play.alleywaybrawlers.com (on the home network
    `http://192.168.0.200:3000` also works; change it in Settings → Server).
 
 More in `godot/README.md`: screens, controls, tests, and online play.
