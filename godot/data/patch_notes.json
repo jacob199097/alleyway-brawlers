@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.139",
+        "notes": [
+            "A fresh full download for PC and Mac: updates after this one are small again (they had grown to hundreds of MB)."
+        ]
+    },
+    {
         "version": "0.9.138",
         "notes": [
             "Phones: the game fills the whole screen (no black bars at the sides), and stays in landscape.",
