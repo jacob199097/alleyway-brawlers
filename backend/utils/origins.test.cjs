@@ -9,6 +9,7 @@ const allowed = allowedOrigins({ PORT: '3000', APP_BASE_URL: 'https://alleywaybr
 assert.ok(originAllowed(undefined, allowed), 'the game sends no Origin');
 assert.ok(originAllowed('', allowed));
 assert.ok(originAllowed('https://alleywaybrawlers.duckdns.org', allowed), 'its own pages');
+assert.ok(originAllowed('https://alleywaybrawlers.com', allowed) && originAllowed('https://www.alleywaybrawlers.com', allowed), 'its own domain');
 assert.ok(originAllowed('http://192.168.0.200:3000', allowed), 'the LAN address');
 assert.ok(originAllowed('https://example.test', allowed), 'CORS_ORIGINS');
 assert.ok(!originAllowed('https://evil.example', allowed), 'any other website');

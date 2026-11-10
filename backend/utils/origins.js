@@ -12,7 +12,7 @@
 function allowedOrigins(env = process.env) {
     const port = env.PORT || 3000;
     const list = [env.APP_BASE_URL, env.APP_CLIENT_URL, ...(env.CORS_ORIGINS || '').split(','),
-        'https://alleywaybrawlers.duckdns.org', `http://192.168.0.200:${port}`, `http://localhost:${port}`, `http://127.0.0.1:${port}`];
+        'https://alleywaybrawlers.com', 'https://www.alleywaybrawlers.com', 'https://alleywaybrawlers.duckdns.org', `http://192.168.0.200:${port}`, `http://localhost:${port}`, `http://127.0.0.1:${port}`];
     const out = new Set();
     for (const u of list) {
         if (!u || !String(u).trim()) continue;
