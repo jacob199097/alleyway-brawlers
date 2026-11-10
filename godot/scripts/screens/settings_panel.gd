@@ -16,6 +16,9 @@ const PAD_BUTTONS := [["Left stick", "Move the pointer"], ["D-pad", "Jump to the
 	["A", "Select (hold and move to drag)"], ["X", "Zoom in on a card"], ["B", "Back / cancel"],
 	["Y", "Next phase / end turn"], ["Start", "Menu"], ["LB / RB", "Pages, Striver levels"],
 	["Right stick", "Scroll"], ["LT", "Emotes"], ["View / Select", "Battle log"]]
+## Touch (scripts/touch.gd), listed on the Controls tab instead on phones and tablets
+const TOUCH := [["Tap", "Select"], ["Drag", "Move a card, scroll a list"], ["Hold", "Zoom in on a card (in a duel: cancel)"],
+	["Pinch", "Zoom the turf map"], ["Back button", "Back / cancel, or the duel's menu"]]
 
 var allow_logout := true
 var _tab := "audio"
@@ -52,6 +55,8 @@ func _ready() -> void:
 	tabs.add_theme_constant_override("separation", 16)
 	col.add_child(tabs)
 	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["controls", "CONTROLS"], ["account", "ACCOUNT"], ["server", "SERVER"]]:
+		if t[0] == "display" and Game.mobile():
+			continue   # (a phone's screen is the screen: no window or resolution)
 		var b := UI.button(t[1], _show.bind(t[0]), Vector2(176, 52))
 		b.toggle_mode = true
 		tabs.add_child(b)
@@ -123,7 +128,10 @@ func _show(tab: String) -> void:
 			var cols := HBoxContainer.new()
 			cols.add_theme_constant_override("separation", 60)
 			_body.add_child(cols)
-			cols.add_child(_key_list("KEYBOARD & MOUSE", SHORTCUTS))
+			if Game.mobile():
+				cols.add_child(_key_list("TOUCH", TOUCH))
+			else:
+				cols.add_child(_key_list("KEYBOARD & MOUSE", SHORTCUTS))
 			cols.add_child(_key_list("CONTROLLER", PAD_BUTTONS))
 			var pad_note := UI.label("Xbox, PlayStation and Steam Deck controllers work everywhere in the game: the controller moves a pointer, and the D-pad jumps it between buttons and cards. Move the mouse to switch back. On Steam Deck, Steam + X opens the keyboard for typing.", 20, UI.MUTED)
 			pad_note.autowrap_mode = TextServer.AUTOWRAP_WORD

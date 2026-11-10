@@ -8,12 +8,11 @@ when it ships, or delete it if it's dropped.
 - [x] **Mac build (Apple Silicon / ARM).** Done in 0.9.69: a universal app (Apple Silicon + Intel) built
   from the PC (`tools/build_mac.mjs`), with its own patches and download, playing online with Windows
   (see "Mac build" in `docs/CARD_PIPELINE.md`).
-- [ ] **Mobile version, with cross-play (PC, Mac and mobile in the same matches).** Cross-play mostly
-  comes for free: the server already runs matches, decks and rewards for every player
-  (`backend/socket/onlineMatch.js`), and every client speaks the same socket protocol. The work is in
-  the game: Android / iOS exports, touch controls (drag to attack, long-press for the right-click
-  zoom), layouts that fit phone screens, lighter assets, and store accounts (Google $25 once, Apple
-  $99/yr). `shared/game_version.json` minimum-version checks need to cover each platform.
+- [ ] **Mobile version, with cross-play (PC, Mac and mobile in the same matches).** Started
+  2026-11-10: the Android APK builds and plays online with everyone else (`docs/ANDROID.md`: touch
+  controls, lighter pictures, its own download and version check). Left: layouts that fit phone
+  screens, Google Play (AAB, Play Billing for Contraband), Android patches, and iOS (a Mac and Apple's
+  $99/yr).
 - [ ] **Steam release.** Step by step: `docs/LAUNCH_CHECKLIST.md`. The integration is built (`docs/STEAM.md`): what is left is the Steamworks account,
   the App ID, achievements and keys there, and uploading. Older notes: `docs/DESKTOP_PLAN.md` (GodotSteam instead of
   steamworks.js). The game ships through Steam, so no Windows code signing or Apple Developer account

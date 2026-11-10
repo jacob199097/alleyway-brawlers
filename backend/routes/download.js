@@ -3,11 +3,13 @@
 /**
  * GAME DOWNLOADS
  *
- * Windows builds are copied into <repo>/downloads/ on the server (not in git: each zip is
- * ~150 MB). Players get them here:
+ * Builds are copied into <repo>/downloads/ on the server (not in git: each is ~150 MB). Players get
+ * them here:
  *
- *   GET /download          the newest AlleywayBrawlers-<version>-windows.zip
- *   GET /download/<file>   a specific zip, or a patch (AlleywayBrawlers-<version>-patch.pck)
+ *   GET /download          the newest build for the browser's device: AlleywayBrawlers-<version>-windows.zip,
+ *                          -macos.zip, or -android.apk (an Android phone's browser)
+ *   GET /download/windows, /download/mac, /download/android   that platform's newest build
+ *   GET /download/<file>   a specific build, or a patch (AlleywayBrawlers-<version>-patch.pck)
  *
  * A patch updates the game in place (godot/scripts/patcher.gd): the manifest offers it when its
  * version is the latest one (routes/content.js, patchInfo below).
@@ -22,7 +24,7 @@ const crypto  = require('crypto');
 
 const router = express.Router();
 const DIR = path.join(__dirname, '../../downloads');
-const ZIP = /^AlleywayBrawlers-(\d+)\.(\d+)\.(\d+)-(windows|macos)\.zip$/;
+const ZIP = /^AlleywayBrawlers-(\d+)\.(\d+)\.(\d+)-(?:(windows|macos)\.zip|(android)\.apk)$/;
 const PATCH = /^AlleywayBrawlers-(\d+\.\d+\.\d+)-patch(-macos)?\.pck$/;
 const hashes = new Map();   // file -> {mtimeMs, size, sha256}
 
@@ -40,13 +42,13 @@ function patchInfo(version, platform = 'windows') {
     return { path: `/download/${file}`, size: h.size, sha256: h.sha256 };
 }
 
-/** The newest full build for a platform ('windows' or 'macos'): its file name, or null. */
+/** The newest full build for a platform ('windows', 'macos' or 'android'): its file name, or null. */
 function newest(platform = 'windows') {
     let best = null;
     let bestKey = -1;
     for (const f of fs.existsSync(DIR) ? fs.readdirSync(DIR) : []) {
         const m = ZIP.exec(f);
-        if (!m || m[4] !== platform) continue;
+        if (!m || (m[4] || m[5]) !== platform) continue;
         const key = Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3]);
         if (key > bestKey) {
             bestKey = key;
@@ -59,14 +61,18 @@ function newest(platform = 'windows') {
 /** The newest build for a platform, or a short note when there isn't one. */
 function send(res, platform) {
     const f = newest(platform);
-    if (!f) return res.status(404).send(`No ${platform === 'macos' ? 'Mac' : 'Windows'} download is available yet.`);
+    if (!f) return res.status(404).send(`No ${{ macos: 'Mac', android: 'Android' }[platform] || 'Windows'} download is available yet.`);
     res.download(path.join(DIR, f), f);
 }
 
-// A Mac (by its browser) gets the Mac build, anything else the Windows one
-router.get('/', (req, res) => send(res, /Macintosh|Mac OS X/i.test(String(req.get('user-agent') || '')) ? 'macos' : 'windows'));
+// A Mac or an Android phone (by its browser) gets its own build, anything else the Windows one
+router.get('/', (req, res) => {
+    const agent = String(req.get('user-agent') || '');
+    send(res, /Android/i.test(agent) ? 'android' : /Macintosh|Mac OS X/i.test(agent) ? 'macos' : 'windows');
+});
 router.get('/mac', (_req, res) => send(res, 'macos'));
 router.get('/windows', (_req, res) => send(res, 'windows'));
+router.get('/android', (_req, res) => send(res, 'android'));
 
 router.get('/:file', (req, res) => {
     const f = String(req.params.file);

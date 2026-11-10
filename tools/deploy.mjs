@@ -7,6 +7,7 @@
 //                                         and delete older patches and full builds from downloads/
 //   node tools/deploy.mjs --build         also copy builds/AlleywayBrawlers-<latest>-windows.zip
 //   node tools/deploy.mjs --build-mac     also copy builds/AlleywayBrawlers-<latest>-macos.zip (tools/build_mac.mjs)
+//   node tools/deploy.mjs --build-android also copy builds/AlleywayBrawlers-<latest>-android.apk (tools/build_android.mjs)
 //   node tools/deploy.mjs --sync-cards    also run backend/scripts/sync_cards.mjs after pulling
 //   node tools/deploy.mjs --logs [n]      just show the backend's last n log lines (default 60)
 //   node tools/deploy.mjs <file> ...      also copy these files into downloads/
@@ -64,6 +65,7 @@ if (has('--patch')) {
 }
 if (has('--build')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-windows.zip`));
 if (has('--build-mac')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-macos.zip`));
+if (has('--build-android')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-android.apk`));
 for (const f of files) {
     if (!existsSync(f)) {
         console.error(`Not found: ${f}`);
@@ -82,11 +84,12 @@ const prune = [
     `cd ${REPO}/downloads`,
     `for f in AlleywayBrawlers-*-patch*.pck; do case "$f" in AlleywayBrawlers-${latest}-patch*) ;; *) rm -f -- "$f";; esac; done`,
     'for p in windows macos; do ls -1v AlleywayBrawlers-*-$p.zip 2>/dev/null | head -n -1 | xargs -r rm -f --; done',
+    'ls -1v AlleywayBrawlers-*-android.apk 2>/dev/null | head -n -1 | xargs -r rm -f --',
     `cd ${REPO}`,
 ];
 const steps = [
     `cd ${REPO}`,
-    ...(has('--patch') || has('--build') || has('--build-mac') ? prune : []),
+    ...(has('--patch') || has('--build') || has('--build-mac') || has('--build-android') ? prune : []),
     'git pull --ff-only',
     ...(has('--sync-cards') ? ['node backend/scripts/sync_cards.mjs'] : []),
     'sudo -n systemctl restart alleyway-backend',

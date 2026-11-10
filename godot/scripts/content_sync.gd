@@ -35,9 +35,9 @@ static func compare_versions(a: String, b: String) -> int:
 
 
 ## Which build this is, for the server's manifest: each platform has its own patches and download
-## (the same versions, so Mac and Windows players play each other).
+## (the same versions, so Windows, Mac and Android players play each other).
 static func platform() -> String:
-	return "macos" if OS.get_name() == "macOS" else "windows"
+	return {"macOS": "macos", "Android": "android"}.get(OS.get_name(), "windows")
 
 
 ## Whether the server's patch (manifest client.patch) can update this build in place.

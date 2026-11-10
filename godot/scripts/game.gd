@@ -86,6 +86,8 @@ var sound: Node
 ## Controller support (scripts/pad.gd): Game.pad.pointer(self) is where the mouse, or the controller's pointer, is
 var pad: PadScript
 const PadScript := preload("res://scripts/pad.gd")
+## Touch screens (scripts/touch.gd): taps, drags, hold to zoom, pinch, the back button
+var touch: Node
 ## Steam (scripts/steam.gd): on only in the Steam build; otherwise steam.active is false and it does nothing
 var steam: SteamScript
 const SteamScript := preload("res://scripts/steam.gd")
@@ -108,6 +110,9 @@ func _ready() -> void:
 	pad = PadScript.new()   # (made here, not an autoload: patches can't add autoloads)
 	pad.name = "Pad"
 	add_child(pad)
+	touch = load("res://scripts/touch.gd").new()
+	touch.name = "Touch"
+	add_child(touch)
 	steam = SteamScript.new()
 	steam.name = "Steam"
 	add_child(steam)
@@ -436,13 +441,18 @@ func window_size() -> Vector2i:
 	return best
 
 
+## A phone or tablet (the Android build; "--mobile" tries it on a PC): touch, no windows, no keyboard.
+func mobile() -> bool:
+	return OS.has_feature("mobile") or "--mobile" in OS.get_cmdline_user_args()
+
+
 func apply_settings() -> void:
 	_set_bus("Music", settings.music_volume)
 	_set_bus("SFX", settings.sfx_volume)
 	_set_bus("Ambience", float(settings.get("ambience_volume", 0.8)))
 	Engine.max_fps = int(settings.fps_cap)
-	if DisplayServer.get_name() == "headless":
-		return
+	if DisplayServer.get_name() == "headless" or mobile():
+		return   # (a phone's game is always full screen, at the phone's own refresh rate)
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if settings.vsync else DisplayServer.VSYNC_DISABLED)
 	match settings.window_mode:

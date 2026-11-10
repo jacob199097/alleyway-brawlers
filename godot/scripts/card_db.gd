@@ -5,6 +5,7 @@ extends RefCounted
 ## take priority over the ones built into the game.
 
 const CONTENT_DIR := "user://content"
+const MOBILE_ART_HEIGHT := 1024   # card art on a phone (tools/build_android.mjs makes the APK's this size)
 
 static var _cards: Dictionary = {}
 static var _art: Dictionary = {}
@@ -141,6 +142,8 @@ static func art(id: String) -> Texture2D:
 	if FileAccess.file_exists(downloaded):
 		var img := Image.load_from_file(downloaded)
 		if img and not img.is_empty():
+			if OS.has_feature("mobile") and img.get_height() > MOBILE_ART_HEIGHT:   # (a phone: the size its APK's art has)
+				img.resize(img.get_width() * MOBILE_ART_HEIGHT / img.get_height(), MOBILE_ART_HEIGHT, Image.INTERPOLATE_LANCZOS)
 			img.generate_mipmaps()   # stays sharp when drawn small
 			tex = ImageTexture.create_from_image(img)
 	if tex == null:

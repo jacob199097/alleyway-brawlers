@@ -74,8 +74,9 @@ const art = () => fingerprints(ART_DIR, (f) => f.endsWith('.png'));
 const backs = () => fingerprints(BACK_DIR, (f) => /^card_back(_[a-z0-9_]+)?\.png$/.test(f));
 const sfx = () => fingerprints(SFX_DIR, (f) => SFX_FILE.test(f));
 
-/** Versions for a platform ('windows' or 'macos'): the same latest / minimum for both (they play
- *  each other online), each with its own patch and full download. */
+/** Versions for a platform ('windows', 'macos' or 'android'): the same latest / minimum for all (they
+ *  play each other online), each with its own patch and full download. Android has no patches yet:
+ *  a new version there is a new APK. */
 function versions(platform = 'windows') {
     let v = {};
     try {
@@ -83,7 +84,8 @@ function versions(platform = 'windows') {
     } catch { /* keep defaults */ }
     const latest = String(v.latest || '0.0.0');
     const mac = platform === 'macos';
-    const base = mac ? (v.macos && v.macos.patchBase) : v.patchBase;
+    const android = platform === 'android';
+    const base = android ? null : mac ? (v.macos && v.macos.patchBase) : v.patchBase;
     const patch = base ? patchInfo(latest, platform) : null;
     return {
         latest,
@@ -91,8 +93,8 @@ function versions(platform = 'windows') {
         // An in-place update to the latest version for builds at patchBase or newer (godot/scripts/patcher.gd)
         patch: patch ? { version: latest, base: String(base), ...patch } : null,
         // The server hosts the builds itself (routes/download.js) unless .env points elsewhere
-        downloadUrl: (mac ? process.env.CLIENT_DOWNLOAD_URL_MAC : process.env.CLIENT_DOWNLOAD_URL)
-            || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download${mac ? '/mac' : ''}` : ''),
+        downloadUrl: (android ? process.env.CLIENT_DOWNLOAD_URL_ANDROID : mac ? process.env.CLIENT_DOWNLOAD_URL_MAC : process.env.CLIENT_DOWNLOAD_URL)
+            || (process.env.APP_BASE_URL ? `${process.env.APP_BASE_URL.replace(/\/+$/, '')}/download${android ? '/android' : mac ? '/mac' : ''}` : ''),
     };
 }
 
@@ -104,7 +106,7 @@ router.get('/manifest', async (req, res) => {
         const s = sfx();
         const contentVersion = sha256(c.hash + JSON.stringify(a) + JSON.stringify(b) + JSON.stringify(s)).slice(0, 16);
         res.set('Cache-Control', 'no-cache');
-        res.json({ contentVersion, client: versions(req.query.platform === 'macos' ? 'macos' : 'windows'), cards: { hash: c.hash, size: c.size }, art: a, backs: b, sfx: s });
+        res.json({ contentVersion, client: versions(['macos', 'android'].includes(req.query.platform) ? req.query.platform : 'windows'), cards: { hash: c.hash, size: c.size }, art: a, backs: b, sfx: s });
     } catch (err) {
         console.error('[content/manifest]', err.message);
         res.status(500).json({ error: 'Could not build the content manifest.' });
