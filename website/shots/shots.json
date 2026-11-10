@@ -1,0 +1,164 @@
+[
+  {
+    "name": "duel-casino",
+    "caption": "A brawl in the casino: one attack, straight across the table.",
+    "alt": "A match in the casino arena, with an attack landing on the opponent's side of the board.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-docks",
+    "caption": "An attack on the docks.",
+    "alt": "A match on the docks, with an attack beam between two characters.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-alley",
+    "caption": "Downed in the back alley. One more hit and it's a KO.",
+    "alt": "A match in the back alley: a character lies turned on its side under a DOWNED stamp.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-turn",
+    "caption": "Every turn starts with the Deployment Phase.",
+    "alt": "A match on turn 7 with the words DEPLOYMENT PHASE across the board.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-ambush",
+    "caption": "The Brawl Phase, with cards set face-down on both sides.",
+    "alt": "A match with the words BRAWL PHASE across the board and face-down cards in both back rows.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "promote",
+    "caption": "A Striver up close: what it takes to promote is on the card.",
+    "alt": "A Striver card enlarged, with a strip under it saying it promotes as it fights.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "evolved",
+    "caption": "A Striver promotes to level 2 in the middle of a fight.",
+    "alt": "A character card in a burst of light under the word EVOLVED, two stars lit, level 1 to level 2.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "pack",
+    "caption": "Three cards from a booster pack.",
+    "alt": "Three cards face-up after opening a booster pack.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "card-library",
+    "caption": "The Card Library: every card, and how many you own.",
+    "alt": "A grid of cards in the Card Library.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "turf-map",
+    "caption": "The turf map: every district of the city, and who holds it this week.",
+    "alt": "A painted map of the city at night with a clan emblem over each district.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "fight-mode",
+    "caption": "Five ways to play.",
+    "alt": "The battle mode screen: Casual Brawl, Ranked Brawl, VS CPU, Free-for-all and Turf Defense.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "main-menu",
+    "caption": "The main menu.",
+    "alt": "The main menu in neon signs: Fight, Deck Editor, Shop, Auction House, Card Library, Achievements, Turf Map and the daily quests.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "deck-builder",
+    "caption": "The deck builder.",
+    "alt": "The deck builder: the card collection on the left, the deck of 40 cards and its leader on the right.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "ffa",
+    "caption": "Free-for-all: four players, one board.",
+    "alt": "A four-player match, each player with a corner of the board.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "victory",
+    "caption": "Victory.",
+    "alt": "The Victory screen after a match, with the match numbers and the most valuable card.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "rank-up",
+    "caption": "Ranking up to Underboss.",
+    "alt": "The words RANK UP over the Underboss emblem.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "turf-zoom",
+    "caption": "The Frozen Lake and The Lab, up close on the turf map.",
+    "alt": "The turf map zoomed in on two districts: a frozen lake and a glowing green laboratory.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "district",
+    "caption": "A district: who holds it, and who is fighting for it.",
+    "alt": "A district's panel on the turf map: the clan that holds it and each clan's influence there this week.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  }
+]

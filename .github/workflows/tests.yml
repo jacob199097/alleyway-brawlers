@@ -1,7 +1,8 @@
 # Runs on every push and pull request (GitHub → Actions tab shows the results).
 #   server: online matches, Scissors Paper Rock, rematches, replays (backend/socket/*.test.cjs)
 #   database: crafting, achievements, account deletion and the auction house against a real Postgres
-#             (backend/economy/progression.test.cjs, backend/routes/account.test.cjs, backend/economy/auction.test.cjs)
+#             (backend/economy/progression.test.cjs, backend/routes/account.test.cjs, backend/economy/auction.test.cjs),
+#             plus the website's pages (backend/site/site.test.cjs: no database, but it needs the server's packages)
 #   godot:  both rules engines agree (golden test), plus the duel, tutorial and rules smoke tests
 name: tests
 
@@ -90,6 +91,8 @@ jobs:
         run: npm ci --prefix backend --omit=dev
       - name: Only the game and the server's own pages may call in (CORS)
         run: node backend/utils/origins.test.cjs
+      - name: The website (every page, card and Striver line; nothing loaded from other sites; the game's calls left alone)
+        run: node backend/site/site.test.cjs
       - name: Crafting and achievements
         run: node backend/economy/progression.test.cjs
         env:

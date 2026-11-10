@@ -59,6 +59,9 @@ same build:
     nobody plays launch players with old rules.
   - **patchBase** 1.0.0: later updates are made against the launch build, so they stay small.
 - [ ] Patch notes for 1.0.0 at the top of `godot/data/patch_notes.json` (players see them once).
+- [ ] The website: the note under its download buttons says accounts will be reset at launch. Change or
+  empty it (`PRELAUNCH` in `backend/site/pages.js`) and fix the test that looks for it
+  (`backend/site/site.test.cjs`). See `website/README.md`.
 - [ ] Full builds: Windows (`builds/windows_1.0.0/`, zipped as `AlleywayBrawlers-1.0.0-windows.zip`),
   Mac (`node tools/build_mac.mjs <Godot>`) and Steam (`node tools/steam_build.mjs <Godot> --upload`).
   See "Game versions and updates" in `docs/CARD_PIPELINE.md`.

@@ -46,6 +46,7 @@ const socialRoutes  = require('./routes/social');
 const matchRoutes   = require('./routes/match');
 const contentRoutes = require('./routes/content');
 const { router: downloadRoutes } = require('./routes/download');
+const site = require('./routes/site');
 const telemetryRoutes = require('./routes/telemetry');
 const { saveReplay, createReplayRoutes } = require('./routes/replays');
 const { router: questRoutes } = require('./routes/quests');
@@ -100,8 +101,10 @@ app.use('/api/territory', require('./routes/territory'));   // the turf map (eco
 app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (economy/veterans.js)
 app.use('/api/auction', require('./routes/auction'));   // the auction house (economy/auction.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
+app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+app.use(site.notFound);   // (a browser on a page that isn't there gets the website's "Dead end" page)
 
 // ── Socket.io JWT Middleware ──────────────────────────────────────────────────
 io.use((socket, next) => {

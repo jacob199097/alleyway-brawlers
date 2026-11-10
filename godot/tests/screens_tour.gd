@@ -6,6 +6,7 @@ extends Node
 ## frame time goes on), --craft-only (the card zoom and craft reveal in quick shots), --clans,
 ## --auction (the auction house's tabs: against a local backend/server.js with auctions in its database,
 ## as the mock server has none).
+## --site: the pictures on the website (tools/site_shots.mjs turns them into website/shots).
 
 var _out := "user://tour"
 
@@ -45,6 +46,29 @@ func _clan_shots() -> void:
 	await _shot("10_shop_starters", 2.0)
 	_screen()._buy_starter(_screen()._starter_list[0], "karat")
 	await _shot("10_shop_starter_buy", 0.8)
+
+
+## The website's pictures: the menus, then matches in a few arenas that the CPU plays for both sides,
+## a shot every few seconds to pick from (tools/site_shots.mjs picks and shrinks them).
+func _site_shots() -> void:
+	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "territory", "leaderboard", "achievements", "profile"]:
+		Game.go(s)
+		await _shot("site_" + s, 2.8)
+	for arena in ["alley", "casino", "docks"]:
+		Game.duel_setup = await Game.load_duel_deck()
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = arena
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		var d = _screen()
+		if d._menu:   # (the opening hand: keep it)
+			for b in d._menu.find_children("*", "Button", true, false):
+				b.pressed.emit()
+				break
+		d.ai_sides = ["player", "opponent"]
+		d._after_events()
+		for i in 16:
+			await _shot("site_duel_%s_%02d" % [arena, i], 4.5)
 
 
 ## The turf map (a district opened, last week's Karat claimed), veteran cards in the library and the
@@ -258,6 +282,10 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--site" in OS.get_cmdline_user_args():   # (the website's pictures)
+		await _site_shots()
 		get_tree().quit()
 		return
 	if "--auction" in OS.get_cmdline_user_args():

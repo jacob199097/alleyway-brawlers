@@ -42,5 +42,10 @@
   `node tools/deploy.mjs --build-android`; touch controls in `godot/scripts/touch.gd`, `Game.mobile()` for phone-only behaviour,
   no black bars via `godot/scripts/widescreen.gd` (the 1920×1080 frame centred, `Game.wide.margin`). Android gets its own
   patch each update too: `make_patch.mjs <godot> --android`.
+- The website (https://alleywaybrawlers.com, `website/README.md`): the game server sends it too. Addresses in `backend/routes/site.js`,
+  pages in `backend/site/pages.js`, built from the game's own files (`backend/site/data.js`: cards, clans, keywords, How to Play,
+  patch notes), so it names no clan and needs no upkeep for new cards. Styles, script and screenshots in `website/`
+  (`tools/site_shots.mjs` retakes the screenshots); `node tools/site_dev.mjs` runs it on the PC; test `backend/site/site.test.cjs`.
+  It shows nothing about players (no database) and loads no cookies, trackers or files from other sites: keep it so.
 - `docs/LAUNCH_CHECKLIST.md` — what changes at launch (the wipe, starters off, 1.0.0, Steam live), in order.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

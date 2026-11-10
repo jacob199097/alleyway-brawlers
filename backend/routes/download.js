@@ -58,6 +58,14 @@ function newest(platform = 'windows') {
     return best;
 }
 
+/** The newest full build for a platform, for the website's download buttons: {file, version, size}, or null. */
+function newestInfo(platform = 'windows') {
+    const file = newest(platform);
+    if (!file) return null;
+    const m = ZIP.exec(file);
+    return { file, version: `${m[1]}.${m[2]}.${m[3]}`, size: fs.statSync(path.join(DIR, file)).size };
+}
+
 /** The newest build for a platform, or a short note when there isn't one. */
 function send(res, platform) {
     const f = newest(platform);
@@ -80,4 +88,4 @@ router.get('/:file', (req, res) => {
     res.download(path.join(DIR, f), f);
 });
 
-module.exports = { router, newest, patchInfo };
+module.exports = { router, newest, newestInfo, patchInfo };

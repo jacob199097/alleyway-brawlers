@@ -42,7 +42,7 @@ function page(title, body) {
  button:disabled{opacity:.5;cursor:default}
  #msg{margin-top:16px;min-height:1.4em}
 </style></head><body><main>
-<nav><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/delete-account">Delete your account</a></nav>
+<nav><a href="/">${GAME}</a><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/delete-account">Delete your account</a></nav>
 ${body}
 </main></body></html>`;
 }
@@ -287,3 +287,4 @@ router.get('/terms', (_req, res) => res.send(terms()));
 router.get('/delete-account', (_req, res) => res.send(deletePage()));
 
 module.exports = router;
+module.exports.contact = contact;   // (the website's footer gives the same address: routes/site.js)
