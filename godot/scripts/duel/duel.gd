@@ -185,6 +185,7 @@ var _slot_box_back: StyleBoxFlat
 var _pile_box: StyleBoxFlat
 var _ui := {}
 var _panels := {}
+var _right := 0.0          # how far the right-hand HUD column moved out on a wide phone (widescreen.gd)
 var _ffa := false          # a free-for-all (backend/socket/ffaMatch.js): 3-4 players, every board on screen
 var _sides: Array = ["player", "opponent"]   # every side ("player" first)
 var _foes: Array = ["opponent"]              # everyone else (FFA: foe1, foe2, foe3 in turn order)
@@ -320,6 +321,12 @@ func _ready() -> void:
 	# The HUD is glass: the arena shows through it
 	for p in [$HUD/UI/Detail, $HUD/UI/OppPanel, $HUD/UI/PlayerPanel, $HUD/UI/PhaseBar, $HUD/UI/TurnBox]:
 		UI.glass(p, Color(0.03, 0.03, 0.08, 0.66), 8.0)
+	# A wide phone: the right-hand column (rival, phases, whose move, turn) moves out to the edge of
+	# the screen, as the card panel does on the left (_build_detail)
+	_right = minf(Game.wide.margin.x, 240.0)
+	for c in $HUD/UI.get_children():
+		if c is Control and c.position.x >= 1600:
+			c.position.x += _right
 	_play_music()
 	_emotes_muted = not Game.settings.get("rival_emotes", true)
 	_base_speed = float(Game.settings.get("anim_speed", 1.0))
@@ -871,7 +878,7 @@ func _show_emote(side: String, key: String) -> void:
 	fill.polygon = PackedVector2Array([Vector2(tx - 12, edge - (2 if down else -2)), Vector2(tx + 12, edge - (2 if down else -2)), tip])
 	root.add_child(fill)
 	root.size = sz
-	root.position = Vector2(40, 740 - sz.y) if side == "player" else Vector2(1896 - sz.x, 262)
+	root.position = Vector2(40, 740 - sz.y) if side == "player" else Vector2(1896 + _right - sz.x, 262)
 	if side == "ally" and _panels.has("ally"):   # (over your ally's plate)
 		var plate: Control = _panels.ally.root
 		root.position = Vector2(plate.position.x + plate.size.x - sz.x, plate.position.y - sz.y - 24)
@@ -1103,11 +1110,14 @@ func _hide_net_banner() -> void:
 
 func _process(delta: float) -> void:
 	_game_time += delta
+	# (a phone wider than the frame: the camera centres the board on the screen, but the frame is
+	# already moved to the middle, scripts/widescreen.gd, so it looks that much further over)
+	var wide: Vector2 = Game.wide.margin / camera.zoom
 	if _shake > 0.3:
-		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
+		camera.offset = wide + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 		_shake = lerpf(_shake, 0.0, minf(1.0, delta * 9.0))
 	else:
-		camera.offset = Vector2.ZERO
+		camera.offset = wide
 	_update_post()
 	_update_aim()
 	_update_pile_backs(delta)
@@ -1356,10 +1366,12 @@ func _style_board(board: Dictionary) -> void:
 ## the crowd, welding sparks, a turning roulette wheel, cigar smoke and glints on chips and glass.
 ## Flames, fog, water, weather, beams, creatures... are made by ArenaLife (scripts/duel/arena_life.gd).
 func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
-	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, Game.arena_level())
+	var m: Vector2 = Game.wide.margin   # (a wide phone: the picture covers the whole screen round the frame, widescreen.gd)
+	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, Game.arena_level(), Vector2(1920, 1080) + m * 2)
+	life.position = -m
 	$BackLayer.add_child(life)
 	var ts := tex.get_size()
-	var k := maxf(1920.0 / ts.x, 1080.0 / ts.y)
+	var k := maxf((1920.0 + m.x * 2) / ts.x, (1080.0 + m.y * 2) / ts.y)
 	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
 	var to_rect := func(r) -> Rect2:
 		var a: Vector2 = to_screen.call([r[0], r[1]])
@@ -1643,8 +1655,10 @@ func _alive(tex_size: Vector2) -> ShaderMaterial:
 
 ## Where a point of the full-screen mat image is on the screen (it covers the screen, cropped).
 static func _cover_point(p: Vector2, tex_size: Vector2) -> Vector2:
-	var k := maxf(1920.0 / tex_size.x, 1080.0 / tex_size.y)
-	return p * k - (tex_size * k - Vector2(1920, 1080)) / 2.0
+	var m: Vector2 = Game.wide.margin   # (a wide phone: the mat covers the whole screen round the frame, widescreen.gd)
+	var screen := Vector2(1920, 1080) + m * 2
+	var k := maxf(screen.x / tex_size.x, screen.y / tex_size.y)
+	return p * k - (tex_size * k - screen) / 2.0 - m
 
 
 ## The mat's neon: the 160 px patches of the image with lit tubes in them (bright, saturated
@@ -6505,7 +6519,8 @@ func _post_pulse(param: String, peak: float, seconds: float) -> void:
 
 
 func _screen_uv(world: Vector2) -> Vector2:
-	return (get_viewport().get_canvas_transform() * world) / get_viewport().get_visible_rect().size
+	var vp := get_viewport()   # (global_canvas_transform: a phone's frame in the middle, widescreen.gd)
+	return (vp.global_canvas_transform * vp.get_canvas_transform() * world) / vp.get_visible_rect().size
 
 
 ## A ripple of distortion racing out from a point.
@@ -6677,6 +6692,8 @@ func _label(font_size: int, color: Color, heading := false) -> Label:
 	var ls := LabelSettings.new()
 	if heading:
 		ls.font = _font
+	if font_size < 20 and Game.mobile():   # (small print a little bigger on a phone, as UI.label)
+		font_size = mini(font_size + 3, 20)
 	ls.font_size = font_size
 	ls.font_color = color
 	ls.outline_size = maxi(4, font_size / 9)
@@ -6849,37 +6866,47 @@ func _callout(c: Dictionary, text: String, side: String) -> void:
 
 func _build_detail() -> void:
 	var p: Panel = $HUD/UI/Detail
+	# A phone: the card's text bigger, under a smaller picture, and on a wide screen the panel (and
+	# the player's plate under it) reach into the room at the side (scripts/widescreen.gd)
+	var phone := Game.mobile()
+	var side := minf(Game.wide.margin.x, 240.0)
+	for panel in [p, $HUD/UI/PlayerPanel]:
+		panel.position.x -= side
+		panel.size.x += side
+	var w := p.size.x - 40
+	var art_h := 420.0 if phone else 482.0
 	var art := TextureRect.new()
-	art.position = Vector2(20, 18)
-	art.size = Vector2(340, 482)
+	art.size = Vector2(art_h * 340.0 / 482.0, art_h)
+	art.position = Vector2((p.size.x - art.size.x) / 2, 18)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.material = UI.card_material(art.size)
 	p.add_child(art)
-	var title := _label(30, Color.WHITE, true)
-	title.position = Vector2(20, 506)
-	title.size = Vector2(340, 40)
+	var y := art_h + 24
+	var title := _label(34 if phone else 30, Color.WHITE, true)
+	title.position = Vector2(20, y)
+	title.size = Vector2(w, 40)
 	p.add_child(title)
-	var kind := _label(15, Color(0.62, 0.66, 0.82))
-	kind.position = Vector2(20, 546)
-	kind.size = Vector2(340, 22)
+	var kind := _label(_kind_size(), Color(0.62, 0.66, 0.82))
+	kind.position = Vector2(20, y + 40)
+	kind.size = Vector2(w, 22)
 	p.add_child(kind)
 	var stats := RichTextLabel.new()
 	stats.bbcode_enabled = true
 	stats.scroll_active = false
-	stats.position = Vector2(20, 572)
-	stats.size = Vector2(340, 34)
+	stats.position = Vector2(20, y + 66)
+	stats.size = Vector2(w, 34)
 	stats.add_theme_font_override("normal_font", _font)
-	stats.add_theme_font_size_override("normal_font_size", 24)
+	stats.add_theme_font_size_override("normal_font_size", 28 if phone else 24)
 	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(stats)
 	var text := RichTextLabel.new()
 	text.bbcode_enabled = true
-	text.position = Vector2(20, 610)
-	text.size = Vector2(340, 152)
-	text.add_theme_font_size_override("normal_font_size", 16)
-	text.add_theme_font_size_override("italics_font_size", 15)
-	text.add_theme_font_size_override("bold_font_size", 16)
+	text.position = Vector2(20, y + 104)
+	text.size = Vector2(w, p.size.y - y - 104 - 14)
+	text.add_theme_font_size_override("normal_font_size", 21 if phone else 16)
+	text.add_theme_font_size_override("italics_font_size", 20 if phone else 15)
+	text.add_theme_font_size_override("bold_font_size", 21 if phone else 16)
 	text.meta_underlined = false
 	text.mouse_filter = Control.MOUSE_FILTER_PASS   # keywords explain themselves when hovered
 	p.add_child(text)
@@ -6892,9 +6919,9 @@ func _build_detail() -> void:
 	tip_text.bbcode_enabled = true
 	tip_text.fit_content = true
 	tip_text.scroll_active = false
-	tip_text.custom_minimum_size = Vector2(300, 0)
-	tip_text.add_theme_font_size_override("normal_font_size", 15)
-	tip_text.add_theme_font_size_override("bold_font_size", 17)
+	tip_text.custom_minimum_size = Vector2(minf(w, 420.0) if phone else 300.0, 0)
+	tip_text.add_theme_font_size_override("normal_font_size", 19 if phone else 15)
+	tip_text.add_theme_font_size_override("bold_font_size", 21 if phone else 17)
 	tip_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tip.add_child(tip_text)
 	p.add_child(tip)
@@ -6906,6 +6933,11 @@ func _build_detail() -> void:
 	_ui.detail_stats = stats
 	_ui.detail_text = text
 	_show_detail({})
+
+
+## The card panel's type line ("CHARACTER · NEBULA · AUTHORITY 3"): bigger on a phone.
+func _kind_size() -> int:
+	return 18 if Game.mobile() else 15
 
 
 ## The hover box for a keyword in the card text, placed above the mouse inside the panel.
@@ -6965,7 +6997,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_title.text = ""
 		_ui.detail_kind.text = ""
 		_ui.detail_stats.text = ""
-		_ui.detail_text.text = "\n".join(["[color=#8a8aa0]Hover a card to see it here. Right-click it to zoom in.[/color]"] + _rival_leader_lines())
+		_ui.detail_text.text = "\n".join(["[color=#8a8aa0]%s[/color]" % UI.touch_words("Hover a card to see it here. Right-click it to zoom in.")] + _rival_leader_lines())
 		return
 	var tex := CardDB.art_for(c)   # (a token shows the same one of its artworks as on the field)
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
@@ -6978,6 +7010,8 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	for style in CardDB.BACK_STYLES.values():
 		dm.set_shader_parameter(style, 1.0 if style == _detail_spin else 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
+	if Game.mobile():   # (bigger on a phone: a long name shrinks to fit)
+		_fit_label(_ui.detail_title, 34, 22)
 	var token: bool = c.get("token", false) or CardDB.get_card(str(c.get("id", ""))).get("token", false)
 	var parts: Array = ["TOKEN" if token else TYPE_NAMES.get(c.get("cardType", ""), "CARD")]
 	if c.get("subtype") is String and not token:
@@ -6988,7 +7022,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		parts.append("AUTHORITY %d" % int(c.get("authority", 0)))
 	_ui.detail_kind.text = "  ·  ".join(parts)
 	_ui.detail_kind.label_settings.font_color = Color(0.62, 0.66, 0.82)   # (the idle panel colours it by side)
-	_fit_label(_ui.detail_kind, 15, 10)
+	_fit_label(_ui.detail_kind, _kind_size(), 10)
 	if c.get("cardType") in ["gang_member", "leader"]:
 		var base_atk := int(c.get("base_attack", c.get("attack", 0)))
 		var base_def := int(c.get("base_defense", c.get("defense", 0)))
@@ -7021,6 +7055,8 @@ func _show_idle() -> void:
 	for style in CardDB.BACK_STYLES.values():
 		_ui.detail_art.material.set_shader_parameter(style, 0.0)
 	_ui.detail_title.text = str(c.get("name", "?"))
+	if Game.mobile():
+		_fit_label(_ui.detail_title, 34, 22)
 	_ui.detail_kind.text = "LAST PLAYED  ·  %s" % _who(side).to_upper()
 	_ui.detail_kind.label_settings.font_color = _side_color(side)
 	if c.get("cardType") in ["gang_member", "leader"]:
@@ -7720,7 +7756,7 @@ func _show_card_choice(p: Dictionary) -> void:
 		b.pressed.connect(_pick.bind(str(o.id)))
 		grid.add_child(b)
 	var hint := _label(15, Color(0.7, 0.72, 0.85))
-	hint.text = "Hover a card to read it  ·  click to take it"
+	hint.text = "Hold a card to read it  ·  tap to take it" if Game.mobile() else "Hover a card to read it  ·  click to take it"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(hint)
 	for o in p.options:   # (SKIP, and any option that isn't a card)
@@ -7911,6 +7947,13 @@ func _zoom_hovered() -> bool:
 	return true
 
 
+## Whether a finger here (viewport coordinates) is on something of the board's own, a card, a pile or a
+## slot: touch.gd then keeps the tap there instead of giving it to a button just beside it.
+func touch_owns(at: Vector2) -> bool:
+	var p := get_global_transform_with_canvas().affine_inverse() * at
+	return _view_at(p) != null or not _pile_at(p).is_empty() or _sides.any(func(s): return _slot_at(s, p) != -1)
+
+
 func _view_at(p: Vector2) -> CardView:
 	var hv := _hand_view_at(p)
 	if hv:
@@ -7972,7 +8015,7 @@ func _update_hover() -> void:
 			var top: String = counts.get(side, {}).get("gutter_top", "")
 			if top != "":
 				var shown: Dictionary = CardDB.get_card(top).duplicate()
-				shown.note = "Top of the Gutter · click to see every card in it"
+				shown.note = UI.touch_words("Top of the Gutter · click to see every card in it")
 				if side == "player" and _gutter_glow:
 					shown.note = "A Gutter ability is ready · click your Gutter to use it"
 				shown.uid = "gutter:%s:%s" % [side, top]
@@ -7985,7 +8028,7 @@ func _update_hover() -> void:
 				_show_detail({"name": "%s %s" % [whose, "Deck" if pile == "deck" else "Hideout"], "cardType": "",
 					"uid": "%s:%s:%d" % [side, pile, n], "back_side": side,
 					"effectText": "%d card%s%s" % [n, "" if n == 1 else "s",
-						"  ·  click to see them" if pile == "hideout" and side == "player" and n > 0 else ""]})
+						UI.touch_words("  ·  click to see them") if pile == "hideout" and side == "player" and n > 0 else ""]})
 
 
 func _on_press() -> void:
@@ -8615,7 +8658,7 @@ func _show_prompt(text: String) -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		overlay.add_child(l)
 		_ui.prompt = l
-	_ui.prompt.text = text
+	_ui.prompt.text = UI.touch_words(text)
 	_ui.prompt.visible = true
 
 

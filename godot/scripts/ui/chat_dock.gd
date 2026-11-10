@@ -62,8 +62,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	# The tab hides in the corner and slides out when the mouse comes near it (or the chat is open)
 	var m := _root.get_local_mouse_position()
-	var near := _open or (m.x > 1920.0 - NEAR.x and m.y > 1080.0 - NEAR.y)
-	var want := 1920.0 - TAB.x if near else 1920.0 - PEEK
+	var near := _open or (m.x > _edge() - NEAR.x and m.y > 1080.0 - NEAR.y)
+	var want := _edge() - TAB.x if near else _edge() - PEEK
 	if want != _tab_x:
 		_tab_x = want
 		_tab.create_tween().tween_property(_tab, "position:x", want, 0.16 if near else 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -83,12 +83,17 @@ func _input(e: InputEvent) -> void:
 
 # ── The tab and the panel ────────────────────────────────────────────────────
 
+## The right edge of the screen: the frame's, or further out on a wide phone (scripts/widescreen.gd).
+func _edge() -> float:
+	return 1920.0 + Game.wide.margin.x
+
+
 func _build_tab() -> void:
 	_tab = Button.new()
 	_tab.text = "CHAT"
 	_tab.focus_mode = Control.FOCUS_NONE
 	_tab.size = TAB
-	_tab.position = Vector2(1920 - PEEK, TAB_Y)
+	_tab.position = Vector2(_edge() - PEEK, TAB_Y)
 	_tab.add_theme_font_override("font", font())
 	_tab.add_theme_font_size_override("font_size", 20)
 	for state in ["normal", "hover", "pressed"]:
@@ -122,7 +127,7 @@ func _build_panel() -> void:
 	_panel = UI.panel(UI.BLUE, Color(0.04, 0.04, 0.12, 0.97))
 	_panel.custom_minimum_size = Vector2(W, H)
 	_panel.size = Vector2(W, H)
-	_panel.position = Vector2(1920 + 20, TAB_Y - H - 14)
+	_panel.position = Vector2(_edge() + 20, TAB_Y - H - 14)
 	_panel.visible = false
 	_root.add_child(_panel)
 	var col := VBoxContainer.new()
@@ -160,7 +165,7 @@ func _show_panel() -> void:
 	_panel.visible = true
 	_panel.modulate.a = 0.0
 	var t := _panel.create_tween().set_parallel()
-	t.tween_property(_panel, "position:x", 1920 - W - 16, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(_panel, "position:x", _edge() - W - 16, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	t.tween_property(_panel, "modulate:a", 1.0, 0.18)
 
 
@@ -172,7 +177,7 @@ func close() -> void:
 	if _edit and is_instance_valid(_edit):
 		_edit.release_focus()
 	var t := _panel.create_tween().set_parallel()
-	t.tween_property(_panel, "position:x", 1920 + 20, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.tween_property(_panel, "position:x", _edge() + 20, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_property(_panel, "modulate:a", 0.0, 0.18)
 	t.chain().tween_callback(func():
 		if not _open:

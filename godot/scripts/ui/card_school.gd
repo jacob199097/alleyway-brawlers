@@ -373,7 +373,7 @@ func _chapter_pages(ch: String) -> Array:
 				["cost", "AUTHORITY COST", "What it costs to play. You get 1 Authority on turn 1 and 1 more every turn after."],
 				["name", "NAME", "Up to 3 copies of a card in a deck."],
 				["crest", "CLAN CREST", "Its clan. Many cards work best with others from the same clan."],
-				["art", "ARTWORK", "Rarer cards shine and move. Hover a card in a duel to read it, right-click to zoom."],
+				["art", "ARTWORK", UI.touch_words("Rarer cards shine and move. Hover a card in a duel to read it, right-click to zoom.")],
 				["type", "TYPE LINE", "What kind of card it is: [b]Brawler[/b], [b]Striver[/b] (with its level), [b]Heavy[/b], Leader, Hustle or Ambush, and its clan."],
 				["text", "EFFECT", "What it does, and [b]when[/b]: when deployed, when it attacks, while it's on the field... Coloured words are keywords: hover them."],
 				["flavour", "FLAVOUR TEXT", "Just for fun: who they are, in their own words."],

@@ -39,7 +39,8 @@
 - Steam (`docs/STEAM.md`): GodotSteam in `godot/addons/godotsteam`, `godot/scripts/steam.gd` (on only in the "Windows Steam"
   export, feature `steam`, or with `--steam`); server `backend/routes/steam.js`; `tools/steam_build.mjs` builds and uploads.
 - Android (`docs/ANDROID.md`): `node tools/build_android.mjs <godot>` (lighter pictures, from a copy in `builds/android_project/`),
-  `node tools/deploy.mjs --build-android`; touch controls in `godot/scripts/touch.gd`, `Game.mobile()` for phone-only behaviour.
-  No Android patches yet: raising `minimum` means a new APK too.
+  `node tools/deploy.mjs --build-android`; touch controls in `godot/scripts/touch.gd`, `Game.mobile()` for phone-only behaviour,
+  no black bars via `godot/scripts/widescreen.gd` (the 1920×1080 frame centred, `Game.wide.margin`). Android gets its own
+  patch each update too: `make_patch.mjs <godot> --android`.
 - `docs/LAUNCH_CHECKLIST.md` — what changes at launch (the wipe, starters off, 1.0.0, Steam live), in order.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

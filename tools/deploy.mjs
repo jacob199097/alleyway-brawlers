@@ -3,7 +3,7 @@
 //
 //   node tools/deploy.mjs                 pull + restart
 //   node tools/deploy.mjs --patch         also copy builds/AlleywayBrawlers-<latest>-patch.pck (and the Mac
-//                                         one, -patch-macos.pck, when it's been made)
+//                                         and Android ones, -patch-macos.pck / -patch-android.pck, when made)
 //                                         and delete older patches and full builds from downloads/
 //   node tools/deploy.mjs --build         also copy builds/AlleywayBrawlers-<latest>-windows.zip
 //   node tools/deploy.mjs --build-mac     also copy builds/AlleywayBrawlers-<latest>-macos.zip (tools/build_mac.mjs)
@@ -62,6 +62,9 @@ if (has('--patch')) {
     const macPatch = join(ROOT, 'builds', `AlleywayBrawlers-${latest}-patch-macos.pck`);
     if (existsSync(macPatch)) files.push(macPatch);
     else console.warn(`No Mac patch for ${latest} (node tools/make_patch.mjs <godot> --macos): Mac players won't get this update in place.`);
+    const androidPatch = join(ROOT, 'builds', `AlleywayBrawlers-${latest}-patch-android.pck`);
+    if (existsSync(androidPatch)) files.push(androidPatch);
+    else console.warn(`No Android patch for ${latest} (node tools/make_patch.mjs <godot> --android): Android players won't get this update in place.`);
 }
 if (has('--build')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-windows.zip`));
 if (has('--build-mac')) files.push(join(ROOT, 'builds', `AlleywayBrawlers-${latest}-macos.zip`));

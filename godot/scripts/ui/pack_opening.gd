@@ -1219,7 +1219,8 @@ func _pulse(param: String, peak: float, secs: float) -> void:
 
 ## A ripple of distortion racing out from a point.
 func _shockwave(at: Vector2, strength: float) -> void:
-	var uv := (get_viewport().get_canvas_transform() * (global_position + at)) / get_viewport().get_visible_rect().size
+	var vp := get_viewport()   # (global_canvas_transform: a phone's frame in the middle, widescreen.gd)
+	var uv := (vp.global_canvas_transform * vp.get_canvas_transform() * (global_position + at)) / vp.get_visible_rect().size
 	_post_mat.set_shader_parameter("wave_center", uv)
 	_fx.wave_strength = strength
 	var t := create_tween().set_parallel()

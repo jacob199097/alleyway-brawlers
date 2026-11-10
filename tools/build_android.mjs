@@ -3,6 +3,8 @@
 //   node tools/build_android.mjs <path to Godot console exe>            the release APK
 //   node tools/build_android.mjs <path to Godot console exe> --debug    a debug APK (also runs in the
 //       emulator: it carries the x86_64 engine too), signed with Godot's debug key
+//   node tools/build_android.mjs <path to Godot console exe> --prepare  only brings the copy below up to
+//       date and imports it (tools/make_patch.mjs --android makes Android patches from it)
 //
 // A phone gets lighter pictures than a PC: card art at most 1024 pixels tall and lossy-compressed,
 // the .jpg backgrounds lossy, nothing bigger than the screen (the PC build's pictures make a ~900 MB
@@ -17,7 +19,9 @@
 // %USERPROFILE%\Android\release-keystore.json {"path", "alias", "password"}.
 //
 // Writes builds/AlleywayBrawlers-<version>-android.apk (-debug.apk with --debug), for downloads/ on
-// the server: node tools/deploy.mjs --build-android
+// the server: node tools/deploy.mjs --build-android. A release build also writes the game's files as
+// builds/android_<version>/AlleywayBrawlers.pck: keep it, Android patches are made against it (the
+// "android" patchBase in shared/game_version.json).
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, relative, basename } from 'node:path';
@@ -27,9 +31,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const debug = argv.includes('--debug');
+const prepare = argv.includes('--prepare');
 const godot = argv.find(a => !a.startsWith('--')) || process.env.GODOT;
 if (!godot || !existsSync(godot)) {
-    console.error('usage: node tools/build_android.mjs <path to Godot console exe> [--debug]   (or set GODOT)');
+    console.error('usage: node tools/build_android.mjs <path to Godot console exe> [--debug | --prepare]   (or set GODOT)');
     process.exit(2);
 }
 const SRC = join(ROOT, 'godot');
@@ -47,12 +52,14 @@ const LIGHTER = [
       params: { 'compress/mode': 1, 'compress/lossy_quality': 0.85, 'process/size_limit': 1920 } },
     { test: (p) => p === 'assets/main_menu_bar.png.import',   // (drawn the width of the screen)
       params: { 'process/size_limit': 1920 } },
+    { test: (p) => p === 'assets/quests.png.import',   // (only its frame, 1068 of its 2400 pixels, is drawn)
+      params: { 'process/size_limit': 2400 } },
     { test: (p) => p.endsWith('.png.import'),   // everything else: the menu signs, title, card backs, ... are
       params: { 'process/size_limit': 1024 } },  // never drawn bigger than this
 
 ];
 
-const signing = debug ? null : releaseKey();
+const signing = debug || prepare ? null : releaseKey();
 
 // 1. The copy: changed files copied over (keeping their times, so Godot sees what really changed),
 //    files gone from godot/ removed. The first time, godot/.godot comes too (no importing everything).
@@ -84,10 +91,11 @@ cfg = cfg.replace(/^version\/code=.*$/m, `version/code=${code}`)
 writeFileSync(presets, cfg);
 
 // 3. Import what changed, then export
-const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-android${debug ? '-debug' : ''}.apk`);
-if (existsSync(out)) rmSync(out);
 console.log('Importing …');
 execFileSync(godot, ['--headless', '--path', COPY, '--import'], { stdio: 'inherit', timeout: 3600 * 1000 });
+if (prepare) process.exit(0);
+const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-android${debug ? '-debug' : ''}.apk`);
+if (existsSync(out)) rmSync(out);
 console.log(`Exporting the Android ${debug ? 'debug' : 'release'} build ${version} (version code ${code}) …`);
 const env = { ...process.env };
 if (signing) {
@@ -99,7 +107,14 @@ execFileSync(godot, ['--headless', '--path', COPY, debug ? '--export-debug' : '-
 if (!existsSync(out)) throw new Error('Godot did not write the APK (are the Android export templates, JDK and SDK set up? docs/ANDROID.md).');
 for (const extra of [out + '.idsig']) if (existsSync(extra)) rmSync(extra);
 console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1048576)} MB).`);
-if (!debug) console.log('Next: push, then  node tools/deploy.mjs --build-android');
+if (!debug) {
+    // The same files as a pack: what Android patches of later versions are compared against
+    const base = join(ROOT, 'builds', `android_${version}`);
+    mkdirSync(base, { recursive: true });
+    execFileSync(godot, ['--headless', '--path', COPY, '--export-pack', 'Android', join(base, 'AlleywayBrawlers.pck')], { stdio: 'inherit' });
+    console.log(`Wrote ${join(base, 'AlleywayBrawlers.pck')} (keep it: patches for this APK are made against it).`);
+    console.log('Next: push, then  node tools/deploy.mjs --build-android');
+}
 
 function sync(dir) {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

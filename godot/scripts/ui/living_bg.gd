@@ -7,6 +7,8 @@ const PARALLAX := 22.0   # px the art shifts toward the mouse at the screen edge
 const OVERSCAN := 1.07   # art is drawn slightly larger so the drift never shows an edge
 
 var _art: TextureRect
+var _rain_p: CPUParticles2D
+var _embers_p: CPUParticles2D
 var _t := 0.0
 
 
@@ -28,10 +30,28 @@ func setup(texture: Texture2D, dim: float) -> Control:
 	veil.size = size
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(veil)
-	add_child(_rain())
-	add_child(_embers())
+	_rain_p = _rain()
+	add_child(_rain_p)
+	_embers_p = _embers()
+	add_child(_embers_p)
 	add_child(_vignette())
 	return self
+
+
+## A screen wider or taller than 1920×1080 (a phone, scripts/widescreen.gd): the backdrop reaches
+## its edges, m beyond the frame on each side.
+func fill_frame(m: Vector2) -> void:
+	position = -m
+	size = Vector2(1920, 1080) + m * 2
+	_art.size = size * OVERSCAN
+	_art.pivot_offset = _art.size / 2
+	_rain_p.position = Vector2(size.x / 2 + 100, -60)   # (rain falls across all of it, slanted)
+	_rain_p.emission_rect_extents.x = size.x / 2 + 340
+	_embers_p.position = Vector2(size.x / 2, size.y + 30)
+	_embers_p.emission_rect_extents.x = size.x / 2 + 20
+	for c in get_children():
+		if c is Control and c != _art:   # (the veil and the vignette)
+			c.size = size
 
 
 func _process(delta: float) -> void:

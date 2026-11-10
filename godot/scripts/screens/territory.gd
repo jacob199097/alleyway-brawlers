@@ -322,7 +322,7 @@ func _build_city(districts: Array) -> void:
 		row.add_child(UI.label("%s %d" % [_clan_name(id).to_upper(), held[id]], 22, _clan_col(id), true))
 	row.add_child(UI.label("LOCAL GANGS %d" % locals, 22, UI.MUTED, true))
 	row.add_child(UI.label("·   WEEK ENDS IN %s" % _ends_in().to_upper(), 22, Color(0.85, 0.85, 0.95), true))
-	var how := UI.label(_rules_text() + "   ·   Scroll to zoom, drag to look around.", 15, Color(0.8, 0.8, 0.9))
+	var how := UI.label(_rules_text() + UI.touch_words("   ·   Scroll to zoom, drag to look around."), 15, Color(0.8, 0.8, 0.9))
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	how.size = Vector2(1400, 44)
@@ -464,7 +464,7 @@ func _show_hint(d: Dictionary, m: Control) -> void:
 	var boss = d.get("boss")
 	if boss is Dictionary:
 		v.add_child(UI.label("👑 %s" % str(boss.get("username", "")), 15, UI.GOLD))
-	v.add_child(UI.label("Click to open", 14, UI.MUTED))
+	v.add_child(UI.label(UI.touch_words("Click to open"), 14, UI.MUTED))
 	add_child(p)
 	_hint = p
 	p.modulate.a = 0.0

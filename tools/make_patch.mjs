@@ -3,6 +3,9 @@
 //   node tools/make_patch.mjs <path to Godot console exe>            the Windows patch
 //   node tools/make_patch.mjs <path to Godot console exe> --macos    the Mac patch (-patch-macos.pck), made
 //       against the Mac build at builds/macos_<macos.patchBase>/ (tools/build_mac.mjs)
+//   node tools/make_patch.mjs <path to Godot console exe> --android  the Android patch (-patch-android.pck),
+//       made from the lighter copy of the project (tools/build_android.mjs --prepare) against the pack
+//       of the Android build at builds/android_<android.patchBase>/
 //
 // 1. Raise config/version in godot/project.godot and "latest" in shared/game_version.json
 //    (same number; leave "minimum" and "patchBase" alone).
@@ -24,9 +27,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const mac = argv.includes('--macos');
+const android = argv.includes('--android');
+const which = mac ? 'macos' : android ? 'android' : 'windows';
+const label = { windows: 'Windows', macos: 'Mac', android: 'Android' }[which];
 const godot = argv.find(a => !a.startsWith('--')) || process.env.GODOT;
 if (!godot || !existsSync(godot)) {
-    console.error('usage: node tools/make_patch.mjs <path to Godot console exe>   (or set GODOT)');
+    console.error('usage: node tools/make_patch.mjs <path to Godot console exe> [--macos | --android]   (or set GODOT)');
     process.exit(2);
 }
 const project = readFileSync(join(ROOT, 'godot/project.godot'), 'utf8');
@@ -37,26 +43,35 @@ if (v.latest !== version) {
     console.error(`shared/game_version.json says latest ${v.latest}, but the project is ${version}. Make them match first.`);
     process.exit(1);
 }
-const patchBase = mac ? (v.macos && v.macos.patchBase) : v.patchBase;
+const patchBase = which === 'windows' ? v.patchBase : (v[which] && v[which].patchBase);
 if (!patchBase) {
-    console.error(`shared/game_version.json has no ${mac ? 'macos.patchBase' : 'patchBase'} (the full build patches apply to).`);
+    console.error(`shared/game_version.json has no ${which === 'windows' ? 'patchBase' : which + '.patchBase'} (the full build patches apply to).`);
     process.exit(1);
 }
 if (patchBase === version) {
-    console.log(`${version} is the ${mac ? 'Mac' : 'Windows'} base build itself: players download it whole, so there's no patch to make.`);
+    console.log(`${version} is the ${label} base build itself: players download it whole, so there's no patch to make.`);
     process.exit(0);
 }
-const preset = mac ? 'Patch macOS' : 'Patch';
-const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-patch${mac ? '-macos' : ''}.pck`);
-const base = mac ? join(ROOT, 'builds', `macos_${patchBase}`, 'AlleywayBrawlers.pck')
-    : join(ROOT, 'builds', `windows_${patchBase}`, 'AlleywayBrawlers.exe');
+const preset = { windows: 'Patch', macos: 'Patch macOS', android: 'Android' }[which];
+// (Android: from builds/android_project, the copy with phone-sized pictures its APK was made from)
+const dir = android ? join(ROOT, 'builds', 'android_project') : join(ROOT, 'godot');
+const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-patch${which === 'windows' ? '' : '-' + which}.pck`);
+const base = which === 'windows' ? join(ROOT, 'builds', `windows_${patchBase}`, 'AlleywayBrawlers.exe')
+    : join(ROOT, 'builds', `${which}_${patchBase}`, 'AlleywayBrawlers.pck');
+if (android) {
+    if (!existsSync(base)) {   // (without it the patch would be the whole 200 MB game)
+        console.error(`No ${base}: it is written by the release build of ${patchBase} (tools/build_android.mjs).`);
+        process.exit(1);
+    }
+    execFileSync(process.execPath, [join(ROOT, 'tools', 'build_android.mjs'), godot, '--prepare'], { stdio: 'inherit' });
+}
 try {
     if (existsSync(base)) {
         // Only the files that differ from the full build players have (Godot compares against its pack)
-        execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-patch', preset, out, '--patches', base], { stdio: 'inherit' });
+        execFileSync(godot, ['--headless', '--path', dir, '--export-patch', preset, out, '--patches', base], { stdio: 'inherit' });
     } else {
         console.warn(`No ${base}: the patch carries everything the Patch preset allows, not just the changes.`);
-        execFileSync(godot, ['--headless', '--path', join(ROOT, 'godot'), '--export-pack', preset, out], { stdio: 'inherit' });
+        execFileSync(godot, ['--headless', '--path', dir, '--export-pack', preset, out], { stdio: 'inherit' });
     }
 } catch (err) {
     if (existsSync(out)) unlinkSync(out);   // (a half-written patch must never reach downloads/)
@@ -78,8 +93,8 @@ if (removed.length) {
     unlinkSync(out);
     process.exit(1);
 }
-console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for ${mac ? 'Mac' : 'Windows'} builds ${patchBase} and newer.`);
-console.log(`Next: push, then  node tools/deploy.mjs --patch  (it copies the Windows and Mac patches; or by hand):\n` +
+console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1024)} KB), for ${label} builds ${patchBase} and newer.`);
+console.log(`Next: push, then  node tools/deploy.mjs --patch  (it copies the Windows, Mac and Android patches; or by hand):\n` +
     `  scp "${out}" jacob199097@192.168.0.200:/opt/Turf_War/downloads/\n` +
     `  (on the server) cd /opt/Turf_War && git pull && sudo systemctl restart alleyway-backend`);
 

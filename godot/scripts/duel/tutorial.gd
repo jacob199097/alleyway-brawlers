@@ -450,7 +450,7 @@ func update() -> void:
 	if _shown != index:
 		_shown = index
 		screen._update_next_btn()   # (END TURN is only lit when it's the move)
-		_body.text = st.text
+		_body.text = UI.touch_words(st.text)
 		_step_label.text = "%d / %d" % [index + 1, steps.size()]
 		_next.visible = st.type == INFO
 		_next.text = "FINISH THEM OFF  ▶" if st.get("last", false) else "NEXT  ▶"

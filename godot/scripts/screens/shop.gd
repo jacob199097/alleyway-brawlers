@@ -233,6 +233,8 @@ func _pack(p: Dictionary) -> Control:
 			roundi(100.0 * float(odds.get("4", 0))), roundi(100.0 * float(odds.get("5", 0)))]
 	sub.size = Vector2(400, 44)
 	sub.position = at + Vector2(0, 588)
+	if Game.mobile():   # (its two lines, a little bigger on a phone, still clear of the buttons)
+		sub.label_settings.line_spacing = -5.0
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(sub)
 	var row := HBoxContainer.new()

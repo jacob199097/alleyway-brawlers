@@ -494,7 +494,8 @@ const QUEST_SCALE := 0.62
 func _build_quests() -> void:
 	var at := AtlasTexture.new()
 	at.atlas = UI.tex("quests.png")
-	at.region = QUEST_REGION
+	var k := at.atlas.get_width() / 2400.0 if at.atlas else 1.0   # (a build with the picture made smaller)
+	at.region = Rect2(QUEST_REGION.position * k, QUEST_REGION.size * k)
 	var frame := UI.texture_rect(at if at.atlas else null, QUEST_REGION.size * QUEST_SCALE)
 	frame.position = Vector2(40, 236)
 	add_child(frame)

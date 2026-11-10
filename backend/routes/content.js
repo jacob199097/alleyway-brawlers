@@ -75,8 +75,7 @@ const backs = () => fingerprints(BACK_DIR, (f) => /^card_back(_[a-z0-9_]+)?\.png
 const sfx = () => fingerprints(SFX_DIR, (f) => SFX_FILE.test(f));
 
 /** Versions for a platform ('windows', 'macos' or 'android'): the same latest / minimum for all (they
- *  play each other online), each with its own patch and full download. Android has no patches yet:
- *  a new version there is a new APK. */
+ *  play each other online), each with its own patch (from its own patchBase build) and full download. */
 function versions(platform = 'windows') {
     let v = {};
     try {
@@ -85,7 +84,8 @@ function versions(platform = 'windows') {
     const latest = String(v.latest || '0.0.0');
     const mac = platform === 'macos';
     const android = platform === 'android';
-    const base = android ? null : mac ? (v.macos && v.macos.patchBase) : v.patchBase;
+    const own = mac ? v.macos : android ? v.android : v;
+    const base = own && own.patchBase;
     const patch = base ? patchInfo(latest, platform) : null;
     return {
         latest,

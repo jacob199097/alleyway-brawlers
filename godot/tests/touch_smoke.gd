@@ -3,6 +3,9 @@ extends Node
 ## without clicking, a finger dragged off a button doesn't click it, a pinch turns the mouse wheel,
 ## the back button is Esc. Then in a duel: a hand card held shows the zoom, tapped opens its menu.
 ##   godot --path godot res://tests/touch_smoke.tscn -- --touch
+## As on a 20:9 phone, the frame in the middle of a wider screen (scripts/widescreen.gd):
+##   godot --headless --path godot res://tests/touch_smoke.tscn -- --touch --mobile
+## (headless: in a window, Godot reads the real mouse, not the fake fingers' pointer)
 
 var fails: Array = []
 var _log: Array = []
@@ -14,6 +17,10 @@ func _ready() -> void:
 		push_error("TOUCH SMOKE: run it with  -- --touch")
 		get_tree().quit(1)
 		return
+	if Game.wide.active:   # (a 20:9 phone screen: the frame in the middle, widescreen.gd)
+		get_tree().root.size = Vector2i(2400, 1080)
+		await get_tree().process_frame
+		_check(Game.wide.margin == Vector2(240, 0), "a 20:9 screen: the frame sits in the middle (margin %s)" % Game.wide.margin)
 	await _gestures()
 	var holder := Node.new()   # screen changes free the current scene; keep this script alive
 	get_tree().root.add_child(holder)
@@ -90,6 +97,26 @@ func _gestures() -> void:
 	await _finger(0, mid + Vector2(8, 6), true, true)
 	await _finger(0, mid + Vector2(8, 6), false)
 	_check(taps[0] == 2, "a finger that wobbles a little still taps")
+	# Just beside a small button (on the panel round it): the tap presses it; well away, it doesn't
+	var panel := Panel.new()
+	panel.position = Vector2(100, 600)
+	panel.size = Vector2(500, 300)
+	layer.add_child(panel)
+	var small := Button.new()
+	small.position = Vector2(150, 120)
+	small.size = Vector2(140, 40)
+	panel.add_child(small)
+	var small_taps := [0]
+	small.pressed.connect(func(): small_taps[0] += 1)
+	var beside := panel.position + small.position + Vector2(70, 40 + 25)
+	await _finger(0, beside)
+	await _finger(0, beside, false)
+	_check(small_taps[0] == 1, "a tap just beside a button presses it")
+	var away := panel.position + small.position + Vector2(70, 40 + 90)
+	await _finger(0, away)
+	await _finger(0, away, false)
+	_check(small_taps[0] == 1, "a tap well away from a button doesn't")
+	panel.queue_free()
 	# Pinch
 	var wheels := [0, 0]
 	var pad := Control.new()
@@ -148,6 +175,9 @@ func _duel() -> void:
 			bt.pressed.emit()
 			break
 	await _wait(2.5)
+	if Game.wide.active and Game.wide.margin.x > 0:   # (-- --mobile in a phone-shaped window)
+		var off: Vector2 = d.get_viewport().get_canvas_transform().origin
+		_check(off.length() < 30.0, "a wide screen: the board stays under the duel's HUD (off by %s)" % off)
 	var hand: Array = d.hand.player
 	if hand.is_empty():
 		_check(false, "the duel has a hand to touch")

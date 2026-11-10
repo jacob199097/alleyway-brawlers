@@ -58,7 +58,7 @@ func intro(players: Dictionary) -> void:
 	root.add_child(glow)
 	var art := UI.texture_rect(portrait(), Vector2(400, 565))
 	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.position = Vector2(2000, 230)
+	art.position = Vector2(2000 + Game.wide.margin.x, 230)   # (from off the screen, a wide phone's too)
 	art.rotation_degrees = 4.0
 	art.pivot_offset = art.size / 2
 	root.add_child(art)

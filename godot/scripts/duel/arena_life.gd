@@ -108,7 +108,7 @@ func _rect(r) -> Rect2:
 
 ## The whole screen (weather that isn't tied to one spot).
 func _screen_rect(e: Dictionary) -> Rect2:
-	return _rect(e.rect) if e.has("rect") else Rect2(Vector2(-60, -60), Vector2(2040, 1200))
+	return _rect(e.rect) if e.has("rect") else Rect2(Vector2(-60, -60), _view + Vector2(120, 120))
 
 
 func _col(e: Dictionary, fallback := "#ffffff") -> Color:

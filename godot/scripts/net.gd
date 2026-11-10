@@ -278,7 +278,7 @@ func clear_corner_toasts() -> void:
 	for p in _friend_toasts:
 		if is_instance_valid(p):
 			var t := p.create_tween()
-			t.tween_property(p, "position:x", 1940.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			t.tween_property(p, "position:x", 1940.0 + Game.wide.margin.x, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 			t.tween_callback(p.queue_free)
 	_friend_toasts.clear()
 
@@ -307,14 +307,14 @@ func corner_toast(p: Control, sound := "", on_click := Callable(), secs := 4.5) 
 		if is_instance_valid(t):
 			t.create_tween().tween_property(t, "position:y", t.position.y - h, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_friend_toasts.append(p)
-	var home := Vector2(1920 - p.size.x - 24, 1080 - p.size.y - 24)
-	p.position = Vector2(1940, home.y)
+	var home := Vector2(1920 + Game.wide.margin.x - p.size.x - 24, 1080 - p.size.y - 24)
+	p.position = Vector2(1940 + Game.wide.margin.x, home.y)   # (a wide phone: from its screen's edge, widescreen.gd)
 	if sound != "":
 		Sfx.play(sound, 1.0, -8.0)
 	var t := p.create_tween()
 	t.tween_property(p, "position:x", home.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_interval(secs)
-	t.tween_property(p, "position:x", 1940.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.tween_property(p, "position:x", 1940.0 + Game.wide.margin.x, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_callback(func():
 		_friend_toasts.erase(p)
 		p.queue_free())

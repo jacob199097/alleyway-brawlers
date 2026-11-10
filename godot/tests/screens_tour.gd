@@ -430,6 +430,28 @@ func _run() -> void:
 			await _shot("ar_%s_b" % arena.id, 0.9)
 		get_tree().quit()
 		return
+	if "--phone" in OS.get_cmdline_user_args():   # (with --mobile, in a phone-shaped window, e.g. --resolution 1200x540)
+		for s in ["main_menu", "fight_mode", "deck_builder", "card_library", "shop", "territory", "profile"]:
+			Game.go(s)
+			await _shot("ph_" + s, 2.8)
+		UI.dialog(_screen(), "A DIALOG", "Its dimmer reaches the edges of the screen.", [["OK", func(): pass]])
+		await _shot("ph_dialog", 0.8)
+		var deck8 := await Game.load_duel_deck()
+		Game.duel_setup = deck8
+		Game.duel_setup.first = "player"
+		Game.go("duel")
+		await _shot("ph_duel_open", 5.0)
+		var pd = _screen()
+		if pd._menu:   # (the opening hand: keep it)
+			for bt in pd._menu.find_children("*", "Button", true, false):
+				bt.pressed.emit()
+				break
+		await _shot("ph_duel", 3.0)
+		if not pd.hand.player.is_empty():   # (a card in the card panel, as when a finger is on it)
+			pd._show_detail(pd.hand.player[0].card)
+			await _shot("ph_duel_card", 0.6)
+		get_tree().quit()
+		return
 	if "--wild-attack" in OS.get_cmdline_user_args():   # (Wildcard's card-throwing attack, a shot every 0.08 s)
 		var deck := await Game.load_duel_deck()
 		Game.duel_setup = deck

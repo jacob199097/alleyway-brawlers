@@ -15,6 +15,7 @@ const DEVICE := 78            # on the mouse and key events made here (the contr
 const HOLD_SECS := 0.45       # a finger held this long without moving is a right-click
 const SLOP := 22.0            # moving further than this (pixels of the 1920×1080 game) makes it a drag
 const PINCH_STEP := 1.12      # fingers this much further apart (or closer) = one wheel notch
+const REACH := 34.0           # a tap this close to a button (pixels of the game) presses it (_aim)
 
 var active := false
 var _finger := -1             # the finger working the pointer (the first one down), or -1
@@ -64,8 +65,11 @@ func _input(e: InputEvent) -> void:
 		elif not e.pressed and e.index == _finger:
 			match _state:
 				"wait":   # a tap
-					_button(MOUSE_BUTTON_LEFT, true, _down_at)
-					_button(MOUSE_BUTTON_LEFT, false, _down_at)
+					var at := _aim(_down_at)
+					if at != _down_at:
+						_move(at, 0)
+					_button(MOUSE_BUTTON_LEFT, true, at)
+					_button(MOUSE_BUTTON_LEFT, false, at)
 				"drag":
 					_button(MOUSE_BUTTON_LEFT, false, e.position)
 			_finger = -1
@@ -108,6 +112,39 @@ func _pinch_step() -> void:
 		_button(wheel, true, mid)
 		_button(wheel, false, mid)
 		_pinch = _pinch * PINCH_STEP if d > _pinch else _pinch / PINCH_STEP
+
+
+## Where a tap goes: a finger is wider than most buttons, so a tap just beside one (on a panel, a
+## dimmer, the screen, the duel's empty board) presses it, at its middle. A tap on anything that
+## takes taps itself (a button, a card tile, a duel card, a text box) stays where it is.
+func _aim(p: Vector2) -> Vector2:
+	var under := get_viewport().gui_get_hovered_control()   # (the finger going down moved the pointer here)
+	var scene := get_tree().current_scene
+	if under and (under is LineEdit or under is TextEdit or under is Range or under is RichTextLabel \
+			or under != scene and under.get_script() != null or not under.get_signal_connection_list("gui_input").is_empty()):
+		return p   # (it takes taps itself: a card tile, a text box, a slider, a dimmer that closes its dialog)
+	var n: Node = under
+	while n is Control:   # (on a button, or on a label inside one)
+		if n is BaseButton:
+			return p
+		n = n.get_parent()
+	if under == null and scene and scene.has_method("touch_owns") and scene.touch_owns(p):
+		return p
+	var best := p
+	var best_d := REACH
+	for b in (under if under else get_tree().root).find_children("*", "BaseButton", true, false):
+		if not b.is_visible_in_tree() or b.disabled or b.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			continue
+		var r: Rect2 = b.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, b.size)
+		var d := _rect_distance(r, p)
+		if d < best_d:
+			best_d = d
+			best = r.get_center()
+	return best
+
+
+static func _rect_distance(r: Rect2, p: Vector2) -> float:
+	return Vector2(maxf(maxf(r.position.x - p.x, 0.0), p.x - r.end.x), maxf(maxf(r.position.y - p.y, 0.0), p.y - r.end.y)).length()
 
 
 func _window_pos(p: Vector2) -> Vector2:

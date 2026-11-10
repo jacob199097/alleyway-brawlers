@@ -371,7 +371,7 @@ func _show_collection() -> void:
 		i += 1
 		_detail.add_child(_bar_row(str(UI.RARITY_LABEL.get(r, "")).to_upper(), of_r.filter(owned).size(), of_r.size(), UI.rarity_color(r), i, many))
 	_detail.add_child(_gap(18))
-	var hint := UI.label("Hover a card to see it here. Click one to scrap or craft it.", 17, UI.MUTED)
+	var hint := UI.label(UI.touch_words("Hover a card to see it here. Click one to scrap or craft it."), 17, UI.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.custom_minimum_size = Vector2(470, 0)
 	_detail.add_child(hint)
@@ -478,7 +478,7 @@ func _render_bar() -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_bar.add_child(info)
 	if _pick.is_empty():
-		info.text = "Click a card to scrap or craft it"
+		info.text = UI.touch_words("Click a card to scrap or craft it")
 		info.add_theme_color_override("font_color", UI.MUTED)
 	else:
 		var have := _have(_pick)

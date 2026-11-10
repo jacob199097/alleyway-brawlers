@@ -135,7 +135,8 @@ browser the Mac build (`/download/mac` always does).
   Set `"macos": {"patchBase": "<version>"}` in `shared/game_version.json`, push, then
   `node tools/deploy.mjs --build-mac`.
 - **Every update after that:** after the usual `make_patch.mjs`, also run
-  `node tools/make_patch.mjs <Godot console exe> --macos`. `deploy.mjs --patch` copies both patches.
+  `node tools/make_patch.mjs <Godot console exe> --macos` and `--android` (the Android patch,
+  `-patch-android.pck`, see `docs/ANDROID.md`). `deploy.mjs --patch` copies all three.
 - It needs Godot's macOS export template (`macos.zip` in Godot's `export_templates/<version>/`).
   The art is imported for Apple Silicon too (`import_etc2_astc` in `project.godot`); Windows builds
   and patches leave those copies out.

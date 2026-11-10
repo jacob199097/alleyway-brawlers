@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.138",
+        "notes": [
+            "Phones: the game fills the whole screen (no black bars at the sides), and stays in landscape.",
+            "Phones: the quests on the main menu show properly.",
+            "Phones: the card panel in a match is wider with bigger text, and the side panels move out to the edges of the screen to give the board room. Small text is a little bigger everywhere.",
+            "Phones: a tap just beside a small button presses it, and hints say tap and hold instead of click and right-click.",
+            "Phones: updates now install in the game, like on PC, instead of needing a new download."
+        ]
+    },
+    {
         "version": "0.9.137",
         "notes": [
             "Cards that \"can't be attacked while you control another character that can be\" (Soot and the rest) show a blue SAFE tag and outline while that's working. It goes away when the card is Downed, SILENCED or face-down, or is its owner's only character, so you can see when it's open to attack. It never stopped effects (a KO or EXILE still gets it)."

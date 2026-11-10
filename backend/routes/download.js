@@ -9,7 +9,7 @@
  *   GET /download          the newest build for the browser's device: AlleywayBrawlers-<version>-windows.zip,
  *                          -macos.zip, or -android.apk (an Android phone's browser)
  *   GET /download/windows, /download/mac, /download/android   that platform's newest build
- *   GET /download/<file>   a specific build, or a patch (AlleywayBrawlers-<version>-patch.pck)
+ *   GET /download/<file>   a specific build, or a patch (AlleywayBrawlers-<version>-patch[-macos|-android].pck)
  *
  * A patch updates the game in place (godot/scripts/patcher.gd): the manifest offers it when its
  * version is the latest one (routes/content.js, patchInfo below).
@@ -25,12 +25,12 @@ const crypto  = require('crypto');
 const router = express.Router();
 const DIR = path.join(__dirname, '../../downloads');
 const ZIP = /^AlleywayBrawlers-(\d+)\.(\d+)\.(\d+)-(?:(windows|macos)\.zip|(android)\.apk)$/;
-const PATCH = /^AlleywayBrawlers-(\d+\.\d+\.\d+)-patch(-macos)?\.pck$/;
+const PATCH = /^AlleywayBrawlers-(\d+\.\d+\.\d+)-patch(-macos|-android)?\.pck$/;
 const hashes = new Map();   // file -> {mtimeMs, size, sha256}
 
-/** The patch for `version` on a platform ('windows' or 'macos'), if one is in the folder: {path, size, sha256}. */
+/** The patch for `version` on a platform ('windows', 'macos' or 'android'), if one is in the folder: {path, size, sha256}. */
 function patchInfo(version, platform = 'windows') {
-    const file = `AlleywayBrawlers-${version}-patch${platform === 'macos' ? '-macos' : ''}.pck`;
+    const file = `AlleywayBrawlers-${version}-patch${platform === 'windows' ? '' : '-' + platform}.pck`;
     const full = path.join(DIR, file);
     if (!PATCH.test(file) || !fs.existsSync(full)) return null;
     const st = fs.statSync(full);

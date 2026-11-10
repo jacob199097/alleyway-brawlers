@@ -60,7 +60,7 @@ static func theme() -> Theme:
 	th.set_font_size("font_size", "LineEdit", 22)
 	th.set_color("font_placeholder_color", "LineEdit", Color(1, 1, 1, 0.35))
 	th.set_color("default_color", "RichTextLabel", Color(0.9, 0.9, 1.0))
-	th.set_font_size("normal_font_size", "RichTextLabel", 18)
+	th.set_font_size("normal_font_size", "RichTextLabel", 20 if Game.mobile() else 18)
 	var track := box(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0), 0, 6)
 	track.content_margin_top = 6
 	track.content_margin_bottom = 6
@@ -134,12 +134,24 @@ static func box(bg: Color, border: Color, width := 2, radius := 10) -> StyleBoxF
 	return sb
 
 
+## A hint written for the mouse, in a phone's words (scripts/touch.gd: a held finger is the right-click).
+static func touch_words(text: String) -> String:
+	if not Game.mobile():
+		return text
+	for w in [["Right-click", "Hold"], ["right-click", "hold"], ["Hover", "Tap"], ["hover", "tap"],
+			["Scroll to zoom", "Pinch to zoom"], ["Click", "Tap"], ["click", "tap"]]:
+		text = text.replace(w[0], w[1])
+	return text
+
+
 static func label(text: String, font_size := 20, color := Color.WHITE, heading := false) -> Label:
 	var l := Label.new()
 	l.text = text
 	var ls := LabelSettings.new()
 	if heading:
 		ls.font = font()
+	if font_size < 20 and Game.mobile():   # (small print a little bigger on a phone's small screen)
+		font_size = mini(font_size + 3, 20)
 	ls.font_size = font_size
 	ls.font_color = color
 	ls.outline_size = maxi(3, font_size / 10)

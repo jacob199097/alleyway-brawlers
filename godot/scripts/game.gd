@@ -88,6 +88,8 @@ var pad: PadScript
 const PadScript := preload("res://scripts/pad.gd")
 ## Touch screens (scripts/touch.gd): taps, drags, hold to zoom, pinch, the back button
 var touch: Node
+## Phones without black bars (scripts/widescreen.gd): Game.wide.margin is where the 1920×1080 frame sits on the screen
+var wide: Node
 ## Steam (scripts/steam.gd): on only in the Steam build; otherwise steam.active is false and it does nothing
 var steam: SteamScript
 const SteamScript := preload("res://scripts/steam.gd")
@@ -110,6 +112,9 @@ func _ready() -> void:
 	pad = PadScript.new()   # (made here, not an autoload: patches can't add autoloads)
 	pad.name = "Pad"
 	add_child(pad)
+	wide = load("res://scripts/widescreen.gd").new()
+	wide.name = "Widescreen"
+	add_child(wide)
 	touch = load("res://scripts/touch.gd").new()
 	touch.name = "Touch"
 	add_child(touch)
@@ -443,7 +448,11 @@ func window_size() -> Vector2i:
 
 ## A phone or tablet (the Android build; "--mobile" tries it on a PC): touch, no windows, no keyboard.
 func mobile() -> bool:
-	return OS.has_feature("mobile") or "--mobile" in OS.get_cmdline_user_args()
+	if _mobile == -1:
+		_mobile = 1 if OS.has_feature("mobile") or "--mobile" in OS.get_cmdline_user_args() else 0
+	return _mobile == 1
+
+var _mobile := -1
 
 
 func apply_settings() -> void:

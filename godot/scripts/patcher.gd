@@ -101,6 +101,12 @@ static func _sweep(keep: String) -> void:
 
 ## Start the game again (to load a freshly installed patch).
 func restart() -> void:
+	if OS.has_feature("android"):
+		# The app relaunches itself (Godot's activity starts again in a new process); should a phone not
+		# allow it, the game just closes and the patch loads when the player opens it again
+		OS.create_instance([])
+		get_tree().quit()
+		return
 	var args := OS.get_cmdline_args()
 	var user := OS.get_cmdline_user_args()
 	if not user.is_empty():
