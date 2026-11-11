@@ -71,6 +71,14 @@ async function rejects(promise, pattern) {
     const { rows: [{ rarity: kadeRarity }] } = await q(`SELECT rarity FROM cards WHERE art_url = 'card_nebu_001'`);
     const value = crafting.VALUES[kadeRarity];
 
+    // ── A deck has 40 to 60 cards: the database's own guard lets a 41- to 60-card deck through, not 61 ──
+    const { rows: [big] } = await q(`INSERT INTO decks (player_id, name) VALUES ($1, 'big') RETURNING id`, [id]);
+    const some = (await q(`SELECT id FROM cards WHERE card_type <> 'leader' ORDER BY art_url LIMIT 21`)).rows.map(x => x.id);
+    for (const cid of some.slice(0, 20)) await q('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, 3)', [big.id, cid]);
+    assert.equal(Number((await q('SELECT SUM(copies) AS n FROM deck_cards WHERE deck_id = $1', [big.id])).rows[0].n), 60, 'a 60-card deck saves');
+    await rejects(q('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, 1)', [big.id, some[20]]), /at most 60 cards \(this one has 61\)/);
+    await q('DELETE FROM decks WHERE id = $1', [big.id]);
+
     // ── Crafting ──
     await give('card_nebu_001', 5);   // 2 extras
     await give('card_nebu_009', 2);  // a leader: 1 extra

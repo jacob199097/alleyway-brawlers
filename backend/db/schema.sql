@@ -162,7 +162,7 @@ CREATE TABLE deck_cards (
     PRIMARY KEY (deck_id, card_id)
 );
 
--- Enforce 40-60 card rule via application layer (trigger shown below)
+-- A deck has 40 to 60 cards (routes/deck.js); the trigger stops a deck past 60 (db/migrate_deck_size.sql)
 CREATE OR REPLACE FUNCTION enforce_deck_size()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
@@ -173,8 +173,8 @@ BEGIN
     FROM   deck_cards
     WHERE  deck_id = COALESCE(NEW.deck_id, OLD.deck_id);
 
-    IF total_cards > 40 THEN
-        RAISE EXCEPTION 'Deck cannot exceed 40 cards (current: %)', total_cards;
+    IF total_cards > 60 THEN
+        RAISE EXCEPTION 'A deck has at most 60 cards (this one has %)', total_cards;
     END IF;
     RETURN NEW;
 END;
