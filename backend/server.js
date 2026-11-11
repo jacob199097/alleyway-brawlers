@@ -100,6 +100,7 @@ app.use('/api/steam', require('./routes/steam'));   // Steam sign-in, linking an
 app.use('/api/territory', require('./routes/territory'));   // the turf map (economy/territory.js)
 app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (economy/veterans.js)
 app.use('/api/auction', require('./routes/auction'));   // the auction house (economy/auction.js)
+app.use('/api/seasons', require('./routes/seasons'));   // ranked seasons and their rewards (economy/seasons.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
 

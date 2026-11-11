@@ -74,6 +74,13 @@ function calcRank(rankPoints) {
     return { tier, points: clamped };
 }
 
+/** A Ranked game for the season (economy/seasons.js): counted, and its Rank Points kept if the most yet. */
+async function seasonGame(client, playerId, rankPoints) {
+    await client.query(
+        'UPDATE players SET season_ranked = season_ranked + 1, season_peak_points = GREATEST(season_peak_points, $2) WHERE id = $1',
+        [playerId, rankPoints]);
+}
+
 // ── Core Export ───────────────────────────────────────────────────────────────
 
 async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
@@ -173,6 +180,8 @@ async function resolveMatch({ winnerId, loserId, p1Id, p2Id, matchMeta = {} }) {
                     playerId, levelRewards(p.level, newLevel).packsEarned,
                 ]
             );
+            // The season (economy/seasons.js): a Ranked game played, and the most Rank Points reached
+            if (matchMeta.ranked !== false) await seasonGame(client, playerId, clampedRankPts);
 
             results[playerId] = {
                 outcome,
@@ -272,6 +281,7 @@ async function resolveSoloMatch({ playerId, outcome, matchMeta = {} }) {
                 playerId, levelRewards(p.level, newLevel).packsEarned,
             ]
         );
+        if (matchMeta.ranked === true) await seasonGame(client, playerId, clampedRankPts);
 
         await client.query('COMMIT');
 
@@ -347,4 +357,4 @@ async function resolveFfaMatch({ playerId, place, humans }) {
     return { ...await resolveSoloMatch({ playerId, outcome, matchMeta: meta }), place };
 }
 
-module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, resolveFfaMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY, FIRST_WIN_BONUS_XP };
+module.exports = { resolveMatch, resolveSoloMatch, resolveCpuMatch, resolveFfaMatch, calcLevel, calcRank, levelRewards, LEVEL_THRESHOLDS, AVATAR_EVERY, FIRST_WIN_BONUS_XP, RANK_TIERS };

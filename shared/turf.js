@@ -6,6 +6,7 @@
 import fs from 'fs';
 import { CARD_CATALOG } from './cards.js';
 import { starterRecipe, expand } from './clans.js';
+import { seasonPrizeCardIds } from './seasons.js';
 
 export const BOSS_DATA = JSON.parse(fs.readFileSync(new URL('../godot/data/bosses.json', import.meta.url), 'utf8'));
 // A boss waits until its prize card is in the game (a new boss can ship before its prize's art is done:
@@ -22,9 +23,10 @@ export function prizeLine(id) {
     return out;
 }
 
-/** Every boss-only card (the prizes and their levels): never in packs, never crafted. */
+/** Every prize-only card: the bosses' prizes and the ranked seasons' (shared/seasons.js), with their
+ *  levels. Never in packs, never crafted, scrapped or sold. */
 export function prizeCardIds() {
-    return new Set(BOSSES.flatMap(b => prizeLine(b.prize)));
+    return new Set([...BOSSES.flatMap(b => prizeLine(b.prize)), ...seasonPrizeCardIds()]);
 }
 export const bossLevel = (boss, n) => (boss?.levels || []).find(l => l.level === Number(n)) || null;
 

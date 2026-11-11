@@ -95,6 +95,13 @@ jobs:
         run: node backend/site/site.test.cjs
       - name: The account emails (the link, pictures only from the website, nothing that tracks, under Gmail's size limit)
         run: node backend/utils/mailer.test.cjs
+      - name: Ranked seasons (Ranked games and the season's best counted, ending a season, rewards claimed once)
+        run: node backend/economy/seasons.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
       - name: Crafting and achievements
         run: node backend/economy/progression.test.cjs
         env:
