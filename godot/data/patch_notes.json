@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.143",
+        "notes": [
+            "PLUNDER: a character you plunder from your opponent's side is ready to fight, so it can attack in the same turn you take it.",
+            "Right-click an opponent's card in a match to see its card XP and veteran rank, the same as your own cards.",
+            "A Striver's EVOLUTION now shows how each level promotes, taken from the card's own text.",
+            "Decks of 41 to 60 cards save again."
+        ]
+    },
+    {
         "version": "0.9.142",
         "notes": [
             "Ranked seasons: this is Season 0, and it runs until the game launches. Press SEASON 0 · REWARDS on the Ranked tile to see what each rank pays.",
