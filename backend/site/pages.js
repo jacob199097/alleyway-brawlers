@@ -20,6 +20,8 @@
  * filters, the keyword pop-ups) is website/site.js. Every page works without it.
  */
 
+const fs = require('fs');
+const path = require('path');
 const { esc, GROUPS } = require('./data');
 const images = require('./images');
 
@@ -27,8 +29,18 @@ const GAME = 'AlleyWay Brawlers';
 const TAGLINE = 'Pick a clan. Build a deck. Take the city.';
 const ABOUT = 'A card game of street clans for Windows, Mac and Android. Deploy your crew, set Ambushes, '
     + 'promote your Strivers mid-fight and bring the other side\'s Morale to zero.';
-// Pre-launch: docs/LAUNCH_CHECKLIST.md wipes every account at launch. Empty this then ('' = no note).
-const PRELAUNCH = 'The game is in pre-launch testing: accounts and progress will be reset when it launches.';
+// Pre-launch: docs/LAUNCH_CHECKLIST.md wipes every account at launch. Empty both then ('' = none).
+const STAGE = 'Alpha';   // (the tag by the version)
+const PRELAUNCH = 'The game is in alpha: it is still being built, so expect rough edges and changes. '
+    + 'Accounts and progress will be reset when it launches.';
+
+// The stores the game is coming to: [id, name, its store page]. No store page yet = "Coming soon to";
+// with one, the badge links there. Logos (one colour, from Simple Icons) in website/img/<id>.svg.
+const STORES = [['steam', 'Steam', ''], ['googleplay', 'Google Play', '']];
+const LOGOS = Object.fromEntries(STORES.map(([id]) => {
+    const svg = fs.readFileSync(path.join(__dirname, '../../website/img', `${id}.svg`), 'utf8');
+    return [id, `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${esc(/ d="([^"]+)"/.exec(svg)[1])}"/></svg>`];
+}));
 
 const NAV = [['/clans', 'Clans'], ['/cards', 'Cards'], ['/how-to-play', 'How to play'], ['/news', 'News']];
 
@@ -211,13 +223,27 @@ ${build ? `<a class="btn" href="${href}">Download <small>${mb(build.size)}</smal
     return `<section class="band" id="download">
 <div class="wrap">
 <h2>Download</h2>
-<p class="lead">Version ${esc(ctx.latest)}. One account works on all three, and everyone plays on the same servers. The game keeps itself up to date: small updates download when you start it.</p>
+<p class="lead">${version(ctx)}. One account works on all three, and everyone plays on the same servers. The game keeps itself up to date: small updates download when you start it.</p>
 <div class="dls">
 ${boxes}
 </div>
+${stores()}
 ${PRELAUNCH ? `<p class="note">${PRELAUNCH}</p>` : ''}
 </div>
 </section>`;
+}
+
+// "Version 0.9.140", with the Alpha tag before it while there is one
+function version(ctx) {
+    return `${STAGE ? `<span class="stage">${STAGE}</span> ` : ''}Version ${esc(ctx.latest)}`;
+}
+
+// The store badges: "Coming soon to Steam" until a store page exists, then a link to it
+function stores() {
+    return `<div class="stores">${STORES.map(([id, name, href]) => {
+        const inner = `${LOGOS[id]}<span><small>${href ? 'Get it on' : 'Coming soon to'}</small>${name}</span>`;
+        return href ? `<a class="store" href="${esc(href)}">${inner}</a>` : `<span class="store">${inner}</span>`;
+    }).join('')}</div>`;
 }
 
 function update(note, heading = 'h3') {
@@ -262,7 +288,8 @@ ${media}
 <p class="tagline">${TAGLINE}</p>
 <p class="lead">${ABOUT}</p>
 <div class="cta">${buttons}</div>
-<p class="fine">Version ${esc(ctx.latest)} · <a href="#download">How to install</a> · <a href="/how-to-play">How to play</a></p>
+${stores()}
+<p class="fine">${version(ctx)} · <a href="#download">How to install</a> · <a href="/how-to-play">How to play</a></p>
 </div>
 </section>
 

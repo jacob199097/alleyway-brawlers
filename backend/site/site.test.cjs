@@ -69,7 +69,12 @@ const server = http.createServer(app).listen(0, async () => {
         }
         assert.ok(html['/'].includes('href="/download/windows"'), 'the build there is, is offered');
         assert.ok(!html['/'].includes('href="/download/mac"') && html['/'].includes('Not available yet'), 'a build there isn\'t, is not');
-        assert.ok(html['/'].includes('accounts and progress will be reset'), 'the pre-launch note is by the downloads');
+        assert.ok(html['/'].includes('Accounts and progress will be reset'), 'the pre-launch note is by the downloads');
+        assert.equal(count(html['/'], '<span class="stage">Alpha</span>'), 2, 'the version says alpha, at the top and by the downloads');
+        for (const store of ['Steam', 'Google Play']) {
+            assert.equal(count(html['/'], `<small>Coming soon to</small>${store}</span>`), 2, `coming soon to ${store}, at the top and by the downloads`);
+        }
+        assert.equal(count(html['/'], '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M'), 4, 'each store with its logo');
         assert.ok(html['/'].includes('href="mailto:hello@example.com"'), 'the contact address the legal pages give is in the footer');
 
         // ── A clan's page: its leader, every Striver line as three levels, every card ────────────

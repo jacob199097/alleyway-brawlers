@@ -43,9 +43,12 @@ To put a change live: commit, push, `node tools/deploy.mjs`.
   (the privacy policy says only other players see those).
 - **No cookies, trackers or files from other sites.** The footer says so and the test checks it.
   Fonts and scripts live in this folder.
-- **Say only what's true today.** The note by the downloads (`PRELAUNCH` in `pages.js`) says accounts
-  will be reset at launch: change it at launch (`docs/LAUNCH_CHECKLIST.md`). No prices, no store
-  promises until they're real.
+- **Say only what's true today.** The Alpha tag by the version (`STAGE` in `pages.js`) and the note by
+  the downloads (`PRELAUNCH`: accounts will be reset at launch) go at launch (`docs/LAUNCH_CHECKLIST.md`).
+  The store badges (`STORES`) say "Coming soon to" Steam and Google Play; once a store page is up, put
+  its address there and the badge links to it ("Get it on"). The logos are the plain one-colour marks
+  (`website/img/steam.svg`, `googleplay.svg`, from Simple Icons): Google's and Valve's official badges
+  are only for a game that has its store page. No prices.
 - **One address.** A page asked for through the server's other names (play., www., the DuckDNS one)
   is sent to `SITE_URL` (`.env`, default `https://alleywaybrawlers.com`). The game's own calls
   (`/api`, `/download`, the sockets) are never redirected.

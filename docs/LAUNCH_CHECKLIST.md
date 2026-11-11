@@ -11,7 +11,8 @@ Tick items off as you go. The steps that need a decision are marked **Decide**.
     for now.
   - Achievements uploaded (`node tools/steam_achievements.mjs --csv`), and Microtransactions switched on.
 - [ ] **Store page** up as "Coming Soon" at least two weeks before release: capsule images, screenshots,
-  the description and tags.
+  the description and tags. Put its address in `STORES` in `backend/site/pages.js`: the website's Steam
+  badge then links to it (the same for Google Play once that page is up).
 - [ ] **Test build on Steam:** `node tools/steam_build.mjs <Godot console exe> --upload --live` puts it on
   the "beta" branch. Install it from Steam (a free key from Steamworks), sign in with Steam, buy
   Contraband in the sandbox, and try it on a Steam Deck if you can.
@@ -60,9 +61,9 @@ same build:
     nobody plays launch players with old rules.
   - **patchBase** 1.0.0: later updates are made against the launch build, so they stay small.
 - [ ] Patch notes for 1.0.0 at the top of `godot/data/patch_notes.json` (players see them once).
-- [ ] The website: the note under its download buttons says accounts will be reset at launch. Change or
-  empty it (`PRELAUNCH` in `backend/site/pages.js`) and fix the test that looks for it
-  (`backend/site/site.test.cjs`). See `website/README.md`.
+- [ ] The website: the Alpha tag by the version (`STAGE`) and the note under its download buttons (alpha,
+  accounts reset at launch: `PRELAUNCH`), both in `backend/site/pages.js`. Change or empty them and fix the
+  test that looks for them (`backend/site/site.test.cjs`). See `website/README.md`.
 - [ ] Full builds: Windows (`builds/windows_1.0.0/`, zipped as `AlleywayBrawlers-1.0.0-windows.zip`),
   Mac (`node tools/build_mac.mjs <Godot>`) and Steam (`node tools/steam_build.mjs <Godot> --upload`).
   See "Game versions and updates" in `docs/CARD_PIPELINE.md`.
