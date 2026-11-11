@@ -20,6 +20,16 @@ const STATUS_STYLE := {
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 	"guarded": [Color("a0d8ff"), "SAFE", "CAN'T BE ATTACKED"],
 }
+const Keywords := preload("res://scripts/keywords.gd")
+## A status's keyword, for its colour with Colour-Blind Colours on
+const STATUS_KEYWORD := {"equipped": "EQUIP", "resting": "RESTING", "guarded": "GUARDED"}
+
+
+## A status tag's colour: its own, or its keyword's group colour with Colour-Blind Colours on.
+static func status_color(k: String) -> Color:
+	if Keywords.cb():
+		return Keywords.color(STATUS_KEYWORD.get(k, k.to_upper()))
+	return STATUS_STYLE[k][0]
 
 
 ## The number a status carries ("" if none): a BURN's or POISON's amount a turn, a BLEED's per brawl
@@ -303,21 +313,28 @@ func _update_badge() -> void:
 		_badge_box.border_color = Color(1.0, 0.85, 0.42, 0.5)
 		_badge.text = badge_text
 		return
-	# Small ATK / DEF labels, the numbers coloured when raised (green) or lowered (red);
-	# a Downed card's badge gets a red edge
-	_badge_box.border_color = Color(1.0, 0.36, 0.36, 0.85) if downed else Color(1, 1, 1, 0.16)
+	# Small ATK / DEF labels, the numbers coloured when raised (green) or lowered (red), or with
+	# Colour-Blind Colours blue ▲ / orange ▼; a Downed card's badge gets a red (orange) edge
+	_badge_box.border_color = (Color(1.0, 0.65, 0.19, 0.9) if Keywords.cb() else Color(1.0, 0.36, 0.36, 0.85)) if downed else Color(1, 1, 1, 0.16)
 	var atk_col := _stat_color(_stats[0], _stats[2], "ffe6a8")
 	var def_col := _stat_color(_stats[1], _stats[3], "cfe9ff")
-	_badge.text = "[center][font_size=10][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d[/color][/b]   [font_size=10][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d[/color][/b][/center]" \
-		% [atk_col, _stats[0], def_col, _stats[1]]
+	_badge.text = "[center][font_size=10][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d%s[/color][/b]   [font_size=10][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d%s[/color][/b][/center]" \
+		% [atk_col, _stats[0], _stat_mark(_stats[0], _stats[2]), def_col, _stats[1], _stat_mark(_stats[1], _stats[3])]
 
 
 static func _stat_color(v: int, base: int, normal: String) -> String:
 	if v > base:
-		return "5dff8f"
+		return "6cc4ff" if Keywords.cb() else "5dff8f"
 	if v < base:
-		return "ff5a5a"
+		return "ffa630" if Keywords.cb() else "ff5a5a"
 	return normal
+
+
+## With Colour-Blind Colours on, an arrow by a changed number, so the change doesn't rest on colour alone.
+static func _stat_mark(v: int, base: int) -> String:
+	if not Keywords.cb() or v == base:
+		return ""
+	return "▲" if v > base else "▼"
 
 
 ## Shown on the field, hidden while flying, and never for the opponent's face-down cards.
@@ -632,7 +649,7 @@ func _draw_statuses() -> void:
 	for k in statuses:
 		if not STATUS_STYLE.has(k):
 			continue
-		var col: Color = STATUS_STYLE[k][0]
+		var col: Color = status_color(k)
 		# (with its number: "BRN 200")
 		var amt := status_amount(card, k)
 		var text: String = STATUS_STYLE[k][1] + (" " + amt if amt != "" else "")

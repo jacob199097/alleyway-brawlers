@@ -317,8 +317,8 @@ func _show_detail(c: Dictionary) -> void:
 	t.fit_content = true
 	t.scroll_active = false
 	t.meta_underlined = false
-	t.add_theme_font_size_override("normal_font_size", 18)
-	t.add_theme_font_size_override("bold_font_size", 18)
+	t.add_theme_font_size_override("normal_font_size", UI.text_size(18))
+	t.add_theme_font_size_override("bold_font_size", UI.text_size(18))
 	t.add_theme_color_override("default_color", Color(0.88, 0.88, 0.95))
 	t.text = Keywords.markup(str(c.get("effectText", "")))
 	t.custom_minimum_size = Vector2(480, 0)

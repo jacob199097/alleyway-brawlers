@@ -71,6 +71,59 @@ func _site_shots() -> void:
 			await _shot("site_duel_%s_%02d" % [arena, i], 4.5)
 
 
+## Settings → Accessibility: the same screens with everything off ("acc_off_") and with Larger text and
+## Colour-Blind Colours ("acc_on_"), to compare. Only the settings in memory change: nothing is saved.
+func _access_shots() -> void:
+	var version := str(ProjectSettings.get_setting("application/config/version", ""))
+	for run in [["off", 0, false], ["on", 2, true]]:
+		var tag: String = run[0]
+		Game.settings.text_size = run[1]
+		Game.settings.cb_colors = run[2]
+		UI.reset_theme()
+		Game.go("main_menu")
+		await get_tree().create_timer(2.0).timeout
+		SettingsPanel.open(_screen())
+		await get_tree().process_frame
+		var panel: SettingsPanel = _screen().get_children().filter(func(c): return c is SettingsPanel)[0]
+		panel._show("access")
+		await _shot("acc_%s_settings" % tag, 0.6)
+		panel.close()
+		var htp: Control = load("res://scripts/ui/how_to_play.gd").open(_screen())
+		htp._show("KEYWORDS")
+		await _shot("acc_%s_keywords" % tag, 0.8)
+		htp.queue_free()
+		_screen()._show_patch_notes("0.6.0", version)
+		await _shot("acc_%s_patch_notes" % tag, 1.4)
+		var poison := ""   # (a card with a few keywords in its text, zoomed)
+		for c in CardDB.all().values():
+			if UI.Keywords.found(str(c.get("effectText", ""))).size() >= 3 and c.get("cardType") == "gang_member":
+				poison = str(c.id)
+				break
+		Game.go("card_library")
+		await get_tree().create_timer(2.4).timeout
+		UI.card_zoom(_screen(), CardDB.get_card(poison), true)
+		await _shot("acc_%s_zoom" % tag, 1.0)
+		# A CPU match, both sides played by the CPU: the card panel, then the battle log
+		Game.duel_setup = await Game.load_duel_deck()
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		var d = _screen()
+		if d._menu:   # (the opening hand: keep it)
+			for b in d._menu.find_children("*", "Button", true, false):
+				b.pressed.emit()
+				break
+		d.ai_sides = ["player", "opponent"]
+		d._after_events()
+		for i in 3:
+			await _shot("acc_%s_duel_%d" % [tag, i], 9.0)
+		d._show_detail(CardDB.get_card(poison), [900, 300], ["poison", "downed"])
+		await _shot("acc_%s_duel_detail" % tag, 0.6)
+		d._toggle_log()
+		await _shot("acc_%s_duel_log" % tag, 0.6)
+
+
 ## The turf map (a district opened, last week's Karat claimed), veteran cards in the library and the
 ## zoom, a CPU match fought in a district (both sides' marks), and the post-match lines.
 func _turf_map_shots() -> void:
@@ -290,6 +343,10 @@ func _run() -> void:
 		return
 	if "--auction" in OS.get_cmdline_user_args():
 		await _auction_shots()
+		get_tree().quit()
+		return
+	if "--access" in OS.get_cmdline_user_args():   # (Settings → Accessibility, off and on)
+		await _access_shots()
 		get_tree().quit()
 		return
 	if "--school" in OS.get_cmdline_user_args():   # (every Street School page)

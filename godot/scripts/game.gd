@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS := {
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
+	"cb_colors": false,             # colour-blind colours: keywords by what they do, stat changes blue ▲ / orange ▼ (Keywords.color)
+	"text_size": 0,                 # 0 normal, 1 large, 2 larger: reading text and small print (UI.text_size)
 	"screen_fx": 1.0,               # screen shake, flashes and impact frames: 1 full, 0.5 reduced, 0 off
 	"photosensitive": false,        # Photosensitive mode: no flashes, flickers or quick changes in brightness (photosafe)
 	"ambience_volume": 0.8,         # rain, the crowd, the wind (Game.sound)
@@ -402,6 +404,8 @@ func set_setting(key: String, value) -> void:
 	if key == "graphics" and GRAPHICS.has(value):   # a preset sets its parts
 		for k in GRAPHICS[value]:
 			settings[k] = GRAPHICS[value][k]
+	elif key == "text_size":   # (screens opened from now on get the new sizes)
+		UI.reset_theme()
 	elif key in ["arena_fx", "card_motion"]:   # a part changed by hand: the preset it matches, or custom
 		settings.graphics = "custom"
 		for g in GRAPHICS:

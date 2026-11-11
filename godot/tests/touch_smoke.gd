@@ -156,7 +156,9 @@ func _gestures() -> void:
 	layer.queue_free()
 
 
-func _duel() -> void:
+## `deal`: which match this is. A random opening hand now and then has nothing to play on turn 1, and
+## dragging needs a card that can be played: then a new match is dealt (up to 5).
+func _duel(deal := 1) -> void:
 	Game.offline = true
 	Game.duel_setup = {"first": "player"}
 	Game.go("duel")
@@ -205,6 +207,10 @@ func _duel() -> void:
 	await _wait(0.4)
 	var playable: Array = d.hand.player.filter(func(v): return d._playable(v.card) or d._settable(v.card))
 	if playable.is_empty():
+		if deal < 5:
+			print("  (nothing to play in this opening hand: dealing a new match)")
+			await _duel(deal + 1)
+			return
 		_check(false, "the opening hand has a card to play")
 		return
 	at = playable[0].get_global_transform_with_canvas().origin

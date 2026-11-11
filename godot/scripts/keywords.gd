@@ -50,6 +50,33 @@ const STATUS_HELP := {
 	"GUARDED": [Color("a0d8ff"), "CAN'T BE ATTACKED: its owner has another character that can be, so attacks have to go there. It doesn't stop effects, and it's off while the card is Downed, SILENCED or face-down."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
+## Settings → Accessibility → Colour-Blind Colours: keywords coloured by what they do, in colours
+## people with colour blindness can tell apart (Okabe-Ito, lightened for the dark screens). A keyword
+## in none of these keeps its own colour.
+const CB_GROUPS := [
+	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX"]],   # damage and weakening
+	[Color("eb9cd0"), ["STUN", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED"]],   # holding back
+	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS"]],   # protection and recovery
+	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE"]],   # card rules
+]
+const CB_STATUS := {"DOWNED": Color("ffa630"), "RESTING": Color("f0e442"), "GUARDED": Color("6cc4ff")}
+
+
+## A keyword's (or status's) colour: its own, or its group's with Colour-Blind Colours on.
+static func color(kw: String) -> Color:
+	if cb():
+		if CB_STATUS.has(kw):
+			return CB_STATUS[kw]
+		for g in CB_GROUPS:
+			if kw in g[1]:
+				return g[0]
+	if STATUS_HELP.has(kw):
+		return STATUS_HELP[kw][0]
+	return LIST[kw][0] if LIST.has(kw) else Color("e6e6f0")
+
+
+static func cb() -> bool:
+	return bool(Game.settings.get("cb_colors", false))
 const ENDINGS := [["ED", ""], ["NED", ""], ["ING", ""], ["S", ""], ["D", ""], ["ED", "E"], ["ING", "E"]]
 
 
@@ -128,7 +155,7 @@ static func markup(text: String) -> String:
 		var kw: String = tagged[1][i]
 		out += _escape(text.substr(at, m.get_start() - at))
 		if kw != "":
-			out += "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, LIST[kw][0].to_html(false), word]
+			out += "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, color(kw).to_html(false), word]
 		elif word == word.to_upper() and clans.has(word):
 			out += "[b][color=#%s]%s[/color][/b]" % [Color(clans[word]).to_html(false), word]
 		else:
@@ -140,10 +167,10 @@ static func markup(text: String) -> String:
 ## Tooltip text for a keyword.
 static func describe(kw: String) -> String:
 	if STATUS_HELP.has(kw):
-		return "[b][color=#%s]%s[/color][/b]\n%s" % [STATUS_HELP[kw][0].to_html(false), "CAN'T ATTACK YET" if kw == "RESTING" else kw, STATUS_HELP[kw][1]]
+		return "[b][color=#%s]%s[/color][/b]\n%s" % [color(kw).to_html(false), "CAN'T ATTACK YET" if kw == "RESTING" else kw, STATUS_HELP[kw][1]]
 	if not LIST.has(kw):
 		return ""
-	return "[b][color=#%s]%s[/color][/b]\n%s" % [LIST[kw][0].to_html(false), full_name(kw), LIST[kw][1]]
+	return "[b][color=#%s]%s[/color][/b]\n%s" % [color(kw).to_html(false), full_name(kw), LIST[kw][1]]
 
 
 ## A keyword's whole name ("LOADED" -> "LOADED DICE").

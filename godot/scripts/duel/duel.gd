@@ -604,8 +604,8 @@ func _build_log() -> void:
 	_log_text.bbcode_enabled = true
 	_log_text.scroll_following = true
 	_log_text.custom_minimum_size = Vector2(530, 580)
-	_log_text.add_theme_font_size_override("normal_font_size", 19)
-	_log_text.add_theme_font_size_override("bold_font_size", 19)
+	_log_text.add_theme_font_size_override("normal_font_size", UI.text_size(19))
+	_log_text.add_theme_font_size_override("bold_font_size", UI.text_size(19))
 	col.add_child(_log_text)
 	ui.add_child(p)
 	_ui.log = p
@@ -5184,7 +5184,7 @@ func _ev_status(ev: Dictionary) -> void:
 	if v == null:
 		return
 	var style: Array = CardView.STATUS_STYLE.get(ev.kind, [GOLD, "", str(ev.kind).to_upper()])
-	var col: Color = style[0]
+	var col: Color = CardView.status_color(ev.kind) if CardView.STATUS_STYLE.has(ev.kind) else style[0]
 	if ev.kind != "shock" and not v.statuses.has(ev.kind):
 		var st := v.statuses.duplicate()
 		st.append(ev.kind)
@@ -5214,7 +5214,7 @@ func _ev_status_tick(ev: Dictionary) -> void:
 	var v: CardView = field[ev.side].get(ev.slot)
 	if v == null:
 		return
-	var col: Color = CardView.STATUS_STYLE.get(ev.kind, [GOLD])[0]
+	var col: Color = CardView.status_color(ev.kind) if CardView.STATUS_STYLE.has(ev.kind) else GOLD
 	var text := "-%d ATK" % int(ev.amount)
 	if ev.kind == "burn":
 		text = "BURN -%d" % int(ev.amount)
@@ -6904,9 +6904,9 @@ func _build_detail() -> void:
 	text.bbcode_enabled = true
 	text.position = Vector2(20, y + 104)
 	text.size = Vector2(w, p.size.y - y - 104 - 14)
-	text.add_theme_font_size_override("normal_font_size", 21 if phone else 16)
-	text.add_theme_font_size_override("italics_font_size", 20 if phone else 15)
-	text.add_theme_font_size_override("bold_font_size", 21 if phone else 16)
+	text.add_theme_font_size_override("normal_font_size", UI.text_size(21 if phone else 16, false))
+	text.add_theme_font_size_override("italics_font_size", UI.text_size(20 if phone else 15, false))
+	text.add_theme_font_size_override("bold_font_size", UI.text_size(21 if phone else 16, false))
 	text.meta_underlined = false
 	text.mouse_filter = Control.MOUSE_FILTER_PASS   # keywords explain themselves when hovered
 	p.add_child(text)
@@ -6920,8 +6920,8 @@ func _build_detail() -> void:
 	tip_text.fit_content = true
 	tip_text.scroll_active = false
 	tip_text.custom_minimum_size = Vector2(minf(w, 420.0) if phone else 300.0, 0)
-	tip_text.add_theme_font_size_override("normal_font_size", 19 if phone else 15)
-	tip_text.add_theme_font_size_override("bold_font_size", 21 if phone else 17)
+	tip_text.add_theme_font_size_override("normal_font_size", UI.text_size(19 if phone else 15, false))
+	tip_text.add_theme_font_size_override("bold_font_size", UI.text_size(21 if phone else 17, false))
 	tip_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tip.add_child(tip_text)
 	p.add_child(tip)
@@ -6971,10 +6971,12 @@ func _status_word(k, amt := "") -> String:
 		word += " " + amt
 	var kw := Keywords.find(word)
 	if kw != "" and STATUS_COLORS.get(k) == null:
-		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, Keywords.LIST[kw][0].to_html(false), word]
+		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [kw, Keywords.color(kw).to_html(false), word]
+	var col: String = Keywords.CB_STATUS[str(k).to_upper()].to_html(false) if Keywords.cb() and Keywords.CB_STATUS.has(str(k).to_upper()) \
+		else STATUS_COLORS.get(k, "e6e6f0")
 	if Keywords.STATUS_HELP.has(str(k).to_upper()):   # (DOWNED, CAN'T ATTACK YET: explained when hovered too)
-		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [str(k).to_upper(), STATUS_COLORS.get(k, "e6e6f0"), Keywords._escape(word)]
-	return "[b][color=#%s]%s[/color][/b]" % [STATUS_COLORS.get(k, "e6e6f0"), Keywords._escape(word)]
+		return "[url=%s][b][color=#%s]%s[/color][/b][/url]" % [str(k).to_upper(), col, Keywords._escape(word)]
+	return "[b][color=#%s]%s[/color][/b]" % [col, Keywords._escape(word)]
 
 
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
@@ -7028,8 +7030,9 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		var base_def := int(c.get("base_defense", c.get("defense", 0)))
 		var atk: int = live_stats[0] if live_stats.size() >= 2 else base_atk
 		var def: int = live_stats[1] if live_stats.size() >= 2 else base_def
-		_ui.detail_stats.text = "[color=#%s]ATK %d[/color]   [color=#%s]DEF %d[/color]" % [
-			CardView._stat_color(atk, base_atk, "ffd86b"), atk, CardView._stat_color(def, base_def, "9ddcff"), def]
+		_ui.detail_stats.text = "[color=#%s]ATK %d%s[/color]   [color=#%s]DEF %d%s[/color]" % [
+			CardView._stat_color(atk, base_atk, "ffd86b"), atk, CardView._stat_mark(atk, base_atk),
+			CardView._stat_color(def, base_def, "9ddcff"), def, CardView._stat_mark(def, base_def)]
 	else:
 		_ui.detail_stats.text = ""
 	var body := Keywords.markup(str(c.get("effectText", "")))

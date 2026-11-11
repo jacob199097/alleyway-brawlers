@@ -385,8 +385,8 @@ func _build_ui() -> void:
 	_body.fit_content = true
 	_body.scroll_active = false
 	_body.custom_minimum_size = Vector2(350, 0)
-	_body.add_theme_font_size_override("normal_font_size", 20)
-	_body.add_theme_font_size_override("bold_font_size", 20)
+	_body.add_theme_font_size_override("normal_font_size", UI.text_size(20))
+	_body.add_theme_font_size_override("bold_font_size", UI.text_size(20))
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_body)
 	_next = UI.button("NEXT  ▶", _advance, Vector2(350, 52), UI.GOLD)

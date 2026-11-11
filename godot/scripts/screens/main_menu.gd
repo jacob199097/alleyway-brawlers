@@ -253,8 +253,8 @@ func _show_patch_notes(seen: String, mine: String) -> void:
 	text.bbcode_enabled = true
 	text.fit_content = true
 	text.custom_minimum_size = Vector2(1000, 0)
-	text.add_theme_font_size_override("normal_font_size", 21)
-	text.add_theme_font_size_override("bold_font_size", 24)
+	text.add_theme_font_size_override("normal_font_size", UI.text_size(21))
+	text.add_theme_font_size_override("bold_font_size", UI.text_size(24))
 	text.text = "
 ".join(lines)
 	var scroll := ScrollContainer.new()

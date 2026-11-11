@@ -60,7 +60,7 @@ static func theme() -> Theme:
 	th.set_font_size("font_size", "LineEdit", 22)
 	th.set_color("font_placeholder_color", "LineEdit", Color(1, 1, 1, 0.35))
 	th.set_color("default_color", "RichTextLabel", Color(0.9, 0.9, 1.0))
-	th.set_font_size("normal_font_size", "RichTextLabel", 20 if Game.mobile() else 18)
+	th.set_font_size("normal_font_size", "RichTextLabel", text_size(20 if Game.mobile() else 18))
 	var track := box(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0), 0, 6)
 	track.content_margin_top = 6
 	track.content_margin_bottom = 6
@@ -80,7 +80,7 @@ static func theme() -> Theme:
 	tip.shadow_size = 6
 	th.set_stylebox("panel", "TooltipPanel", tip)
 	th.set_color("font_color", "TooltipLabel", Color(0.92, 0.92, 1.0))
-	th.set_font_size("font_size", "TooltipLabel", 18)
+	th.set_font_size("font_size", "TooltipLabel", text_size(18))
 	# Dropdown menus in the same look
 	th.set_stylebox("panel", "PopupMenu", box(Color(0.05, 0.05, 0.12, 0.98), Color(BLUE, 0.6), 2, 8))
 	th.set_stylebox("hover", "PopupMenu", box(Color("28305e"), Color(0, 0, 0, 0), 0, 4))
@@ -144,14 +144,37 @@ static func touch_words(text: String) -> String:
 	return text
 
 
+## Settings → Accessibility → Text Size: how much reading text and small print grow (Normal, Large, Larger)
+const TEXT_SCALES := [1.0, 1.15, 1.3]
+## Text this size and up (headings, big numbers) stays as it is, so the layouts hold
+const TEXT_SCALE_BELOW := 28
+
+
+## A text size with Text Size (and a phone's small screen) applied: small print and reading text grow,
+## headings don't. Every label goes through it; set sizes of reading text (card text, the battle log,
+## mail, How to Play) call it too.
+## `phone`: false where the size already has a phone's own (21 if phone else 16).
+static func text_size(px: int, phone := true) -> int:
+	if phone and px < 20 and Game.mobile():   # (small print a little bigger on a phone's small screen)
+		px = mini(px + 3, 20)
+	var step := clampi(int(Game.settings.get("text_size", 0)), 0, TEXT_SCALES.size() - 1)
+	if px < TEXT_SCALE_BELOW and step > 0:
+		px = mini(roundi(px * TEXT_SCALES[step]), TEXT_SCALE_BELOW - 1)
+	return px
+
+
+## Text Size changed: the next screens are built with the new theme (the one open keeps its own).
+static func reset_theme() -> void:
+	_theme = null
+
+
 static func label(text: String, font_size := 20, color := Color.WHITE, heading := false) -> Label:
 	var l := Label.new()
 	l.text = text
 	var ls := LabelSettings.new()
 	if heading:
 		ls.font = font()
-	if font_size < 20 and Game.mobile():   # (small print a little bigger on a phone's small screen)
-		font_size = mini(font_size + 3, 20)
+	font_size = text_size(font_size)
 	ls.font_size = font_size
 	ls.font_color = color
 	ls.outline_size = maxi(3, font_size / 10)
@@ -906,8 +929,8 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	body.bbcode_enabled = true
 	body.fit_content = true
 	body.custom_minimum_size = Vector2(560, 0)
-	body.add_theme_font_size_override("normal_font_size", 22)
-	body.add_theme_font_size_override("italics_font_size", 20)
+	body.add_theme_font_size_override("normal_font_size", text_size(22))
+	body.add_theme_font_size_override("italics_font_size", text_size(20))
 	var raw := str(c.get("effectText", c.get("effect_text", "")))
 	var text := Keywords.markup(raw)   # (keywords in their colours)
 	var flavour = c.get("flavourText", c.get("flavour_text"))
@@ -930,11 +953,12 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		gl.bbcode_enabled = true
 		gl.fit_content = true
 		gl.custom_minimum_size = Vector2(560, 0)
-		gl.add_theme_font_size_override("normal_font_size", 17)
-		gl.add_theme_font_size_override("bold_font_size", 17)
+		gl.add_theme_font_size_override("normal_font_size", text_size(17))
+		gl.add_theme_font_size_override("bold_font_size", text_size(17))
 		gl.add_theme_color_override("default_color", Color(0.72, 0.74, 0.86))
 		gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		gl.text = "\n".join(seen.slice(0, 6).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
+		# (fewer of them with a bigger Text Size, so they stay on the screen)
+		gl.text = "\n".join(seen.slice(0, [6, 3, 2][clampi(int(Game.settings.get("text_size", 0)), 0, 2)]).map(func(k): return Keywords.describe(k).replace("[/color][/b]\n", "[/color][/b]  ")))
 		info.add_child(gl)
 	# A Striver: its evolution, this level lit up; click a level (or press ◀ ▶) to zoom into it
 	var my_id := str(c.get("id", c.get("cardId", "")))

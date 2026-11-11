@@ -107,7 +107,7 @@ func _open(m: Dictionary) -> void:
 	var text := RichTextLabel.new()
 	text.text = str(m.get("body", ""))
 	text.custom_minimum_size = Vector2(1060, 560)
-	text.add_theme_font_size_override("normal_font_size", 22)
+	text.add_theme_font_size_override("normal_font_size", UI.text_size(22))
 	_body.add_child(text)
 	_body.add_child(UI.button("DELETE", _delete.bind(m), Vector2(200, 52), UI.RED))
 	UI.stagger(_body.get_children(), 0.0, 0.05)   # (the letter unfolds, line by line)

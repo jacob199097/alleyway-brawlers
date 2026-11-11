@@ -68,4 +68,9 @@ when it ships, or delete it if it's dropped.
 
 ## Polish
 
-- [ ] **Accessibility:** colour-blind-safe keyword colours and a text size option.
+- [x] **Accessibility (0.9.141):** Settings → Accessibility: Text Size (`UI.text_size`: reading text and
+  small print, headings stay), Colour-Blind Colours (`Keywords.color`: keywords by what they do in
+  Okabe-Ito colours, stat changes blue ▲ / orange ▼), with the colour-blind symbols, photosensitive mode
+  and screen shake. `screens_tour.gd --access` shoots the screens with them off and on.
+  - [ ] Still open: the card pictures' own text (baked into the art by the Card Forge) keeps its colours
+    and size; a bigger Text Size makes the duel's card panel scroll sooner (the zoom shows all).

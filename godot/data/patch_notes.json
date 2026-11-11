@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.141",
+        "notes": [
+            "Settings has an Accessibility tab: Text Size, Colour-Blind Colours, Colour-Blind Symbols, Photosensitive Mode and Screen Shake & Flashes in one place.",
+            "Text Size (Normal, Large, Larger) makes card text, the battle log, mail, How to Play and other reading text and small print bigger.",
+            "Colour-Blind Colours colours keywords by what they do, in colours that stay apart with colour blindness: orange for damage, pink for holding back, blue for protection, yellow for card rules. Raised and lowered ATK and DEF show blue ▲ and orange ▼ instead of green and red."
+        ]
+    },
+    {
         "version": "0.9.140",
         "notes": [
             "The game has its own address now and connects to play.alleywaybrawlers.com. Nothing changes for you: same account, same cards, same matches.",

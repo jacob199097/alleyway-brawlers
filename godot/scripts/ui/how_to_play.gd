@@ -108,8 +108,8 @@ func _ready() -> void:
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.custom_minimum_size = Vector2(1000, 0)
-	_text.add_theme_font_size_override("normal_font_size", 24)
-	_text.add_theme_font_size_override("bold_font_size", 24)
+	_text.add_theme_font_size_override("normal_font_size", UI.text_size(24))
+	_text.add_theme_font_size_override("bold_font_size", UI.text_size(24))
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 22)
 	scroll.add_child(body)
@@ -175,11 +175,11 @@ func _pages(tab: String) -> Array:
 				continue
 			seen[d] = true
 			var full: String = Keywords.full_name(kw)
-			out.append({"name": full, "color": Keywords.LIST[kw][0], "text": "[b]%s[/b]%s" % [full, d.substr(full.length()) if d.begins_with(full) else ": " + d],
+			out.append({"name": full, "color": Keywords.color(kw), "text": "[b]%s[/b]%s" % [full, d.substr(full.length()) if d.begins_with(full) else ": " + d],
 				"fits": _keyword_fits.bind(kw)})
-		out.append({"name": "DOWNED", "color": Keywords.STATUS_HELP.DOWNED[0], "text": Keywords.STATUS_HELP.DOWNED[1],
+		out.append({"name": "DOWNED", "color": Keywords.color("DOWNED"), "text": Keywords.STATUS_HELP.DOWNED[1],
 			"fits": func(c): return 2 if (c.get("effects", []) as Array).any(func(e): return str(e.get("do", "")) == "down") else 0})
-		out.append({"name": "ZZZ", "color": Keywords.STATUS_HELP.RESTING[0], "text": "[b]ZZZ[/b]: " + str(Keywords.STATUS_HELP.RESTING[1]).trim_prefix("CAN'T ATTACK YET: "),
+		out.append({"name": "ZZZ", "color": Keywords.color("RESTING"), "text": "[b]ZZZ[/b]: " + str(Keywords.STATUS_HELP.RESTING[1]).trim_prefix("CAN'T ATTACK YET: "),
 			"fits": func(c): return 2 if str(c.get("subtype", "")) == "striver" and int(c.get("level", 1)) == 2 else 0})
 		return out
 	for t in TERMS:

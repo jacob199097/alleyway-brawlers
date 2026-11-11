@@ -1,6 +1,7 @@
 class_name SettingsPanel
 extends Control
-## Settings overlay (menu gear, or Esc in a duel): Audio, Display, Gameplay, Controls, Account and Server tabs.
+## Settings overlay (menu gear, or Esc in a duel): Audio, Display, Gameplay, Accessibility, Controls, Account
+## and Server tabs.
 ## Changes apply and save immediately (Game.set_setting).
 
 const RESOLUTIONS := ["1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160"]
@@ -52,12 +53,12 @@ func _ready() -> void:
 	col.add_child(h)
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	tabs.add_theme_constant_override("separation", 16)
+	tabs.add_theme_constant_override("separation", 10)
 	col.add_child(tabs)
-	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["controls", "CONTROLS"], ["account", "ACCOUNT"], ["server", "SERVER"]]:
+	for t in [["audio", "AUDIO"], ["display", "DISPLAY"], ["gameplay", "GAMEPLAY"], ["access", "ACCESSIBILITY"], ["controls", "CONTROLS"], ["account", "ACCOUNT"], ["server", "SERVER"]]:
 		if t[0] == "display" and Game.mobile():
 			continue   # (a phone's screen is the screen: no window or resolution)
-		var b := UI.button(t[1], _show.bind(t[0]), Vector2(176, 52))
+		var b := UI.button(t[1], _show.bind(t[0]), Vector2(196 if t[0] == "access" else 142, 52))
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tabs[t[0]] = b
@@ -116,14 +117,21 @@ func _show(tab: String) -> void:
 			_cycle("Animation Speed", ANIM_SPEEDS, ["NORMAL", "FAST (1.5×)", "FASTER (2×)"], "anim_speed")
 			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
-			_cycle("Colour-Blind Symbols", [false, true], ["OFF", "ON"], "glow_symbols")
-			_cycle("Photosensitive Mode", [false, true], ["OFF", "ON"], "photosensitive")
-			_cycle("Screen Shake & Flashes", [1.0, 0.5, 0.0], ["FULL", "REDUCED", "OFF"], "screen_fx")
-			var note := UI.label("Photosensitive mode: no flashing, flickering or strobing anywhere in the game (a Striver's promotion changes form once, slowly). Screen shake & flashes: how hard big hits shake and flash the screen in a duel. Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind symbols add a shape to every glow in a duel: + can be played, ! can act, a bolt for an Activate ability, arrows to deploy over, X to sacrifice, a crosshair to attack.", 20, UI.MUTED)
+			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind help, text size and photosensitive mode are on the Accessibility tab.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)
 			_body.add_child(note)
 			_body.add_child(UI.button("HOW TO PLAY", func(): load("res://scripts/ui/how_to_play.gd").open(self), Vector2(320, 52), UI.GOLD))
+		"access":
+			_cycle("Text Size", [0, 1, 2], ["NORMAL", "LARGE", "LARGER"], "text_size", true)
+			_cycle("Colour-Blind Colours", [false, true], ["OFF", "ON"], "cb_colors")
+			_cycle("Colour-Blind Symbols", [false, true], ["OFF", "ON"], "glow_symbols")
+			_cycle("Photosensitive Mode", [false, true], ["OFF", "ON"], "photosensitive")
+			_cycle("Screen Shake & Flashes", [1.0, 0.5, 0.0], ["FULL", "REDUCED", "OFF"], "screen_fx")
+			var note := UI.label("Text size: reading text and small print, from the next screen you open. Colour-blind colours: keywords by what they do (orange: damage, pink: holding back, blue: protection, yellow: card rules); raised and lowered ATK and DEF show blue ▲ and orange ▼. Colour-blind symbols: + can be played, ! can act, a bolt to Activate, arrows to deploy over, X to sacrifice, a crosshair to attack. Photosensitive mode: no flashing or flickering anywhere.", 20, UI.MUTED)
+			note.autowrap_mode = TextServer.AUTOWRAP_WORD
+			note.custom_minimum_size = Vector2(1100, 0)
+			_body.add_child(note)
 		"controls":
 			var cols := HBoxContainer.new()
 			cols.add_theme_constant_override("separation", 60)
