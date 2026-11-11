@@ -43,6 +43,10 @@ To put a change live: commit, push, `node tools/deploy.mjs`.
   (the privacy policy says only other players see those).
 - **No cookies, trackers or files from other sites.** The footer says so and the test checks it.
   Fonts and scripts live in this folder.
+- **Visits are only counted.** `backend/site/visits.js` adds up, per day, the people, the pages and the
+  sites that sent them (no cookies; a visitor is told apart by a code that changes daily and is never saved).
+  See them at `/stats` (the browser asks for `SITE_STATS_PASSWORD` from `backend/.env`). The privacy
+  policy describes it ("Our website"): change both together.
 - **Say only what's true today.** The Alpha tag by the version (`STAGE` in `pages.js`) and the note by
   the downloads (`PRELAUNCH`: accounts will be reset at launch) go at launch (`docs/LAUNCH_CHECKLIST.md`).
   The store badges (`STORES`) say "Coming soon to" Steam and Google Play; once a store page is up, put

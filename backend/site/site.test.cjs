@@ -11,6 +11,7 @@ const path = require('path');
 const download = require('../routes/download');
 const site = require('../routes/site');
 const images = require('./images');
+const visits = require('./visits');
 const { load } = require('./data');
 
 // One build to offer (the server looks in downloads/, which a test machine doesn't have)
@@ -164,6 +165,63 @@ const server = http.createServer(app).listen(0, async () => {
         for (const p of [`/site/pic/card/${card.id}-181.webp`, `/site/pic/card/${card.id}-180.gif`, '/site/pic/card/..-180.webp', `/site/pic/secret/${card.id}-180.webp`]) {
             assert.equal((await get(p)).status, 404, `${p} is not made`);
         }
+
+        // ── The visit counter: people only, once a day each, and only totals kept ────────────────
+        // (everything above came from this machine with no browser: none of it counted)
+        assert.equal(visits.state.pending.size, 0, 'robots and the home network aren\'t counted');
+        const browser = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+        const phone = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
+        const visit = (p, agent, ip, more = {}) => get(p, { 'user-agent': agent, 'x-forwarded-for': ip, ...more });
+        await visit('/', browser, '203.0.113.5', { referer: 'https://www.google.com/' });
+        await visit('/cards', browser, '203.0.113.5', { referer: 'https://alleywaybrawlers.com/' });
+        await visit('/cards', phone, '198.51.100.7', { referer: 'https://old.reddit.com/r/cardgames' });
+        await visit('/', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', '66.249.66.1');
+        await visit(`/cards/${d.cards[0].id}?fragment=1`, browser, '203.0.113.5');
+        await visit('/', browser, '203.0.113.9', { 'sec-purpose': 'prefetch' });
+        await visit('/nowhere', browser, '203.0.113.5');
+        await visit('/', browser, '192.168.0.12');
+        // (a stand-in for the database: site_counts as a list)
+        const saved = [];
+        visits.db.query = async (sql, params) => {
+            if (/INSERT INTO site_counts/.test(sql)) {
+                params[0].forEach((day, i) => {
+                    const row = saved.find((x) => x.day === day && x.kind === params[1][i] && x.key === params[2][i]);
+                    if (row) row.n += params[3][i]; else saved.push({ day, kind: params[1][i], key: params[2][i], n: params[3][i] });
+                });
+            } else if (/SELECT/.test(sql)) {
+                return { rows: saved.filter((x) => x.day >= params[0]) };
+            }
+            return { rows: [] };
+        };
+        await visits.flush();
+        const n = (kind, key) => saved.filter((x) => x.kind === kind && x.key === key).reduce((t, x) => t + x.n, 0);
+        assert.equal(n('total', 'views'), 3, 'pages shown: not the robot, the zoom, a prefetch, a 404 or the home network');
+        assert.equal(n('total', 'visitors'), 2, 'a visitor counts once a day');
+        assert.equal(n('total', 'phone'), 1, 'visitors on a phone');
+        assert.equal(n('page', '/cards'), 2);
+        assert.equal(n('from', 'Google'), 1, 'came from a search');
+        assert.equal(n('from', 'Reddit'), 1, 'came from a link');
+        assert.equal(saved.filter((x) => x.kind === 'from').length, 2, 'moving between the site\'s own pages isn\'t "coming from" anywhere');
+        assert.ok(!JSON.stringify(saved).includes('203.0.113'), 'no IP address is kept');
+
+        // The counts page: only with the password, never kept by a browser or a search engine
+        assert.equal((await get('/stats')).status, 404, 'no password set: no page');
+        process.env.SITE_STATS_PASSWORD = 'test-password';
+        const login = (pass) => ({ authorization: `Basic ${Buffer.from(`me:${pass}`).toString('base64')}` });
+        r = await get('/stats');
+        assert.equal(r.status, 401);
+        assert.match(r.headers.get('www-authenticate'), /^Basic/, 'the browser asks for the password');
+        assert.equal((await get('/stats', login('wrong'))).status, 401, 'a wrong password');
+        r = await get('/stats', login('test-password'));
+        assert.equal(r.status, 200);
+        assert.match(r.headers.get('cache-control'), /no-store/);
+        assert.equal(r.headers.get('set-cookie'), null);
+        const stats = await r.text();
+        assert.match(stats, /<b>2<\/b><span>today/, 'today\'s visitors');
+        assert.ok(stats.includes('Reddit') && stats.includes('/cards'), 'where they came from, what they read');
+        assert.equal(count(stats, 'class="col"'), 30, 'a bar for each of the last 30 days');
+        assert.match(await (await get('/robots.txt')).text(), /Disallow: \/stats/);
+        delete process.env.SITE_STATS_PASSWORD;
 
         console.log(`site: ok (${paths.length} pages, ${d.cards.length} cards, ${d.clans.reduce((n, c) => n + c.lines.length, 0)} Striver lines)`);
     } catch (err) {

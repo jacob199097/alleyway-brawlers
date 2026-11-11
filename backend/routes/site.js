@@ -13,15 +13,18 @@
  *   GET /site/...         the site's own files: website/ (styles, script, font, screenshots)
  *   GET /site/pic/...     the game's art made smaller (site/images.js)
  *   GET /robots.txt, /sitemap.xml, /favicon.ico
+ *   GET /stats            how many people visit (site/visits.js), behind SITE_STATS_PASSWORD in .env
  *
  * The pages are built from the game's files (site/data.js) by site/pages.js. They read nothing
- * from the database and nothing about players: no cookies, no sign-in, no tracking.
+ * from the database and nothing about players: no cookies, no sign-in, no tracking. Visits are only
+ * counted, as totals per day (site/visits.js).
  *
  * SITE_URL in .env is the site's one real address (default https://alleywaybrawlers.com): a page asked
  * for through another of the server's names (play.…, www.…, the DuckDNS one) is sent there, so
  * search engines see one site. Set SITE_URL= (empty) to serve the pages under whatever name is asked.
  */
 
+const crypto  = require('crypto');
 const express = require('express');
 const fs      = require('fs');
 const path    = require('path');
@@ -29,6 +32,7 @@ const path    = require('path');
 const { load }  = require('../site/data');
 const pages     = require('../site/pages');
 const images    = require('../site/images');
+const visits    = require('../site/visits');
 const download  = require('./download');
 const legal     = require('./legal');
 
@@ -115,6 +119,7 @@ const page = (build) => async (req, res, next) => {
         const html = build(ctx, req);
         if (html == null) return notFound(req, res, next);
         send(res, html);
+        visits.see(req, req.path);
     } catch (err) {
         console.error(`[site] ${req.originalUrl}:`, err);
         res.status(500).type('text').send('The website has a problem. The game itself is not affected.');
@@ -142,7 +147,7 @@ router.get('/support', page((ctx) => pages.support(ctx)));
 router.get('/robots.txt', (req, res) => {
     const base = SITE_URL || `https://${hostOf(req)}`;
     res.type('text').set('Cache-Control', 'public, max-age=3600')
-        .send(`User-agent: *\nDisallow: /api/\nDisallow: /download/\nDisallow: /delete-account\n\nSitemap: ${base}/sitemap.xml\n`);
+        .send(`User-agent: *\nDisallow: /api/\nDisallow: /download/\nDisallow: /delete-account\nDisallow: /stats\n\nSitemap: ${base}/sitemap.xml\n`);
 });
 
 router.get('/sitemap.xml', async (req, res) => {
@@ -154,6 +159,31 @@ router.get('/sitemap.xml', async (req, res) => {
     } catch (err) {
         console.error('[site] sitemap:', err);
         res.status(500).type('text').send('Not available.');
+    }
+});
+
+// ── How many people visit: for the site's owner only ─────────────────────────────────────────────
+// The browser asks for the password (any user name); no password in .env = no page.
+router.get('/stats', async (req, res, next) => {
+    const password = String(process.env.SITE_STATS_PASSWORD || '');
+    if (!password) return notFound(req, res, next);
+    const [, given = ''] = /^Basic\s+(.+)$/i.exec(String(req.get('authorization') || '')) || [];
+    const typed = Buffer.from(given, 'base64').toString('utf8').replace(/^[^:]*:/, '');
+    const a = crypto.createHash('sha256').update(typed).digest();
+    const b = crypto.createHash('sha256').update(password).digest();
+    res.set({ 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex', 'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': HEADERS['Content-Security-Policy'] });
+    if (!given || !crypto.timingSafeEqual(a, b)) {
+        // (a wrong password waits a second: guessing it would take forever)
+        await new Promise((ok) => setTimeout(ok, given ? 1000 : 0));
+        return res.status(401).set('WWW-Authenticate', 'Basic realm="Website visits", charset="UTF-8"')
+            .type('text').send('The password for the website\'s visit counts.');
+    }
+    try {
+        res.type('html').send(visits.page(await visits.stats(30)));
+    } catch (err) {
+        console.error('[site] stats:', err);
+        res.status(500).type('text').send('The visit counts can\'t be read right now.');
     }
 });
 
@@ -203,4 +233,4 @@ setTimeout(() => {
         .catch((err) => console.error('[site] the card pictures will be made as they are asked for:', err.message));
 }, 8000).unref();
 
-module.exports = { router, notFound };
+module.exports = { router, notFound, visits };

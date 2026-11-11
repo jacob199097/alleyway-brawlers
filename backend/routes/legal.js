@@ -14,7 +14,7 @@
 const router = require('express').Router();
 
 const GAME = 'AlleyWay Brawlers';
-const UPDATED = '9 November 2026';
+const UPDATED = '11 November 2026';
 
 const contact = () => process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
 const contactLink = () => contact()
@@ -88,6 +88,11 @@ Questions: ${contactLink()}.</p>
  <li><b>Connection details:</b> our server sees the IP address your game connects from. We use it to keep the
   service running and safe (for example, to limit repeated password guesses), and it can appear in our server's
   logs.</li>
+ <li><b>Our website:</b> when you visit alleywaybrawlers.com, we count the visit: for each day, how many people
+  visited, how many pages they opened and which ones, how many were on a phone, and which site sent them (for
+  example a search engine). We keep only those daily totals. To count each visitor once a day, the server makes a
+  scrambled code from your IP address and browser that changes every day and is kept only in its memory for that
+  day, never saved. The website sets no cookies and loads nothing from other companies.</li>
  <li><b>On your device:</b> the game saves your settings and your sign-in session in its own folder on your
   computer. This stays on your device.</li>
 </ul>

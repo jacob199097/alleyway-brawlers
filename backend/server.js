@@ -292,6 +292,14 @@ migrate(pool)
         setInterval(() => auction.settleDue().catch(err => console.error('[Auction] settle:', err.message)), 30 * 1000);
         setInterval(() => auction.cleanup().catch(err => console.error('[Auction] cleanup:', err.message)), 24 * 3600 * 1000);
         auction.cleanup().catch(() => {});
+        // The website's visit counter: saves its counts every half a minute (site/visits.js)
+        site.visits.start();
     }));
+
+// A restart (systemd stops the server first) saves the visit counts still waiting
+process.on('SIGTERM', () => {
+    const stop = setTimeout(() => process.exit(0), 3000);
+    site.visits.flush().finally(() => { clearTimeout(stop); process.exit(0); });
+});
 
 module.exports = { app, io };

@@ -50,6 +50,7 @@
   pages in `backend/site/pages.js`, built from the game's own files (`backend/site/data.js`: cards, clans, keywords, How to Play,
   patch notes), so it names no clan and needs no upkeep for new cards. Styles, script and screenshots in `website/`
   (`tools/site_shots.mjs` retakes the screenshots); `node tools/site_dev.mjs` runs it on the PC; test `backend/site/site.test.cjs`.
-  It shows nothing about players (no database) and loads no cookies, trackers or files from other sites: keep it so.
+  It shows nothing about players and loads no cookies, trackers or files from other sites: keep it so. Visits are counted as
+  daily totals only (`backend/site/visits.js`), shown at `/stats` behind `SITE_STATS_PASSWORD` in the server's .env.
 - `docs/LAUNCH_CHECKLIST.md` — what changes at launch (the wipe, starters off, 1.0.0, Steam live), in order.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).
