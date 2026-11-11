@@ -133,7 +133,7 @@ async function list(playerId, gameId, startPrice, ip = null, buyNow = null) {
     if (!Number.isInteger(startPrice)) throw new AuctionError('Choose a reserve price.');
     if (buyNow != null && !Number.isInteger(buyNow)) throw new AuctionError('Choose a Buy Now price, or leave it off.');
     if ((await import('../../shared/turf.js')).prizeCardIds().has(gameId)) {
-        throw new AuctionError("A prize card (a Turf Defense boss's or a ranked season's) can't be sold.");
+        throw new AuctionError("A prize card can't be sold: only beating a Turf Defense boss, or reaching Legend in a ranked season, gives it.");
     }
     const client = await pool.connect();
     try {

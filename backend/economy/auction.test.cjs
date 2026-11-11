@@ -100,7 +100,7 @@ async function rejects(promise, pattern) {
     await rejects(auction.list(seller, legend, legendPrice.max + 1), /reserve can be/);
     await rejects(auction.list(seller, commons[7], S.PRICES[1].min), /don't own/);
     const prize = [...prizes][0];
-    if (prize) await rejects(auction.list(seller, prize, 100), /prize can't be sold/);
+    if (prize) await rejects(auction.list(seller, prize, 100), /prize card can't be sold/);
     // A deck using both copies protects them
     const { rows: [deck] } = await q(`INSERT INTO decks (player_id, name) VALUES ($1, 'd') RETURNING id`, [seller]);
     await q('INSERT INTO deck_cards (deck_id, card_id, copies) VALUES ($1, $2, 2)', [deck.id, await cardId(legend)]);

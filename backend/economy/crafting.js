@@ -67,7 +67,7 @@ async function summary(playerId) {
 async function scrap(playerId, gameId, copies = 1) {
     if (!Number.isInteger(copies) || copies < 1 || copies > 99) throw new CraftError('Choose how many copies to scrap.');
     if ((await import('../../shared/turf.js')).prizeCardIds().has(gameId)) {   // (it couldn't be won back)
-        throw new CraftError("A prize card (a Turf Defense boss's or a ranked season's) can't be scrapped.");
+        throw new CraftError("A prize card can't be scrapped: only beating a Turf Defense boss, or reaching Legend in a ranked season, gives it.");
     }
     const client = await pool.connect();
     try {
