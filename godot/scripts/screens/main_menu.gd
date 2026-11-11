@@ -28,6 +28,9 @@ func _ready() -> void:
 		await _daily()
 		if not is_inside_tree():
 			return
+		await load("res://scripts/ui/seasons.gd").claim_waiting(self)   # (a finished season's reward)
+		if not is_inside_tree():
+			return
 	var returning: bool = Game.settings.tutorial_offered
 	if not Game.settings.tutorial_done and not Game.settings.tutorial_offered:
 		# First visit: suggest the guided first duel once

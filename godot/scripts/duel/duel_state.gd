@@ -1551,6 +1551,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 
 	var def_was_downed: bool = def.downed
 	var def_info := {"downed": def.downed, "position": def.position, "face_down": false}
+	var victim := {"victim": {"side": foe, "slot": target}}   # (COLLATERAL: the lanes either side of where it stood)
 	var vs_def: bool = def.downed or def.position == "def"
 	var a_val: int = maxi(0, att.attack + bonus)
 	var d_val: int = (def.defense + def_def) if vs_def else (def.attack + def_atk)
@@ -1581,10 +1582,10 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	if winner == "" and card_at(side, from) == att and not att.downed:
 		if result == "ko":
 			_on_ko(side, from, att, def_was_downed, target, foe)
-			_run_fx(side, _slot_of(side, att, from), att, "ko", def_info)
+			_run_fx(side, _slot_of(side, att, from), att, "ko", def_info, victim)
 		elif result == "downed":
 			_on_down(side, from, att, foe)
-			_run_fx(side, _slot_of(side, att, from), att, "down", def_info)
+			_run_fx(side, _slot_of(side, att, from), att, "down", def_info, victim)
 	# "While Dormant, when one of your characters Downs an enemy character" (a tie counts)
 	if result == "downed":
 		_leader_fx(side, "dormant_down", def)
@@ -3620,6 +3621,11 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 						var t = card_at(foe, 4 - slot)
 						if t != null and _fx_pool(foe, e, -99).any(func(x): return is_same(x.card, t)):
 							entries.append({"side": foe, "slot": 4 - slot, "card": t})
+			"collateral":   # COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
+				if vs.get("victim") is Dictionary and int(vs.victim.slot) in FRONT and vs.victim.side != side:
+					var vside: String = vs.victim.side
+					var vslot: int = int(vs.victim.slot)
+					entries = _fx_pool(vside, e, -99).filter(func(x): return absi(x.slot - vslot) == 1).map(func(x): return {"side": vside, "slot": x.slot, "card": x.card})
 			"all":   # every character: yours (not this card) and every opponent's
 				entries = _fx_pool(side, e, slot).map(func(x): return {"side": side, "slot": x.slot, "card": x.card})
 				for foe in foes_of(side):

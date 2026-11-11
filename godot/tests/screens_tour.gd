@@ -345,6 +345,23 @@ func _run() -> void:
 		await _auction_shots()
 		get_tree().quit()
 		return
+	if "--seasons" in OS.get_cmdline_user_args():   # (the season's rewards; with SEASON_DONE=1 on the mock server, a reward to claim)
+		Game.go("main_menu")
+		await _shot("season_menu", 4.0)
+		var waiting: Array = _screen().get_children().filter(func(c): return c.has_meta("ui_dialog"))
+		if not waiting.is_empty():
+			await _shot("season_claim", 0.6)
+			for b in waiting[0].find_children("*", "Button", true, false):
+				b.pressed.emit()
+				break
+			await _shot("season_claimed", 1.5)
+		Game.go("fight_mode")
+		await _shot("season_fight", 3.0)
+		var s: Dictionary = await load("res://scripts/ui/seasons.gd").fetch()
+		load("res://scripts/ui/seasons.gd").rewards(_screen(), s)
+		await _shot("season_rewards", 1.0)
+		get_tree().quit()
+		return
 	if "--access" in OS.get_cmdline_user_args():   # (Settings → Accessibility, off and on)
 		await _access_shots()
 		get_tree().quit()

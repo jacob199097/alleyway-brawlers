@@ -1326,6 +1326,7 @@ export class DuelState {
         }
         const defWasDowned = def.downed;
         const defInfo = { downed: def.downed, position: def.position, face_down: false };
+        const victim = { victim: { side: foe, slot: target } };   // (COLLATERAL: the lanes either side of where it stood)
         const vsDef = def.downed || def.position === 'def';
         const aVal = Math.max(0, att.attack + bonus);
         const dVal = vsDef ? def.defense + defDef : def.attack + defAtk;
@@ -1357,10 +1358,10 @@ export class DuelState {
         if (this.winner === '' && this.cardAt(side, from) === att && !att.downed) {
             if (result === 'ko') {
                 this._onKo(side, from, att, defWasDowned, target, foe);
-                this._runFx(side, this._slotOf(side, att, from), att, 'ko', defInfo);
+                this._runFx(side, this._slotOf(side, att, from), att, 'ko', defInfo, victim);
             } else if (result === 'downed') {
                 this._onDown(side, from, att, foe);
-                this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo);
+                this._runFx(side, this._slotOf(side, att, from), att, 'down', defInfo, victim);
             }
         }
         // "While Dormant, when one of your characters Downs an enemy character" (a tie counts)
@@ -3164,6 +3165,12 @@ export class DuelState {
                         const t = this.cardAt(foe, 4 - slot);
                         if (t != null && this._fxPool(foe, e, -99).some(x => x.card === t)) entries.push({ side: foe, slot: 4 - slot, card: t });
                     }
+                }
+                break;
+            case 'collateral':   // COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
+                if (vs && vs.victim && FRONT.includes(vs.victim.slot) && vs.victim.side !== side) {
+                    const v = vs.victim;
+                    entries = this._fxPool(v.side, e, -99).filter(x => Math.abs(x.slot - v.slot) === 1).map(x => ({ side: v.side, slot: x.slot, card: x.card }));
                 }
                 break;
             case 'all':   // every character: yours (not this card) and every opponent's

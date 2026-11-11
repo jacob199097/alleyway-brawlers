@@ -243,6 +243,17 @@ const routes = {
     },
     'GET /api/replays': () => [200, [['AlleyCat', 'casual', 'win', 12], ['CPU', 'cpu_ranked', 'loss', 9], ['Brickhouse', 'friendly', 'win', 15]].map(([u, mode, result, turns], i) => ({
         id: '00000000-0000-4000-8000-00000000000' + i, created_at: new Date(Date.now() - i * 86400e3).toISOString(), mode, opponent: { username: u }, result, reason: 'morale', turns }))],
+    // Ranked seasons (backend/economy/seasons.js shape). SEASON_DONE=1: a finished season's reward waits to be claimed
+    'GET /api/seasons': () => [200, {
+        season: { id: 0, name: 'Season 0', subtitle: '', started_at: '2026-11-11T00:00:00.000Z', ends_at: null },
+        tiers: [['rookie', 'Rookie', 0, 100, 0], ['street_tough', 'Street Tough', 200, 250, 1], ['enforcer', 'Enforcer', 500, 400, 2],
+            ['underboss', 'Underboss', 1000, 600, 3], ['kingpin', 'Kingpin', 1800, 800, 4], ['legend', 'Legend', 3000, 1000, 5]]
+            .map(([tier, name, min, karat, free_packs]) => ({ tier, name, min, reward: { karat, free_packs, cards: [], ...(tier === 'legend' ? { prize: true } : {}) } })),
+        me: { points: player.rank_points ?? 520, tier: 'enforcer', ranked: 14, peak_points: 1040, peak_tier: 'underboss' },
+        unclaimed: process.env.SEASON_DONE ? [{ season: 0, name: 'Season 0', peak_tier: 'kingpin', peak_tier_name: 'Kingpin', peak_points: 1920, ranked_games: 37, reward: { karat: 800, free_packs: 4, cards: [] } }] : [],
+        soft_reset_tiers: 2,
+    }],
+    'POST /api/seasons/claim': () => { player.karat += 800; return [200, { season: 0, name: 'Season 0', peak_tier: 'kingpin', reward: { karat: 800, free_packs: 4, cards: [] }, karat: player.karat, free_packs: 4 }]; },
     'GET /api/daily': () => [200, { day: 3, claimed: true, streak: 3, rewards: [{ karat: 100 }, { dust: 50 }, { karat: 150 }, { dust: 100 }, { karat: 200 }, { dust: 150 }, { karat: 300, free_packs: 1 }] }],
     'POST /api/daily/claim': () => { player.karat += 150; return [200, { day: 3, reward: { karat: 150 }, karat: player.karat, dust: player.dust ?? 0, free_packs: player.free_packs ?? 0 }]; },
     // The leaderboard (backend/economy/leaderboard.js shape): a few rivals around the player

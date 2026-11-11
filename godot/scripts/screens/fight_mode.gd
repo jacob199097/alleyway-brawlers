@@ -14,6 +14,7 @@ var _starting := false
 var _spin: Label = null
 var _arena: Control = null   # the arena roulette while a CPU match starts
 const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
+const Seasons := preload("res://scripts/ui/seasons.gd")
 
 
 func _ready() -> void:
@@ -303,6 +304,16 @@ func _rank_art(parent: Control) -> void:
 	rp.position = Vector2(0, 392)
 	rp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(rp)
+	# The season (ui/seasons.gd): its name and end, opening what each rank pays
+	var s: Dictionary = await Seasons.fetch()
+	if s.is_empty() or not is_instance_valid(parent):
+		return
+	var season: Dictionary = s.get("season", {}) if s.get("season") is Dictionary else {}
+	var b := UI.button("%s  ·  REWARDS" % str(season.get("name", "SEASON")).to_upper(), func(): Seasons.rewards(self, s), Vector2(ART_W - 40.0, 44), UI.GOLD)
+	b.add_theme_font_size_override("font_size", 18)
+	b.tooltip_text = Seasons.ends_text(season)
+	b.position = Vector2(20, 432)
+	parent.add_child(b)
 
 
 func _start(mode: String) -> void:

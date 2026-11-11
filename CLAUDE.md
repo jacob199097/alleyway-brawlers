@@ -31,6 +31,9 @@
   The Mac build (`tools/build_mac.mjs`) gets its own patch each update too: `make_patch.mjs <godot> --macos`.
 - Turf Defense (2 players vs a clan boss): bosses, levels, lines and rewards in `godot/data/bosses.json`
   (the server reads it via `shared/turf.js`); matches `backend/socket/coopMatch.js`, rewards `backend/economy/turf.js`.
+- Ranked seasons: `backend/economy/seasons.js` (numbers in `season_settings.js`, each season's Legend prize card in
+  `shared/seasons.js`), `godot/scripts/ui/seasons.gd`. Rewards go by the highest rank reached, claimed in the game; a new
+  season drops every rank two. Season 0 runs until launch. End one with `node backend/scripts/season.mjs end --apply`.
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

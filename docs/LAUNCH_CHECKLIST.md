@@ -74,7 +74,12 @@ same build:
 2. [ ] Fresh backup, copied to the PC: `node tools/backup_db.mjs --now`. Check it arrived in
    `Documents\AlleywayBrawlers-backups`.
 3. [ ] Push the launch code (starters off, 1.0.0), then `node tools/deploy.mjs --build --build-mac`.
-4. [ ] Run the wipe on the server: first without `--apply` to read what it will do, then with it.
+4. [ ] End Season 0, before the wipe: `node backend/scripts/season.mjs end` to read what it will do, then
+   `node backend/scripts/season.mjs end --apply --name "Season 1" --weeks 13`. Each Ranked player's Season 0
+   reward is recorded (by the highest rank they reached) and claimed in the game after the launch. Put the Legend
+   prize card's game ID in `SEASON_PRIZES[0]` (`shared/seasons.js`) when it's made: Legends who claim later still
+   get it. **The wipe must keep `player_seasons` and `seasons`.**
+   Then run the wipe on the server: first without `--apply` to read what it will do, then with it.
 5. [ ] On the server, in `backend/.env`: `STEAM_MTX_SANDBOX=false` (real Steam purchases), and the live
    Stripe key if you decided to sell outside Steam. Then `node tools/deploy.mjs` to restart.
 6. [ ] Steamworks: make the 1.0.0 build the default branch, then press Release.

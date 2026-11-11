@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.142",
+        "notes": [
+            "Ranked seasons: this is Season 0, and it runs until the game launches. Press SEASON 0 · REWARDS on the Ranked tile to see what each rank pays.",
+            "Season rewards go by the highest rank you reach in the season, even if you drop back after (Karat and free packs; Legend also gets a Legend-only prize card). Play at least one Ranked match to earn one. When a season ends, your reward waits for you on the main menu.",
+            "Each new season drops every rank back two (a Legend starts at Underboss).",
+            "New keyword, COLLATERAL: when a character with it KOs (or Downs) an enemy in a brawl, its effect hits the characters on either side of that one."
+        ]
+    },
+    {
         "version": "0.9.141",
         "notes": [
             "Settings has an Accessibility tab: Text Size, Colour-Blind Colours, Colour-Blind Symbols, Photosensitive Mode and Screen Shake & Flashes in one place.",

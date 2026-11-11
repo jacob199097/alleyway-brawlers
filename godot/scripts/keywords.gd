@@ -37,6 +37,7 @@ const LIST := {
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],
 	"EXILE": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
 	"EXILES": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
+	"COLLATERAL": [Color("ff9a5c"), "COLLATERAL: when it KOs (or Downs) a character in a brawl, the effect hits the characters in the lanes either side of that one."],
 	"DOUBLE": [Color("ff8f6b"), "DOUBLE OR NOTHING: you may bet on a coin flip. Heads, the effect happens twice; tails, not at all. Don't bet, and it happens once."],
 }
 ## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
@@ -54,7 +55,7 @@ const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 ## people with colour blindness can tell apart (Okabe-Ito, lightened for the dark screens). A keyword
 ## in none of these keeps its own colour.
 const CB_GROUPS := [
-	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX"]],   # damage and weakening
+	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL"]],   # damage and weakening
 	[Color("eb9cd0"), ["STUN", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED"]],   # holding back
 	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS"]],   # protection and recovery
 	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE"]],   # card rules

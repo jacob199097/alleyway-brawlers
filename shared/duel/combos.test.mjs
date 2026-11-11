@@ -250,4 +250,35 @@ assert.equal(friend.attack, 1200, '"when another of your characters is Downed" h
     assert.equal(st._counts().player.hidden_spend, 3);
 }
 
+// COLLATERAL (target "collateral"): when it KOs (or Downs) a character in a brawl, the effect hits the
+// characters in the lanes either side of that one, and only those
+{
+    const st = duel();
+    st.phase = 'brawl';
+    st.turn = 5;
+    const att = put(st, 'player', 0, unit(st, [{ when: 'ko', do: 'poison', target: 'collateral', amount: 200 },
+        { when: 'down', do: 'buff', target: 'collateral', atk: -300, until: 'turn' }], 3000, 1000));
+    const victim = put(st, 'opponent', 2, unit(st, [], 500, 500));
+    victim.downed = true;   // (attacked while Downed: KO'd)
+    const l = put(st, 'opponent', 1, unit(st, [], 1000, 1000)), r = put(st, 'opponent', 3, unit(st, [], 1000, 1000)), far = put(st, 'opponent', 4, unit(st, [], 1000, 1000));
+    assert.ok(st.doAction('player', { kind: 'attack', from: 0, target: 2 }));
+    answerAll(st);
+    assert.equal(st.cardAt('opponent', 2), null, 'the victim is KO\'d');
+    assert.ok(l.poison && r.poison, 'the characters either side of it are POISONED');
+    assert.ok(!far.poison, 'not one two lanes away');
+    assert.ok(!att.poison, 'not the attacker');
+    // Downing one (not a KO): the "when it Downs" effect hits its neighbours instead
+    const st2 = duel();
+    st2.phase = 'brawl';
+    st2.turn = 5;
+    put(st2, 'player', 0, unit(st2, [{ when: 'down', do: 'buff', target: 'collateral', atk: -300, until: 'turn' }], 3000, 1000));
+    put(st2, 'opponent', 2, unit(st2, [], 500, 500));
+    const l2 = put(st2, 'opponent', 1, unit(st2, [], 1000, 1000)), r2 = put(st2, 'opponent', 3, unit(st2, [], 1000, 1000));
+    assert.ok(st2.doAction('player', { kind: 'attack', from: 0, target: 2 }));
+    answerAll(st2);
+    st2._recalc();
+    assert.equal(l2.attack, 700, 'the Downed one\'s left neighbour loses 300 ATK');
+    assert.equal(r2.attack, 700, 'and its right one');
+}
+
 console.log('combos: ok');
