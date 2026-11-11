@@ -127,7 +127,7 @@ ${o.body}
 <div class="foot-in">
 <a class="brand" href="/"><img src="${st(ctx, 'img/logo-320.webp')}" alt="${GAME}" width="320" height="174" loading="lazy"></a>
 <nav aria-label="More">
-<div><b>The game</b><a href="/clans">Clans</a><a href="/cards">Cards</a><a href="/how-to-play">How to play</a><a href="/news">News</a><a href="/#download">Download</a></div>
+<div><b>The game</b><a href="/clans">Clans</a><a href="/cards">Cards</a><a href="/how-to-play">How to play</a><a href="/news">News</a><a href="/#download">Download</a><a href="/support">Support &amp; FAQ</a></div>
 <div><b>The small print</b><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/delete-account">Delete your account</a>${ctx.contact ? `<a href="mailto:${esc(ctx.contact)}">Contact us</a>` : ''}</div>
 </nav>
 <p class="fine">© ${new Date().getFullYear()} ${GAME}. Version ${esc(ctx.latest)}. This site uses no cookies and no trackers.</p>
@@ -229,6 +229,7 @@ ${boxes}
 </div>
 ${stores()}
 ${PRELAUNCH ? `<p class="note">${PRELAUNCH}</p>` : ''}
+<p class="fine help">Trouble installing, or found a bug? <a href="/support">Support &amp; FAQ</a></p>
 </div>
 </section>`;
 }
@@ -658,6 +659,43 @@ ${older.map((n) => update(n, 'h2')).join('\n')}
     });
 }
 
+// ── Support ──────────────────────────────────────────────────────────────────────────────────────
+// The release date: change it here when it changes (the FAQ's first answer)
+const RELEASE = 'Q1 2027';
+
+function support(ctx) {
+    const mail = ctx.contact ? `<a href="mailto:${esc(ctx.contact)}">${esc(ctx.contact)}</a>` : 'the address in our <a href="/privacy">privacy policy</a>';
+    // [question, answer (HTML)]
+    const faq = [
+        ['When will the game be available?', `<p>${GAME} is scheduled to be released sometime in ${RELEASE}, on Windows, Mac and Android, and it's coming to Steam and Google Play.</p>
+<p>You don't have to wait: the alpha is out now. <a href="/#download">Download it here</a>. ${PRELAUNCH ? esc(PRELAUNCH.replace(/^The game is in alpha: it is still being built, so expect rough edges and changes\. /, '')) : ''}</p>`],
+        ['How do I report a bug or a problem?', `<p>Email ${mail}. Tell us what happened and what you were doing at the time, which device you play on (Windows, Mac or Android) and your player name. A screenshot helps a lot.</p>`],
+        ['Will my progress carry over to the full game?', `<p>No. The game is in alpha: accounts and progress will be reset when it launches.</p>`],
+        ['Can I play with friends on another device?', `<p>Yes. One account works on Windows, Mac and Android, and everyone plays on the same servers, so a phone can play a PC.</p>`],
+        ['I didn\'t get my activation email.', `<p>Look in your spam or junk folder first. Then try logging in: the game offers to send the email again. Still nothing? Email ${mail}.</p>`],
+        ['I forgot my password.', `<p>Use <b>Forgot password?</b> on the game's login screen. We email you a link to choose a new one; it works for an hour.</p>`],
+        ['Windows or my Mac won\'t open the game.', `<p>The game isn't code-signed yet, so your computer asks first. On Windows, choose <b>More info</b>, then <b>Run anyway</b>. On a Mac, right-click the app and choose <b>Open</b>. The <a href="/#download">download section</a> has the steps for each.</p>`],
+        ['How do I delete my account?', `<p>In the game, open <b>Settings → Account</b>, or use the <a href="/delete-account">delete your account</a> page. Everything about your account is removed.</p>`],
+        ['What do you keep about me?', `<p>Only what the game needs to run your account. The <a href="/privacy">privacy policy</a> lists all of it. This website keeps nothing about you: no cookies and no trackers.</p>`],
+    ];
+    const body = `<section class="wrap page-head">
+<h1>Support</h1>
+<p class="lead">Questions players ask, and how to reach us. Found a bug, or stuck? Email ${mail}.</p>
+</section>
+<section class="wrap faq">
+${faq.map(([q, a], i) => `<details${i < 2 ? ' open' : ''}><summary>${esc(q)}</summary>\n<div class="faq-a">${a}</div></details>`).join('\n')}
+</section>`;
+    const ld = {
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() } })),
+    };
+    return layout(ctx, {
+        path: '/support', title: 'Support', body, cls: 'support-page',
+        description: `${GAME} support: when the game comes out (${RELEASE}), how to report a bug, accounts, passwords and installing.`,
+        head: `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n`,
+    });
+}
+
 // ── The rest ─────────────────────────────────────────────────────────────────────────────────────
 function notFound(ctx, path = '/') {
     return layout(ctx, {
@@ -684,7 +722,7 @@ function keywordsJson(ctx) {
 /** Every page's address (for sitemap.xml). */
 function sitemap(ctx) {
     const d = ctx.d;
-    return ['/', '/clans', ...d.clans.map((c) => `/clans/${c.id}`), '/cards', '/how-to-play', '/news', ...d.cards.map((c) => `/cards/${c.id}`), '/privacy', '/terms'];
+    return ['/', '/clans', ...d.clans.map((c) => `/clans/${c.id}`), '/cards', '/how-to-play', '/news', '/support', ...d.cards.map((c) => `/cards/${c.id}`), '/privacy', '/terms'];
 }
 
-module.exports = { home, clans, clan, cards, card, cardFragment, howToPlay, news, notFound, keywordsJson, sitemap, GAME };
+module.exports = { home, clans, clan, cards, card, cardFragment, howToPlay, news, support, notFound, keywordsJson, sitemap, GAME };

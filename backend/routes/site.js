@@ -136,6 +136,7 @@ router.get('/cards/:id', page((ctx, req) => {
 }));
 router.get('/how-to-play', page((ctx) => pages.howToPlay(ctx)));
 router.get('/news', page((ctx) => pages.news(ctx)));
+router.get('/support', page((ctx) => pages.support(ctx)));
 
 // ── For search engines and browsers ──────────────────────────────────────────────────────────────
 router.get('/robots.txt', (req, res) => {

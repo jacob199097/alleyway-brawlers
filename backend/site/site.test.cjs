@@ -46,7 +46,7 @@ const server = http.createServer(app).listen(0, async () => {
         assert.ok(!d.markup('<script>alert(1)</script> BURN').includes('<script'), 'card text is escaped');
 
         // ── Every page answers, as a whole page that loads only this site's files ────────────────
-        const paths = ['/', '/clans', ...d.clans.map((c) => `/clans/${c.id}`), '/cards', '/how-to-play', '/news'];
+        const paths = ['/', '/clans', ...d.clans.map((c) => `/clans/${c.id}`), '/cards', '/how-to-play', '/news', '/support'];
         const html = {};
         for (const p of paths) {
             const r = await get(p);
@@ -76,6 +76,11 @@ const server = http.createServer(app).listen(0, async () => {
         }
         assert.equal(count(html['/'], '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M'), 4, 'each store with its logo');
         assert.ok(html['/'].includes('href="mailto:hello@example.com"'), 'the contact address the legal pages give is in the footer');
+        // Support: the FAQ, the release date, where to report a bug; linked from every page's footer and the downloads
+        assert.ok(html['/support'].includes('scheduled to be released sometime in Q1 2027'), 'Support: when the game comes out');
+        assert.ok(/report a bug[^]*?mailto:hello@example\.com/.test(html['/support']), 'Support: bugs go to the contact address');
+        assert.ok(html['/support'].includes('"@type":"FAQPage"'), 'Support: the FAQ for search engines');
+        assert.ok(html['/cards'].includes('href="/support"') && html['/'].includes('class="fine help"'), 'Support is linked from the footer and the downloads');
 
         // ── A clan's page: its leader, every Striver line as three levels, every card ────────────
         for (const c of d.clans) {
