@@ -502,6 +502,7 @@ a.card:hover, a.card:focus-visible { z-index: 2; position: relative; transform: 
 }
 
 .leader-in { display: grid; gap: 22px; }
+.leader-in + .leader-in { margin-top: 48px; }
 .leader-in > .card { width: min(320px, 100%); margin-inline: auto; }
 .leader-text h3 { margin-bottom: 4px; font-size: clamp(1.8rem, 5vw, 2.4rem); color: var(--clan-ink); }
 .how { font-size: .92rem; color: var(--dim); }

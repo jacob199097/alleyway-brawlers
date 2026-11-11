@@ -330,7 +330,9 @@ async function build() {
         return {
             id, name, color, ink: ink(color), blurb, neutral: id === NEUTRAL,
             cards: own, counts, total: own.filter((c) => !c.token).length,
-            leader: own.find((c) => c.group === 'leader') || null,
+            // (a clan can have more than one leader: the first made is the one its starter deck gets)
+            leaders: own.filter((c) => c.group === 'leader').sort((a, b) => a.id.localeCompare(b.id)),
+            get leader() { return this.leaders[0] || null; },
             lines: lines.filter((l) => l.clan === id),
         };
     };

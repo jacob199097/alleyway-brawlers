@@ -88,7 +88,8 @@ const server = http.createServer(app).listen(0, async () => {
             const text = html[`/clans/${c.id}`];
             for (const card of c.cards) assert.ok(text.includes(`data-card="${card.id}"`), `${c.name}: ${card.name} is on its page`);
             assert.equal(count(text, '<li class="level">'), c.lines.length * 3, `${c.name}: its Striver lines`);
-            if (c.leader) assert.ok(text.includes(c.leader.name.replace(/&/g, '&amp;')), `${c.name}: its leader`);
+            for (const l of c.leaders) assert.ok(text.includes(`<h3>${l.name.replace(/&/g, '&amp;').replace(/'/g, '&#39;')}</h3>`), `${c.name}: its leader ${l.name}`);
+            if (c.leaders.length > 1) assert.ok(text.includes('<h2>The leaders</h2>'), `${c.name}: its leaders`);
         }
 
         // ── /cards: all of them, and the filters (the browser does the same test as you type) ────

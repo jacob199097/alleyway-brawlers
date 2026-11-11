@@ -418,24 +418,25 @@ ${emblem(c, 480, 'emblem big')}
 <h1>${esc(c.name)}</h1>
 <p class="lead">${d.markup(c.blurb)}</p>
 <ul class="chips">${GROUPS.filter(([g]) => c.counts[g]).map(([g, many, one]) => `<li><b>${c.counts[g]}</b> ${c.counts[g] === 1 ? one : many}</li>`).join('')}</ul>
-<nav class="jump" aria-label="On this page">${c.leader ? '<a href="#leader">Leader</a>' : ''}${c.lines.length ? '<a href="#strivers">Striver lines</a>' : ''}<a href="#cards">All ${c.total} cards</a></nav>
+<nav class="jump" aria-label="On this page">${c.leader ? `<a href="#leader">${c.leaders.length > 1 ? 'Leaders' : 'Leader'}</a>` : ''}${c.lines.length ? '<a href="#strivers">Striver lines</a>' : ''}<a href="#cards">All ${c.total} cards</a></nav>
 </div>
 </div>
 </section>
 
 ${c.leader ? `<section class="wrap leader" id="leader">
-<h2>The leader</h2>
-<div class="leader-in">
-${cardLink(c.leader, { width: 760, eager: true })}
+<h2>${c.leaders.length > 1 ? `The leaders` : 'The leader'}</h2>
+${c.leaders.length > 1 ? `<p class="lead">Every deck picks one of them. The same cards, played two ways.</p>` : ''}
+${c.leaders.map((l, i) => `<div class="leader-in">
+${cardLink(l, { width: 760, eager: i === 0 })}
 <div class="leader-text">
-<h3>${esc(c.leader.name)}</h3>
-${stats(c.leader)}
-<div class="text">${textOf(ctx, c.leader.text)}</div>
-${c.leader.flavour ? `<blockquote class="flavour">${esc(c.leader.flavour)}</blockquote>` : ''}
-<p class="how">A leader starts the match Dormant and helps from the side. Meet its AWAKEN condition and it takes the field. <a href="/how-to-play#leaders">How leaders work</a></p>
-${kit ? `<div class="kit">${kit}</div>` : ''}
+<h3>${esc(l.name)}</h3>
+${stats(l)}
+<div class="text">${textOf(ctx, l.text)}</div>
+${l.flavour ? `<blockquote class="flavour">${esc(l.flavour)}</blockquote>` : ''}
+${i === c.leaders.length - 1 ? `<p class="how">A leader starts the match Dormant and helps from the side. Meet its AWAKEN condition and it takes the field. <a href="/how-to-play#leaders">How leaders work</a></p>
+${kit ? `<div class="kit">${kit}</div>` : ''}` : ''}
 </div>
-</div>
+</div>`).join('\n')}
 </section>` : ''}
 
 ${c.lines.length ? `<section class="wrap" id="strivers">

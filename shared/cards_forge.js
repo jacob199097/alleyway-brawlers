@@ -1821,7 +1821,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_023",
         "code": "MILI-023",
         "flavourText": "One fighter is a survivor. A hundred fighters are a militia.",
-        "effectText": "This card can't be Downed as long as you control another character.\nOnce per turn, when you deploy another MILITIA character: HEAL 400 for each other MILITIA character you control.\nOnce per turn, when another of your characters is attacked: SUPPRESS the attacker for 500.",
+        "effectText": "This card can't be Downed as long as you control another character.\nOnce per turn, when you deploy another MILITIA character: HEAL 400 for each other MILITIA character you control.\nThis card is immune to SHOCK, STUN and CHARM.",
         "effects": [
             {
                 "when": "passive",
@@ -1837,11 +1837,13 @@ export const FORGE_CARDS = {
                 "when_clan": "militia"
             },
             {
-                "when": "ally_attacked",
-                "do": "suppress",
-                "target": "attacker",
-                "amount": 500,
-                "once": true
+                "when": "passive",
+                "do": "immune",
+                "statuses": [
+                    "shock",
+                    "stun",
+                    "charm"
+                ]
             }
         ],
         "clanName": "Militia",
@@ -2461,7 +2463,7 @@ export const FORGE_CARDS = {
         "name": "All out warfare",
         "clan": "militia",
         "cardType": "hustle",
-        "authority": 4,
+        "authority": 3,
         "tributeCost": 0,
         "rarity": 2,
         "clanTag": "militia",
@@ -2971,7 +2973,7 @@ export const FORGE_CARDS = {
         "name": "Baxter",
         "clan": "wildcard",
         "cardType": "gang_member",
-        "authority": 8,
+        "authority": 7,
         "tributeCost": 1,
         "rarity": 2,
         "clanTag": "wildcard",
@@ -3137,7 +3139,7 @@ export const FORGE_CARDS = {
         "name": "Garrison - The Pit Boss",
         "clan": "wildcard",
         "cardType": "gang_member",
-        "authority": 9,
+        "authority": 8,
         "tributeCost": 1,
         "rarity": 4,
         "clanTag": "wildcard",
@@ -6492,13 +6494,13 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_052",
         "code": "MILI-052",
         "flavourText": "Danger close. Get your heads down.",
-        "effectText": "SUPPRESS all enemy characters for 500.\nDOWN one enemy character.",
+        "effectText": "SUPPRESS all enemy characters for 400.\nDOWN one enemy character.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "suppress",
                 "target": "enemies",
-                "amount": 500
+                "amount": 400
             },
             {
                 "when": "deploy",
@@ -7180,7 +7182,7 @@ export const FORGE_CARDS = {
         "name": "Marked Cards",
         "clan": "wildcard",
         "cardType": "hustle",
-        "authority": 4,
+        "authority": 3,
         "tributeCost": 0,
         "rarity": 3,
         "clanTag": "wildcard",
@@ -8010,13 +8012,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_021",
         "code": "ARSO-021",
         "flavourText": "Go on. Hit the wall. See what happens.",
-        "effectText": "When this card is attacked: Give the attacker BURN 200.",
+        "effectText": "When this card is attacked: Give the attacker BURN 300.",
         "effects": [
             {
                 "when": "defend",
                 "do": "burn",
                 "target": "attacker",
-                "amount": 200
+                "amount": 300
             }
         ],
         "clanName": "Arsonists",
@@ -8172,12 +8174,12 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_026",
         "code": "ARSO-026",
         "flavourText": "Feed me.",
-        "effectText": "When deployed: BARRICADE 1000.\nACTIVATE (once per turn): Return one BURNING enemy character to its owner's hand.",
+        "effectText": "When deployed: BARRICADE 1500.\nACTIVATE (once per turn): Return one BURNING enemy character to its owner's hand.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "barricade",
-                "amount": 1000
+                "amount": 1500
             },
             {
                 "when": "activate",
@@ -8232,13 +8234,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_028",
         "code": "ARSO-028",
         "flavourText": "A little air. That's all a fire ever wants.",
-        "effectText": "Give all enemy characters STOKE 150.",
+        "effectText": "Give all enemy characters STOKE 200.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "stoke",
                 "target": "enemies",
-                "amount": 150
+                "amount": 200
             }
         ],
         "clanName": "Arsonists",
@@ -10499,6 +10501,270 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_034": {
+        "id": "card_pira_034",
+        "name": "Bloodfin",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_034",
+        "code": "PIRA-034",
+        "flavourText": "The sea's full of monsters mate. I'm the reason they're scared to swim.",
+        "effectText": "When this card attacks: Give one enemy character BLEED 400.",
+        "effects": [
+            {
+                "when": "attack",
+                "do": "bleed",
+                "target": "enemy",
+                "amount": 400
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1800,
+        "defense": 1100,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_035": {
+        "id": "card_pira_035",
+        "name": "Calyptra, the Siren",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_035",
+        "code": "PIRA-035",
+        "flavourText": "Don't fight it darling. You'll drown much happier in my arms.",
+        "effectText": "Once per turn, when you PROMOTE a Striver: CHARM one enemy character.",
+        "effects": [
+            {
+                "when": "ally_promoted",
+                "do": "charm",
+                "target": "enemy",
+                "once": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2150,
+        "defense": 1500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_036": {
+        "id": "card_pira_036",
+        "name": "Dreadhelm, the Sunken",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 2,
+        "rarity": 4,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_036",
+        "code": "PIRA-036",
+        "flavourText": "They sent me down to find the treasure. Funny thing is, I found the crew.",
+        "effectText": "Once per turn, when your opponent deploys a character: PLUNDER a card of your choice from your opponent's Gutter (into your hand).\nThis card can't be targeted by your opponent's effects.",
+        "effects": [
+            {
+                "when": "foe_deployed",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 1,
+                "once": true,
+                "choose": true
+            },
+            {
+                "when": "passive",
+                "do": "untargetable"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3000,
+        "defense": 3500,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_037": {
+        "id": "card_pira_037",
+        "name": "Mad Jack, the Powder Keg",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_037",
+        "code": "PIRA-037",
+        "flavourText": "If ye can still hear me laughin', I ain't used enough gunpowder!",
+        "effectText": "COLLATERAL: When this card KOs a character, give the characters next to the one it KO'd BURN 250.",
+        "effects": [
+            {
+                "when": "ko",
+                "do": "burn",
+                "target": "collateral",
+                "amount": 250
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1400,
+        "defense": 700,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_038": {
+        "id": "card_pira_038",
+        "name": "Dreadmaw, the Shipbreaker",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 9,
+        "tributeCost": 2,
+        "rarity": 5,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_038",
+        "code": "PIRA-038",
+        "flavourText": "The sea does not belong to you. It merely lets you sail upon it.",
+        "effectText": "When deployed: DOWN up to 2 enemy characters.\nACTIVATE (once per turn, discard 2 cards): Your opponent discards 2 cards.\nThis card is immune to BURN, STASIS, SUPPRESS and CHARM.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "down",
+                "target": "enemy",
+                "count": 2
+            },
+            {
+                "when": "activate",
+                "do": "discard",
+                "clan": "pirates",
+                "cost": "discard",
+                "amount": 2,
+                "cost_n": 2
+            },
+            {
+                "when": "passive",
+                "do": "immune",
+                "statuses": [
+                    "burn",
+                    "stasis",
+                    "suppress",
+                    "charm"
+                ]
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 4200,
+        "defense": 3500,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_039": {
+        "id": "card_pira_039",
+        "name": "Blackbeak",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_039",
+        "code": "PIRA-039",
+        "flavourText": "I see every sail, every secret, and every fool who thinks he can hide from me.",
+        "effectText": "This card can't be attacked while you control another character that can be.\nAt the end of your turn: If this card is next to another PIRATES character, destroy one of your opponent's face-down cards.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "elusive"
+            },
+            {
+                "when": "turn_end",
+                "do": "break_ambush",
+                "if": "adjacent",
+                "amount": 1,
+                "if_clan": "pirates"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 900,
+        "defense": 1200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_040": {
+        "id": "card_pira_040",
+        "name": "The Reef King",
+        "clan": "pirates",
+        "cardType": "leader",
+        "authority": 10,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_040",
+        "code": "PIRA-040",
+        "flavourText": "Every shipwreck is my kingdom, every treasure is my crown, and every sailor is my supper.",
+        "effectText": "Once per turn, when this leader is attacked while Dormant: PLUNDER the most recent card from your opponent's Gutter (into your hand).\nOnce per turn, while this leader is Dormant, when your opponent deploys a character: Add the first PIRATES card from your deck to your hand.\nAWAKEN: When your Authority reaches 7, this leader may take the field.\nWhen this leader Awakens: Put up to 2 enemy characters on top of its owner's deck.",
+        "effects": [
+            {
+                "when": "dormant_hit",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "awaken",
+                "do": "topdeck",
+                "target": "enemy",
+                "count": 2
+            },
+            {
+                "when": "dormant_foe_deployed",
+                "do": "search",
+                "clan": "pirates",
+                "amount": 1,
+                "once": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2600,
+        "defense": 3400,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "awakenCondition": {
+            "authority": 7
+        },
+        "influence": 6000,
         "forge": "forge2"
     }
 };
