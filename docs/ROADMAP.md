@@ -41,18 +41,19 @@ when it ships, or delete it if it's dropped.
 
 ## Accounts & email
 
-- [ ] **Branded emails that land in the inbox.** `backend/utils/mailer.js` sends plain inline-HTML
-  emails over SMTP from a DuckDNS address. To stay out of spam: a domain of our own (a DuckDNS
-  address can't carry the SPF / DKIM / DMARC records that prove an email is genuine) and a sending
-  service such as Resend, Postmark or Brevo. Then branded templates (logo, colours, card art) for
-  account activation, password reset, and season / content-drop news. News emails need an opt-in and
-  an unsubscribe link.
+- [ ] **Branded emails that land in the inbox.**
+  - [x] A domain of our own and a sending service: since 0.9.140 the server sends through Brevo
+    (`SMTP_*` in `backend/.env`) as support@alleywaybrawlers.com, with DKIM and DMARC on the domain.
+    Mail to support@ is forwarded to alleywaybrawlers@gmail.com by Cloudflare Email Routing.
+  - [ ] Branded templates (logo, colours, card art) for account activation and password reset:
+    `backend/utils/mailer.js` still sends plain inline HTML.
+  - [ ] Season / content-drop news emails: they need an opt-in and an unsubscribe link.
 - [x] **Privacy policy, terms and account deletion.** Done in 0.9.72: `/privacy`, `/terms` and
   `/delete-account` on the server (`backend/routes/legal.js`, contact address from `CONTACT_EMAIL` in
   `.env`); Settings → Account in the game links to them and deletes the account after the password
   (`backend/routes/account.js`, test `backend/routes/account.test.cjs`); registering says it agrees to them.
-  - [ ] Still to do: a contact address of our own (`CONTACT_EMAIL`), and a lawyer's read before a store
-    launch or taking payments at scale.
+  - [x] A contact address of our own: support@alleywaybrawlers.com (`CONTACT_EMAIL`).
+  - [ ] Still to do: a lawyer's read before a store launch or taking payments at scale.
 
 ## Server & reliability
 
@@ -60,7 +61,7 @@ when it ships, or delete it if it's dropped.
   14 kept in `~/backups`). `node tools/backup_db.mjs` copies them to the PC.
   Copied to the PC every day at noon (Windows Task Scheduler: "AlleywayBrawlers DB backup copy", to
   `DocumentsAlleywayBrawlers-backups`).
-- [ ] **Hosting:** the server is a home machine behind DuckDNS. Before a wider or mobile launch, move
+- [ ] **Hosting:** the server is a home machine (play.alleywaybrawlers.com, which points at its DuckDNS name). Before a wider or mobile launch, move
   to a small rented server (VPS), or at least add a battery backup (UPS) and an uptime monitor.
 - [x] **Crash reports:** the game sends its errors and crashes to the server (`client_errors` table,
   `godot/scripts/error_report.gd`, `backend/routes/telemetry.js`).

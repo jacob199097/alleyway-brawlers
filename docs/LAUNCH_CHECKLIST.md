@@ -15,8 +15,9 @@ Tick items off as you go. The steps that need a decision are marked **Decide**.
 - [ ] **Test build on Steam:** `node tools/steam_build.mjs <Godot console exe> --upload --live` puts it on
   the "beta" branch. Install it from Steam (a free key from Steamworks), sign in with Steam, buy
   Contraband in the sandbox, and try it on a Steam Deck if you can.
-- [ ] **Contact address:** set `CONTACT_EMAIL` in `backend/.env` (the privacy policy and terms show it;
-  it isn't set yet). Read `/privacy` and `/terms` once more: they must match what the server stores.
+- [x] **Contact address:** `CONTACT_EMAIL=support@alleywaybrawlers.com` in `backend/.env` since 0.9.140
+  (Cloudflare Email Routing forwards it to alleywaybrawlers@gmail.com; the website, privacy policy and terms show it).
+- [ ] **Read `/privacy` and `/terms` once more:** they must match what the server stores.
 - [ ] **Card payments outside Steam:** the server has a Stripe *test* key (`sk_test_…`), so no money can
   move. **Decide:** sell Contraband outside Steam at launch? If so, switch to the live key (`sk_live_…`).
   If not, leave it, and the Windows and Mac downloads stay free to play without a shop.
