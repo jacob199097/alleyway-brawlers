@@ -3247,7 +3247,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 							say.call("%s is gone: nothing to PLUNDER" % x.card.name, NO_SLOT)
 							return
 						sides[x.side].field[x.slot] = null
-						x.card.has_attacked = true   # (it joins the crew: it can attack from next turn)
+						x.card.has_attacked = false   # (it joins the crew, ready to fight: it may attack this turn, as with CHARM)
 						x.card.erase("rest_turn")
 						sides[side].field[lane] = x.card
 						_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true), "plunder": true})

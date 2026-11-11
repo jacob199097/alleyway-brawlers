@@ -796,12 +796,13 @@ static func veteran_fx(m: ShaderMaterial, tier: int) -> void:
 
 ## A card's veteran standing for the zoom and the library: its rank, card XP and a bar to the next
 ## rank (backend/economy/veterans.js: 1 XP a match, 3 for a win), or null (never played).
-## `theirs`: a card in a duel that isn't yours, where only its rank is known.
-static func veteran_box(id: String, tier: int, theirs := false, width := 560.0) -> Control:
+## `theirs`: a card in a duel that isn't yours: its owner's card XP (their_xp, from the match), or
+## only its rank (their_xp -1: a server from before 0.9.143 sent no XP).
+static func veteran_box(id: String, tier: int, theirs := false, width := 560.0, their_xp := -1) -> Control:
 	var t := mini(tier, 3)
-	if theirs:
+	if theirs and their_xp < 0:
 		return label("VETERAN  ·  %s" % VETERAN_NAMES[t], 19, VETERAN_COLORS[t]) if tier > 0 else null
-	var row = Game.veterans.get(id)
+	var row = {"xp": their_xp} if theirs else Game.veterans.get(id)
 	if not row is Dictionary:
 		return null
 	var wins := int(row.get("wins", 0))
@@ -826,7 +827,7 @@ static func veteran_box(id: String, tier: int, theirs := false, width := 560.0) 
 	v.add_theme_constant_override("separation", 6)
 	p.add_child(v)
 	var top := HBoxContainer.new()
-	top.add_child(label("CARD XP", 18, MUTED, true))
+	top.add_child(label("THEIR CARD XP" if theirs else "CARD XP", 18, MUTED, true))
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(gap)
@@ -842,7 +843,7 @@ static func veteran_box(id: String, tier: int, theirs := false, width := 560.0) 
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(bar)
 	var what := "%d XP  ·  %d more to %s" % [xp, int(next.get("xp", next.get("wins", 0))) - xp, str(next.get("name", "")).to_upper()] 			if not next.is_empty() else "%d XP  ·  TOP RANK" % xp
-	var sub := label("%s  ·  %d win%s in %d match%s" % [what, wins, "" if wins == 1 else "s", plays, "" if plays == 1 else "es"], 15, Color(0.85, 0.87, 0.92))
+	var sub := label(what if theirs else "%s  ·  %d win%s in %d match%s" % [what, wins, "" if wins == 1 else "s", plays, "" if plays == 1 else "es"], 15, Color(0.85, 0.87, 0.92))
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(sub)
 	return p
@@ -919,7 +920,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	kind_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (a long type line wraps, not off the edge)
 	kind_line.custom_minimum_size = Vector2(560, 0)
 	info.add_child(kind_line)
-	var vet_box := veteran_box(vet_id, vet, c.has("veteran") and not c.get("mine", false))
+	var vet_box := veteran_box(vet_id, vet, c.has("veteran") and not c.get("mine", false), 560.0, int(c.get("vet_xp", -1)))
 	if vet_box:
 		info.add_child(vet_box)
 	if kind in ["gang_member", "leader"] and c.get("attack") != null:
@@ -973,7 +974,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 		veil.queue_free()
 		card_zoom(parent, CardDB.get_card(levels[i]), true)
 	if not levels.is_empty():
-		info.add_child(label("EVOLUTION  ·  PROMOTES AS IT FIGHTS", 18, GOLD, true))
+		info.add_child(label("EVOLUTION", 18, GOLD, true))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		info.add_child(row)
@@ -1015,6 +1016,24 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 				frame.gui_input.connect(func(e):
 					if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 						go_level.call(i))
+		# How each level promotes: its own text's PROMOTE lines (every Striver's is different)
+		for i in levels.size() - 1:
+			var lines := Array(str(CardDB.get_card(levels[i]).get("effectText", "")).split("\n")).filter(
+				func(t): return "PROMOTE this card" in t)
+			if lines.is_empty():
+				continue
+			var how := label("LV%d ▶ LV%d:  %s" % [i + 1, i + 2, "  ".join(lines)], 16, GOLD if i == at else MUTED)
+			how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			how.custom_minimum_size = Vector2(560, 0)
+			info.add_child(how)
+	# A tall column (long text, a Striver's levels, a bigger Text Size) moves up, then shrinks, to stay above the hint
+	var fit := func():
+		if not is_instance_valid(info):
+			return
+		var h := info.get_combined_minimum_size().y
+		info.position.y = clampf(995.0 - h, 40.0, 230.0)
+		info.scale = Vector2.ONE * minf(1.0, (995.0 - info.position.y) / maxf(1.0, h))
+	fit.call_deferred()
 	# Keys: ◀ ▶ step through a Striver's levels; Esc (or Space / Enter) closes
 	veil.focus_mode = Control.FOCUS_ALL
 	veil.gui_input.connect(func(e):

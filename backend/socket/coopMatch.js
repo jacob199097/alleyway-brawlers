@@ -79,6 +79,7 @@ function actionFrom(action, seat) {
  * @param {(m) => Promise<Array>} [deps.recordMatch]        achievements
  * @param {(playerId, clan, outcome) => Promise} [deps.masteryProgress]
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  veteran cards' tiers {cardId: tier}
+ * @param {(playerId, cardIds) => Promise<object>} [deps.veteranXp]  the cards' card XP {cardId: xp}
  * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
  * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the boss's district
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]
@@ -100,7 +101,7 @@ function createCoopService(io, deps) {
     function profileOf(e) {
         const p = e.profile || {};
         return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title || null,
-            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {} };
+            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {}, vet_xp: e.vetXp || {} };
     }
 
     // ── Quick match ──
@@ -245,6 +246,7 @@ function createCoopService(io, deps) {
         for (const e of humans) {
             const ids = [...(e.setup?.deck || []), ...(e.setup?.hideout || [])].map(c => c?.id).concat(e.setup?.leader).filter(x => typeof x === 'string');
             e.vets = await deps.veteranTiers?.(e.playerId, ids)?.catch?.(() => ({})) ?? {};
+            e.vetXp = await deps.veteranXp?.(e.playerId, ids)?.catch?.(() => ({})) ?? {};
         }
         const seats = ['p1', 'p2', 'boss'];
         const pick = (k) => Object.fromEntries(seats.map(s => [s, entries[s].setup[k]]));

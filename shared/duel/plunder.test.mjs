@@ -64,14 +64,14 @@ assert.deepEqual(st.sides.opponent.gutter.map(c => c.name), ['Bones']);
 st = board({ gutter: { opponent: [{ name: 'Bones', token: true }] } });
 assert.equal(st.fxCan('player', -10, src, { do: 'plunder', from: 'gutter' }), false, 'nothing but a token: nothing to plunder');
 
-// From the field: one of their characters is yours for good (not a leader), can't attack this turn
+// From the field: one of their characters is yours for good (not a leader), and may attack this turn (as with CHARM)
 st = board({ opponent: [{ name: 'Brute', attack: 2000 }] });
 st._doFx('player', -1, src, { do: 'plunder', from: 'field', target: 'enemy' });
 answer(st);
 assert.equal(st.cardAt('opponent', 0), null, 'gone from their side');
 const stolen = st.characters('player').find(x => x.card.name === 'Brute');
 assert.ok(stolen, 'on yours');
-assert.ok(stolen.card.has_attacked && !stolen.card.charmed, 'for good, attacking from next turn');
+assert.ok(!stolen.card.has_attacked && !stolen.card.charmed, 'for good, and ready to attack this turn');
 st.cardAt('player', stolen.slot).defense = 0;
 st._ko('player', stolen.slot);
 assert.ok(st.sides.player.gutter.some(c => c.name === 'Brute'), 'KO\'d, it goes to the plunderer\'s Gutter');

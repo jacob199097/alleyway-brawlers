@@ -23,6 +23,9 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
         loadSetup: async () => cpuSetup(),
         loadProfile: async (id) => ({ username: id, level: 1, avatar_url: 'profile_001' }),
         resolveMatch: async () => ({}),
+        // (each player's veteran cards: both players see the other's ranks and card XP)
+        veteranTiers: async (id, ids) => ({ [ids[0]]: id === 'bob' ? 2 : 1 }),
+        veteranXp: async (id, ids) => ({ [ids[0]]: id === 'bob' ? 50 : 20 }),
     });
     let bad = 0;
     const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; };
@@ -51,6 +54,8 @@ const last = (s, ev) => [...s.got].reverse().find(([e]) => e === ev)?.[1];
     check(last(a, 'mp:rps_decided')?.first === 'opponent' && last(b, 'mp:rps_decided')?.first === 'you', 'alice went second, bob first');
     check(await until(() => last(a, 'mp:start') && last(b, 'mp:start')), 'the match starts');
     const viewA = last(a, 'mp:start').view;
+    const theirs = last(a, 'mp:start').opponent;
+    check(Object.values(theirs.vets || {})[0] === 2 && Object.values(theirs.vet_xp || {})[0] === 50, "each player sees the other player's veteran ranks and card XP");
     check(last(a, 'mp:start').arena === arena && last(b, 'mp:start').arena === arena, 'the match is played in that arena');
     check(viewA.active === 'opponent', 'in the match bob (alice\'s opponent) is first');
 

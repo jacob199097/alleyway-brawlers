@@ -141,6 +141,7 @@ const online = createOnlineService(io, {
     masteryLevel: (playerId, clan) => require('./economy/mastery').level(playerId, clan),   // (a player's plate: their deck's clan mastery)
     resolveCpuMatch,
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    veteranXp: (playerId, ids) => veterans.xpByCard(playerId, ids),
     recordVeterans: veterans.record,
     recordInfluence: territory.record,
     districtGang: territory.gangOf,
@@ -180,6 +181,7 @@ coop = createCoopService(io, {
     loadClears:  (playerId) => turf.clearsOf(pool, playerId),
     resolveTurf: turf.resolve,
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    veteranXp: (playerId, ids) => veterans.xpByCard(playerId, ids),
     recordVeterans: veterans.record,
     recordInfluence: territory.record,
     isBusyElsewhere: (playerId) => online.isBusyHere(playerId) || ffa.isBusy(playerId),

@@ -2829,7 +2829,7 @@ export class DuelState {
                         this._askReplace(side, c, x.card, (lane) => {
                             if (this.cardAt(x.side, x.slot) !== x.card) { say(`${x.card.name} is gone: nothing to PLUNDER`, NO_SLOT); return; }
                             this.sides[x.side].field[x.slot] = null;
-                            x.card.has_attacked = true;   // (it joins the crew: it can attack from next turn)
+                            x.card.has_attacked = false;   // (it joins the crew, ready to fight: it may attack this turn, as with CHARM)
                             delete x.card.rest_turn;
                             this.sides[side].field[lane] = x.card;
                             this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card), plunder: true });

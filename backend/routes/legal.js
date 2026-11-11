@@ -111,7 +111,7 @@ phone number, contacts or location.</p>
 
 <h2>What other players can see</h2>
 <p>Your username, profile picture, title, level, rank and win record (on the leaderboard and your profile), the
-cards you play in a match and their veteran frames, replays of matches you played against them, and your username on the cards you sell in the auction house (bidders'
+cards you play in a match with their veteran frames and card XP, replays of matches you played against them, and your username on the cards you sell in the auction house (bidders'
 names aren't shown). On the turf
 map, the player who won the most influence in a district for the clan holding it is shown by username. Direct messages are seen only by the
 person you send them to. Your email address and Steam ID aren't shown to other players.</p>

@@ -5,7 +5,7 @@
  * for every card that player played in it (summoned, set, used: socket/onlineMatch.js `played`), and a
  * win if they won: XP = 1 a match + 2 more for a win (xpOf). XP earns the card tiers (TIERS), shown
  * as its frame: bronze, chrome, gold. Purely cosmetic: both players see them in a duel (the match
- * profiles' `vets`); the card zoom shows your XP.
+ * profiles' `vets`), and each other's card XP in the card zoom (`vet_xp`, xpByCard).
  */
 
 const { pool } = require('../db/pool');
@@ -51,10 +51,18 @@ async function tiers(playerId, cardIds = null) {
     return Object.fromEntries(rows.map(r => [r.card_id, tierOf(xpOf(r.wins, r.plays))]));
 }
 
+/** The card XP of each of these cards the player has played: {cardId: xp} (a duel's profiles, `vet_xp`). */
+async function xpByCard(playerId, cardIds) {
+    const ids = [...new Set(cardIds || [])].filter(validId);
+    if (!playerId || !ids.length) return {};
+    const { rows } = await pool.query(`SELECT card_id, wins, plays FROM card_veterans WHERE player_id = $1 AND card_id = ANY($2::text[])`, [playerId, ids]);
+    return Object.fromEntries(rows.map(r => [r.card_id, xpOf(r.wins, r.plays)]));
+}
+
 /** Every card a player has played: {tiers: TIERS, cards: {cardId: {wins, plays, xp, tier}}} (GET /api/veterans). */
 async function overview(playerId) {
     const { rows } = await pool.query('SELECT card_id, wins, plays FROM card_veterans WHERE player_id = $1', [playerId]);
     return { tiers: TIERS, cards: Object.fromEntries(rows.map(r => [r.card_id, { wins: r.wins, plays: r.plays, xp: xpOf(r.wins, r.plays), tier: tierOf(xpOf(r.wins, r.plays)) }])) };
 }
 
-module.exports = { record, tiers, overview, tierOf, xpOf, TIERS };
+module.exports = { record, tiers, xpByCard, overview, tierOf, xpOf, TIERS };

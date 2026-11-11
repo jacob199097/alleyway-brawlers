@@ -148,6 +148,7 @@ var _spectating := false  # watching a friend's match live (mp:spectate): their 
 var _names := {}          # side -> name, for a spectator's texts
 var _chosen_back := {"player": "", "opponent": ""}   # side -> card back the player chose ("" = their clan's)
 var _vets := {}   # side -> that player's veteran cards {card id: tier} (the match's profiles): their marks
+var _vet_xp := {}   # side -> that player's card XP {card id: xp} (the profiles' vet_xp; none from an older server)
 var _replay_next := 0     # next update to play
 var _replay_wait := 0.0
 var _emote_ready_at := 0
@@ -282,6 +283,9 @@ func _ready() -> void:
 		var pv = profs[side].get("vets") if profs[side] is Dictionary else null
 		if pv is Dictionary:
 			_vets[side] = pv
+		var px = profs[side].get("vet_xp") if profs[side] is Dictionary else null
+		if px is Dictionary:
+			_vet_xp[side] = px
 	var watched: bool = online_start.get("spectate", false) or online_start.get("replay", false)
 	if not watched:   # (watching or a replay: the watched player's plate, below)
 		_build_panel("player", $HUD/UI/PlayerPanel, str(me.get("username", "YOU")).to_upper().left(14),
@@ -7943,6 +7947,8 @@ func _zoom_hovered() -> bool:
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
 	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
 	zc.veteran = v.veteran   # (its owner's frame, not yours)
+	if _vet_xp.has(v.side) and not v.card.get("token", false):
+		zc.vet_xp = int(_vet_xp[v.side].get(str(v.card.get("id", "")), 0))   # (and its owner's card XP)
 	zc.mine = v.side == "player" and _replay.is_empty() and not _spectating   # (yours: the zoom shows its card XP)
 	if v.card.has("uid"):
 		zc.uid = v.card.uid   # (a token zooms in on the same one of its artworks as on the field)

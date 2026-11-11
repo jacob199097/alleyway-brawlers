@@ -362,6 +362,34 @@ func _run() -> void:
 		await _shot("season_rewards", 1.0)
 		get_tree().quit()
 		return
+	if "--zooms" in OS.get_cmdline_user_args():   # (the card zoom: a Striver's levels and how each promotes, the
+		# wordiest one at the largest Text Size too; an opponent's card with its card XP)
+		Game.go("card_library")
+		await get_tree().create_timer(2.5).timeout
+		var wordiest := ""
+		for id in CardDB.all():
+			var sc: Dictionary = CardDB.get_card(id)
+			if CardDB.striver_stage(sc).x == 2 and (wordiest == "" or str(sc.get("effectText", "")).length() > str(CardDB.get_card(wordiest).get("effectText", "")).length()):
+				wordiest = id
+		for size in [0, 2]:
+			Game.settings.text_size = size
+			UI.reset_theme()
+			var before := _screen().get_children()
+			UI.card_zoom(_screen(), CardDB.get_card(wordiest), true)
+			await _shot("zoom_striver_text%d" % size, 0.8)
+			for v in _screen().get_children().filter(func(c): return not c in before):   # (the zoom: closed)
+				v.queue_free()
+			await get_tree().process_frame
+		Game.settings.text_size = 0
+		UI.reset_theme()
+		var theirs: Dictionary = CardDB.get_card(wordiest).duplicate()
+		theirs.veteran = 1
+		theirs.vet_xp = 31
+		theirs.mine = false
+		UI.card_zoom(_screen(), theirs, true)
+		await _shot("zoom_theirs", 0.8)
+		get_tree().quit()
+		return
 	if "--access" in OS.get_cmdline_user_args():   # (Settings → Accessibility, off and on)
 		await _access_shots()
 		get_tree().quit()

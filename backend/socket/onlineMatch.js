@@ -226,6 +226,7 @@ function forSeat(v, seat) {
  * @param {(a, b) => Promise<boolean>} [deps.areFriends]  may a watch b's match (mp:spectate)
  * @param {(m) => Promise<Array>} [deps.recordMatch]  a player's match for achievements → what it unlocked
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  their veteran cards' tiers {cardId: tier}
+ * @param {(playerId, cardIds) => Promise<object>} [deps.veteranXp]  their cards' card XP {cardId: xp}
  * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
  * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the match's district
  * @param {(district) => object|null} [deps.districtGang]  the gang running a district ({name, district, seed}): a turf map fight's CPU
@@ -360,7 +361,9 @@ function createOnlineService(io, deps) {
         const state = new DuelState(decks, hideouts, leaders, first, seed, rules);
         // Each player's veteran cards in this deck (economy/veterans.js): both players see their marks
         for (const e of [a, b]) {
-            if (!e.bot) e.vets = await deps.veteranTiers?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
+            if (e.bot) continue;
+            e.vets = await deps.veteranTiers?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
+            e.vetXp = await deps.veteranXp?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
         }
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena), series,
@@ -392,7 +395,7 @@ function createOnlineService(io, deps) {
     function profileOf(seat) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
             clan: seat.profile.clan || null, clan_level: seat.profile.clan_level || null,
-            title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {},
+            title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {}, vet_xp: seat.vetXp || {},
             ...(seat.profile.bot ? { bot: true, subtitle: seat.profile.subtitle || 'CPU OPPONENT', ...(seat.profile.stars ? { stars: seat.profile.stars } : {}) } : {}) };   // (a CPU: who it is; a turf gang's stars)
     }
 
