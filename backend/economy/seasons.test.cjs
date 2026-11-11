@@ -42,8 +42,8 @@ const conn = (database) => new Client({
 
     assert.equal((await seasons.current()).id, 0, 'Season 0 is running');
     const player = async (name, points = 0) => (await q(
-        `INSERT INTO players (username, email, password_hash, rank_points, season_peak_points) VALUES ($1, $1 || '@x', 'x', $2, $2) RETURNING id`,
-        [name, points])).rows[0].id;
+        `INSERT INTO players (username, email, password_hash, rank_points, season_peak_points) VALUES ($1, $2, 'x', $3, $3) RETURNING id`,
+        [name, `${name}@x`, points])).rows[0].id;
     const legend = await player('legend', 2990);   // one Ranked win from Legend (3000)
     const rival = await player('rival', 1000);
     const casual = await player('casual', 600);
@@ -99,5 +99,7 @@ const conn = (database) => new Client({
     console.log('seasons: ok');
 })().catch(async (err) => {
     console.error(err);
+    // (also as a GitHub annotation, which the Actions API shows without signing in)
+    if (process.env.GITHUB_ACTIONS) console.log('::error title=seasons test::' + String(err && err.stack || err).slice(0, 900).replace(/%/g, '%25').replace(/\r?\n/g, '%0A'));
     process.exit(1);
 });
