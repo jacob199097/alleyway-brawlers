@@ -33,7 +33,7 @@ async function current(db = pool) {
 async function rewardFor(tier, season) {
     const r = REWARDS[tier] || REWARDS.rookie;
     const cards = r.prize ? (await shared()).seasonPrize(season) : [];
-    return { karat: r.karat, free_packs: r.free_packs, cards };
+    return { karat: r.karat, free_packs: r.free_packs, cards, ...(r.prize ? { prize: true } : {}) };
 }
 
 /** Where a rank drops to at a new season: the bottom of the rank SOFT_RESET_TIERS below. → Rank Points */
@@ -82,8 +82,10 @@ async function claim(playerId, season) {
         const { rows: [p] } = await client.query(
             'UPDATE players SET karat = karat + $2, free_packs = free_packs + $3 WHERE id = $1 RETURNING karat, free_packs',
             [playerId, Number(reward.karat) || 0, Number(reward.free_packs) || 0]);
+        // (a Legend reward recorded before the season's prize card was in the game: the card as it is now)
+        const prizeIds = reward.prize && !(reward.cards || []).length ? (await shared()).seasonPrize(season) : reward.cards || [];
         const cards = [];
-        for (const id of reward.cards || []) {
+        for (const id of prizeIds) {
             const { rows: [card] } = await client.query('SELECT id FROM cards WHERE art_url = $1', [id]);
             if (!card) { console.error(`[Seasons] Prize card ${id} isn't in the cards table`); continue; }
             await client.query(
