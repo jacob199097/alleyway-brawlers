@@ -93,6 +93,8 @@ jobs:
         run: node backend/utils/origins.test.cjs
       - name: The website (every page, card and Striver line; nothing loaded from other sites; the game's calls left alone)
         run: node backend/site/site.test.cjs
+      - name: The account emails (the link, pictures only from the website, nothing that tracks, under Gmail's size limit)
+        run: node backend/utils/mailer.test.cjs
       - name: Crafting and achievements
         run: node backend/economy/progression.test.cjs
         env:

@@ -45,8 +45,9 @@ when it ships, or delete it if it's dropped.
   - [x] A domain of our own and a sending service: since 0.9.140 the server sends through Brevo
     (`SMTP_*` in `backend/.env`) as support@alleywaybrawlers.com, with DKIM and DMARC on the domain.
     Mail to support@ is forwarded to alleywaybrawlers@gmail.com by Cloudflare Email Routing.
-  - [ ] Branded templates (logo, colours, card art) for account activation and password reset:
-    `backend/utils/mailer.js` still sends plain inline HTML.
+  - [x] Branded templates for account activation and password reset (`email()` in `backend/utils/mailer.js`:
+    the website's alley banner `website/img/email-banner.jpg`, the game's colours, the contact address; no
+    tracking; test `backend/utils/mailer.test.cjs`).
   - [ ] Season / content-drop news emails: they need an opt-in and an unsubscribe link.
 - [x] **Privacy policy, terms and account deletion.** Done in 0.9.72: `/privacy`, `/terms` and
   `/delete-account` on the server (`backend/routes/legal.js`, contact address from `CONTACT_EMAIL` in
