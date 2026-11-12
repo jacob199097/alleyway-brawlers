@@ -65,4 +65,44 @@ st.sides.player.morale = 5000;
 attack(st);
 assert.ok(!st._asks.some(a => a.key === 'awaken'));
 
+// The other Awaken conditions (the Card Forge's Awaken box), each on its own, checked at the start of
+// the owner's turn: not yet at N-1, then at N
+const dormant = (cond) => {
+    const s = duel();
+    s.sides.player.leader.awakenCondition = cond;
+    s.sides.player.morale = 6000;
+    return s;
+};
+const asks = (s) => { s._checkAwaken('player'); return s._asks.some(a => a.key === 'awaken'); };
+for (const [cond, key, n] of [[{ plunder: 2 }, 'plundered', 2], [{ hustles: 3 }, 'hustled', 3], [{ promoted: 2 }, 'promotions', 2], [{ turn: 5 }, 'turns', 5]]) {
+    st = dormant(cond);
+    st.sides.player[key] = n - 1;
+    assert.ok(!asks(st), `${JSON.stringify(cond)}: not at ${n - 1}`);
+    st.sides.player[key] = n;
+    assert.ok(asks(st), `${JSON.stringify(cond)}: at ${n}`);
+}
+// Enemy characters KO'd this game (counted by _ko)
+st = dormant({ kos: 2 });
+for (const lane of [0, 1]) st.sides.opponent.field[lane] = unit(st, 'Mark' + lane, 1000, 1000);
+st._ko('opponent', 0);
+assert.ok(!asks(st), 'one enemy KO is not enough');
+st._ko('opponent', 1);
+assert.equal(st.sides.opponent.kod, 2);
+assert.ok(asks(st), 'two enemy KOs Awaken it');
+// The opponent's hand down to N cards
+st = dormant({ foe_hand: 2 });
+st.sides.opponent.hand = [unit(st, 'A', 1, 1), unit(st, 'B', 1, 1), unit(st, 'C', 1, 1)];
+assert.ok(!asks(st), 'their hand has 3');
+st.sides.opponent.hand.pop();
+assert.ok(asks(st), 'their hand is down to 2');
+// PLUNDER counts each card taken
+st = dormant({ plunder: 1 });
+const raider = unit(st, 'Raider', 1000, 1000);
+raider.effects = [{ when: 'deploy', do: 'plunder', from: 'hand', amount: 1 }];
+st.sides.player.field[0] = raider;
+st.sides.opponent.hand = [unit(st, 'Loot', 1, 1)];
+st._runFx('player', 0, raider, 'deploy');
+assert.equal(st.sides.player.plundered, 1, 'a plundered card is counted');
+assert.ok(asks(st), 'PLUNDER 1 Awakens it');
+
 console.log('awaken: ok');

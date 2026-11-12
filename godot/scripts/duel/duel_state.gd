@@ -1218,6 +1218,7 @@ func _hustle(side: String, uid: int) -> bool:
 		s.hustle_turn = turn
 		s.hustles = 0
 	s.hustles = int(s.get("hustles", 0)) + 1   # (Hustles played this turn: "if"/"for each")
+	s.hustled = int(s.get("hustled", 0)) + 1   # (and this game: a leader can Awaken on it)
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "hustle_played", c)
 	_run_lasting(side, "hustle_played", c)
@@ -1687,6 +1688,7 @@ func _ko(side: String, slot: int) -> void:
 	var c: Dictionary = card_at(side, slot)
 	var undead: bool = not c.get("token", false) and not c.get("risen", false) and _undead_now(side, slot, c)
 	sides[side].field[slot] = null
+	sides[side].kod = int(sides[side].get("kod", 0)) + 1   # (characters KO'd this game: a leader can Awaken on it)
 	var bounty = c.get("bounty")
 	var own := _owner_of(side, c)
 	c.erase("charmed")
@@ -2111,6 +2113,7 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		old.downed = false
 		_clear_status(old)
 		s.gutter.append(old)
+		s.promotions = int(s.get("promotions", 0)) + 1   # (promotions this game: a leader can Awaken on it)
 		_emit("promote", {"side": side, "slot": slot, "from": old.duplicate(true),
 			"card": promoted.duplicate(true), "reason": reason})
 		_on_deploy(side, slot, promoted, true)
@@ -2142,18 +2145,30 @@ func _check_awaken(side: String, mid_turn := false) -> void:
 	var cond: Dictionary = s.leader.get("awakenCondition", {})
 	if cond.is_empty():
 		return
-	# Any of: N+ standing (clan) characters, Authority N+, Morale N or less
+	# Any of: N+ standing (clan) characters, Authority N+, Morale N or less, ... (the Card Forge's Awaken box)
 	# (King Roan's older form: lions = LIONS characters, authorityThreshold = Authority)
 	var clan := "lion" if cond.get("lions") != null else str(cond.get("clan", ""))
 	var chars := characters(side).filter(func(e): return (clan == "" or e.card.get("clanTag") == clan) \
 			and not e.card.downed and not e.card.face_down).size()
 	var need_chars = cond.get("lions") if cond.get("lions") != null else cond.get("chars", 99)
 	var need_auth = cond.get("authorityThreshold") if cond.get("authorityThreshold") != null else cond.get("authority", 99)
+	# (luck: N won coin flips / die rolls; plunder, kos, hustles, promoted: this game; foe_hand: their hand
+	# down to N; turn: its owner's Nth turn)
+	var kod := 0
+	for f in foes_of(side):
+		kod += int(sides[f].get("kod", 0))
 	var ready: bool = chars >= int(need_chars) or s.authority_max >= int(need_auth) \
 			or (cond.get("morale") != null and s.morale <= int(cond.morale)) \
 			or (cond.get("gutter") != null and s.gutter.size() >= int(cond.gutter)) \
 			or (cond.get("foe_morale") != null and foes_of(side).any(func(f): return sides[f].morale <= int(cond.foe_morale))) \
-			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence)) 			or (cond.get("luck") != null and int(s.get("luck_won", 0)) >= int(cond.luck))   # N won coin flips / die rolls
+			or (cond.get("influence") != null and int(s.leader.influence) <= int(cond.influence)) \
+			or (cond.get("luck") != null and int(s.get("luck_won", 0)) >= int(cond.luck)) \
+			or (cond.get("plunder") != null and int(s.get("plundered", 0)) >= int(cond.plunder)) \
+			or (cond.get("kos") != null and kod >= int(cond.kos)) \
+			or (cond.get("foe_hand") != null and foes_of(side).any(func(f): return sides[f].hand.size() <= int(cond.foe_hand))) \
+			or (cond.get("hustles") != null and int(s.get("hustled", 0)) >= int(cond.hustles)) \
+			or (cond.get("promoted") != null and int(s.get("promotions", 0)) >= int(cond.promoted)) \
+			or (cond.get("turn") != null and int(s.get("turns", 0)) >= int(cond.turn))
 	if not ready:
 		return
 	var options: Array = []
@@ -3251,6 +3266,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 						x.card.erase("rest_turn")
 						sides[side].field[lane] = x.card
 						_emit("charm", {"side": x.side, "slot": x.slot, "to_side": side, "to_slot": lane, "card": x.card.duplicate(true), "plunder": true})
+						sides[side].plundered = int(sides[side].get("plundered", 0)) + 1
 						_recalc()
 						say.call("%s PLUNDERS %s: it fights for its new crew" % [c.name, x.card.name], lane),
 						func() -> void: say.call("%s can't be PLUNDERED (no room)" % x.card.name, NO_SLOT))
@@ -3266,6 +3282,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 					card.erase("rise_turn")   # (an UNDEAD card taken from the Gutter doesn't rise)
 					s.hand.append(card)
 					_emit("plunder", {"side": side, "from_side": foe, "from": where, "card": card.duplicate(true)})
+					s.plundered = int(s.get("plundered", 0)) + 1   # (cards PLUNDERED this game: a leader can Awaken on it)
 					_effect(side, c, "%s PLUNDERS %s from the enemy's %s" % [c.name, card.name, "Gutter" if where == "gutter" else where], slot)
 				var has := func(f) -> bool:
 					var fs: Dictionary = sides[f]

@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.145",
+        "notes": [
+            "Leaders can now Awaken in new ways, ready for the leaders on the way: after you PLUNDER enough cards, after enough enemy characters are KO'd, when your opponent's hand runs low, after you play enough Hustles, after your Strivers PROMOTE enough times, or from a set turn."
+        ]
+    },
+    {
         "version": "0.9.144",
         "notes": [
             "Season 0's Legend prize card is Dreadmaw, the Shipbreaker: reach Legend in Ranked this season to get it. It isn't in packs, and it can't be crafted, scrapped or sold.",

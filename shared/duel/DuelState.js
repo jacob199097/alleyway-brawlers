@@ -1039,6 +1039,7 @@ export class DuelState {
         }
         if (toInt(s.hustle_turn ?? 0) !== this.turn) { s.hustle_turn = this.turn; s.hustles = 0; }
         s.hustles = toInt(s.hustles ?? 0) + 1;   // (Hustles played this turn: "if"/"for each")
+        s.hustled = toInt(s.hustled ?? 0) + 1;   // (and this game: a leader can Awaken on it)
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'hustle_played', c);
         this._runLasting(side, 'hustle_played', c);
         for (const foe of this.foesOf(side)) {
@@ -1466,6 +1467,7 @@ export class DuelState {
         if (c == null) return;
         const undead = !c.token && !c.risen && this._undeadNow(side, slot, c);
         this.sides[side].field[slot] = null;
+        this.sides[side].kod = toInt(this.sides[side].kod ?? 0) + 1;   // (characters KO'd this game: a leader can Awaken on it)
         const bounty = c.bounty;
         const own = this._ownerOf(side, c);
         delete c.charmed;
@@ -1878,6 +1880,7 @@ export class DuelState {
             this._clearStatus(old);
             s.gutter.push(old);
             this._emit('promote', { side, slot, from: clone(old), card: clone(promoted), reason });
+            s.promotions = toInt(s.promotions ?? 0) + 1;   // (promotions this game: a leader can Awaken on it)
             this._onDeploy(side, slot, promoted, true);
             for (const x of this.characters(side)) if (this.winner === '') this._runFx(side, x.slot, x.card, 'ally_promoted', promoted);
             this._runLasting(side, 'ally_promoted', promoted);
@@ -1905,7 +1908,7 @@ export class DuelState {
         if (s.leader_state !== 'dormant' || s.awaken_asking || (midTurn && s.awaken_waited === this.turn)) return;
         const cond = s.leader.awakenCondition || {};
         if (isEmpty(cond)) return;
-        // Any of: N+ standing (clan) characters, Authority N+, Morale N or less
+        // Any of: N+ standing (clan) characters, Authority N+, Morale N or less, ... (the Card Forge's Awaken box)
         // (King Roan's older form: lions = LIONS characters, authorityThreshold = Authority)
         const clan = cond.lions != null ? 'lion' : String(cond.clan ?? '');
         const chars = this.characters(side).filter(e => (clan === '' || e.card.clanTag === clan) && !e.card.downed && !e.card.face_down).length;
@@ -1915,7 +1918,13 @@ export class DuelState {
             || (cond.gutter != null && s.gutter.length >= toInt(cond.gutter))
             || (cond.foe_morale != null && this.foesOf(side).some(f => this.sides[f].morale <= toInt(cond.foe_morale)))
             || (cond.influence != null && toInt(s.leader.influence) <= toInt(cond.influence))
-            || (cond.luck != null && toInt(s.luck_won ?? 0) >= toInt(cond.luck));   // N won coin flips / die rolls
+            || (cond.luck != null && toInt(s.luck_won ?? 0) >= toInt(cond.luck))   // N won coin flips / die rolls
+            || (cond.plunder != null && toInt(s.plundered ?? 0) >= toInt(cond.plunder))   // N cards PLUNDERED this game
+            || (cond.kos != null && this.foesOf(side).reduce((t, f) => t + toInt(this.sides[f].kod ?? 0), 0) >= toInt(cond.kos))   // N enemy characters KO'd
+            || (cond.foe_hand != null && this.foesOf(side).some(f => this.sides[f].hand.length <= toInt(cond.foe_hand)))   // their hand down to N
+            || (cond.hustles != null && toInt(s.hustled ?? 0) >= toInt(cond.hustles))   // N Hustles played this game
+            || (cond.promoted != null && toInt(s.promotions ?? 0) >= toInt(cond.promoted))   // N promotions this game
+            || (cond.turn != null && toInt(s.turns ?? 0) >= toInt(cond.turn));   // its owner's Nth turn
         if (!ready) return;
         const empties = [];
         const taken = [];
@@ -2833,6 +2842,7 @@ export class DuelState {
                             delete x.card.rest_turn;
                             this.sides[side].field[lane] = x.card;
                             this._emit('charm', { side: x.side, slot: x.slot, to_side: side, to_slot: lane, card: clone(x.card), plunder: true });
+                            this.sides[side].plundered = toInt(this.sides[side].plundered ?? 0) + 1;
                             this._recalc();
                             say(`${c.name} PLUNDERS ${x.card.name}: it fights for its new crew`, lane);
                         }, () => say(`${x.card.name} can't be PLUNDERED (no room)`, NO_SLOT));
@@ -2849,6 +2859,7 @@ export class DuelState {
                     delete card.rise_turn;   // (an UNDEAD card taken from the Gutter doesn't rise)
                     s.hand.push(card);
                     this._emit('plunder', { side, from_side: foe, from: where, card: clone(card) });
+                    s.plundered = toInt(s.plundered ?? 0) + 1;   // (cards PLUNDERED this game: a leader can Awaken on it)
                     this._effect(side, c, `${c.name} PLUNDERS ${card.name} from the enemy's ${where === 'gutter' ? 'Gutter' : where}`, slot);
                 };
                 const has = (f) => {
