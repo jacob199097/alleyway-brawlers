@@ -54,7 +54,7 @@ const craftSummary = (p) => {
         const n = Math.max(0, (inventory.get(c.id) || 0) - (c.card_type === 'leader' ? 1 : 3));
         extras += n; extrasDust += n * CRAFT_VALUES[c.rarity].scrap;
     }
-    return { dust: p.dust, values: CRAFT_VALUES, maxCopies: 3, extras, extrasDust };
+    return { dust: p.dust, values: CRAFT_VALUES, maxCopies: 3, extras, extrasDust, seasonPrizes: { card_pira_038: 0 } };
 };
 const looks = () => {
     const got = achievementDefs.filter(a => unlocked.has(a.id));

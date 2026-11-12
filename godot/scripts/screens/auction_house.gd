@@ -460,7 +460,7 @@ func _render(entrance := true) -> void:
 			var grid := _grid()
 			for row in _owned:
 				var card := CardDB.get_card(str(row.get("art_url", "")))
-				if card.is_empty() or (_rarity and int(card.get("rarity", 1)) != _rarity) or (_clan != "" and str(card.get("clan", "")) != _clan) \
+				if card.is_empty() or str(row.get("art_url", "")) in _info.get("prizes", []) or (_rarity and int(card.get("rarity", 1)) != _rarity) or (_clan != "" and str(card.get("clan", "")) != _clan) \
 						or (_search != "" and not str(card.get("name", "")).to_lower().contains(_search.to_lower())):
 					continue
 				var tile := CardTile.make(card, LOT)

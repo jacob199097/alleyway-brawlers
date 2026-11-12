@@ -7,7 +7,7 @@
 import { CARD_CATALOG } from './cards.js';
 
 export const SEASON_PRIZES = {
-    0: '',
+    0: 'card_pira_038',   // Dreadmaw, the Shipbreaker
 };
 
 /** A prize and the levels it promotes into. */

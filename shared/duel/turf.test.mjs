@@ -7,6 +7,7 @@ import assert from 'node:assert';
 import { DuelState, choose, cpuSetup } from './DuelAI.js';
 import { CARD_CATALOG } from '../cards.js';
 import { BOSSES, bossSetup, turfRules, prizeLine, prizeCardIds } from '../turf.js';
+import { SEASON_PRIZES } from '../seasons.js';
 
 const SEATS = ['p1', 'p2', 'boss'];
 const rules = (extra = {}) => ({
@@ -133,6 +134,9 @@ for (const boss of BOSSES) {
     for (const id of line.slice(0, -1)) assert.ok(line.includes(CARD_CATALOG[id].promotesTo), `${boss.id}: ${id} promotes within the line`);
 }
 assert.ok(prizeCardIds().size >= BOSSES.length, 'every boss has its own prize');
+for (const [season, id] of Object.entries(SEASON_PRIZES)) {
+    if (id) assert.ok(CARD_CATALOG[id] && prizeCardIds().has(id), `season ${season}: its prize ${id} is a card in the game, and prize-only`);
+}
 const games = Number(process.argv[process.argv.indexOf('--games') + 1]) || 2;
 const clans = ['nebula', 'militia', 'wildcard', 'underworld'];
 for (const boss of BOSSES) {

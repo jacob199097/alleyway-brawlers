@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.144",
+        "notes": [
+            "Season 0's Legend prize card is Dreadmaw, the Shipbreaker: reach Legend in Ranked this season to get it. It isn't in packs, and it can't be crafted, scrapped or sold.",
+            "Card Library: every card now says how to get it (which packs, its Dust price, the Auction House, or the boss or season that gives it).",
+            "Prize cards no longer show in the Auction House's Sell tab, since they can't be sold.",
+            "Card Library: long card text (or a big Text Size) no longer runs off the side panel."
+        ]
+    },
+    {
         "version": "0.9.143",
         "notes": [
             "PLUNDER: a character you plunder from your opponent's side is ready to fight, so it can attack in the same turn you take it.",

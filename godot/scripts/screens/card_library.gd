@@ -276,6 +276,8 @@ func _show_detail(c: Dictionary) -> void:
 		n.queue_free()
 	_hero = null
 	_hero_mat = null
+	_detail.scale = Vector2.ONE
+	_detail_panel.size = Vector2(520, 790)
 	_detail.add_theme_constant_override("separation", 10)
 	if c.is_empty():
 		_show_collection()
@@ -333,6 +335,73 @@ func _show_detail(c: Dictionary) -> void:
 			pips += "◆ " if i < have else "◇ "
 		var extra := "  +%d" % (have - cap) if have > cap else ""
 		_detail.add_child(UI.label("OWNED  %s%s" % [pips.strip_edges(), extra], 20, UI.BLUE if have > 0 else UI.MUTED, true))
+	_detail.add_child(_obtain(c))
+	_fit_detail(holder)
+
+
+## Long card text (or a big Text Size) can't run off the panel: the big card shrinks first (to about
+## half), then the whole column if that isn't enough.
+func _fit_detail(holder: Control) -> void:
+	var id := _detail_id
+	await get_tree().process_frame   # (the text has its height now)
+	if id != _detail_id or not is_instance_valid(_hero):
+		return
+	var room := 790.0 - 2.0 * _detail.position.y
+	var over := _detail.get_combined_minimum_size().y - room
+	if over > 0.0:
+		var h := maxf(240.0, 470.0 - over)
+		holder.custom_minimum_size.y = h
+		_hero.custom_minimum_size = Vector2(330, 467) * (h / 470.0)
+		_hero.size = _hero.custom_minimum_size
+		_hero.pivot_offset = _hero.size / 2
+		if _hero_mat:
+			_hero_mat.set_shader_parameter("quad_size", _hero.size)
+	for i in 2:   # (measured again once laid out: wrapped text settles its height over a frame or two)
+		await get_tree().process_frame
+		if id != _detail_id:
+			return
+		var tall := _detail.get_combined_minimum_size().y
+		_detail.scale = Vector2.ONE * minf(1.0, room / tall)
+	_detail_panel.size = Vector2(520, 790)   # (the panel had grown with the text)
+
+
+## "HOW TO GET IT": a prize card's one way (its boss, or its ranked season's Legend), or the packs it
+## drops from, its Dust price and the Auction House (backend/economy: packOpener, crafting, auction).
+func _obtain(c: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.add_child(UI.label("HOW TO GET IT", 16, UI.MUTED, true))
+	var id := str(c.get("id", ""))
+	var boss := _prize_of(id)
+	var season := _season_of(id)
+	var lines: Array = []
+	if boss != "":
+		lines = ["Beat %s in Turf Defense: its prize, for the first Street clear." % boss,
+			"Not in packs, crafting or the Auction House."]
+	elif season >= 0:
+		lines = ["Reach Legend in Ranked Season %d: the season's top prize." % season,
+			"Not in packs, crafting or the Auction House."]
+	else:
+		var neutral := str(c.get("clan", "")) == "neutral"
+		var craft := int(_values(c).get("craft", 0))
+		lines = ["Packs: any clan's pack in the Shop (Neutral cards come in all of them)." if neutral
+				else "Packs: %s packs in the Shop." % str(c.get("clanName", str(c.get("clan", "")).capitalize())),
+			("Craft it for %d Dust, or buy one in the Auction House." % craft) if craft > 0
+				else "Craft it with Dust, or buy one in the Auction House."]
+		if c.get("cardType") == "gang_member" and int(c.get("level", 1)) > 1:
+			lines.append("In a match: a LV%d copy PROMOTES into it from your Hideout." % (int(c.get("level", 1)) - 1))
+	for s in lines:
+		var l := UI.label(s, 16, Color(0.8, 0.8, 0.88))
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD
+		l.custom_minimum_size = Vector2(480, 0)
+		box.add_child(l)
+	return box
+
+
+## The ranked season whose Legend prize this card is (it or a lower level of it), or -1 (GET /api/craft).
+func _season_of(id: String) -> int:
+	var s = _craft.get("seasonPrizes", {}).get(id)
+	return int(s) if s != null else -1
 
 
 ## Before a card is hovered: the collection at a glance (all of it, then each clan, then each
@@ -488,12 +557,15 @@ func _render_bar() -> void:
 			str(UI.RARITY_LABEL.get(int(_pick.get("rarity", 1)), "")).to_upper(), have, cap]
 		info.add_theme_color_override("font_color", UI.rarity_color(_pick.get("rarity")))
 		var boss := _prize_of(str(_pick.get("id", "")))
+		var season := _season_of(str(_pick.get("id", "")))
+		var prize := "BOSS PRIZE  ·  BEAT %s" % boss.to_upper() if boss != "" \
+			else ("LEGEND PRIZE  ·  RANKED SEASON %d" % season if season >= 0 else "")
 		var scrap := UI.button("SCRAP  +%d" % int(v.get("scrap", 0)), _scrap, Vector2(200, 56), UI.RED)
-		scrap.disabled = have <= 0 or boss != ""
-		scrap.tooltip_text = "A boss's prize can't be scrapped." if boss != "" else ("Turn one copy into Dust." if have > 0 else "You don't own this card.")
+		scrap.disabled = have <= 0 or prize != ""
+		scrap.tooltip_text = "A prize card can't be scrapped." if prize != "" else ("Turn one copy into Dust." if have > 0 else "You don't own this card.")
 		_bar.add_child(scrap)
-		if boss != "":   # (a Turf Defense prize: only beating its boss gives it)
-			var only := UI.label("BOSS PRIZE  ·  BEAT %s" % boss.to_upper(), 20, UI.GOLD, true)
+		if prize != "":   # (a prize: only beating its boss, or reaching Legend that season, gives it)
+			var only := UI.label(prize, 20, UI.GOLD, true)
 			only.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			_bar.add_child(only)
 		else:

@@ -6,6 +6,7 @@ extends Node
 ## frame time goes on), --craft-only (the card zoom and craft reveal in quick shots), --clans,
 ## --auction (the auction house's tabs: against a local backend/server.js with auctions in its database,
 ## as the mock server has none).
+## --obtain: the Card Library's HOW TO GET IT for each kind of card.
 ## --site: the pictures on the website (tools/site_shots.mjs turns them into website/shots).
 
 var _out := "user://tour"
@@ -360,6 +361,33 @@ func _run() -> void:
 		var s: Dictionary = await load("res://scripts/ui/seasons.gd").fetch()
 		load("res://scripts/ui/seasons.gd").rewards(_screen(), s)
 		await _shot("season_rewards", 1.0)
+		get_tree().quit()
+		return
+	if "--obtain" in OS.get_cmdline_user_args():   # (the Card Library's HOW TO GET IT: a clan card, a Neutral one, a
+		# ranked season's prize, a boss's prize, a Striver's LV2, and the wordiest card at the largest Text Size)
+		Game.go("card_library")
+		await get_tree().create_timer(3.0).timeout
+		var neutral := ""
+		var lv2 := ""
+		var wordiest := ""
+		for id in CardDB.all():
+			var oc: Dictionary = CardDB.get_card(id)
+			if neutral == "" and str(oc.get("clan", "")) == "neutral" and oc.get("cardType") == "gang_member":
+				neutral = id
+			if lv2 == "" and CardDB.striver_stage(oc).x == 2:
+				lv2 = id
+			if not oc.get("token", false) and (wordiest == "" or str(oc.get("effectText", "")).length() > str(CardDB.get_card(wordiest).get("effectText", "")).length()):
+				wordiest = id
+		for id in ["card_pira_034", neutral, "card_pira_038", "card_pira_033", lv2, wordiest]:
+			_screen()._show_detail(CardDB.get_card(id))
+			await _shot("obtain_%s" % id, 0.8)
+		Game.settings.text_size = 2
+		UI.reset_theme()
+		_screen()._detail_id = "-"
+		_screen()._show_detail(CardDB.get_card(wordiest))
+		await _shot("obtain_wordiest_text2", 0.8)
+		Game.settings.text_size = 0
+		UI.reset_theme()
 		get_tree().quit()
 		return
 	if "--zooms" in OS.get_cmdline_user_args():   # (the card zoom: a Striver's levels and how each promotes, the

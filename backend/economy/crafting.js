@@ -60,7 +60,11 @@ async function summary(playerId) {
         extras += n;
         extrasDust += n * valueOf(r.rarity).scrap;
     }
-    return { dust: p?.dust ?? 0, values: VALUES, maxCopies: MAX_COPIES, extras, extrasDust };
+    // (each ranked season's Legend prize and its levels → the season: never crafted or scrapped)
+    const { SEASON_PRIZES, seasonPrize } = await import('../../shared/seasons.js');
+    const seasonPrizes = {};
+    for (const s of Object.keys(SEASON_PRIZES)) for (const id of seasonPrize(s)) seasonPrizes[id] = Number(s);
+    return { dust: p?.dust ?? 0, values: VALUES, maxCopies: MAX_COPIES, extras, extrasDust, seasonPrizes };
 }
 
 /** Scrap `copies` of one card. → { dust, quantity, gained } */
@@ -134,7 +138,10 @@ async function craft(playerId, gameId) {
     if (!(await packCardIds()).includes(gameId)) {   // (a boss's prize: only beating the boss gives it)
         const { findBoss, BOSSES, prizeLine } = await import('../../shared/turf.js');
         const boss = BOSSES.find(b => prizeLine(b.prize).includes(gameId));
-        throw new CraftError(boss ? `Only ${findBoss(boss.id).name} gives this card: beat it in Turf Defense.` : "That card can't be crafted.");
+        if (boss) throw new CraftError(`Only ${findBoss(boss.id).name} gives this card: beat it in Turf Defense.`);
+        const { SEASON_PRIZES, seasonPrize } = await import('../../shared/seasons.js');
+        const season = Object.keys(SEASON_PRIZES).find(s => seasonPrize(s).includes(gameId));
+        throw new CraftError(season != null ? `Only reaching Legend in ranked Season ${season} gives this card.` : "That card can't be crafted.");
     }
     const client = await pool.connect();
     try {

@@ -96,6 +96,7 @@ async function overview(playerId) {
             snipeSeconds: S.SNIPE_SECONDS, prices: S.PRICES, listingFeePct: S.LISTING_FEE_PCT,
             listingFeeMin: S.LISTING_FEE_MIN, saleFeePct: S.SALE_FEE_PCT,
         },
+        prizes: [...(await import('../../shared/turf.js')).prizeCardIds()],   // (never sold: the Sell tab leaves them out)
     };
 }
 
