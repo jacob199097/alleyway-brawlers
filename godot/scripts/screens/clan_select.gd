@@ -182,15 +182,14 @@ func _pick_avatar() -> void:
 	veil.color = Color(0, 0, 0, 0.8)
 	veil.size = Vector2(1920, 1080)
 	add_child(veil)
-	var p := UI.glass(UI.panel(UI.GOLD, Color(0.04, 0.04, 0.1, 0.96)), Color(0.02, 0.02, 0.06, 0.6))
+	var p := UI.glass(UI.panel(UI.STEEL, Color(0.04, 0.04, 0.1, 0.96)), Color(0.02, 0.02, 0.06, 0.6))
 	p.position = Vector2(230, 90)
 	p.custom_minimum_size = Vector2(1460, 0)
 	add_child(p)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	p.add_child(col)
-	var title := UI.label("PICK YOUR PROFILE PICTURE", 44, UI.GOLD, true)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var title := UI.panel_title("PICK YOUR PROFILE PICTURE", 44, UI.BLUE, 620.0)
 	col.add_child(title)
 	var sub := UI.label("Other players see it next to your name. More unlock as you play (levels, achievements, clan mastery): change it any time on the Achievements screen.", 20, UI.MUTED)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -215,7 +214,7 @@ func _pick_avatar() -> void:
 		var pic := UI.texture_rect(UI.avatar(key), Vector2(150, 150), true)
 		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.add_child(pic)
-		frame.mouse_entered.connect(func(): frame.add_theme_stylebox_override("panel", UI.box(Color(0, 0, 0, 0.5), UI.GOLD, 3, 10)))
+		frame.mouse_entered.connect(func(): frame.add_theme_stylebox_override("panel", UI._glow(UI.box(Color(0, 0, 0, 0.5), UI.HOVER, 3, 10), UI.BLUE, 0.6)))
 		frame.mouse_exited.connect(func(): frame.add_theme_stylebox_override("panel", UI.box(Color(0, 0, 0, 0.5), Color(1, 1, 1, 0.25), 2, 10)))
 		frame.gui_input.connect(func(e: InputEvent):
 			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not busy[0]:

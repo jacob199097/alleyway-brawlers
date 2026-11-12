@@ -6,7 +6,7 @@ extends RefCounted
 
 const LETTERBOX := 118.0
 const TYPE_CPS := 46.0   # how fast its lines type out (characters a second)
-const GOLD := Color("f4d35e")
+const GOLD := UI.GOLD
 const BLUE := Color("4cc9f0")
 const TEAL := Color("3ee6d0")   # your ally (duel.gd TEAL)
 

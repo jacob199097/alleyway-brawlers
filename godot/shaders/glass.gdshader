@@ -5,6 +5,7 @@ shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
 uniform vec2 rect_size = vec2(100.0, 100.0);
 uniform float radius = 12.0;
+uniform float cut = 0.0;                                    // a cut plate (UI.box): its top-left and bottom-right cuts, px
 uniform float blur = 9.0;                                   // px
 uniform vec4 tint : source_color = vec4(0.03, 0.03, 0.08, 0.6);
 uniform float sheen = 0.05;
@@ -22,7 +23,11 @@ float rounded_box(vec2 p, vec2 half_size, float r) {
 
 void fragment() {
 	vec2 half_size = rect_size * 0.5;
-	float d = rounded_box(local - half_size, half_size, radius);
+	float d = rounded_box(local - half_size, half_size, cut > 0.0 ? 0.0 : radius);
+	if (cut > 0.0) {
+		d = max(d, (cut - (local.x + local.y)) * 0.7071);
+		d = max(d, (cut - (rect_size.x - local.x + rect_size.y - local.y)) * 0.7071);
+	}
 	float mask = clamp(0.5 - d, 0.0, 1.0);
 	// A disc of taps around the pixel: the centre, then three rings of eight (turned against each other)
 	vec2 px = SCREEN_PIXEL_SIZE * blur;

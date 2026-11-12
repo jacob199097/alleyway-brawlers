@@ -74,15 +74,14 @@ func _ready() -> void:
 	veil.color = Color(0, 0, 0, 0.72)
 	veil.size = size
 	add_child(veil)
-	var p := UI.panel(UI.GOLD, Color(0.05, 0.05, 0.12, 0.98))
+	var p := UI.panel(UI.STEEL, Color(0.05, 0.05, 0.12, 0.98))
 	p.position = Vector2(260, 110)
 	p.custom_minimum_size = Vector2(1400, 860)
 	add_child(p)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	p.add_child(col)
-	var h := UI.label("HOW TO PLAY", 48, UI.GOLD, true)
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var h := UI.panel_title("HOW TO PLAY", 48, UI.BLUE)
 	col.add_child(h)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)

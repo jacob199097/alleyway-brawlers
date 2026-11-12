@@ -281,4 +281,91 @@ assert.equal(friend.attack, 1200, '"when another of your characters is Downed" h
     assert.equal(r2.attack, 700, 'and its right one');
 }
 
+// Target "opposite_wide": the enemies in the lane across from it and the lanes either side of that one
+{
+    const st = duel();
+    const c = put(st, 'player', 1, unit(st));   // (lane 2 faces their lane 4)
+    const e = [0, 1, 2, 3, 4].map(i => put(st, 'opponent', i, unit(st)));
+    st._doFx('player', 1, c, { do: 'stoke', target: 'opposite_wide', amount: 200 });
+    assert.deepEqual(e.map(x => x.burn ? x.burn.amt : 0), [0, 0, 200, 200, 200], 'the one across and the two beside it');
+    assert.ok(!c.burn, 'not itself');
+    // With nobody straight across, the lanes beside that one are still hit; at the edge there is only one
+    const st2 = duel();
+    const c2 = put(st2, 'player', 0, unit(st2));   // (lane 1 faces their lane 5)
+    const side = put(st2, 'opponent', 3, unit(st2)), far = put(st2, 'opponent', 2, unit(st2));
+    st2._doFx('player', 0, c2, { do: 'stoke', target: 'opposite_wide', amount: 200 });
+    assert.ok(side.burn && !far.burn);
+}
+
+// Trigger "foe_burned": when your opponent takes BURN damage. total: once that much has been taken
+// (counted while the card is on the field, then counted again from nothing)
+{
+    const st = duel();
+    st.sides.player.morale = 5000;
+    const watcher = put(st, 'player', 0, unit(st, [{ when: 'foe_burned', do: 'heal', amount: 100, total: 800 }]));
+    const lit = put(st, 'opponent', 2, unit(st));
+    lit.burn = { amt: 300, left: 3 };
+    st._statusTicks('opponent');
+    st._statusTicks('opponent');
+    assert.equal(st.sides.player.morale, 5000, '600 BURN damage so far: not yet');
+    assert.equal(watcher.fx_count.foe_burned1, 600);
+    st._statusTicks('opponent');
+    assert.equal(st.sides.player.morale, 5100, '900: it happens');
+    assert.equal(st.sides.opponent.morale, 6000 - 900);
+    assert.ok(!watcher.fx_count.foe_burned1, 'and the count starts again');
+    // BURN damage a BARRICADE holds isn't taken; the player's own BURN damage doesn't count
+    lit.burn = { amt: 900, left: 3 };
+    st.sides.opponent.barricade = 900;
+    st._statusTicks('opponent');
+    watcher.burn = { amt: 900, left: 3 };
+    st._statusTicks('player');
+    assert.ok(!watcher.fx_count || !watcher.fx_count.foe_burned1);
+    assert.equal(st.sides.player.morale, 5100 - 900);
+    // Without a total: every time
+    const st2 = duel();
+    st2.sides.player.morale = 5000;
+    put(st2, 'player', 0, unit(st2, [{ when: 'foe_burned', do: 'heal', amount: 100 }]));
+    put(st2, 'opponent', 2, unit(st2)).burn = { amt: 100, left: 3 };
+    st2._statusTicks('opponent');
+    st2._statusTicks('opponent');
+    assert.equal(st2.sides.player.morale, 5200);
+}
+
+// BLIND: until its owner's next turn ends, each of its attacks is a coin flip: tails, it misses (the attack is used up)
+{
+    const st = duel();
+    const c = put(st, 'player', 0, unit(st, [], 1000, 1000));
+    const foe = put(st, 'opponent', 2, unit(st, [], 3000, 1000));
+    const safe = put(st, 'opponent', 3, unit(st, [{ when: 'passive', do: 'immune', statuses: ['blind'] }]));
+    st._doFx('player', 0, c, { do: 'blind', target: 'enemies' });
+    assert.equal(foe.blind_until, 5, "through its owner's next turn");
+    assert.ok(st.statuses(foe).includes('blind'));
+    assert.ok(!safe.blind_until, 'not one that is immune to it');
+    st.active = 'opponent';
+    st.turn = 5;
+    st.phase = 'brawl';
+    st.takeEvents();
+    st._luck = () => 0.9;   // tails
+    assert.ok(st.doAction('opponent', { kind: 'attack', from: 2, target: 0 }));
+    let evs = st.takeEvents();
+    assert.ok(evs.some(e => e.type === 'luck' && !e.won) && evs.some(e => e.type === 'miss' && e.from === 2 && e.target === 0));
+    assert.ok(!evs.some(e => e.type === 'attack'), 'no brawl');
+    assert.ok(st.cardAt('player', 0) === c && !c.downed, 'its target is untouched');
+    assert.ok(foe.has_attacked && !st.canAttackWith('opponent', 2), 'the attack is used up');
+    foe.has_attacked = false;
+    st._luck = () => 0.1;   // heads
+    assert.ok(st.doAction('opponent', { kind: 'attack', from: 2, target: 0 }));
+    answerAll(st);
+    evs = st.takeEvents();
+    assert.ok(evs.some(e => e.type === 'attack') && !evs.some(e => e.type === 'miss'));
+    assert.ok(c.downed || st.cardAt('player', 0) !== c, 'heads: it hits');
+    // It wears off after that turn, and CLEANSE takes it away
+    st.turn = 6;
+    assert.ok(!st.statuses(foe).includes('blind'));
+    foe.blind_until = 99;
+    assert.ok(st._afflicted(foe));
+    st._doFx('opponent', 3, safe, { do: 'cleanse', target: 'allies' });
+    assert.ok(!foe.blind_until);
+}
+
 console.log('combos: ok');

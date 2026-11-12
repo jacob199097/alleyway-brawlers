@@ -508,8 +508,8 @@ func _tile(d: Dictionary, at: Vector2) -> void:
 	b.clip_contents = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_stylebox_override("normal", UI.box(Color(0.03, 0.03, 0.07, 0.92), Color(col, 0.9), 3, 12))
-	b.add_theme_stylebox_override("hover", UI.box(Color(0.07, 0.06, 0.12, 0.95), UI.GOLD, 3, 12))
-	b.add_theme_stylebox_override("pressed", UI.box(Color(0.07, 0.06, 0.12, 0.95), UI.GOLD, 4, 12))
+	b.add_theme_stylebox_override("hover", UI._glow(UI.box(Color(0.07, 0.07, 0.13, 0.95), Color(col.lightened(0.45), 1.0), 3, 12), col, 0.8))
+	b.add_theme_stylebox_override("pressed", UI.box(Color(0.05, 0.05, 0.1, 0.95), Color(col.lightened(0.2), 1.0), 4, 12))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		_open(d))
@@ -603,7 +603,7 @@ func _draw_bars(c: Control, d: Dictionary) -> void:
 
 ## The spare grid slot: how many districts each clan holds this week.
 func _summary(at: Vector2) -> void:
-	var p := UI.panel(UI.GOLD, Color(0.03, 0.03, 0.07, 0.9))
+	var p := UI.panel(UI.STEEL, Color(0.03, 0.03, 0.07, 0.9))
 	p.position = at
 	p.custom_minimum_size = TILE
 	p.size = TILE

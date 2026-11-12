@@ -48,8 +48,7 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 20)
 	p.add_child(col)
-	var h := UI.label("SETTINGS", 48, UI.GOLD, true)
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var h := UI.panel_title("SETTINGS", 48, UI.BLUE)
 	col.add_child(h)
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER

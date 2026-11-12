@@ -209,6 +209,12 @@ const FX_SAMPLES := [
 	[{"when": "gutter", "do": "damage", "amount": 300, "cost": "exile_self"}, {"when": "deploy", "do": "mill_self", "amount": 2}],
 	[{"when": "gutter", "do": "draw", "amount": 1, "cost": "authority", "cost_n": 2}, {"when": "attack", "do": "buff", "target": "self", "atk": 300}],
 	[{"when": "gutter", "do": "revive", "cost": "exile_gutter", "cost_n": 2}, {"when": "gutter", "do": "buff", "target": "allies", "atk": 200, "until": "turn", "cost": "discard", "cost_n": 1}],
+	# BLIND (its attacks are a coin flip); "opposite_wide" (the lane across and the lanes beside it); COLLATERAL;
+	# BURN damage taken ("foe_burned": every time, or once a total has been taken)
+	[{"when": "deploy", "do": "blind", "target": "enemies"}, {"when": "attack", "do": "blind", "target": "enemy"}],
+	[{"when": "activate", "do": "stoke", "target": "opposite_wide", "amount": 200, "once": true}, {"when": "foe_burned", "do": "buff", "target": "self", "atk": 300, "until": "forever", "total": 400}],
+	[{"when": "deploy", "do": "burn", "target": "enemies", "amount": 200}, {"when": "foe_burned", "do": "heal", "amount": 100}],
+	[{"when": "ko", "do": "stoke", "target": "collateral", "amount": 200}, {"when": "down", "do": "blind", "target": "collateral"}],
 ]
 
 

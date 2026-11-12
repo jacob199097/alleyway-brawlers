@@ -14,6 +14,7 @@ const STATUS_STYLE := {
 	"bleed": [Color("ff4a6e"), "BLD", "BLEEDING"], "shock": [Color("4fc3ff"), "SHK", "SHOCKED"],
 	"freeze": [Color("a6ecff"), "FRZ", "FROZEN"], "stasis": [Color("9a7bff"), "STS", "STASIS"],
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
+	"blind": [Color("9fb0d8"), "BLN", "BLINDED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
 	"charm": [Color("ff6fb5"), "CHM", "CHARMED"], "undead": [Color("8dffb0"), "UND", "UNDEAD"],
@@ -55,7 +56,7 @@ var glow := 0.0: set = set_glow
 var badge_text := "": set = set_badge_text   # replaces the ATK/DEF badge (e.g. a leader's Influence)
 var statuses: Array = []: set = set_statuses  # keyword statuses, e.g. ["poison", "stasis"]
 var cost_now := -1: set = set_cost_now        # a lowered Authority cost, shown over the printed one (-1: none)
-var glow_color := Color("f4d35e")
+var glow_color := UI.GOLD
 ## A second glow colour the outline breathes toward (an ability is ready); cleared whenever glow is set
 var pulse_color := Color(0, 0, 0, 0): set = set_pulse_color
 var home := Vector2.ZERO
@@ -608,6 +609,11 @@ func _draw_statuses() -> void:
 		for i in 3:   # little stars circling over its head
 			var ang := t * 3.2 + i * TAU / 3.0
 			_star(L, Vector2(cos(ang) * 34.0, r.position.y - 4.0 + sin(ang) * 8.0), 6.0, Color(1.0, 0.75, 0.3, 0.9))
+	if statuses.has("blind"):   # a dark band across its eyes: its attacks are a coin flip
+		var by := r.position.y + r.size.y * 0.27 + sin(t * 1.6) * 2.0
+		L.draw_rect(Rect2(r.position.x, by, r.size.x, 20.0), Color(0.03, 0.03, 0.07, 0.8))
+		for y in [by, by + 20.0]:
+			L.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(0.62, 0.69, 0.85, 0.75), 1.5, true)
 	if statuses.has("suppress"):
 		for i in 3:   # tracer fire streaking past, pinning it down
 			var ph := fmod(t * 1.6 + i * 0.33, 1.0)

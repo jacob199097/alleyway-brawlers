@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.146",
+        "notes": [
+            "A new look for the whole game. Panels and buttons are dark steel plates with cut corners instead of flat boxes with coloured outlines, and the game has its own lettering, the same on Windows, Mac and Android.",
+            "Gold now means something: it marks what's yours, what you've won, a reward or Ranked. Plain panels and the things you point at no longer wear a yellow edge.",
+            "In a match, YOUR TURN and each phase open as a band of glass across the table, and a card whose ability goes off is named on a call-out with its picture, while brackets lock on to the card itself. Hustles, Equips, K.O.s and Downs have new marks too.",
+            "New keyword, BLIND: until the end of its owner's next turn, each attack by a BLINDED character is a coin flip. Tails, the attack misses and is used up. CLEANSE removes it.",
+            "Ready for new cards: effects that hit the enemy across from a card and the enemies either side of it, and effects that go off after your opponent has taken enough BURN damage."
+        ]
+    },
+    {
         "version": "0.9.145",
         "notes": [
             "Leaders can now Awaken in new ways, ready for the leaders on the way: after you PLUNDER enough cards, after enough enemy characters are KO'd, when your opponent's hand runs low, after you play enough Hustles, after your Strivers PROMOTE enough times, or from a set turn."

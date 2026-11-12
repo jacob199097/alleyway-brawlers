@@ -34,16 +34,11 @@ var _open := false
 var _told_missed := false
 var _load_id := 0            # (a newer load replaces an older one still waiting)
 var _tab_x := -1.0           # where the tab is heading (tucked away or out)
-static var _font: SystemFont
 
 
 ## The chat's font: a clean semi-bold sans-serif (the headline font is for headlines).
-static func font() -> SystemFont:
-	if _font == null:
-		_font = SystemFont.new()
-		_font.font_names = PackedStringArray(["Segoe UI", "Helvetica Neue", "Arial"])
-		_font.font_weight = 600
-	return _font
+static func font() -> Font:
+	return UI.font_of("strong")
 
 
 func _ready() -> void:

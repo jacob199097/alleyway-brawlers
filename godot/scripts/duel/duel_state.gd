@@ -36,7 +36,7 @@ const NO_SLOT := -10             # effects of a card that isn't on the field (a 
 ## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
 const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
 ## What an "immune" passive keeps off a card
-const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "suppress", "silence", "bounty", "charm"]
+const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "blind", "suppress", "silence", "bounty", "charm"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -721,7 +721,7 @@ func _stays_up(side: String, slot: int, c) -> bool:
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
 const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
 const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until", "bounty"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until", "blind_until", "bounty"]
 
 
 func in_stasis(c) -> bool:
@@ -744,6 +744,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("stasis")
 	if int(c.get("stun_until", 0)) >= turn:
 		out.append("stun")
+	if int(c.get("blind_until", 0)) >= turn:
+		out.append("blind")
 	if int(c.get("suppress_until", 0)) >= turn:
 		out.append("suppress")
 	if c.get("shield", false):
@@ -1305,6 +1307,11 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 	if not _passive(side, from, att, "double_attack").is_empty() and int(att.get("second_attack", -1)) != turn:
 		att.has_attacked = false
 		att.second_attack = turn
+	# BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
+	if int(att.get("blind_until", 0)) >= turn and not _luck_gate(side, from, att, {"luck": "coin"}):
+		_emit("miss", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
+		_effect(side, att, "%s is BLIND: its attack misses" % att.name, from)
+		return true
 	_emit("attack", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
 	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0}
 	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
@@ -1745,7 +1752,8 @@ func _hustles_this_turn(side: String) -> int:
 ## Whether a character has a status CLEANSE would take away.
 func _afflicted(c: Dictionary) -> bool:
 	return c.has("poison") or c.has("burn") or c.has("bleed") or c.has("bounty") or frozen(c) or in_stasis(c) \
-		or int(c.get("stun_until", 0)) >= turn or int(c.get("suppress_until", 0)) >= turn or int(c.get("silence_until", 0)) >= turn
+		or int(c.get("stun_until", 0)) >= turn or int(c.get("blind_until", 0)) >= turn \
+		or int(c.get("suppress_until", 0)) >= turn or int(c.get("silence_until", 0)) >= turn
 
 
 ## Put a character back on top of its owner's deck (a token just vanishes).
@@ -2414,12 +2422,14 @@ func _fx_count_fire(c: Dictionary, key: String, e: Dictionary) -> bool:
 	return true
 
 
-func _fx_count(c: Dictionary, key: String, e: Dictionary) -> bool:
-	var need := int(e.get("times", 1))
+## total: it waits until its trigger's amounts add up to that much (e.g. 800 BURN damage).
+func _fx_count(c: Dictionary, key: String, e: Dictionary, vs := {}) -> bool:
+	var total := int(e.get("total", 0))
+	var need := total if total > 0 else int(e.get("times", 1))
 	if need <= 1:
 		return true
 	var count: Dictionary = c.get("fx_count", {})
-	count[key] = int(count.get(key, 0)) + 1
+	count[key] = int(count.get(key, 0)) + (int(vs.get("amount", 0)) if total > 0 else 1)
 	c.fx_count = count
 	return int(count[key]) >= need
 
@@ -2698,10 +2708,10 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 			continue
 		var key := "%s%d" % [when, k]
 		opts = opts.filter(func(o): return _fx_cond(side, slot, o, def))
-		if opts.is_empty() or not _fx_count(c, key, e):
+		if opts.is_empty() or not _fx_count(c, key, e, vs):
 			continue
 		if _fx_once(c, key, e):
-			if int(e.get("times", 1)) > 1:
+			if int(e.get("times", 1)) > 1 or int(e.get("total", 0)) > 0:
 				c.fx_count.erase(key)   # start counting again
 			if opts.size() > 1:
 				_choose_fx(side, slot, c, opts, vs)
@@ -2889,7 +2899,7 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				x.card.mods.append({"swap": true, "until_turn": until, "equip": c.uid} if is_equip(c) else {"swap": true, "until_turn": until})
 				return "%s: ATK and DEF swapped" % x.card.name
 			_fx_apply(side, slot, c, e, vs, "any", "swap ATK and DEF", fn, "%s swaps the ATK and DEF of %%s" % c.name)
-		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
+		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, BLIND, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
 			var fn := func(x: Dictionary) -> String:
 				var kept = x.card.get("undead_given", false)
 				_clear_status(x.card)
@@ -2942,6 +2952,12 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				x.card.stun_until = _owner_next_turn(x.side)
 				return "%s stuns %s: it can't attack next turn" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "any", "stun", fn, "%s stuns %%s" % c.name)
+		"blind":   # BLIND: until its owner's next turn ends, each of its attacks is a coin flip (tails: it misses)
+			var fn := func(x: Dictionary) -> String:
+				x.card.blind_until = _owner_next_turn(x.side)
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "blind", "card": x.card.duplicate(true)})
+				return "%s BLINDS %s: its attacks have a 50%% chance to miss" % [c.name, x.card.name]
+			_fx_apply(side, slot, c, e, vs, "any", "BLIND", fn, "%s blinds %%s" % c.name)
 		"shield":
 			var fn := func(x: Dictionary) -> String:
 				x.card.shield = true
@@ -3457,7 +3473,17 @@ func _status_ticks(side: String) -> void:
 			if kind == "poison":
 				c.mods.append({"atk": -amt, "def": 0, "until_turn": FOREVER})
 			else:
+				var before := int(sides[side].morale)
 				_damage(side, amt)
+				# "When your opponent takes BURN damage" (total: once that much has been taken)
+				var took := before - int(sides[side].morale)
+				if took <= 0:
+					continue
+				for foe in foes_of(side):
+					for x in characters(foe):
+						if is_same(card_at(foe, x.slot), x.card):
+							_run_fx(foe, x.slot, x.card, "foe_burned", null, {"amount": took})
+					_run_lasting(foe, "foe_burned", null, {"amount": took})
 
 
 ## Apply a targeted effect. \`pool_kind\`: any | standing | downed | attackers (in ATK, standing).
@@ -3638,6 +3664,10 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 						var t = card_at(foe, 4 - slot)
 						if t != null and _fx_pool(foe, e, -99).any(func(x): return is_same(x.card, t)):
 							entries.append({"side": foe, "slot": 4 - slot, "card": t})
+			"opposite_wide":   # the enemies in the lane across the table from it and the lanes either side of that one
+				if slot in FRONT and is_same(card_at(side, slot), c):
+					for foe in foes_of(side):
+						entries.append_array(_fx_pool(foe, e, -99).filter(func(x): return absi(x.slot - (4 - slot)) <= 1).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
 			"collateral":   # COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
 				if vs.get("victim") is Dictionary and int(vs.victim.slot) in FRONT and vs.victim.side != side:
 					var vside: String = vs.victim.side
@@ -3693,8 +3723,8 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 			if c.has("burn"):
 				return 100000 + int(c.burn.get("amt", 0)) + int(c.get("defense", 0))
 			return (0 if c.downed else 10000) + int(c.get("defense", 0))
-		"freeze", "stun":
-			var key := "freeze_until" if str(e.do) == "freeze" else "stun_until"
+		"freeze", "stun", "blind":
+			var key := "%s_until" % str(e.do)
 			if int(c.get(key, 0)) >= turn:
 				return value - 50000
 			if standing_atk:

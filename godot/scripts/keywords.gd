@@ -11,6 +11,7 @@ const LIST := {
 	"FREEZE": [Color("a6ecff"), "FREEZE: it switches to DEF and can't attack or change position until the end of its owner's next turn."],
 	"STASIS": [Color("9a7bff"), "STASIS (Nebula): frozen in time until the end of its owner's next turn. It can't attack, be attacked or be targeted, and its effects don't work. It doesn't block direct attacks."],
 	"STUN": [Color("ffa040"), "STUN: it can't attack during its owner's next turn."],
+	"BLIND": [Color("9fb0d8"), "BLIND: until the end of its owner's next turn, each time it attacks a coin is flipped. Heads, it attacks as usual. Tails, the attack misses: nothing happens, and that attack is used up."],
 	"SHIELD": [Color("ffd75a"), "SHIELD: the next time it would be defeated (Downed or KO'd), it isn't."],
 	"SILENCE": [Color("b8b4cc"), "SILENCE: its effects and abilities don't work for a while (it can still PROMOTE)."],
 	"CONTINUOUS": [Color("ffc46b"), "CONTINUOUS: once played (an Ambush once sprung) it stays face-up in the back row, and its effects keep working until it is destroyed."],
@@ -21,7 +22,7 @@ const LIST := {
 	"SUPPRESS": [Color("b5e655"), "SUPPRESS X (Militia): pinned down: it loses X ATK and can't attack until the end of its owner's next turn."],
 	"BOUNTY": [Color("f2c14e"), "BOUNTY X: when it is KO'd, whoever put the bounty on it draws X cards."],
 	"LIFESTEAL": [Color("ff5d8f"), "LIFESTEAL: the Morale it takes from your opponent in a brawl, you gain."],
-	"CLEANSE": [Color("bff6ff"), "CLEANSE: its statuses are gone: STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY."],
+	"CLEANSE": [Color("bff6ff"), "CLEANSE: its statuses are gone: STASIS, FREEZE, STUN, BLIND, SUPPRESS, SILENCE, POISON, BURN, BLEED and BOUNTY."],
 	"JAM": [Color("c6ff7a"), "JAM: your opponent can't spring Ambushes until the end of their next turn."],
 	"REWIND": [Color("d6c2ff"), "REWIND: its ATK and DEF changes are undone, back to the printed numbers."],
 	"BARRICADE": [Color("bfe3ff"), "BARRICADE X: the next X Morale damage you would take before your next turn is prevented."],
@@ -56,7 +57,7 @@ const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
 ## in none of these keeps its own colour.
 const CB_GROUPS := [
 	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL"]],   # damage and weakening
-	[Color("eb9cd0"), ["STUN", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED"]],   # holding back
+	[Color("eb9cd0"), ["STUN", "BLIND", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED"]],   # holding back
 	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS"]],   # protection and recovery
 	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE"]],   # card rules
 ]

@@ -127,7 +127,7 @@ func _choose() -> void:
 		b.custom_minimum_size = Vector2(440, 520)
 		b.position = Vector2(230 + i * 520, 250)
 		b.add_theme_stylebox_override("normal", UI.box(Color(0.05, 0.05, 0.12, 0.92), c.color, 3, 14))
-		b.add_theme_stylebox_override("hover", UI.box(Color(0.1, 0.1, 0.2, 0.95), UI.GOLD, 4, 14))
+		b.add_theme_stylebox_override("hover", UI._glow(UI.box(Color(0.1, 0.1, 0.2, 0.95), Color(c.color.lightened(0.45), 1.0), 4, 14), c.color, 0.9))
 		var g := UI.label(c.glyph, 180, c.color, false)
 		g.size = Vector2(440, 360)
 		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

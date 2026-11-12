@@ -63,7 +63,7 @@ func _ready() -> void:
 	z_index = 30
 	_frame = Panel.new()
 	_frame.size = SIZE
-	_frame.add_theme_stylebox_override("panel", UI._glow(UI.box(Color(0.03, 0.03, 0.08, 0.94), UI.GOLD, 2, 12), UI.GOLD, 0.6))
+	_frame.add_theme_stylebox_override("panel", UI._shadowed(UI.box(Color(0.03, 0.03, 0.08, 0.94), UI.STEEL, 2, 12)))
 	add_child(_frame)
 	var head := UI.label("ARENA", 18, UI.GOLD, true)
 	head.position = Vector2(14, 8)

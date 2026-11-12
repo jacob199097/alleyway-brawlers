@@ -43,7 +43,7 @@ const DORMANT_GIFTS = ['pierce', 'immune', 'untargetable', 'undead', 'lifesteal'
 // Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
 const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 // What an "immune" passive keeps off a card
-const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'suppress', 'silence', 'bounty', 'charm'];
+const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'blind', 'suppress', 'silence', 'bounty', 'charm'];
 export const LEADER = -2;
 
 // ── Card data ──────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
 // Keyword statuses (Card Forge effects); same rules as duel_state.gd
 const FOREVER = 1000000;
 const STATUS_TICKS = 3;
-const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until', 'bounty'];
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until', 'blind_until', 'bounty'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -653,6 +653,7 @@ export class DuelState {
         if (this.frozen(c)) out.push('freeze');
         if (this.inStasis(c)) out.push('stasis');
         if (toInt(c.stun_until ?? 0) >= this.turn) out.push('stun');
+        if (toInt(c.blind_until ?? 0) >= this.turn) out.push('blind');
         if (toInt(c.suppress_until ?? 0) >= this.turn) out.push('suppress');
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
@@ -1131,6 +1132,12 @@ export class DuelState {
             att.has_attacked = false;
             att.second_attack = this.turn;
         }
+        // BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
+        if (toInt(att.blind_until ?? 0) >= this.turn && !this._luckGate(side, from, att, { luck: 'coin' })) {
+            this._emit('miss', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
+            this._effect(side, att, `${att.name} is BLIND: its attack misses`, from);
+            return true;
+        }
         this._emit('attack', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
         const ctx = { side, foe, from, target, att, bonus: 0 };
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
@@ -1518,7 +1525,7 @@ export class DuelState {
     /** Whether a character has a status CLEANSE would take away. */
     _afflicted(c) {
         return c.poison !== undefined || c.burn !== undefined || c.bleed !== undefined || c.bounty !== undefined
-            || this.frozen(c) || this.inStasis(c) || toInt(c.stun_until ?? 0) >= this.turn
+            || this.frozen(c) || this.inStasis(c) || toInt(c.stun_until ?? 0) >= this.turn || toInt(c.blind_until ?? 0) >= this.turn
             || toInt(c.suppress_until ?? 0) >= this.turn || toInt(c.silence_until ?? 0) >= this.turn;
     }
 
@@ -2115,12 +2122,14 @@ export class DuelState {
         return true;
     }
 
-    /** times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters). */
-    _fxCount(c, key, e) {
-        const need = toInt(e.times ?? 1);
+    /** times: the effect waits until its trigger has happened that many times (e.g. Downs 2 characters).
+     *  total: it waits until its trigger's amounts add up to that much (e.g. 800 BURN damage). */
+    _fxCount(c, key, e, vs = null) {
+        const total = toInt(e.total ?? 0);
+        const need = total > 0 ? total : toInt(e.times ?? 1);
         if (need <= 1) return true;
         const count = c.fx_count || {};
-        count[key] = toInt(count[key] ?? 0) + 1;
+        count[key] = toInt(count[key] ?? 0) + (total > 0 ? toInt((vs && vs.amount) ?? 0) : 1);
         c.fx_count = count;
         return count[key] >= need;
     }
@@ -2303,9 +2312,9 @@ export class DuelState {
             const wc = String(e.when_clan ?? e.clan ?? '');
             if ((when === 'ally_deployed' || when === 'dormant_ally_deployed') && wc !== '' && (def == null || def.clanTag !== wc)) continue;
             opts = opts.filter(o => this._fxCond(side, slot, o, def));
-            if (!opts.length || !this._fxCount(c, `${when}${k}`, e)) continue;
+            if (!opts.length || !this._fxCount(c, `${when}${k}`, e, vs)) continue;
             if (this._fxOnce(c, `${when}${k}`, e)) {
-                if (toInt(e.times ?? 1) > 1) delete c.fx_count[`${when}${k}`];   // start counting again
+                if (toInt(e.times ?? 1) > 1 || toInt(e.total ?? 0) > 0) delete c.fx_count[`${when}${k}`];   // start counting again
                 if (opts.length > 1) this._chooseFx(side, slot, c, opts, vs);
                 else this._doFx(side, slot, c, opts[0], vs);
             }
@@ -2467,7 +2476,7 @@ export class DuelState {
                 }, `${c.name} swaps the ATK and DEF of %s`);
                 break;
             }
-            case 'cleanse':   // CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
+            case 'cleanse':   // CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, BLIND, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
                 this._fxApply(side, slot, c, e, vs, 'statused', 'cleanse', (x) => {
                     const kept = x.card.undead_given;
                     this._clearStatus(x.card);
@@ -2519,6 +2528,13 @@ export class DuelState {
                     x.card.stun_until = this._ownerNextTurn(x.side);
                     return `${c.name} stuns ${x.card.name}: it can't attack next turn`;
                 }, `${c.name} stuns %s`);
+                break;
+            case 'blind':   // BLIND: until its owner's next turn ends, each of its attacks is a coin flip (tails: it misses)
+                this._fxApply(side, slot, c, e, vs, 'any', 'BLIND', (x) => {
+                    x.card.blind_until = this._ownerNextTurn(x.side);
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'blind', card: clone(x.card) });
+                    return `${c.name} BLINDS ${x.card.name}: its attacks have a 50% chance to miss`;
+                }, `${c.name} blinds %s`);
                 break;
             case 'shield':
                 this._fxApply(side, slot, c, e, vs, 'unshielded', 'shield', (x) => {
@@ -3034,7 +3050,19 @@ export class DuelState {
                 if (toInt(st.left) <= 0) delete c[kind];
                 this._emit('status_tick', { side, slot: e.slot, kind, amount: amt, card: clone(c) });
                 if (kind === 'poison') c.mods.push({ atk: -amt, def: 0, until_turn: FOREVER });
-                else this._damage(side, amt);
+                else {
+                    const before = this.sides[side].morale;
+                    this._damage(side, amt);
+                    // "When your opponent takes BURN damage" (total: once that much has been taken)
+                    const took = before - this.sides[side].morale;
+                    if (took <= 0) continue;
+                    for (const foe of this.foesOf(side)) {
+                        for (const x of this.characters(foe)) {
+                            if (this.cardAt(foe, x.slot) === x.card) this._runFx(foe, x.slot, x.card, 'foe_burned', null, { amount: took });
+                        }
+                        this._runLasting(foe, 'foe_burned', null, { amount: took });
+                    }
+                }
             }
         }
     }
@@ -3178,6 +3206,13 @@ export class DuelState {
                     }
                 }
                 break;
+            case 'opposite_wide':   // the enemies in the lane across the table from it and the lanes either side of that one
+                if (FRONT.includes(slot) && this.cardAt(side, slot) === c) {
+                    for (const foe of this.foesOf(side)) {
+                        entries.push(...this._fxPool(foe, e, -99).filter(x => Math.abs(x.slot - (4 - slot)) <= 1).map(x => ({ side: foe, slot: x.slot, card: x.card })));
+                    }
+                }
+                break;
             case 'collateral':   // COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
                 if (vs && vs.victim && FRONT.includes(vs.victim.slot) && vs.victim.side !== side) {
                     const v = vs.victim;
@@ -3225,8 +3260,8 @@ export class DuelState {
             case 'stoke':   // the hottest fire first: it builds on what's there
                 if (c.burn !== undefined) return 100000 + toInt(c.burn.amt ?? 0) + toInt(c.defense ?? 0);
                 return (c.downed ? 0 : 10000) + toInt(c.defense ?? 0);
-            case 'freeze': case 'stun': {
-                const key = e.do === 'freeze' ? 'freeze_until' : 'stun_until';
+            case 'freeze': case 'stun': case 'blind': {
+                const key = `${e.do}_until`;
                 if (toInt(c[key] ?? 0) >= this.turn) return value - 50000;
                 if (standingAtk) return 100000 + value;
                 break;

@@ -32,8 +32,7 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	p.add_child(col)
-	var h := UI.label("WELCOME BACK", 44, UI.GOLD, true)
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var h := UI.panel_title("WELCOME BACK", 44, UI.BLUE)
 	col.add_child(h)
 	if Game.steam.active:   # (the Steam build: Steam signs you in; email accounts sign in once to link it)
 		col.add_child(UI.button("CONTINUE WITH STEAM  ·  %s" % Game.steam.persona.to_upper().left(16), _steam_continue, Vector2(640, 72), STEAM_BLUE))

@@ -225,7 +225,7 @@ func _on_started(total: int) -> void:
 
 ## The download panel: a card that flips as cards land, a heading, a line of text and a bar.
 func _build_panel(heading: String, text: String, bar_text: String) -> void:
-	_panel = UI.panel(UI.GOLD, Color(0.03, 0.03, 0.09, 0.95))
+	_panel = UI.panel(UI.STEEL, Color(0.03, 0.03, 0.09, 0.95))
 	_panel.custom_minimum_size = Vector2(760, 0)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 26)

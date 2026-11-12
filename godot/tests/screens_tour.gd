@@ -696,6 +696,85 @@ func _run() -> void:
 			await _shot("lk_post_%s" % res, 3.0)
 		get_tree().quit()
 		return
+	if "--duel-fx" in OS.get_cmdline_user_args():   # (the words over the table: turn, phase, an ability going off, a Hustle; shots every 0.1 s)
+		var deck6 := await Game.load_duel_deck()
+		Game.duel_setup = deck6
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		var d = _screen()
+		if d._menu:
+			d._menu.visible = false
+		var all_ids: Array = CardDB.all().keys()
+		var of := func(kind: String, n: int) -> Dictionary:
+			var ids: Array = all_ids.filter(func(i): return CardDB.get_card(i).get("cardType") == kind)
+			return CardDB.get_card(ids[n % ids.size()]).duplicate()
+		var mine: Dictionary = of.call("gang_member", 3)
+		var theirs: Dictionary = of.call("gang_member", 11)
+		var pv = d._new_view(mine, "player", true)
+		pv.position = d.slot_pos("player", 1)
+		pv.home = pv.position
+		d.field["player"][1] = pv
+		var ov = d._new_view(theirs, "opponent", true)
+		ov.position = d.slot_pos("opponent", 3)
+		ov.home = ov.position
+		d.field["opponent"][3] = ov
+		d._sweep_banner("YOUR TURN", d.BLUE)
+		for i in 12:
+			await _shot("dfx_turn_%02d" % i, 0.1)
+		d._sweep_banner("THE OPPONENT'S TURN", d.RED)
+		for i in 6:
+			await _shot("dfx_turn2_%02d" % i, 0.1)
+		await get_tree().create_timer(0.8).timeout
+		d._phase_flash("BRAWL PHASE", d.BLUE)
+		for i in 7:
+			await _shot("dfx_phase_%02d" % i, 0.1)
+		d._ev_effect({"side": "player", "slot": 1, "card": mine, "text": "%s gives %s -500 ATK and DOWNS it" % [mine.name, theirs.name]})
+		for i in 16:
+			await _shot("dfx_ability_%02d" % i, 0.1)
+		await get_tree().create_timer(0.4).timeout
+		d._ev_effect({"side": "opponent", "slot": 3, "card": theirs, "text": "%s: DRAW 2 cards, then DISCARD 1. Each character the opponent controls loses 300 DEF until the end of the turn, and %s gains ARMOR 1" % [theirs.name, theirs.name]})
+		for i in 8:
+			await _shot("dfx_ability2_%02d" % i, 0.1)
+		await get_tree().create_timer(1.0).timeout
+		var boss: Dictionary = of.call("leader", 0)
+		d._ev_effect({"side": "player", "slot": -1, "card": boss, "text": "%s AWAKENS: every character you control gains 500 ATK" % boss.name})
+		for i in 6:
+			await _shot("dfx_leader_%02d" % i, 0.1)
+		await get_tree().create_timer(1.2).timeout
+		d._ev_effect({"side": "player", "slot": -1, "card": {}, "text": "The turn timer ran out"})
+		await _shot("dfx_nocard", 0.4)
+		await get_tree().create_timer(1.4).timeout
+		var h: Dictionary = of.call("hustle", 2)
+		d._action_tag(Vector2(1080, 424 + 250), "HUSTLE", d.BLUE, str(h.name))
+		for i in 8:
+			await _shot("dfx_hustle_%02d" % i, 0.1)
+		d._action_tag(pv.home + Vector2(0, -128), "EQUIPPED", d.GOLD)
+		d._action_tag(Vector2(1080, 424 + 250), "CONTINUOUS", d.GOLD, "A very long card name to fit, the Third")
+		for i in 4:
+			await _shot("dfx_equip_%02d" % i, 0.1)
+		await get_tree().create_timer(0.8).timeout
+		d._stamp(ov.position, "K.O.", Color(1, 0.35, 0.2))
+		d._stamp(pv.position, "DOWNED", d.RED)
+		d._float_text(Vector2(1080, 424), "BRAWL!", d.GOLD, 34)
+		d._float_text(Vector2(1080, 300), "AMBUSH!", d.RED, 64)
+		d._float_text(Vector2(700, 520), "-500", d.RED, 30)
+		for i in 5:
+			await _shot("dfx_stamp_%02d" % i, 0.1)
+		await get_tree().create_timer(0.8).timeout
+		d._splash_name(str(mine.name), d.GOLD, 424 + 265.0)
+		await _shot("dfx_splash", 0.4)
+		await get_tree().create_timer(1.0).timeout
+		d._show_choice({"prompt": "Use %s's ability?" % mine.name, "card": mine, "key": "yn", "options": [{"id": "yes", "label": "YES"}, {"id": "skip", "label": "NO"}]})
+		await _shot("dfx_choice", 0.5)
+		d._cancel_interaction()
+		if d._menu:
+			d._menu.queue_free()
+		d._toggle_log()
+		await _shot("dfx_log", 0.5)
+		get_tree().quit()
+		return
 	if "--clan-fx" in OS.get_cmdline_user_args():   # (each clan's summon then attack: shots every 0.1 s / 0.08 s)
 		var deck5 := await Game.load_duel_deck()
 		Game.duel_setup = deck5

@@ -610,7 +610,7 @@ func _lot(a: Dictionary) -> Control:
 	return root
 
 
-func _plate_box(rc: Color, selected: bool) -> StyleBoxFlat:
+func _plate_box(rc: Color, selected: bool) -> UI.Plate:
 	var sb := UI.box(Color(0.03, 0.025, 0.06, 0.92), HOT if selected else rc.darkened(0.25), 3 if selected else 2, 10)
 	sb.shadow_color = Color(HOT if selected else rc, 0.4 if selected else 0.18)
 	sb.shadow_size = 12 if selected else 6

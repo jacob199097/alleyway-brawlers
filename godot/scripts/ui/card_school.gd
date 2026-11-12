@@ -59,10 +59,9 @@ func _ready() -> void:
 	_chapter = UI.label("", 20, UI.MUTED, true)
 	_chapter.position = Vector2(40, 30)
 	add_child(_chapter)
-	_title = UI.label("", 44, UI.GOLD, true)
+	_title = UI.panel_title("", 44, UI.GOLD, 520.0)
 	_title.size = Vector2(1920, 60)
-	_title.position = Vector2(0, 46)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.position = Vector2(0, 40)
 	add_child(_title)
 	var close := UI.button("CLOSE  ✕", _done, Vector2(170, 48))
 	close.position = Vector2(1720, 24)

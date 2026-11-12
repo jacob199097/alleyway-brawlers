@@ -43,7 +43,8 @@ const FOE_HAND := 0.22     # an opponent's hand: a small fan of card backs on th
 
 const BLUE := Color("4cc9f0")
 const RED := Color("e63946")
-const GOLD := Color("f4d35e")
+const GOLD := UI.GOLD
+const PROMPT_EDGE := Color(0.62, 0.74, 1.0, 0.6)   # the edge of a prompt, a menu or the log: cool steel, lit
 const GREEN := Color("3ddc84")
 const TEAL := Color("3ee6d0")   # a character with an Activate ability ready
 const SWAP := Color("ff9f43")   # one of your characters a card can be deployed over
@@ -53,6 +54,9 @@ const AttackArrow := preload("res://scripts/duel/attack_arrow.gd")
 const Tutorial := preload("res://scripts/duel/tutorial.gd")
 const Keywords := preload("res://scripts/keywords.gd")
 const ArenaRoulette := preload("res://scripts/ui/arena_roulette.gd")
+const Plate := preload("res://scripts/ui/plate.gd")
+const Banner := preload("res://scripts/ui/banner.gd")
+const FxBrackets := preload("res://scripts/duel/fx_brackets.gd")
 const ONLINE_TURN_SECS := 90.0   # matches TURN_SECS in backend/socket/onlineMatch.js
 ## Emotes in online matches against players (keys match EMOTES in backend/socket/onlineMatch.js)
 const EMOTES := [["hello", "Hey!"], ["nice", "Nice move!"], ["wp", "Well played"], ["thinking", "Hmm…"],
@@ -176,14 +180,14 @@ var _game_time := 0.0
 var _end_reason := "morale"         # from game_over: "morale" or "deck_out"
 var _end_snap: Texture2D = null      # the board as the match ended, before anything covers it (post-match background)
 
-var _font: SystemFont
+var _font: Font
 var _dot: Texture2D
 var _ring_tex: Texture2D
 var _column_tex: Texture2D
 var _add_mat: CanvasItemMaterial
-var _slot_box: StyleBoxFlat
-var _slot_box_back: StyleBoxFlat
-var _pile_box: StyleBoxFlat
+var _slot_box: Plate
+var _slot_box_back: Plate
+var _pile_box: Plate
 var _ui := {}
 var _panels := {}
 var _right := 0.0          # how far the right-hand HUD column moved out on a wide phone (widescreen.gd)
@@ -205,8 +209,7 @@ func _ready() -> void:
 	randomize()
 	if "--autoplay" in OS.get_cmdline_user_args():
 		ai_sides = ["player", "opponent"]
-	_font = SystemFont.new()
-	_font.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"])
+	_font = UI.font()
 	_make_resources()
 	ui.theme = _make_theme()
 	# The floor: the match's 1v1 arena (data/arenas.json; the server's pick online, the roulette's
@@ -589,12 +592,12 @@ func _jump_to(i: int) -> void:
 # ── Battle log ───────────────────────────────────────────────────────────────
 
 func _build_log() -> void:
-	var b := UI.button("LOG", _toggle_log, Vector2(100, 48), GOLD)
+	var b := UI.button("LOG", _toggle_log, Vector2(100, 48))
 	b.position = Vector2(440, 1004)   # left of the hand, even when it's full
 	b.tooltip_text = "Battle log (L)"
 	ui.add_child(b)
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.98), GOLD, 2, 10))
+	p.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.98), PROMPT_EDGE, 2, 10))
 	p.position = Vector2(20, 250)
 	p.size = Vector2(560, 640)
 	p.visible = false
@@ -906,13 +909,8 @@ func _show_emote(side: String, key: String) -> void:
 
 
 ## The emotes' font: a clean, semi-bold sans-serif that reads at a glance (the headline font is too heavy).
-static var _emote_font_cache: SystemFont
-static func _emote_font() -> SystemFont:
-	if _emote_font_cache == null:
-		_emote_font_cache = SystemFont.new()
-		_emote_font_cache.font_names = PackedStringArray(["Segoe UI", "Helvetica Neue", "Arial"])
-		_emote_font_cache.font_weight = 600
-	return _emote_font_cache
+static func _emote_font() -> Font:
+	return UI.font_of("strong")
 
 
 ## Rejoining a match (reconnect or correction): lay the board out straight from the view.
@@ -2114,6 +2112,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_awaken(ev)
 		"luck":
 			await _ev_luck(ev)
+		"miss":
+			await _ev_miss(ev)
 		"leader_hit":
 			await _ev_leader_hit(ev)
 		"leader_heal":
@@ -2394,7 +2394,7 @@ func _ev_hustle(ev: Dictionary) -> void:
 		_dim(0.0, 0.35)
 	_ring(center, BLUE, 1.5)
 	_burst(center, BLUE, 32, 420, 0.8, -250.0)
-	_float_text(center + Vector2(0, 215), "HUSTLE", BLUE, 40)
+	_action_tag(center + Vector2(0, 250), "HUSTLE", BLUE, str(c.get("name", "")))
 	await _wait(0.75)
 	await _to_gutter(v, side)
 
@@ -2417,7 +2417,7 @@ func _ev_lasting(ev: Dictionary) -> void:
 	Sfx.play("effect", 0.8)
 	await v.move_to(center, 2.1, 0.0, 0.3, Tween.TRANS_BACK).finished
 	_ring(center, GOLD, 1.5)
-	_float_text(center + Vector2(0, 215), "EQUIP" if str(c.get("subtype", "")) == "equip" else "CONTINUOUS", GOLD, 40)
+	_action_tag(center + Vector2(0, 250), "EQUIP" if str(c.get("subtype", "")) == "equip" else "CONTINUOUS", GOLD, str(c.get("name", "")))
 	await _wait(0.6)
 	await v.move_to(target, 1.0, 0.0, 0.3).finished
 	_ring(target, GOLD, 0.8)
@@ -2433,7 +2433,7 @@ func _ev_equip(ev: Dictionary) -> void:
 	Sfx.play("promote", 1.2, -6.0)
 	_burst(t.home, GOLD, 28, 300, 0.7, -260.0)
 	_ring(t.home, GOLD, 1.1)
-	_float_text(t.home + Vector2(0, -120 if ev.target_side == "player" else 120), "EQUIPPED", GOLD, 32)
+	_action_tag(t.home + Vector2(0, -128 if ev.target_side == "player" else 128), "EQUIPPED", GOLD)
 	await _wait(0.4)
 
 
@@ -2450,6 +2450,27 @@ func _ev_attack(ev: Dictionary) -> void:
 	v.kick(-(tpos - v.home), 10.0)
 	_float_text(v.home + Vector2(0, 110 if side == "player" else -110), "BRAWL!", GOLD, 34)
 	await _wait(0.35)
+
+
+## A BLIND character's attack that missed (its coin came up tails): it swings past its target at nothing.
+func _ev_miss(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(ev.from)
+	if v == null:
+		return
+	var tpos := _target_pos(str(ev.get("foe", DuelState.other(side))), ev.target)
+	var dir := (tpos - v.home).normalized()
+	var col: Color = CardView.status_color("blind")
+	Sfx.play("whoosh", 1.3, -2.0)
+	v.z_index = 430
+	v.move_to(v.home + dir * 110.0 + dir.orthogonal() * 54.0, 1.1, v.home_rot + 0.16, 0.14)
+	await _wait(0.16)
+	_float_text(v.position + Vector2(0, -130 if side == "player" else 130), "MISS!", col, 44)
+	_burst(v.position + dir * 70.0, col, 14, 200, 0.4, 0.0)
+	await _wait(0.4)
+	v.z_index = 10
+	v.go_home(0.24)
+	await _wait(0.26)
 
 
 func _ev_flip(ev: Dictionary) -> void:
@@ -5796,7 +5817,7 @@ func _ev_effect(ev: Dictionary) -> void:
 	if ev.slot >= 0:
 		var v: CardView = field[side].get(ev.slot)
 		if v:
-			_pulse_glow(v, GOLD)
+			_activate(v, _side_color(side))
 	_callout(ev.card, ev.text, side)
 	await _wait(0.9)
 
@@ -6700,17 +6721,36 @@ func _label(font_size: int, color: Color, heading := false) -> Label:
 		font_size = mini(font_size + 3, 20)
 	ls.font_size = font_size
 	ls.font_color = color
-	ls.outline_size = maxi(4, font_size / 9)
-	ls.outline_color = Color(0, 0, 0, 0.9)
-	ls.shadow_size = 0
+	ls.outline_size = clampi(font_size / 8, 3, 8)
+	ls.outline_color = Color(0, 0, 0, 0.78)
+	ls.shadow_size = 1
+	ls.shadow_color = Color(0, 0, 0, 0.5)
+	ls.shadow_offset = Vector2(0, maxf(1.0, font_size / 16.0))
 	l.label_settings = ls
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
 
+## A soft light in a colour behind lettering (float text, banners): it sits behind its parent.
+func _text_glow(box: Vector2, text_width: float, font_size: int, color: Color) -> TextureRect:
+	var g := TextureRect.new()
+	g.texture = _dot
+	g.material = _add_mat
+	g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	g.stretch_mode = TextureRect.STRETCH_SCALE
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.show_behind_parent = true
+	g.modulate = Color(color, 0.4 * _fx_level())
+	g.size = Vector2(text_width * 1.5 + 110.0, font_size * 2.8)
+	g.position = (box - g.size) / 2.0
+	return g
+
+
 ## Pop-in text that drifts up and fades (world coordinates = screen coordinates here).
 func _float_text(pos: Vector2, text: String, color: Color, font_size: int) -> void:
 	var l := _label(font_size, color, true)
+	var f := UI.font_of("title")
+	l.label_settings.font = f
 	l.text = text
 	l.size = Vector2(700, font_size * 1.4)
 	l.position = pos - l.size / 2
@@ -6718,6 +6758,8 @@ func _float_text(pos: Vector2, text: String, color: Color, font_size: int) -> vo
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.scale = Vector2.ONE * 1.7
+	if font_size >= 28 and _fx_level() > 0.0:
+		l.add_child(_text_glow(l.size, f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x, font_size, color))
 	overlay.add_child(l)
 	var t := create_tween()
 	t.tween_property(l, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -6730,6 +6772,8 @@ func _float_text(pos: Vector2, text: String, color: Color, font_size: int) -> vo
 
 func _stamp(pos: Vector2, text: String, color: Color) -> void:
 	var l := _label(46, color, true)
+	var f := UI.font_of("title")
+	l.label_settings.font = f
 	l.text = text
 	l.size = Vector2(400, 70)
 	l.position = pos - l.size / 2
@@ -6738,6 +6782,18 @@ func _stamp(pos: Vector2, text: String, color: Color) -> void:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.rotation = -0.18
 	l.scale = Vector2.ONE * 2.6
+	# The stamp's frame: a cut plate in the same ink, dark under the letters
+	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x + 44.0
+	var frame := Panel.new()
+	var sb := UI.box(Color(0.02, 0.02, 0.05, 0.62), color, 2, 8)
+	sb.border_width = 3.0
+	sb.depth = 0.0
+	frame.add_theme_stylebox_override("panel", sb)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.show_behind_parent = true
+	frame.size = Vector2(w, 60)
+	frame.position = Vector2((400.0 - w) / 2.0, 6)
+	l.add_child(frame)
 	overlay.add_child(l)
 	var t := create_tween()
 	t.tween_property(l, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -6752,66 +6808,103 @@ func _notice(text: String) -> void:
 
 
 func _phase_flash(text: String, color: Color) -> void:
-	var l := _label(60, color, true)
-	l.text = text
-	l.size = Vector2(1100, 90)
-	l.position = Vector2(1080 - 550, DIVIDER_Y - 45)
-	l.pivot_offset = l.size / 2
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.modulate.a = 0.0
-	l.scale = Vector2.ONE * 1.3
-	overlay.add_child(l)
-	var t := create_tween().set_parallel()
-	t.tween_property(l, "modulate:a", 1.0, 0.12)
-	t.tween_property(l, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.chain().tween_interval(0.35)
-	t.chain().tween_property(l, "modulate:a", 0.0, 0.25)
-	t.chain().tween_callback(l.queue_free)
-	await _wait(0.45)
-
-
-func _sweep_banner(text: String, color: Color) -> void:
-	var band := Control.new()
-	band.size = Vector2(1920, 150)
-	band.position = Vector2(-1920, DIVIDER_Y - 75)
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.02, 0.06, 0.88)
-	bg.size = band.size
-	band.add_child(bg)
-	for y in [0.0, 146.0]:
-		var edge := ColorRect.new()
-		edge.color = color
-		edge.size = Vector2(1920, 4)
-		edge.position.y = y
-		band.add_child(edge)
-	var l := _label(96, Color.WHITE, true)
+	var band := Banner.new()
+	band.size = Vector2(940, 72)
+	band.position = Vector2(1080 - 470, DIVIDER_Y - 36)
+	band.accent = Color(color, 0.95)
+	band.fill = Color(0.02, 0.025, 0.06, 0.8)
+	band.fade_l = 340.0
+	band.fade_r = 340.0
+	band.open = 0.0
+	var l := _label(46, Color.WHITE, true)
+	l.label_settings.font = UI.font_of("title")
+	l.label_settings.shadow_color = Color(color.darkened(0.2), 0.85)
+	l.label_settings.shadow_offset = Vector2(3, 3)
 	l.text = text
 	l.size = band.size
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.label_settings.outline_color = Color(color, 0.9)
+	l.modulate.a = 0.0
+	band.add_child(l)
+	overlay.add_child(band)
+	var t := create_tween().set_parallel()
+	t.tween_property(band, "open", 1.0, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "modulate:a", 1.0, 0.14)
+	if _fx_level() > 0.0:
+		t.tween_property(band, "sheen", 1.2, 0.45).from(-0.2)
+	else:
+		t.tween_interval(0.45)
+	t.chain().tween_property(band, "modulate:a", 0.0, 0.22)
+	t.chain().tween_callback(band.queue_free)
+	await _wait(0.45)
+
+
+func _sweep_banner(text: String, color: Color) -> void:
+	# A band of dark glass that opens from the middle of the table, the words in the title lettering over a
+	# shadow of the side's colour; a gleam runs along it while it holds, then it shuts
+	var band := Banner.new()
+	band.size = Vector2(1920, 138)
+	band.position = Vector2(1080 - 960, DIVIDER_Y - 69)
+	band.pivot_offset = band.size / 2
+	band.accent = color
+	band.fade_l = 540.0
+	band.fade_r = 540.0
+	band.edge = 3.0
+	band.open = 0.0
+	var l := _label(92, Color.WHITE, true)
+	var f := UI.font_of("title")
+	l.label_settings.font = f
+	l.label_settings.outline_size = 5
+	l.label_settings.outline_color = Color(color.darkened(0.75), 0.9)
+	l.label_settings.shadow_size = 2
+	l.label_settings.shadow_color = Color(color.darkened(0.1), 0.95)
+	l.label_settings.shadow_offset = Vector2(5, 5)
+	var tw := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 92).x
+	if tw > 1240.0:   # (a long name: smaller, so it stays on the band)
+		l.label_settings.font_size = int(92.0 * 1240.0 / tw)
+		tw = 1240.0
+	l.text = text
+	l.size = band.size
+	l.pivot_offset = l.size / 2
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.scale = Vector2.ONE * 1.2
+	l.modulate.a = 0.0
+	if _fx_level() > 0.0:
+		l.add_child(_text_glow(l.size, tw * 0.8, 92, color))
 	band.add_child(l)
 	overlay.add_child(band)
 	var t := create_tween()
-	t.tween_property(band, "position:x", 0.0, 0.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	t.tween_interval(0.55)
-	t.tween_property(band, "position:x", 1920.0, 0.25).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	t.tween_callback(band.queue_free)
+	t.set_parallel()
+	t.tween_property(band, "open", 1.0, 0.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "modulate:a", 1.0, 0.16)
+	t.tween_property(l, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.chain().tween_property(l, "scale", Vector2.ONE * 1.035, 0.55)   # (a slow push in while it holds)
+	if _fx_level() > 0.0:
+		t.tween_property(band, "sheen", 1.15, 0.55).from(-0.15)
+	t.chain().tween_property(band, "scale:y", 0.0, 0.22).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	t.tween_property(band, "modulate:a", 0.0, 0.22)
+	t.chain().tween_callback(band.queue_free)
 	await t.finished
 
 
 func _splash_name(card_name: String, color: Color, y := DIVIDER_Y) -> void:
 	var l := _label(84, Color.WHITE, true)
+	var f := UI.font_of("title")
+	l.label_settings.font = f
 	l.text = card_name.to_upper()
 	l.size = Vector2(1200, 110)
 	l.position = Vector2(1080 - 600, y - 55)
 	l.pivot_offset = l.size / 2
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.label_settings.outline_color = color
-	l.label_settings.outline_size = 14
+	l.label_settings.outline_color = Color(color.darkened(0.7), 0.92)
+	l.label_settings.outline_size = 6
+	l.label_settings.shadow_size = 2
+	l.label_settings.shadow_color = Color(color, 0.95)
+	l.label_settings.shadow_offset = Vector2(5, 5)
+	if _fx_level() > 0.0:
+		l.add_child(_text_glow(l.size, minf(900.0, f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 84).x * 0.8), 84, color))
 	l.modulate.a = 0.0
 	overlay.add_child(l)
 	var t := create_tween()
@@ -6822,48 +6915,208 @@ func _splash_name(card_name: String, color: Color, y := DIVIDER_Y) -> void:
 	t.chain().tween_callback(l.queue_free)
 
 
-## An effect call-out: card art, name and what the effect just did.
+## An ability going off: a leaning plate that slides in from the side that played it, with the card's picture,
+## what kind of card it is, its name, and what the effect just did (its keywords in their colours).
 func _callout(c: Dictionary, text: String, side: String) -> void:
 	if _ui.has("callout") and is_instance_valid(_ui.callout):
 		_ui.callout.queue_free()
-	var box := PanelContainer.new()
+	var mine := side == "player"
+	var col := _side_color(side)
+	var tex: Texture2D = CardDB.art(str(c.get("art_url", c.get("id", "")))) if not c.is_empty() else null
+	var width := 720.0
+	var lean := 30.0
+	var art_w := 226.0 if tex else 0.0   # (no picture when the call-out is not about a card)
+	var text_x := art_w - 22.0 if tex else 40.0
+	var text_w := width - text_x - 110.0
+	var lines := UI.font_of("strong").get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, text_w, 20).y
+	var h := maxf(126.0, 72.0 + lines + 18.0)
+	var box := Control.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.95), BLUE if side == "player" else RED, 2, 10))
-	box.custom_minimum_size = Vector2(620, 0)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	box.add_child(row)
-	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(76, 107)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.texture = CardDB.art(str(c.get("art_url", c.get("id", "")))) if not c.is_empty() else null
-	art.visible = art.texture != null   # no art slot when the prompt is not about a card
-	row.add_child(art)
-	var col := VBoxContainer.new()
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(col)
-	var n := _label(26, GOLD, true)
+	box.size = Vector2(width, h)
+	var band := Banner.new()
+	band.size = box.size
+	band.accent = col
+	band.fill = Color(0.03, 0.035, 0.085, 0.95)
+	band.skew = lean
+	band.fade_r = 190.0
+	band.cap = 9.0
+	box.add_child(band)
+	if tex:
+		box.add_child(_art_slice(tex, Vector2(9.0, 2.0), Vector2(art_w, h - 4.0), lean * (h - 4.0) / h, 96.0))
+	# (each line starts on the plate's lean)
+	var at := func(y: float) -> Vector2: return Vector2(text_x + lean * (0.5 - y / h), y)
+	var kind := _label(15, col.lightened(0.35), true)
+	kind.label_settings.font = UI.font_of("label")
+	kind.label_settings.outline_size = 2
+	kind.text = "  ".join(_callout_kind(c).split(""))   # (spaced out, as a caption)
+	kind.position = at.call(11.0)
+	kind.visible = c.has("name")   # (nothing to name: the caption would only say "EFFECT" twice)
+	box.add_child(kind)
+	var n := _label(31, Color.WHITE, true)
+	n.label_settings.font = UI.font_of("title")
 	n.text = str(c.get("name", "Effect")).to_upper()
-	col.add_child(n)
-	var t := _label(20, Color.WHITE)
-	t.text = text
-	t.autowrap_mode = TextServer.AUTOWRAP_WORD
-	t.custom_minimum_size = Vector2(480, 0)
-	col.add_child(t)
+	n.position = at.call(27.0)
+	n.size = Vector2(text_w, 38)
+	n.clip_text = true
+	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	box.add_child(n)
+	var line := ColorRect.new()
+	line.color = Color(col, 0.7)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.position = at.call(66.0)
+	line.size = Vector2(64, 2)
+	box.add_child(line)
+	var t := RichTextLabel.new()
+	t.bbcode_enabled = true
+	t.scroll_active = false
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t.meta_underlined = false
+	t.add_theme_font_override("bold_font", UI.font_of("strong"))
+	t.add_theme_font_size_override("normal_font_size", 20)
+	t.add_theme_font_size_override("bold_font_size", 20)
+	t.add_theme_color_override("default_color", UI.TEXT)
+	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	t.add_theme_constant_override("outline_size", 3)
+	t.text = Keywords.markup(text)
+	t.position = at.call(72.0)
+	t.size = Vector2(text_w + 6.0, lines + 12.0)
+	box.add_child(t)
 	overlay.add_child(box)
 	_ui.callout = box
-	var y := DIVIDER_Y - 62 + (70.0 if side == "player" else -70.0)
-	box.position = Vector2(1080 - 310 - 60, y)
+	var x := 1080.0 - width / 2.0
+	var from := -90.0 if mine else 90.0   # (it comes in from its player's side)
+	box.position = Vector2(x + from, DIVIDER_Y - h / 2.0 + (70.0 if mine else -70.0))
 	box.modulate.a = 0.0
 	var tw := create_tween()
 	tw.set_parallel()
-	tw.tween_property(box, "position:x", 1080.0 - 310.0, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(box, "modulate:a", 1.0, 0.18)
-	tw.chain().tween_interval(1.1)
+	tw.tween_property(box, "position:x", x, 0.22).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_property(box, "modulate:a", 1.0, 0.14)
+	if _fx_level() > 0.0:
+		tw.tween_property(band, "sheen", 1.2, 0.5).from(-0.2).set_delay(0.1)
+	else:
+		tw.tween_interval(0.6)
+	tw.chain().tween_interval(0.68)
 	tw.chain().tween_property(box, "modulate:a", 0.0, 0.3)
+	tw.tween_property(box, "position:x", x - from * 0.35, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(box.queue_free)
+
+
+## What a call-out names its card as.
+func _callout_kind(c: Dictionary) -> String:
+	match str(c.get("cardType", "")):
+		"leader":
+			return "LEADER ABILITY"
+		"gang_member":
+			return "ABILITY"
+		"ambush":
+			return "AMBUSH"
+		"hustle":
+			var sub := str(c.get("subtype", ""))
+			return "EQUIP" if sub == "equip" else ("CONTINUOUS" if sub == "continuous" else "HUSTLE")
+	return "EFFECT"
+
+
+## A card's picture (the part of the card under its name) in a leaning window that fades out to the right.
+func _art_slice(tex: Texture2D, at: Vector2, window: Vector2, lean: float, fade: float) -> Polygon2D:
+	var p := Polygon2D.new()
+	p.texture = tex
+	p.position = at
+	var ts := tex.get_size()
+	var full := window.x + lean
+	var uw := ts.x * 0.84
+	var uh := minf(ts.y * 0.44, uw * window.y / full)
+	var origin := Vector2(ts.x * 0.08, ts.y * 0.12)
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
+	for corner in [[0.0, 0.0, 1.0], [window.x - fade, 0.0, 1.0], [window.x, 0.0, 0.0], [window.x, 1.0, 0.0], [window.x - fade, 1.0, 1.0], [0.0, 1.0, 1.0]]:
+		var px: float = corner[0] + lean * (0.5 - corner[1])
+		pts.append(Vector2(px, corner[1] * window.y))
+		uvs.append(origin + Vector2((px + lean / 2.0) / full * uw, corner[1] * uh))
+		cols.append(Color(1, 1, 1, corner[2]))
+	p.polygon = pts
+	p.uv = uvs
+	p.vertex_colors = cols
+	p.polygons = [PackedInt32Array([0, 1, 4, 5]), PackedInt32Array([1, 2, 3, 4])]
+	return p
+
+
+## A card's ability going off, on the card itself: it swells and glows in its side's colour, four brackets
+## lock on to it, and a ring and a few sparks leave it.
+func _activate(v: CardView, col: Color) -> void:
+	_pulse_glow(v, col)
+	_ring(v.position, col, 0.95)
+	_burst(v.position, col.lightened(0.3), 14, 240, 0.7, -320.0)
+	var b := FxBrackets.new()
+	b.half = CARD * v.scale / 2.0
+	b.position = v.position
+	b.rotation = v.rotation
+	b.color = col.lightened(0.45)
+	b.material = _add_mat
+	b.gap = 46.0
+	b.modulate.a = 0.0
+	fx.add_child(b)
+	var t := create_tween()
+	t.set_parallel()
+	t.tween_property(b, "gap", 7.0, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(b, "modulate:a", 1.0, 0.1)
+	t.chain().tween_interval(0.32)
+	t.chain().tween_property(b, "gap", 30.0, 0.26).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(b, "modulate:a", 0.0, 0.26)
+	t.chain().tween_callback(b.queue_free)
+	if not v.busy:
+		var s := v.scale
+		var swell := create_tween()
+		swell.tween_property(v, "scale", s * 1.07, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		swell.tween_property(v, "scale", s, 0.22)
+
+
+## The word for what was just played ("HUSTLE", "EQUIPPED") on a small leaning band that opens under it, the
+## card's name below the word.
+func _action_tag(pos: Vector2, word: String, color: Color, title := "") -> void:
+	var f := UI.font_of("title")
+	title = title.to_upper()
+	var w := maxf(f.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 44).x, _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x) + 200.0
+	var band := Banner.new()
+	band.size = Vector2(w, 64.0 if title == "" else 94.0)
+	band.position = pos - band.size / 2
+	band.accent = color
+	band.fill = Color(0.02, 0.025, 0.06, 0.86)
+	band.skew = 22.0
+	band.fade_l = 74.0
+	band.fade_r = 74.0
+	band.open = 0.0
+	band.modulate.a = 0.0
+	var l := _label(44, Color.WHITE, true)
+	l.label_settings.font = f
+	l.label_settings.shadow_color = Color(color.darkened(0.15), 0.9)
+	l.label_settings.shadow_offset = Vector2(3, 3)
+	l.text = word
+	l.size = Vector2(w, 58)
+	l.position.y = 3
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	band.add_child(l)
+	if title != "":
+		var n := _label(24, color.lightened(0.5), true)
+		n.text = title
+		n.size = Vector2(w, 30)
+		n.position.y = 55
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		band.add_child(n)
+	overlay.add_child(band)
+	var t := create_tween()
+	t.set_parallel()
+	t.tween_property(band, "open", 1.0, 0.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	t.tween_property(band, "modulate:a", 1.0, 0.1)
+	if _fx_level() > 0.0:
+		t.tween_property(band, "sheen", 1.2, 0.45).from(-0.2)
+	else:
+		t.tween_interval(0.45)
+	t.chain().tween_interval(0.3)
+	t.chain().tween_property(band, "modulate:a", 0.0, 0.3)
+	t.tween_property(band, "position:y", band.position.y - 22.0, 0.3)
+	t.chain().tween_callback(band.queue_free)
 
 
 # ── HUD ──────────────────────────────────────────────────────────────────────
@@ -6962,7 +7215,7 @@ func _live_statuses(v: CardView) -> Array:
 	return (["downed"] if v.downed else []) + v.statuses
 
 const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
+	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}
@@ -7384,7 +7637,7 @@ func _update_status() -> void:
 	if who.text != text:   # (a new name pops in)
 		who.text = text
 		who.label_settings.font_color = col
-		(plate.get_theme_stylebox("panel") as StyleBoxFlat).border_color = col
+		(plate.get_theme_stylebox("panel") as Plate).border_color = col
 		plate.reset_size()
 		plate.scale = Vector2.ONE * 1.12
 		plate.create_tween().tween_property(plate, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -7433,36 +7686,31 @@ func _play_music() -> void:
 
 
 func _make_theme() -> Theme:
+	# The menus' look (UI.theme: the plates, the buttons, the fonts), with the table's own sizes
 	var th := Theme.new()
+	th.default_font = UI.font_of("body")
 	th.default_font_size = 18
-	var panel := _box(INK, Color(1, 1, 1, 0.12), 2, 10)
+	var panel := _box(UI.PLATE, UI.STEEL, 2, 10)
 	th.set_stylebox("panel", "Panel", panel)
 	th.set_stylebox("panel", "PanelContainer", panel)
-	th.set_stylebox("normal", "Button", _box(Color("1c2040"), Color(BLUE, 0.7), 2, 8))
-	th.set_stylebox("hover", "Button", _box(Color("28305e"), GOLD, 2, 8))
-	th.set_stylebox("pressed", "Button", _box(Color("12162e"), GOLD, 2, 8))
-	th.set_stylebox("disabled", "Button", _box(Color("0d0f1e"), Color(1, 1, 1, 0.1), 2, 8))
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		th.set_stylebox(state, "Button", UI.button_box(BLUE, state))
 	th.set_stylebox("focus", "Button", StyleBoxEmpty.new())
-	th.set_color("font_color", "Button", Color.WHITE)
-	th.set_color("font_hover_color", "Button", GOLD)
-	th.set_color("font_pressed_color", "Button", GOLD)
+	th.set_color("font_color", "Button", UI.TEXT)
+	th.set_color("font_hover_color", "Button", Color.WHITE)
+	th.set_color("font_pressed_color", "Button", Color(0.8, 0.93, 1.0))
+	th.set_color("font_focus_color", "Button", Color.WHITE)
 	th.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.3))
+	th.set_color("font_outline_color", "Button", Color(0, 0, 0, 0.5))
+	th.set_constant("outline_size", "Button", 2)
 	th.set_font("font", "Button", _font)
-	th.set_font_size("font_size", "Button", 20)
+	th.set_font_size("font_size", "Button", 21)
 	th.set_color("default_color", "RichTextLabel", Color(0.9, 0.9, 1.0))
 	return th
 
 
-func _box(bg: Color, border: Color, width: int, radius: int) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.set_border_width_all(width)
-	sb.set_corner_radius_all(radius)
-	sb.content_margin_left = 14
-	sb.content_margin_right = 14
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
+func _box(bg: Color, border: Color, width: int, radius: int) -> Plate:
+	var sb := UI.box(bg, border, width, radius)   # (the game's plate: scripts/ui/plate.gd)
 	sb.shadow_color = Color(0, 0, 0, 0.45)
 	sb.shadow_size = 8
 	sb.shadow_offset = Vector2(0, 4)
@@ -7681,7 +7929,7 @@ func _show_choice(p: Dictionary) -> void:
 	_cancel_interaction()
 	_mode = "choose"
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.96), GOLD, 3, 12))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.96), PROMPT_EDGE, 2, 12))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	box.add_child(row)
@@ -7727,7 +7975,7 @@ func _show_card_choice(p: Dictionary) -> void:
 	_cancel_interaction()
 	_mode = "choose"
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.97), GOLD, 3, 12))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.97), PROMPT_EDGE, 2, 12))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	box.add_child(col)
@@ -7793,7 +8041,7 @@ func _show_target_choice(p: Dictionary) -> void:
 		if o.has("slot"):
 			_valid["%s:%d" % [o.side, o.slot]] = GOLD
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.94), GOLD, 2, 8))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.94), PROMPT_EDGE, 2, 8))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	box.add_child(row)
@@ -8285,7 +8533,7 @@ func _open_hand_menu(v: CardView) -> void:
 
 func _make_menu(opts: Array, reason: String, anchor: Vector2) -> Control:
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.97), GOLD, 2, 10))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.97), PROMPT_EDGE, 2, 10))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	box.add_child(col)
@@ -8578,7 +8826,7 @@ func _show_pile(side: String, pile: String) -> void:
 	_cancel_interaction()
 	_mode = "menu"
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.97), GOLD, 2, 12))
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.97), PROMPT_EDGE, 2, 12))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	box.add_child(col)

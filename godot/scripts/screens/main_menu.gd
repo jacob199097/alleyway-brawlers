@@ -67,15 +67,14 @@ func _daily_popup(s: Dictionary) -> Control:
 	veil.z_index = 40
 	add_child(veil)
 	veil.create_tween().tween_property(veil, "color:a", 0.62, 0.25)
-	var panel := UI.glass(UI.panel(UI.GOLD, Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.7))
+	var panel := UI.glass(UI.panel(UI.STEEL, Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.7))
 	panel.position = Vector2(300, 250)
 	panel.custom_minimum_size = Vector2(1320, 0)
 	veil.add_child(panel)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	panel.add_child(col)
-	var title := UI.label("DAILY REWARD", 52, UI.GOLD, true)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var title := UI.panel_title("DAILY REWARD", 52, UI.GOLD, 560.0)
 	col.add_child(title)
 	var sub := UI.label("Day %d of 7  ·  come back every day: day 7 brings a free pack. Miss a day and it starts over." % day, 21, UI.MUTED)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -411,7 +410,7 @@ func _hotspot(center: Vector2, cb: Callable) -> Control:
 	b.size = Vector2(84, 84)
 	b.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	b.add_theme_stylebox_override("hover", UI.box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.25), 2, 12))
-	b.add_theme_stylebox_override("pressed", UI.box(Color(1, 1, 1, 0.15), UI.GOLD, 2, 12))
+	b.add_theme_stylebox_override("pressed", UI.box(Color(1, 1, 1, 0.15), UI.HOVER, 2, 12))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		cb.call())

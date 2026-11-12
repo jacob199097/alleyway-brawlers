@@ -5,11 +5,18 @@ extends RefCounted
 
 const BLUE := Color("4cc9f0")
 const RED := Color("e63946")
-const GOLD := Color("f4d35e")
+const GOLD := Color("ffc857")
 const GREEN := Color("4caf50")
 const PURPLE := Color("e040fb")
 const INK := Color(0.03, 0.03, 0.08, 0.92)
 const MUTED := Color(0.62, 0.66, 0.82)
+## The look (scripts/ui/plate.gd draws it): panels are dark machined plates with cut corners, lit from above;
+## buttons are the same plate with a bar of their colour along the bottom; headings are white, their colour
+## kept for a rule or a chip beside them. STEEL is the plates' own cool edge.
+const STEEL := Color(0.56, 0.66, 1.0, 0.26)
+const PLATE := Color(0.045, 0.05, 0.105, 0.94)
+const TEXT := Color(0.93, 0.95, 1.0)
+const HOVER := Color(0.8, 0.9, 1.0, 0.95)   # (the edge of whatever the pointer is over)
 
 ## Same names and colours as the Card Forge (RARITY there)
 const RARITY_COLOR := {1: Color("a3a3a3"), 2: Color("62b86c"), 3: Color("4f93e3"), 4: Color("a56be3"), 5: Color("eab33a")}
@@ -21,8 +28,10 @@ const TYPE_NAMES := {"gang_member": "CHARACTER", "hustle": "HUSTLE", "ambush": "
 
 const LivingBackground := preload("res://scripts/ui/living_bg.gd")
 const Keywords := preload("res://scripts/keywords.gd")
+const Plate := preload("res://scripts/ui/plate.gd")   # (the panel and button look)
 
-static var _font: SystemFont
+static var _font: Font
+static var _fonts := {}
 static var _theme: Theme
 static var _tex := {}
 ## The big backdrops (arenas, turf map) are .jpg upscales, drawn in their pictures' original pixels
@@ -30,10 +39,38 @@ static var _tex := {}
 const BACKDROP_W := 1536
 
 
-static func font() -> SystemFont:
+## The game's own fonts (res://fonts, the Barlow family, Open Font Licence): the same on Windows, Mac and
+## Android. Signs a font lacks (★, ▶) come from the system's.
+##   heading: condensed bold, a touch of space between the letters (buttons, headings, numbers)
+##   title:   condensed extra-bold italic (screen titles, banners, call-outs)
+##   body:    reading text · strong: reading text, semi-bold (chat, emotes)
+static func font_of(kind: String) -> Font:
+	if _fonts.has(kind):
+		return _fonts[kind]
+	var files := {"heading": "BarlowCondensed-Bold", "title": "BarlowCondensed-ExtraBoldItalic", "label": "BarlowCondensed-SemiBold",
+		"body": "Barlow-Medium", "strong": "Barlow-SemiBold"}
+	var path := "res://fonts/%s.ttf" % files.get(kind, "Barlow-Medium")
+	var f: Font = null
+	if ResourceLoader.exists(path):
+		var file: Font = load(path)
+		if kind in ["heading", "title", "label"]:
+			var v := FontVariation.new()
+			v.base_font = file
+			v.spacing_glyph = 1
+			f = v
+		else:
+			f = file
+	if f == null:   # (not imported yet: the system's, as before)
+		var sys := SystemFont.new()
+		sys.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"] if kind in ["heading", "title", "label"] else ["Segoe UI", "Helvetica Neue", "Arial"])
+		f = sys
+	_fonts[kind] = f
+	return f
+
+
+static func font() -> Font:
 	if _font == null:
-		_font = SystemFont.new()
-		_font.font_names = PackedStringArray(["Impact", "Arial Black", "Arial"])
+		_font = font_of("heading")
 	return _font
 
 
@@ -41,27 +78,34 @@ static func theme() -> Theme:
 	if _theme:
 		return _theme
 	var th := Theme.new()
+	th.default_font = font_of("body")
 	th.default_font_size = 20
-	th.set_stylebox("panel", "Panel", box(INK, Color(1, 1, 1, 0.12), 2, 10))
-	th.set_stylebox("panel", "PanelContainer", box(INK, Color(1, 1, 1, 0.12), 2, 10))
-	th.set_stylebox("normal", "Button", _shadowed(box(Color("1c2040"), Color(BLUE, 0.7), 2, 8)))
-	th.set_stylebox("hover", "Button", _glow(box(Color("28305e"), GOLD, 2, 8), GOLD))
-	th.set_stylebox("pressed", "Button", _glow(box(Color("12162e"), GOLD, 2, 8), GOLD, 0.5))
-	th.set_stylebox("disabled", "Button", box(Color("0d0f1e"), Color(1, 1, 1, 0.1), 2, 8))
+	th.set_stylebox("panel", "Panel", _shadowed(box(PLATE, STEEL, 2, 10)))
+	th.set_stylebox("panel", "PanelContainer", _shadowed(box(PLATE, STEEL, 2, 10)))
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		th.set_stylebox(state, "Button", button_box(BLUE, state))
 	th.set_stylebox("focus", "Button", StyleBoxEmpty.new())
-	th.set_color("font_color", "Button", Color.WHITE)
-	th.set_color("font_hover_color", "Button", GOLD)
-	th.set_color("font_pressed_color", "Button", GOLD)
+	th.set_color("font_color", "Button", TEXT)
+	th.set_color("font_hover_color", "Button", Color.WHITE)
+	th.set_color("font_pressed_color", "Button", Color(0.8, 0.93, 1.0))
+	th.set_color("font_focus_color", "Button", Color.WHITE)
 	th.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.3))
+	th.set_color("font_outline_color", "Button", Color(0, 0, 0, 0.5))
+	th.set_constant("outline_size", "Button", 2)
 	th.set_font("font", "Button", font())
-	th.set_font_size("font_size", "Button", 22)
-	th.set_stylebox("normal", "LineEdit", box(Color("1a1a2e"), Color(BLUE, 0.8), 2, 6))
-	th.set_stylebox("focus", "LineEdit", box(Color("1a1a2e"), GOLD, 2, 6))
+	th.set_font_size("font_size", "Button", 23)
+	var field := box(Color(0.02, 0.025, 0.06, 0.96), Color(STEEL, 0.4), 2, 6)
+	field.depth = -0.6   # (a field is sunk: darker at the top)
+	field.trim = false
+	th.set_stylebox("normal", "LineEdit", field)
+	var field_on: Plate = field.duplicate()
+	field_on.border_color = BLUE
+	th.set_stylebox("focus", "LineEdit", _glow(field_on, BLUE, 0.5))
 	th.set_font_size("font_size", "LineEdit", 22)
 	th.set_color("font_placeholder_color", "LineEdit", Color(1, 1, 1, 0.35))
 	th.set_color("default_color", "RichTextLabel", Color(0.9, 0.9, 1.0))
 	th.set_font_size("normal_font_size", "RichTextLabel", text_size(20 if Game.mobile() else 18))
-	var track := box(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0), 0, 6)
+	var track := box(Color(0.5, 0.58, 0.9, 0.16), Color(0, 0, 0, 0), 0, 6)
 	track.content_margin_top = 6
 	track.content_margin_bottom = 6
 	th.set_stylebox("slider", "HSlider", track)
@@ -74,34 +118,74 @@ static func theme() -> Theme:
 	th.set_stylebox("grabber", "VScrollBar", grab)
 	th.set_stylebox("grabber_highlight", "VScrollBar", box(BLUE, Color(0, 0, 0, 0), 0, 4))
 	th.set_stylebox("scroll", "VScrollBar", box(Color(1, 1, 1, 0.05), Color(0, 0, 0, 0), 0, 4))
-	# Tooltips: a dark glass slip with a gold edge, not the engine's grey box
-	var tip := box(Color(0.03, 0.03, 0.08, 0.96), Color(GOLD, 0.7), 1, 8)
+	# Tooltips: a dark slip with a cool edge, not the engine's grey box
+	var tip := box(Color(0.035, 0.04, 0.09, 0.97), Color(STEEL, 0.5), 1, 6)
+	tip.trim = false
 	tip.shadow_color = Color(0, 0, 0, 0.5)
-	tip.shadow_size = 6
+	tip.shadow_size = 8
+	tip.shadow_offset = Vector2(0, 3)
 	th.set_stylebox("panel", "TooltipPanel", tip)
 	th.set_color("font_color", "TooltipLabel", Color(0.92, 0.92, 1.0))
 	th.set_font_size("font_size", "TooltipLabel", text_size(18))
 	# Dropdown menus in the same look
-	th.set_stylebox("panel", "PopupMenu", box(Color(0.05, 0.05, 0.12, 0.98), Color(BLUE, 0.6), 2, 8))
-	th.set_stylebox("hover", "PopupMenu", box(Color("28305e"), Color(0, 0, 0, 0), 0, 4))
-	th.set_color("font_hover_color", "PopupMenu", GOLD)
+	th.set_stylebox("panel", "PopupMenu", _shadowed(box(Color(0.04, 0.045, 0.1, 0.98), Color(STEEL, 0.45), 2, 8)))
+	th.set_stylebox("hover", "PopupMenu", box(Color(BLUE, 0.22), Color(0, 0, 0, 0), 0, 3))
+	th.set_color("font_hover_color", "PopupMenu", Color.WHITE)
 	_theme = th
 	return th
 
 
 ## A soft drop shadow under a box.
-static func _shadowed(sb: StyleBoxFlat) -> StyleBoxFlat:
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 8
-	sb.shadow_offset = Vector2(0, 4)
+static func _shadowed(sb: Plate) -> Plate:
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 12
+	sb.shadow_offset = Vector2(0, 5)
 	return sb
 
 
 ## A neon glow around a box, in its accent colour.
-static func _glow(sb: StyleBoxFlat, color: Color, strength := 1.0) -> StyleBoxFlat:
-	sb.shadow_color = Color(color, 0.32 * strength)
-	sb.shadow_size = int(16 * strength)
+static func _glow(sb: Plate, color: Color, strength := 1.0) -> Plate:
+	sb.shadow_color = Color(color, 0.3 * strength)
+	sb.shadow_size = int(18 * strength)
+	sb.shadow_offset = Vector2.ZERO
 	return sb
+
+
+## A button's plate in one of its states ("normal", "hover", "pressed", "disabled"), in its colour: dark
+## steel with a hint of the colour, the colour itself kept for the edge and the bar along the bottom.
+## on: a chosen tab or option (lit, as if held down).
+static func button_box(accent: Color, state := "normal", on := false) -> Plate:
+	var base := Color(0.075, 0.09, 0.17)
+	var sb: Plate
+	match state:
+		"hover":
+			sb = _glow(box(base.lerp(accent, 0.3), Color(accent.lightened(0.35), 1.0), 2, 8), accent, 0.75)
+			sb.bar = 4.0
+		"pressed":
+			sb = _glow(box(base.lerp(accent, 0.12).darkened(0.25), accent, 2, 8), accent, 0.4)
+			sb.bar = 2.0
+		"disabled":
+			sb = box(Color(0.05, 0.055, 0.1, 0.9), Color(1, 1, 1, 0.09), 2, 8)
+			sb.trim = false
+			sb.depth = 0.4
+		_:
+			sb = _shadowed(box(base.lerp(accent, 0.13), Color(accent, 0.62), 2, 8))
+			sb.shadow_size = 8
+			sb.shadow_offset = Vector2(0, 3)
+			sb.bar = 3.0
+	if on and state != "disabled":
+		sb.bg_color = base.lerp(accent, 0.36)
+		sb.border_color = Color(accent.lightened(0.2), 1.0)
+		sb.bar = 4.0
+		_glow(sb, accent, 0.55)
+	return sb
+
+
+## Gives a button its colour (every state), or marks it as the chosen one of a row (on).
+static func tint_button(b: Button, accent: Color, on := false) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(state, button_box(accent, state, on))
+	b.add_theme_color_override("font_color", Color.WHITE if on else TEXT)
 
 
 ## Hover and press feel for any button: it grows a touch and ticks on hover, squashes on
@@ -121,12 +205,12 @@ static func juice(b: BaseButton) -> void:
 	b.button_up.connect(func(): to.call(1.04 if b.is_hovered() else 1.0, 0.18))
 
 
-static func box(bg: Color, border: Color, width := 2, radius := 10) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
+static func box(bg: Color, border: Color, width := 2, radius := 10) -> Plate:
+	var sb := Plate.new()
 	sb.bg_color = bg
 	sb.border_color = border
-	sb.set_border_width_all(width)
-	sb.set_corner_radius_all(radius)
+	sb.border_width = minf(width, 1.5) if width > 0 else 0.0   # (a fine edge: the plate's light does the rest)
+	sb.radius = radius
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
 	sb.content_margin_top = 8
@@ -177,8 +261,12 @@ static func label(text: String, font_size := 20, color := Color.WHITE, heading :
 	font_size = text_size(font_size)
 	ls.font_size = font_size
 	ls.font_color = color
-	ls.outline_size = maxi(3, font_size / 10)
-	ls.outline_color = Color(0, 0, 0, 0.85)
+	# A fine dark edge and a shadow under it: readable over the art without the text looking stencilled
+	ls.outline_size = clampi(font_size / 9, 2, 6)
+	ls.outline_color = Color(0.0, 0.0, 0.03, 0.62)
+	ls.shadow_size = 0
+	ls.shadow_color = Color(0, 0, 0, 0.55)
+	ls.shadow_offset = Vector2(0, maxf(1.5, font_size / 16.0))
 	l.label_settings = ls
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
@@ -189,8 +277,7 @@ static func button(text: String, on_press: Callable, size := Vector2(240, 56), a
 	b.text = text
 	b.custom_minimum_size = size
 	if accent != BLUE:
-		b.add_theme_stylebox_override("normal", _shadowed(box(accent.darkened(0.7), accent, 2, 8)))
-		b.add_theme_stylebox_override("hover", _glow(box(accent.darkened(0.55), GOLD, 2, 8), accent))
+		tint_button(b, accent)
 	juice(b)
 	b.pressed.connect(func():
 		Sfx.play("click")
@@ -305,9 +392,13 @@ static func image_button(path: String, size: Vector2, on_press: Callable, fallba
 
 static func panel(accent := Color(1, 1, 1, 0.12), bg := INK) -> PanelContainer:
 	var p := PanelContainer.new()
-	var sb := box(bg, accent, 2, 12)
+	if accent == Color(1, 1, 1, 0.12):   # (the default: the plates' own steel edge)
+		accent = STEEL
+	if bg == INK:
+		bg = PLATE
+	var sb := box(bg, Color(accent, minf(accent.a, 0.85)), 2, 12)
 	if accent.a > 0.5:
-		_glow(sb, accent, 0.7)
+		_glow(sb, accent, 0.5)
 	else:
 		_shadowed(sb)
 	p.add_theme_stylebox_override("panel", sb)
@@ -431,12 +522,12 @@ static func background(parent: Control, path := "menu_background.jpg", dim := 0.
 static func glass(p: Control, tint := Color(0.03, 0.03, 0.08, 0.58), blur := 9.0) -> Control:
 	var radius := 12.0
 	var sb := p.get_theme_stylebox("panel")
-	if sb is StyleBoxFlat:
-		var g: StyleBoxFlat = sb.duplicate()
+	if sb is Plate:
+		var g: Plate = sb.duplicate()
 		g.draw_center = false   # (the glass is the fill; a glow then draws only round the edge)
 		if g.shadow_color.v < 0.2:   # (a plain drop shadow isn't wanted under glass)
 			g.shadow_size = 0
-		radius = float(g.corner_radius_top_left)
+		radius = g.radius
 		p.add_theme_stylebox_override("panel", g)
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/glass.gdshader")
@@ -449,6 +540,7 @@ static func glass(p: Control, tint := Color(0.03, 0.03, 0.08, 0.58), blur := 9.0
 	frost.draw.connect(func(): frost.draw_rect(Rect2(Vector2.ZERO, p.size), Color.WHITE))
 	var fit := func():
 		m.set_shader_parameter("rect_size", p.size)
+		m.set_shader_parameter("cut", Plate.cut_for(radius, p.size))   # (the plate's cut corners)
 		frost.queue_redraw()
 	p.resized.connect(fit)
 	p.add_child(frost)
@@ -473,13 +565,49 @@ static func achievement_icon(unlocked: bool, size: float, color: Color) -> Contr
 
 
 ## Screen title centred at the top.
+## The words are white, in the title font; the colour is the rule under them.
 static func title(parent: Control, text: String, color := GOLD) -> Label:
-	var l := label(text, 48, color, true)
+	var l := label(text, 50, TEXT, true)
+	l.label_settings.font = font_of("title")
 	l.size = Vector2(1920, 70)
-	l.position = Vector2(0, 26)
+	l.position = Vector2(0, 22)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(l)
+	l.add_child(rule(color, 520.0, func(): return Vector2(l.size.x / 2.0, l.size.y + 1.0)))
 	return l
+
+
+## A panel's title: white words in the title font, centred, over a rule in the panel's colour.
+static func panel_title(text: String, font_size: int, color: Color, rule_width := 460.0) -> Label:
+	var l := label(text, font_size, TEXT, true)
+	l.label_settings.font = font_of("title")
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	l.custom_minimum_size.y = font_of("title").get_height(font_size) + 14.0   # (room for its rule)
+	l.add_child(rule(color, rule_width, func(): return Vector2(l.size.x / 2.0, l.size.y - 6.0)))
+	return l
+
+
+## A heading's rule: a line in its colour that fades out either side of a small diamond. at: where its
+## middle goes, in its parent (asked again when the parent changes size).
+static func rule(color: Color, width: float, at: Callable) -> Control:
+	var r := Control.new()
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.draw.connect(func():
+		var c: Vector2 = at.call()
+		var clear := Color(color, 0.0)
+		for dir in [-1.0, 1.0]:
+			var a: Vector2 = c + Vector2(dir * 14.0, 0)
+			var b: Vector2 = c + Vector2(dir * width / 2.0, 0)
+			r.draw_polygon(PackedVector2Array([a + Vector2(0, -1), b + Vector2(0, -1), b + Vector2(0, 1), a + Vector2(0, 1)]),
+				PackedColorArray([color, clear, clear, color]))
+		r.draw_colored_polygon(PackedVector2Array([c + Vector2(-7, 0), c + Vector2(0, -7), c + Vector2(7, 0), c + Vector2(0, 7)]), Color(color.lightened(0.3), 1.0))
+		r.draw_colored_polygon(PackedVector2Array([c + Vector2(-3, 0), c + Vector2(0, -3), c + Vector2(3, 0), c + Vector2(0, 3)]), Color(0.03, 0.03, 0.08)))
+	r.ready.connect(func():
+		var par := r.get_parent()
+		if par is Control:
+			(par as Control).resized.connect(r.queue_redraw))
+	return r
 
 
 static func back_button(parent: Control, on_press: Callable, text := "←  BACK") -> Button:
@@ -490,7 +618,7 @@ static func back_button(parent: Control, on_press: Callable, text := "←  BACK"
 
 
 static func toast(parent: Control, msg: String, color := BLUE) -> void:
-	var l := label(msg, 24, color, true)
+	var l := label(msg, 24, Color(color.lightened(0.55), 1.0), true)
 	var p := panel(color)
 	p.add_child(l)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -529,7 +657,7 @@ static func dialog_open(parent: Node) -> Control:
 	return null
 
 
-static func dialog(parent: Control, heading: String, text: String, buttons: Array, accent := GOLD) -> Control:
+static func dialog(parent: Control, heading: String, text: String, buttons: Array, accent := BLUE) -> Control:
 	var veil := ColorRect.new()
 	veil.color = Color(0, 0, 0, 0.7)
 	veil.size = Vector2(1920, 1080)
@@ -539,9 +667,7 @@ static func dialog(parent: Control, heading: String, text: String, buttons: Arra
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	p.add_child(col)
-	var h := label(heading, 36, accent, true)
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(h)
+	col.add_child(panel_title(heading, 38, accent, 420.0))
 	if text != "":
 		var t := label(text, 22, Color(0.85, 0.85, 0.95))
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD

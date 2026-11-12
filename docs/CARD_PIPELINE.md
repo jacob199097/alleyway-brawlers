@@ -62,6 +62,7 @@ keep it in step with `EFFECT_KEYWORDS` in the Forge.
 | FREEZE | `freeze` | Switched to DEF; can't attack or change position until its owner's next turn ends. |
 | STASIS | `stasis` | Nebula only. Until its owner's next turn ends: can't attack, be attacked or be targeted, its effects are off, and it doesn't block direct attacks. |
 | STUN | `stun` | Can't attack during its owner's next turn. |
+| BLIND | `blind` | Until its owner's next turn ends, each of its attacks is a coin flip: tails, the attack misses (and is used up). |
 | SHIELD | `shield` | The next time it would be defeated, it isn't. |
 | PIERCE | `pierce` | Beating a DEF or Downed character also costs the opponent the difference in Morale. |
 | DRAIN X / HEAL X | `drain` / `heal` | Take X Morale from the opponent / gain X Morale. |

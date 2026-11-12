@@ -367,7 +367,7 @@ func _build_ui() -> void:
 	_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_marker.draw.connect(_draw_marker)
 	screen.overlay.add_child(_marker)
-	_panel = UI.panel(UI.GOLD, Color(0.03, 0.03, 0.09, 0.97))
+	_panel = UI.panel(Color(UI.BLUE, 0.7), Color(0.03, 0.03, 0.09, 0.97))
 	_panel.position = Vector2(24, 24)
 	_panel.custom_minimum_size = Vector2(380, 0)
 	var col := VBoxContainer.new()
