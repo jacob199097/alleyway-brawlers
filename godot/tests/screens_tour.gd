@@ -21,7 +21,20 @@ func _ready() -> void:
 	_run()
 
 
+var _sized := false
+
+
 func _shot(name: String, wait := 1.6) -> void:
+	if not _sized:
+		_sized = true
+		# A small screen (or a locked one, which Windows makes 1024 wide): a window bigger than it, so the shots stay full size
+		if DisplayServer.screen_get_size().x < 1920 and not "--phone" in OS.get_cmdline_user_args():
+			var w := get_window()
+			w.mode = Window.MODE_WINDOWED
+			w.borderless = true
+			w.size = Vector2i(1920, 1080)
+			w.position = Vector2i.ZERO
+			await get_tree().create_timer(0.5).timeout
 	await get_tree().create_timer(wait).timeout
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [_out, name])
 	print("shot ", name)
@@ -773,6 +786,158 @@ func _run() -> void:
 			d._menu.queue_free()
 		d._toggle_log()
 		await _shot("dfx_log", 0.5)
+		get_tree().quit()
+		return
+	if "--menus" in OS.get_cmdline_user_args():   # (the menu screens only: profile, leaderboard, mailbox, social club, card library)
+		for s in ["profile", "leaderboard", "mailbox", "social", "card_library"]:
+			Game.go(s)
+			await _shot("02_" + s, 2.6)
+		get_tree().quit()
+		return
+	if "--hud" in OS.get_cmdline_user_args():   # (the match HUD: the opening hand, the phase track and End Turn, the battle log)
+		Game.duel_setup = await Game.load_duel_deck()
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		var d = _screen()
+		await _shot("hud_mulligan", 0.8)
+		if d._menu:
+			for b in d._menu.find_children("*", "Button", true, false):
+				b.pressed.emit()
+				break
+		await _shot("hud_my_turn", 4.0)
+		d.ai_sides = ["player", "opponent"]   # (the CPU plays both hands: phases, turns and log lines go by)
+		d._after_events()
+		for i in 10:
+			await _shot("hud_play_%02d" % i, 4.0)
+		d._toggle_log()
+		await _shot("hud_log", 0.8)
+		await _shot("hud_log_later", 8.0)
+		get_tree().quit()
+		return
+	if "--status-fx" in OS.get_cmdline_user_args():   # (statuses on cards in play: steady, landing and ticking; shots every 0.1 s)
+		if "--safe" in OS.get_cmdline_user_args():   # (with Photosensitive mode and the colour-blind colours on)
+			Game.settings.photosensitive = true
+			Game.settings.cb_colors = true
+		var deck7 := await Game.load_duel_deck()
+		Game.duel_setup = deck7
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		var d = _screen()
+		if d._menu:
+			d._menu.visible = false
+		d._cancel_interaction()
+		var units: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+		var turn := 4
+		CardView.turn_now = turn
+		var put := func(side: String, slot: int, n: int, statuses: Array, extra: Dictionary, def: bool) -> CardView:
+			var c: Dictionary = CardDB.get_card(units[n % units.size()]).duplicate()
+			c.uid = 900 + slot + (10 if side == "player" else 0)
+			c.merge(extra)
+			var old = d.field[side].get(slot)
+			if old:
+				old.queue_free()
+			var v: CardView = d._new_view(c, side, true)
+			v.position = d.slot_pos(side, slot)
+			v.home = v.position
+			if def:
+				v.rotation = PI / 2
+				v.home_rot = PI / 2
+			v.show_badge = true
+			v.set_stats(int(c.attack), int(c.defense), int(c.attack), int(c.defense))
+			v.statuses = statuses
+			d.field[side][slot] = v
+			return v
+		# Every status, steady: the top row one each, the bottom row the rest and a card with several
+		put.call("opponent", 0, 3, ["burn"], {"burn": {"amt": 200, "left": 3}}, false)
+		put.call("opponent", 1, 7, ["freeze"], {"freeze_until": turn + 1}, true)
+		put.call("opponent", 2, 11, ["poison"], {"poison": {"amt": 300, "left": 2}}, false)
+		put.call("opponent", 3, 15, ["bleed"], {"bleed": 100}, false)
+		put.call("opponent", 4, 19, ["blind"], {"blind_until": turn}, false)
+		var shielded: CardView = put.call("player", 0, 23, ["shield"], {}, false)
+		put.call("player", 1, 27, ["stun", "suppress"], {"stun_until": turn, "suppress_until": turn + 1}, false)
+		put.call("player", 2, 31, ["stasis"], {"stasis_until": turn + 2}, false)
+		put.call("player", 3, 35, ["silence", "equipped"], {"silence_until": turn + 1}, true)
+		var many: CardView = put.call("player", 4, 39, ["burn", "poison", "bleed", "freeze", "resting"],
+			{"burn": {"amt": 400, "left": 1}, "poison": {"amt": 100, "left": 3}, "bleed": 200, "freeze_until": turn + 1}, false)
+		await _shot("st_steady", 1.6)
+		await _shot("st_steady2", 0.7)
+		many.hovered = true
+		shielded.hovered = true
+		d.field["opponent"][1].hovered = true
+		d.field["opponent"][0].hovered = true
+		await _shot("st_hover", 0.5)
+		d._show_detail(many.card, many.stats(), d._live_statuses(many))
+		await _shot("st_panel", 0.3)
+		for side in ["player", "opponent"]:
+			for slot in 5:
+				d.field[side][slot].hovered = false
+		# Each one landing, from the player's card in lane 2 (shots every 0.1 s)
+		var src: CardView = put.call("player", 2, 31, [], {}, false)
+		var lanes := {"burn": 0, "freeze": 1, "poison": 2, "bleed": 3, "blind": 4, "shock": 2, "stun": 3, "stasis": 0, "suppress": 4, "silence": 1}
+		var cards := {"burn": {"burn": {"amt": 200, "left": 3}}, "poison": {"poison": {"amt": 300, "left": 3}}, "bleed": {"bleed": 100},
+			"freeze": {"freeze_until": turn + 1}, "blind": {"blind_until": turn + 1}, "stun": {"stun_until": turn + 1},
+			"stasis": {"stasis_until": turn + 1}, "suppress": {"suppress_until": turn + 1}, "silence": {"silence_until": turn + 1}}
+		for slot in 5:
+			put.call("opponent", slot, 3 + slot * 4, [], {}, false)
+		await get_tree().create_timer(0.6).timeout
+		for kind in lanes:
+			var tv: CardView = d.field["opponent"][lanes[kind]]
+			var c2: Dictionary = tv.card.duplicate()
+			c2.merge(cards.get(kind, {}), true)
+			d._queue = [{"type": "effect", "side": "player", "slot": 2, "card": src.card, "text": ""}]
+			d._ev_status({"side": "opponent", "slot": lanes[kind], "kind": kind, "card": c2})
+			d._queue = []
+			for i in (8 if kind in ["burn", "freeze", "shock", "blind"] else 5):
+				await _shot("st_land_%s_%02d" % [kind, i], 0.1)
+			await get_tree().create_timer(0.3).timeout
+		await _shot("st_landed", 0.8)
+		# One effect on the whole row, from the leader
+		for slot in 5:
+			put.call("opponent", slot, 3 + slot * 4, [], {}, false)
+		var boss: Dictionary = CardDB.get_card(CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "leader")[0]).duplicate()
+		var row: Array = []
+		for slot in 5:
+			var c3: Dictionary = d.field["opponent"][slot].card.duplicate()
+			c3.burn = {"amt": 200, "left": 3}
+			row.append({"type": "status", "side": "opponent", "slot": slot, "kind": "burn", "card": c3})
+		row.append({"type": "effect", "side": "player", "slot": -1, "card": boss, "text": "%s burns 5 enemies" % boss.name})
+		var play_row := func():
+			while not row.is_empty():
+				var ev: Dictionary = row.pop_front()
+				d._queue = row.duplicate()
+				if ev.type == "status":
+					await d._ev_status(ev)
+				else:
+					d._queue = []
+					await d._ev_effect(ev)
+		play_row.call()
+		for i in 12:
+			await _shot("st_row_%02d" % i, 0.1)
+		await get_tree().create_timer(1.2).timeout
+		# The ticks: BURN (its cost flies to the Morale bar), POISON, BLEED
+		var bv: CardView = d.field["opponent"][1]
+		var bc: Dictionary = bv.card.duplicate()
+		bc.burn = {"amt": 200, "left": 2}
+		var tick := func():
+			await d._ev_status_tick({"side": "opponent", "slot": 1, "kind": "burn", "amount": 200, "card": bc})
+			await d._ev_damage({"side": "opponent", "amount": 200, "morale": 7800})
+		tick.call()
+		for i in 10:
+			await _shot("st_tick_burn_%02d" % i, 0.1)
+		var pv2: CardView = put.call("opponent", 3, 15, ["poison", "bleed"], {"poison": {"amt": 300, "left": 2}, "bleed": 100}, false)
+		await get_tree().create_timer(1.0).timeout
+		var pc: Dictionary = pv2.card.duplicate()
+		pc.poison = {"amt": 300, "left": 1}
+		d._ev_status_tick({"side": "opponent", "slot": 3, "kind": "poison", "amount": 300, "card": pc})
+		for i in 5:
+			await _shot("st_tick_poison_%02d" % i, 0.1)
+		d._ev_status_tick({"side": "opponent", "slot": 3, "kind": "bleed", "amount": 100, "card": pc})
+		for i in 4:
+			await _shot("st_tick_bleed_%02d" % i, 0.1)
 		get_tree().quit()
 		return
 	if "--clan-fx" in OS.get_cmdline_user_args():   # (each clan's summon then attack: shots every 0.1 s / 0.08 s)

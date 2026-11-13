@@ -86,8 +86,8 @@ func _ready() -> void:
 
 func _build_filters() -> void:
 	var bar := HBoxContainer.new()
-	bar.position = Vector2(20, 112)
-	bar.add_theme_constant_override("separation", 8)
+	bar.position = Vector2(20, 116)
+	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 	if not Game.offline:
 		bar.add_child(_chip("show", "owned", "OWNED"))
@@ -105,8 +105,8 @@ func _build_filters() -> void:
 		for c in clans:
 			pick.add_item(str(c.name).to_upper())
 			pick.set_item_metadata(pick.item_count - 1, c.id)
-		pick.custom_minimum_size = Vector2(220, 50)
-		pick.add_theme_font_size_override("font_size", 17)
+		pick.custom_minimum_size = Vector2(250, 58)
+		pick.add_theme_font_size_override("font_size", 21)
 		pick.item_selected.connect(func(i):
 			Sfx.play("click")
 			_faction = str(pick.get_item_metadata(i))
@@ -118,10 +118,10 @@ func _build_filters() -> void:
 	var sub := OptionButton.new()
 	for i in SUBS.size():
 		sub.add_item(SUBS[i][1], i)
-	sub.custom_minimum_size = Vector2(300, 50)
+	sub.custom_minimum_size = Vector2(300, 54)
 	sub.fit_to_longest_item = false   # (it stays 300 wide, clear of the card count beside it)
-	sub.position = Vector2(1180, 36)
-	sub.add_theme_font_size_override("font_size", 17)
+	sub.position = Vector2(1180, 34)
+	sub.add_theme_font_size_override("font_size", 20)
 	sub.item_selected.connect(func(i):
 		Sfx.play("click")
 		_sub = SUBS[i][0]
@@ -144,8 +144,8 @@ func _chip(group: String, value: String, text: String) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.toggle_mode = true
-	b.custom_minimum_size = Vector2(0, 50)
-	b.add_theme_font_size_override("font_size", 17)
+	b.custom_minimum_size = Vector2(0, 58)
+	b.add_theme_font_size_override("font_size", 21)
 	b.pressed.connect(func():
 		Sfx.play("click")
 		match group:
@@ -179,7 +179,17 @@ func _sync_chips() -> void:
 				on = _kind == parts[1]
 			"rarity":
 				on = _rarities.has(int(parts[1]))
-		_chips[key].set_pressed_no_signal(on)
+		var b: Button = _chips[key]
+		b.set_pressed_no_signal(on)
+		# The chosen ones light up (a rarity in its own colour)
+		var accent: Color = UI.RARITY_COLOR[int(parts[1])] if parts[0] == "rarity" else UI.BLUE
+		for state in ["normal", "hover", "pressed"]:
+			if on:
+				b.add_theme_stylebox_override(state, UI.button_box(accent, "hover" if state == "hover" else "normal", true))
+			else:
+				b.remove_theme_stylebox_override(state)
+		for c in ["font_color", "font_pressed_color", "font_hover_pressed_color"]:
+			b.add_theme_color_override(c, Color.WHITE if on else accent if parts[0] == "rarity" else UI.TEXT)
 
 
 ## Every card to show: catalog cards merged with the player's inventory row when owned.

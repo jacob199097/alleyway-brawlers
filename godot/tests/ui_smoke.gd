@@ -33,7 +33,7 @@ func _prompt_check() -> void:
 		# The opening-hand (mulligan) prompt comes first: answer it through its buttons
 		if not duel_screen._playing and d.pending.get("side") == "player" and duel_screen._mode == "choose":
 			prompts[d.pending.key] = prompts.get(d.pending.key, 0) + 1
-			_first_enabled_button(duel_screen._menu).pressed.emit()
+			_button_named(duel_screen._menu, "KEEP THIS HAND").pressed.emit()   # (the hand's cards are buttons too: they only show the card)
 		await get_tree().process_frame
 	var answered: Array = []
 	d._ask("player", "test", "Pick one", {}, [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],

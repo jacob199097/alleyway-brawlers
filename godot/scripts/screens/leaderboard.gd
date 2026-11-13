@@ -30,7 +30,7 @@ func _ready() -> void:
 	var me = r.data.get("me")
 	var sub := UI.label("Ranked by Rank Points  ·  %d players" % int(r.data.get("total", top.size())), 22, UI.MUTED)
 	sub.size = Vector2(1920, 30)
-	sub.position = Vector2(0, 92)
+	sub.position = Vector2(0, 102)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(sub)
 	_podium(top.slice(0, 3))
@@ -87,9 +87,12 @@ func _podium(three: Array) -> void:
 
 ## Fourth place down, in a glass list; your own row stands out (pinned underneath if you're further down).
 func _list(rest: Array, me: Dictionary, top: Array) -> void:
+	# You, underneath, if you're not on the board already (the list runs to the foot of the screen otherwise)
+	var shown := top.any(func(x): return str(x.get("id", "")) == _me_id)
+	var pinned := not me.is_empty() and not shown
 	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.14), Color(0, 0, 0, 0.45)), Color(0.02, 0.02, 0.06, 0.5))
 	p.position = Vector2(360, 590)
-	p.size = Vector2(1200, 352)
+	p.size = Vector2(1200, 366 if pinned else 452)
 	add_child(p)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -105,11 +108,9 @@ func _list(rest: Array, me: Dictionary, top: Array) -> void:
 	for row in rest:
 		list.add_child(_row(row))
 	UI.stagger(list.get_children(), 0.6, 0.035)
-	# You, if you're not on the board already
-	var shown := top.any(func(x): return str(x.get("id", "")) == _me_id)
-	if not me.is_empty() and not shown:
+	if pinned:
 		var mine := _row(me)
-		mine.position = Vector2(360, 956)
+		mine.position = Vector2(360, 970)
 		mine.custom_minimum_size = Vector2(1200, 0)
 		add_child(mine)
 
@@ -137,8 +138,10 @@ func _row(p: Dictionary) -> Control:
 	var rank := _rank_line(p, 20, false)
 	rank.custom_minimum_size = Vector2(330, 0)
 	h.add_child(rank)
-	var rec := UI.label("%d W  /  %d L" % [int(p.get("wins", 0)), int(p.get("losses", 0))], 18, UI.MUTED)
-	rec.custom_minimum_size = Vector2(150, 0)
+	var wins := int(p.get("wins", 0))
+	var games := wins + int(p.get("losses", 0))
+	var rec := UI.label("%d W  /  %d L%s" % [wins, games - wins, "  ·  %d%%" % roundi(100.0 * wins / games) if games > 0 else ""], 18, UI.MUTED)
+	rec.custom_minimum_size = Vector2(230, 0)
 	rec.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(rec)
 	return row

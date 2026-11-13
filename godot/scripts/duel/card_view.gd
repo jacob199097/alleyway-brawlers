@@ -22,6 +22,17 @@ const STATUS_STYLE := {
 	"guarded": [Color("a0d8ff"), "SAFE", "CAN'T BE ATTACKED"],
 }
 const Keywords := preload("res://scripts/keywords.gd")
+const StatusFx := preload("res://scripts/duel/status_fx.gd")
+static var _status_shader: Shader = preload("res://shaders/status.gdshader")
+## The statuses drawn by shaders/status.gdshader: its name there, and how fast it comes on (frost creeps)
+const SHEET := {"burn": ["burn", 2.6], "poison": ["poison", 1.6], "bleed": ["bleed", 1.4], "freeze": ["frost", 1.2],
+	"shield": ["shield", 3.0], "blind": ["blind", 2.2]}
+const SHEET_MARGIN := 22.0   # (how far past the card's edge flames and icicles reach)
+## Statuses that run out: where the card keeps the turn each lasts through
+const STATUS_UNTIL := {"freeze": "freeze_until", "stasis": "stasis_until", "stun": "stun_until", "blind": "blind_until",
+	"suppress": "suppress_until", "silence": "silence_until"}
+## The match's turn number (the duel screen keeps it current), to tell how long a status has left
+static var turn_now := 0
 ## A status's keyword, for its colour with Colour-Blind Colours on
 const STATUS_KEYWORD := {"equipped": "EQUIP", "resting": "RESTING", "guarded": "GUARDED"}
 
@@ -41,6 +52,27 @@ static func status_amount(c: Dictionary, k: String) -> String:
 	if k == "bleed" and (v is int or v is float) and int(v) > 0:
 		return str(int(v))
 	return ""
+
+
+## How many turns a timed status still has, this one included (0: it doesn't run out, or isn't known)
+static func status_turns(c: Dictionary, k: String) -> int:
+	if c.get(k) is Dictionary:   # (BURN, POISON: the ticks they have left)
+		return maxi(0, int(c[k].get("left", 0)))
+	if not STATUS_UNTIL.has(k) or not c.has(STATUS_UNTIL[k]) or turn_now <= 0:
+		return 0
+	return maxi(0, int(c[STATUS_UNTIL[k]]) - turn_now + 1)
+
+
+## A status in words, for a card under the pointer: "BURNING 200", "FROZEN · 2 TURNS"
+static func status_words(c: Dictionary, k: String) -> String:
+	var word: String = STATUS_STYLE[k][2] if STATUS_STYLE.has(k) else k.to_upper()
+	var amt := status_amount(c, k)
+	if amt != "":
+		word = "%s %s" % [word, amt]
+	var left := status_turns(c, k)
+	if left == 1:
+		return word + (" · 1 TURN" if c.get(k) is Dictionary else " · THIS TURN")
+	return "%s · %d TURNS" % [word, left] if left > 1 else word
 
 var card: Dictionary = {}
 var uid := -1
@@ -95,6 +127,11 @@ var _last_pos := Vector2.INF
 var _holo := 0.0                 # hover shimmer on Epic/Legendary cards
 var holo_boost := 0.0            # 0..1: a holographic sweep set from outside (an evolving card's reveal)
 var _status_fx := {}             # status -> particle emitter (embers, drips)
+var _sheet: ColorRect            # the statuses drawn by a shader (flames, frost, ...): made when first needed
+var _sheet_amt := {}             # status -> how far on it is (0..1, above 1 while it flares)
+var _amt_seen := {}              # status -> the number last shown on its badge
+var _badge_pop := {}             # status -> when its badge last jumped (its number changed)
+var _names_open := 0.0           # 0..1: the badges spelled out, while the card is under the pointer
 var _sparkle: CPUParticles2D     # golden sparkles around a hovered Legendary
 var _lift := 0.0                 # 0..1: how far above its resting place (scale over home): the shadow falls away
 var reveal := 1.0                # 0..1: the face burning into view from the bottom up (shaders/card.gdshader)
@@ -351,8 +388,10 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if pulse_color.a > 0.0 and glow > 0.01:
 		queue_redraw()
+	_names_open = move_toward(_names_open, 1.0 if hovered and not busy else 0.0, delta * 7.0)
 	if not statuses.is_empty() or downed:
 		_status_layer.queue_redraw()
+	_update_sheet(delta)
 	for e in _status_fx.values():
 		e.emitting = not busy
 	# Hovering an Epic or Legendary: a holographic shimmer; a Legendary also sparkles
@@ -475,6 +514,56 @@ func set_statuses(v: Array) -> void:
 		_status_fx[k] = _make_emitter(k)
 
 
+## A status flares up (its tick, or the moment it lands): the shader's amount jumps and settles back.
+func flare(kind: String, amount := 1.8) -> void:
+	if SHEET.has(kind):
+		if Game.photosafe():   # (Photosensitive mode: it swells a little, never to a white-out)
+			amount = minf(amount, 1.25)
+		_sheet_amt[kind] = maxf(float(_sheet_amt.get(kind, 0.0)), amount)
+
+
+## A status's badge jumps (its number just changed).
+func pop_badge(kind: String) -> void:
+	_badge_pop[kind] = Time.get_ticks_msec() / 1000.0
+
+
+## The shader sheet over the card: each status eases on and off, and the sheet goes when none is left.
+func _update_sheet(delta: float) -> void:
+	var live := false
+	for k in SHEET:
+		var want := 1.0 if statuses.has(k) and face_up else 0.0
+		var now := float(_sheet_amt.get(k, 0.0))
+		if now != want:
+			var rate: float = SHEET[k][1] if want > now else (1.5 if want > 0.0 else 3.0)   # (a flare settles; a status that's gone fades fast)
+			now = move_toward(now, want, rate * delta)
+			_sheet_amt[k] = now
+		live = live or now > 0.0
+	if not live:
+		if _sheet:
+			_sheet.queue_free()
+			_sheet = null
+		return
+	if _sheet == null:
+		_sheet = ColorRect.new()
+		_sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_sheet.size = SIZE + Vector2.ONE * SHEET_MARGIN * 2.0
+		_sheet.position = -_sheet.size / 2.0
+		var m := ShaderMaterial.new()
+		m.shader = _status_shader
+		m.set_shader_parameter("size", _sheet.size)
+		m.set_shader_parameter("card", SIZE)
+		m.set_shader_parameter("seed", float(uid % 97) * 0.37)
+		_sheet.material = m
+		add_child(_sheet)
+		move_child(_sheet, _status_layer.get_index())   # (under the badges)
+	var mat: ShaderMaterial = _sheet.material
+	for k in SHEET:
+		mat.set_shader_parameter(SHEET[k][0], float(_sheet_amt.get(k, 0.0)))
+	mat.set_shader_parameter("up", Vector2.UP.rotated(-rotation))
+	mat.set_shader_parameter("calm", 1.0 if Game.photosafe() else 0.0)
+	mat.set_shader_parameter("shield_color", status_color("shield"))
+
+
 ## Particles per status: [colour, emit from (offset, half-size), velocity, gravity, amount, lifetime, size]
 const STATUS_PARTICLES := {
 	"burn": [Color("ff7a3a"), Vector2(0, 30), Vector2(54, 50), 46.0, Vector2(0, -90), 14, 0.9, 3.2],
@@ -565,7 +654,7 @@ func _draw_downed(r: Rect2) -> void:
 	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
 	L.draw_rect(tag, Color(0.12, 0.01, 0.02, 0.8))
 	L.draw_rect(tag, Color(1.0, 0.35, 0.3, 0.7), false, 1.5)
-	L.draw_string(ThemeDB.fallback_font, Vector2(tag.position.x, 5), "DOWNED", HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 13, Color(1.0, 0.85, 0.82))
+	L.draw_string(UI.font_of("label"), Vector2(tag.position.x, 5), "DOWNED", HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 15, Color(1.0, 0.85, 0.82))
 	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -585,35 +674,13 @@ func _draw_statuses() -> void:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
 	var L := _status_layer
-	if statuses.has("burn"):
-		for i in 4:   # heat glowing up from the bottom edge
-			L.draw_rect(Rect2(r.position.x, r.end.y - 12.0 - i * 12.0, r.size.x, 12.0), Color(1.0, 0.42, 0.15, (0.22 - i * 0.05) * (0.8 + 0.2 * sin(t * 7.0 + i))))
-	if statuses.has("poison"):
-		for i in 3:
-			L.draw_rect(Rect2(r.position.x, r.end.y - 10.0 - i * 10.0, r.size.x, 10.0), Color(0.43, 0.89, 0.42, 0.16 - i * 0.04))
-		for i in 3:   # bubbles rising and popping
-			var ph := fmod(t * 0.7 + i * 0.37, 1.0)
-			var bx := r.position.x + 22.0 + i * 38.0 + sin(t * 2.0 + i) * 4.0
-			L.draw_arc(Vector2(bx, r.end.y - 8.0 - ph * 60.0), 3.0 + ph * 3.0, 0.0, TAU, 12, Color(0.6, 1.0, 0.5, 0.7 * (1.0 - ph)), 1.5, true)
-	if statuses.has("bleed"):
-		L.draw_rect(Rect2(r.position.x, r.end.y - 8.0, r.size.x, 8.0), Color(0.88, 0.16, 0.3, 0.3))
-	if statuses.has("freeze"):
-		_draw_frost(L, r, t)
+	# (BURN, POISON, BLEED, FREEZE, SHIELD and BLIND are drawn by the shader sheet: _update_sheet)
 	if statuses.has("shock"):
 		_draw_crackle(L, r, t)
-	if statuses.has("shield"):
-		var a := 0.45 + 0.3 * sin(t * 3.0)
-		L.draw_rect(r.grow(3.0), Color(1.0, 0.85, 0.35, a), false, 2.5)
-		L.draw_rect(r.grow(7.0), Color(1.0, 0.85, 0.35, a * 0.35), false, 2.0)
 	if statuses.has("stun"):
 		for i in 3:   # little stars circling over its head
 			var ang := t * 3.2 + i * TAU / 3.0
 			_star(L, Vector2(cos(ang) * 34.0, r.position.y - 4.0 + sin(ang) * 8.0), 6.0, Color(1.0, 0.75, 0.3, 0.9))
-	if statuses.has("blind"):   # a dark band across its eyes: its attacks are a coin flip
-		var by := r.position.y + r.size.y * 0.27 + sin(t * 1.6) * 2.0
-		L.draw_rect(Rect2(r.position.x, by, r.size.x, 20.0), Color(0.03, 0.03, 0.07, 0.8))
-		for y in [by, by + 20.0]:
-			L.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(0.62, 0.69, 0.85, 0.75), 1.5, true)
 	if statuses.has("suppress"):
 		for i in 3:   # tracer fire streaking past, pinning it down
 			var ph := fmod(t * 1.6 + i * 0.33, 1.0)
@@ -648,27 +715,39 @@ func _draw_statuses() -> void:
 		for i in 3:   # "z"s drifting up off its top corner: it can't attack this turn
 			var ph := fmod(t * 0.45 + i / 3.0, 1.0)
 			var at := Vector2(r.end.x - 26.0 + ph * 18.0 + sin(t * 2.0 + i) * 3.0, r.position.y + 6.0 - ph * 46.0)
-			L.draw_string(ThemeDB.fallback_font, at, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 + ph * 10), Color(0.85, 0.85, 1.0, 0.9 * (1.0 - ph)))
-	var font := ThemeDB.fallback_font
-	var x := r.position.x + 4.0
-	var y := r.position.y + 4.0
+			L.draw_string(UI.font_of("label"), at, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 + ph * 10), Color(0.85, 0.85, 1.0, 0.9 * (1.0 - ph)))
+	_draw_badges(t)
+
+
+## Each status as a badge down the card's left edge (as seen on screen: a card lying sideways in DEF keeps
+## them upright): its icon, its number beside it (BURN 200), and a ring cut into the turns it has left.
+## Under the pointer the badges open out to say what they are ("FROZEN · 2 TURNS").
+func _draw_badges(t: float) -> void:
+	var L := _status_layer
+	var rad := 14.0 if Game.mobile() else 11.5
+	var sideways := absf(sin(rotation)) > 0.7
+	var half := (Vector2(SIZE.y, SIZE.x) if sideways else SIZE) / 2.0   # (the card's half size as it lies on screen)
+	var top := -half.y + rad + (5.0 if sideways else 27.0)   # (clear of the Authority number on an upright card)
+	var at := Vector2(-half.x + rad + 2.0, top)
+	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
 	for k in statuses:
 		if not STATUS_STYLE.has(k):
 			continue
-		var col: Color = status_color(k)
-		# (with its number: "BRN 200")
 		var amt := status_amount(card, k)
-		var text: String = STATUS_STYLE[k][1] + (" " + amt if amt != "" else "")
-		var w := maxf(34.0, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 8.0)
-		var pill := Rect2(x, y, w, 17)
-		if pill.end.x > r.end.x - 2.0 and x > r.position.x + 4.0:
-			x = r.position.x + 4.0
-			y += 20.0
-			pill = Rect2(x, y, w, 17)
-		_status_layer.draw_rect(pill, Color(0.03, 0.03, 0.08, 0.9))
-		_status_layer.draw_rect(pill, col, false, 1.5)
-		_status_layer.draw_string(font, Vector2(x, y + 13), text, HORIZONTAL_ALIGNMENT_CENTER, w, 11, col)
-		x += w + 4.0
+		if _amt_seen.get(k, amt) != amt:
+			pop_badge(k)
+		_amt_seen[k] = amt
+		var pop := clampf(1.0 - (t - float(_badge_pop.get(k, -9.0))) / 0.45, 0.0, 1.0)
+		var text := amt
+		var open := 1.0
+		if _names_open > 0.0:   # (spelled out; a badge with a number keeps its plate, the others slide open)
+			text = status_words(card, k)
+			open = 1.0 if amt != "" else _names_open
+		StatusFx.badge(L, k, at, rad, status_color(k), text, status_turns(card, k), pop * pop, open)
+		at.y += rad * 2.0 + 4.0
+		if at.y > half.y - rad:   # (more than fit: a second column)
+			at = Vector2(at.x + rad * 2.0 + 4.0, top)
+	L.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _heart(L: Node2D, at: Vector2, size: float, col: Color) -> void:
@@ -736,27 +815,6 @@ func _draw_time_bubble(L: Node2D, r: Rect2, t: float) -> void:
 	L.draw_line(Vector2.ZERO, Vector2.from_angle(t * 0.35 - PI / 2) * R * 0.55, Color(1, 1, 1, 0.5), 2.0, true)
 	L.draw_line(Vector2.ZERO, Vector2.from_angle(t * 0.03 - PI / 2) * R * 0.35, Color(1, 1, 1, 0.5), 3.0, true)
 	L.draw_circle(Vector2.ZERO, 3.0, Color(1, 1, 1, 0.7))
-
-
-## FREEZE: an icy frame, frost crystals growing from the corners, a glint sliding across.
-func _draw_frost(L: Node2D, r: Rect2, t: float) -> void:
-	var ice: Color = STATUS_STYLE.freeze[0]
-	L.draw_rect(r, Color(ice, 0.16))
-	L.draw_rect(r.grow(-2.0), Color(0.9, 0.98, 1.0, 0.45), false, 4.0)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = uid * 7919 + 13
-	for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
-		var inward: Vector2 = (Vector2.ZERO - corner).normalized()
-		for k in 3:
-			var dir := inward.rotated(rng.randf_range(-0.7, 0.7))
-			var length := rng.randf_range(16.0, 30.0)
-			var tip: Vector2 = corner + dir * length
-			L.draw_line(corner, tip, Color(0.92, 0.99, 1.0, 0.8), 1.6, true)
-			for side in [-1.0, 1.0]:   # little branches
-				var mid: Vector2 = corner + dir * length * 0.55
-				L.draw_line(mid, mid + dir.rotated(0.8 * side) * length * 0.35, Color(0.92, 0.99, 1.0, 0.6), 1.2, true)
-	var x := r.position.x + fmod(t * 60.0, r.size.x + 80.0) - 40.0   # a glint
-	L.draw_line(Vector2(clampf(x, r.position.x, r.end.x), r.position.y), Vector2(clampf(x - 40.0, r.position.x, r.end.x), r.end.y), Color(1, 1, 1, 0.22), 6.0, true)
 
 
 ## SHOCK: jagged lightning crackling across the card in short bursts.

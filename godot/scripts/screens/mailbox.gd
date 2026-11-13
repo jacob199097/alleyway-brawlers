@@ -60,6 +60,9 @@ func _render_list() -> void:
 	if _messages.is_empty():
 		_list.add_child(UI.label("No messages.", 22, UI.MUTED))
 		return
+	var unread_n := _messages.filter(func(x): return x.get("read_at") == null).size()
+	_list.add_child(UI.label("INBOX  ·  %d MESSAGE%s%s" % [_messages.size(), "" if _messages.size() == 1 else "S",
+		"  ·  %d UNREAD" % unread_n if unread_n > 0 else ""], 18, UI.MUTED, true))
 	for m in _messages:
 		var unread: bool = m.get("read_at") == null
 		var b := Button.new()
@@ -98,20 +101,54 @@ func _open(m: Dictionary) -> void:
 	_render_list()
 	for c in _body.get_children():
 		c.queue_free()
+	# The letter's head: an envelope seal, the subject, who sent it and when
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 20)
+	_body.add_child(head)
+	head.add_child(_seal())
+	var titles := VBoxContainer.new()
+	titles.add_theme_constant_override("separation", 4)
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(titles)
 	var s := UI.label(str(m.get("subject", "(no subject)")), 36, UI.GOLD, true)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD
-	s.custom_minimum_size = Vector2(1060, 0)
-	_body.add_child(s)
-	_body.add_child(UI.label("From %s  ·  %s" % [m.get("sender", "System"), _date(str(m.get("created_at", "")), true)], 18, UI.MUTED))
+	s.custom_minimum_size = Vector2(940, 0)
+	titles.add_child(s)
+	titles.add_child(UI.label("From %s  ·  %s" % [m.get("sender", "System"), _date(str(m.get("created_at", "")), true)], 20, UI.MUTED))
 	_body.add_child(HSeparator.new())
-	var text := RichTextLabel.new()
+	var text := RichTextLabel.new()   # (the letter itself takes whatever room is left)
 	text.text = str(m.get("body", ""))
-	text.custom_minimum_size = Vector2(1060, 560)
-	text.add_theme_font_size_override("normal_font_size", UI.text_size(22))
+	text.custom_minimum_size = Vector2(1060, 0)
+	text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text.add_theme_font_size_override("normal_font_size", UI.text_size(24))
 	_body.add_child(text)
-	_body.add_child(UI.button("DELETE", _delete.bind(m), Vector2(200, 52), UI.RED))
+	_body.add_child(HSeparator.new())
+	# The foot: where this letter is in the pile, and DELETE out of the way on the right
+	var foot := HBoxContainer.new()
+	_body.add_child(foot)
+	var at := UI.label("Message %d of %d" % [_messages.find(m) + 1, _messages.size()], 18, UI.MUTED)
+	at.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	at.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	foot.add_child(at)
+	foot.add_child(UI.button("DELETE", _delete.bind(m), Vector2(200, 52), UI.RED))
 	UI.stagger(_body.get_children(), 0.0, 0.05)   # (the letter unfolds, line by line)
 	Sfx.play("flip", 1.2, -8.0)
+
+
+## An envelope in a gold ring, at the head of the open letter.
+func _seal() -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(76, 76)
+	c.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	c.draw.connect(func():
+		var mid := c.size / 2.0
+		c.draw_circle(mid, 36.0, Color(0.05, 0.06, 0.14, 0.95))
+		c.draw_arc(mid, 36.0, 0.0, TAU, 48, UI.GOLD, 2.5, true)
+		c.draw_arc(mid, 30.0, 0.0, TAU, 48, Color(UI.GOLD, 0.3), 1.0, true)
+		var env := Rect2(mid - Vector2(19, 13), Vector2(38, 26))
+		c.draw_rect(env, UI.GOLD, false, 2.0)
+		c.draw_polyline(PackedVector2Array([env.position, mid + Vector2(0, 3), env.position + Vector2(env.size.x, 0)]), UI.GOLD, 2.0, true))
+	return c
 
 
 func _delete(m: Dictionary) -> void:

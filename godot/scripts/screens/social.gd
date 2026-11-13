@@ -4,6 +4,8 @@ extends Screen
 
 var _list: VBoxContainer
 var _search: LineEdit
+var _panel: PanelContainer   # the list's panel: as tall as the list needs, up to PANEL_MAX
+const PANEL_MAX := 800.0
 
 
 func _ready() -> void:
@@ -26,8 +28,9 @@ func _ready() -> void:
 	add.add_child(UI.button("+ ADD FRIEND", _add_friend, Vector2(230, 56), UI.GREEN))
 	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.14), Color(0, 0, 0, 0.5)))
 	p.position = Vector2(260, 200)
-	p.size = Vector2(1400, 760)
+	p.size = Vector2(1400, 150)
 	add_child(p)
+	_panel = p
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	p.add_child(scroll)
@@ -42,25 +45,63 @@ func _load() -> void:
 	for c in _list.get_children():
 		c.queue_free()
 	var r := await Api.request("GET", "/api/social/friends")
+	if not is_instance_valid(_list):
+		return
 	if not r.ok:
 		_list.add_child(UI.label(r.error, 24, UI.RED))
+		_fit_panel()
 		return
 	if r.data.is_empty():
-		_list.add_child(UI.label("No friends yet. Add some!", 26, UI.MUTED, true))
+		var none := UI.label("No friends yet. Add one by their username above.", 26, UI.MUTED, true)
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_list.add_child(none)
+		_fit_panel()
 		return
-	_list.add_child(UI.label("FRIENDS", 20, UI.MUTED, true))
-	# Requests waiting on you first, then whoever's online (in a match last), then the rest by name
+	# Requests first (those waiting on you, then the ones you sent), then whoever's online (in a match
+	# last), then the rest; by name inside each
 	var rank := func(x) -> int:
-		if x.get("status") == "pending" and x.get("incoming", true):
-			return 0
+		if x.get("status") == "pending":
+			return 0 if x.get("incoming", true) else 1
 		if x.get("is_online", false):
-			return 2 if x.get("in_match", false) else 1
-		return 3
+			return 3 if x.get("in_match", false) else 2
+		return 4
 	var rows: Array = r.data.duplicate()
-	rows.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else str(a.get("username", "")).to_lower() < str(b.get("username", "")).to_lower())
+	rows.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else str(a.get("friend_username", "")).to_lower() < str(b.get("friend_username", "")).to_lower())
+	var groups := [["REQUESTS", UI.GOLD, []], ["ONLINE", UI.GREEN, []], ["OFFLINE", UI.MUTED, []]]
 	for f in rows:
-		_list.add_child(_row(f))
+		var k: int = rank.call(f)
+		groups[0 if k <= 1 else 1 if k <= 3 else 2][2].append(f)
+	for g in groups:
+		if g[2].is_empty():
+			continue
+		_list.add_child(_heading(g[0], g[2].size(), g[1]))
+		for f in g[2]:
+			_list.add_child(_row(f))
 	UI.stagger(_list.get_children())
+	_fit_panel()
+
+
+## A section's heading: its name and how many, then a fine rule to the panel's edge.
+func _heading(text: String, n: int, col: Color) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	h.add_child(UI.label("%s  ·  %d" % [text, n], 20, col, true))
+	var line := ColorRect.new()
+	line.color = Color(col, 0.28)
+	line.custom_minimum_size = Vector2(0, 2)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(line)
+	return h
+
+
+## The panel opens to the height its list needs (a long list scrolls inside it).
+func _fit_panel() -> void:
+	await get_tree().process_frame   # (the old rows are gone and the new ones measured)
+	if not is_instance_valid(_panel):
+		return
+	var h := clampf(_list.get_combined_minimum_size().y + 44.0, 110.0, PANEL_MAX)
+	_panel.create_tween().tween_property(_panel, "size:y", h, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _row(f: Dictionary) -> Control:
@@ -71,9 +112,13 @@ func _row(f: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	p.add_child(row)
-	var dot := ColorRect.new()
-	dot.color = UI.GOLD if in_match else UI.GREEN if f.get("is_online", false) else Color("555555")
-	dot.custom_minimum_size = Vector2(16, 16)
+	var dot := Control.new()   # (a lamp: lit with a halo when they're online)
+	var dot_col: Color = UI.GOLD if in_match else UI.GREEN if f.get("is_online", false) else Color("555555")
+	dot.custom_minimum_size = Vector2(22, 22)
+	dot.draw.connect(func():
+		if f.get("is_online", false):
+			dot.draw_circle(dot.size / 2.0, 11.0, Color(dot_col, 0.22))
+		dot.draw_circle(dot.size / 2.0, 6.5, dot_col))
 	var dot_box := CenterContainer.new()
 	dot_box.add_child(dot)
 	row.add_child(dot_box)

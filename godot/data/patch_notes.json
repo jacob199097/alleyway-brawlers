@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.147",
+        "notes": [
+            "Statuses you can see. A BURNING card stands in flames, a FROZEN one is iced over, POISON runs down it and so on, and each one lands in its own way: fire catches, a blade cuts, lightning strikes, a flash-bang goes off. A status now flies from the card that caused it to the card it hits.",
+            "Each status on a card is a badge with its own icon and number. Point at a badge for its name and how long it lasts.",
+            "When BURN, POISON or BLEED does its damage the card flares, and BURN's cost to your Morale flies to the Morale bar. Photosensitive mode keeps all of this soft.",
+            "In a match, End Turn lights up when it's yours to press and the phases show as a track beside it. The battle log has each card's picture and the keyword's icon, and the opening hand is laid out as the five cards you're choosing over.",
+            "Tidier menus: a letter in the Mailbox reads like a letter, the Social Club sorts friends into Requests, Online and Offline, the Leaderboard shows more places with each player's win rate, and the Card Library's filters are bigger and light up when chosen."
+        ]
+    },
+    {
         "version": "0.9.146",
         "notes": [
             "A new look for the whole game. Panels and buttons are dark steel plates with cut corners instead of flat boxes with coloured outlines, and the game has its own lettering, the same on Windows, Mac and Android.",

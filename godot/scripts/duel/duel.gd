@@ -162,7 +162,9 @@ var _away_warned := false # told the player a move was played for them (server m
 var _base_speed := 1.0    # Engine.time_scale outside hit-stops: Settings → Animation Speed, or replay speed
 var _catch_up := 1.0      # faster while a backlog of events waits (a free-for-all's CPUs move quickly)
 var _replay_seek := -1    # replay: jump to this update once the current one has finished animating
-var _log_text: RichTextLabel   # the battle log (L)
+var _log_rows: VBoxContainer   # the battle log (L): a row a line, newest last
+var _log_scroll: ScrollContainer
+var _log_follow := true        # the log keeps to its newest line (until you scroll up to read)
 var _log_lines := 0
 var _recent: Array = []        # the last few log lines ([colour, text]): the card panel shows them when idle
 var _last_played := {}        # {card, side}: the card panel shows it when nothing is hovered
@@ -177,6 +179,7 @@ var _streak_tex: Texture2D
 var _strike_at := Vector2.INF       # where the last clash landed (damage flies from there)
 var _strike_time := 0.0              # game time of that clash
 var _game_time := 0.0
+var _strike_tint := Color(0, 0, 0, 0)   # the colour of the damage flying from _strike_at (clear: the side's own)
 var _end_reason := "morale"         # from game_over: "morale" or "deck_out"
 var _end_snap: Texture2D = null      # the board as the match ended, before anything covers it (post-match background)
 
@@ -607,13 +610,20 @@ func _build_log() -> void:
 	var head := _label(26, GOLD, true)
 	head.text = "BATTLE LOG"
 	col.add_child(head)
-	_log_text = RichTextLabel.new()
-	_log_text.bbcode_enabled = true
-	_log_text.scroll_following = true
-	_log_text.custom_minimum_size = Vector2(530, 580)
-	_log_text.add_theme_font_size_override("normal_font_size", UI.text_size(19))
-	_log_text.add_theme_font_size_override("bold_font_size", UI.text_size(19))
-	col.add_child(_log_text)
+	_log_scroll = ScrollContainer.new()
+	_log_scroll.custom_minimum_size = Vector2(530, 580)
+	_log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_log_rows = VBoxContainer.new()
+	_log_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_log_rows.add_theme_constant_override("separation", 6)
+	_log_scroll.add_child(_log_rows)
+	col.add_child(_log_scroll)
+	# It keeps to the newest line, unless you've scrolled up to read
+	var bar := _log_scroll.get_v_scroll_bar()
+	bar.value_changed.connect(func(v: float): _log_follow = v >= bar.max_value - bar.page - 8.0)
+	bar.changed.connect(func():
+		if _log_follow:
+			bar.set_value_no_signal(bar.max_value))
 	ui.add_child(p)
 	_ui.log = p
 
@@ -622,15 +632,30 @@ func _toggle_log() -> void:
 	_ui.log.visible = not _ui.log.visible
 	# (the log covers the card panel; hidden, its frosted glass can't show through the log)
 	$HUD/UI/Detail.visible = not _ui.log.visible
+	if _ui.log.visible:   # (opens on the newest line)
+		_log_follow = true
+		var bar := _log_scroll.get_v_scroll_bar()
+		bar.set_value_no_signal.call_deferred(bar.max_value)
 	Sfx.play("click")
 
 
-## A line in the battle log, coloured by whose it is ("player", "opponent" or "").
-func _log(text: String, side: String) -> void:
-	if _log_text == null:
+const LOG_MARK := 44.0   # a log row's picture, in pixels
+const LOG_ICON_COLORS := {"attack": Color("ffd86b"), "hit": Color("ff5a5a"), "plus": Color("3ddc84"), "spark": Color("f4d35e"),
+	"up": Color("f4d35e"), "crown": Color("f4d35e"), "ko": Color("ff5a5a"), "downed": Color("ff8a5a"),
+	"card": Color("9aa3c7"), "back": Color("9aa3c7")}
+
+
+## A line in the battle log, coloured by whose it is ("player", "opponent" or ""). With a card, its picture
+## sits beside the line (edged in its side's colour); with a mark (a status, or one of StatusFx's log marks),
+## that sits on the picture's corner, or alone when there's no card to show.
+func _log(text: String, side: String, card = null, mark := "") -> void:
+	if _log_rows == null:
 		return
 	var color := "#8fd3ff" if side == "player" else "#7af0de" if _coop and side == "ally" else "#ff8a94" if side != "" else "#f4d35e"
-	_log_text.append_text("[color=%s]%s[/color]\n" % [color, text.replace("[", "[lb]")])
+	if text.begins_with("──"):
+		_log_rows.add_child(_log_heading(text.trim_prefix("──").trim_suffix("──").strip_edges()))
+	else:
+		_log_rows.add_child(_log_row(text, Color(color), card, mark))
 	_log_lines += 1
 	if not text.begins_with("──"):   # (a turn heading isn't news)
 		_recent.append([color, text])
@@ -639,8 +664,65 @@ func _log(text: String, side: String) -> void:
 	if _detail_key.begins_with("idle:"):   # (the idle panel keeps up)
 		_show_detail({})
 	if _log_lines > 400:
-		_log_text.remove_paragraph(0)
+		var old := _log_rows.get_child(0)
+		_log_rows.remove_child(old)
+		old.queue_free()
 		_log_lines -= 1
+
+
+## A turn's heading in the log: its words between two rules.
+func _log_heading(text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.custom_minimum_size.y = 34
+	for i in 3:
+		if i == 1:
+			var l := _label(UI.text_size(17), GOLD, true)
+			l.text = text
+			row.add_child(l)
+			continue
+		var rule := ColorRect.new()
+		rule.color = Color(GOLD, 0.4)
+		rule.custom_minimum_size = Vector2(0, 2)
+		rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(rule)
+	return row
+
+
+func _log_row(text: String, color: Color, card, mark: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var tex: Texture2D = null
+	if card is Dictionary and card.has("name") and not (card.get("face_down", false) and not card.has("attack")):
+		tex = CardDB.art_for(card)
+	var sub := text.begins_with("   ")   # (a detail of the line above: the numbers of a clash)
+	var m := Control.new()
+	m.custom_minimum_size = Vector2(LOG_MARK, 24.0 if sub or (tex == null and mark == "") else LOG_MARK)
+	m.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var mark_col: Color = CardView.status_color(mark) if CardView.STATUS_STYLE.has(mark) else LOG_ICON_COLORS.get(mark, Color("9aa3c7"))
+	m.draw.connect(func():
+		var mid := m.size / 2.0
+		if tex:
+			var s := tex.get_size()
+			m.draw_texture_rect_region(tex, Rect2(2, 2, LOG_MARK - 4, LOG_MARK - 4), Rect2(s.x * 0.18, s.y * 0.122, s.x * 0.64, s.x * 0.64))
+			m.draw_rect(Rect2(1, 1, LOG_MARK - 2, LOG_MARK - 2), Color(color, 0.9), false, 2.0)
+			if mark != "":
+				CardView.StatusFx.badge(m, mark, Vector2(LOG_MARK - 8, LOG_MARK - 8), 10.0, mark_col)
+		elif mark != "":
+			CardView.StatusFx.badge(m, mark, mid, 14.0, mark_col)
+		elif not sub:   # (nothing to picture: a small diamond in the line's colour)
+			m.draw_colored_polygon(PackedVector2Array([mid + Vector2(0, -5), mid + Vector2(5, 0), mid + Vector2(0, 5), mid + Vector2(-5, 0)]), Color(color, 0.8)))
+	row.add_child(m)
+	var l := _label(UI.text_size(18), Color(color, 0.75) if sub else color)
+	l.text = text.strip_edges()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(l)
+	return row
 
 
 func _who(side: String) -> String:
@@ -667,22 +749,22 @@ func _log_event(ev: Dictionary) -> void:
 		"turn":
 			_log("── TURN %d · %s ──" % [int(ev.turn), _who(side).to_upper()], "")
 		"mulligan":
-			_log("%s redrew %d card(s)" % [_who(side), int(ev.get("count", 0))], side)
+			_log("%s redrew %d card(s)" % [_who(side), int(ev.get("count", 0))], side, null, "back")
 		"summon":
 			if ev.card.get("face_down", false):
-				_log("%s set a card face down" % _who(side), side)
+				_log("%s set a card face down" % _who(side), side, null, "card")
 			else:
-				_log("%s deployed %s" % [_who(side), _cname(ev.card)], side)
+				_log("%s deployed %s" % [_who(side), _cname(ev.card)], side, ev.card)
 		"set":
-			_log("%s set a card face down" % _who(side), side)
+			_log("%s set a card face down" % _who(side), side, null, "card")
 		"shuffle":
-			_log("%s deck was shuffled" % _whose(side), side)
+			_log("%s deck was shuffled" % _whose(side), side, null, "card")
 		"hustle", "lasting":
-			_log("%s %s %s" % [_who(side), "activated" if ev.get("set", false) else "played", _cname(ev.card)], side)
+			_log("%s %s %s" % [_who(side), "activated" if ev.get("set", false) else "played", _cname(ev.card)], side, ev.card, "spark")
 		"equip":
-			_log("%s equipped %s" % [_who(side), _cname(ev.card)], side)
+			_log("%s equipped %s" % [_who(side), _cname(ev.card)], side, ev.card, "equipped")
 		"tribute":
-			_log("%s %s %s for %s" % [_who(side), "replaced" if ev.get("replace", false) else "sacrificed", _cname(ev.card), _cname(ev.get("for"))], side)
+			_log("%s %s %s for %s" % [_who(side), "replaced" if ev.get("replace", false) else "sacrificed", _cname(ev.card), _cname(ev.get("for"))], side, ev.card, "ko")
 		"attack":
 			var target := "directly"
 			if int(ev.target) == DuelState.LEADER:
@@ -690,79 +772,79 @@ func _log_event(ev: Dictionary) -> void:
 			elif int(ev.target) >= 0:
 				var tv: CardView = field.get(str(ev.get("foe", DuelState.other(side))), {}).get(int(ev.target))
 				target = _cname(tv.card if tv and tv.face_up else {})
-			_log("%s attacked %s" % [_cname(ev.card), target], side)
+			_log("%s attacked %s" % [_cname(ev.card), target], side, ev.card, "attack")
 		"clash":
 			if int(ev.target) >= 0:
 				_log("   %d vs %d" % [int(ev.att), int(ev.def)], side)
 		"flip":
-			_log("%s was revealed" % _cname(ev.card), side)
+			_log("%s was revealed" % _cname(ev.card), side, ev.card)
 		"ambush":
-			_log("%s sprang %s!" % [_who(side), _cname(ev.card)], side)
+			_log("%s sprang %s!" % [_who(side), _cname(ev.card)], side, ev.card, "spark")
 		"blocked":
-			_log("The attack was blocked", side)
+			_log("The attack was blocked", side, null, "shield")
 		"downed":
-			_log("%s went Down" % _cname(ev.card), side)
+			_log("%s went Down" % _cname(ev.card), side, ev.card, "downed")
 		"ko":
-			_log("%s was %s" % [_cname(ev.card), "removed from the game" if ev.get("exiled", false) else "KO'd"], side)
+			_log("%s was %s" % [_cname(ev.card), "removed from the game" if ev.get("exiled", false) else "KO'd"], side, ev.card, "ko")
 		"topdeck":
-			_log("%s went back on top of the deck" % _cname(ev.card), side)
+			_log("%s went back on top of the deck" % _cname(ev.card), side, ev.card, "back")
 		"cleanse":
-			_log("%s was cleansed" % _cname(ev.card), side)
+			_log("%s was cleansed" % _cname(ev.card), side, ev.card, "plus")
 		"rewind":
-			_log("%s was rewound to its printed stats" % _cname(ev.card), side)
+			_log("%s was rewound to its printed stats" % _cname(ev.card), side, ev.card, "back")
 		"jam":
-			_log("%s Ambushes are JAMMED" % _whose(side), side)
+			_log("%s Ambushes are JAMMED" % _whose(side), side, null, "silence")
 		"barricade":
 			if int(ev.get("held", 0)) > 0:
-				_log("%s BARRICADE held off %d Morale damage" % [_whose(side), int(ev.held)], side)
+				_log("%s BARRICADE held off %d Morale damage" % [_whose(side), int(ev.held)], side, null, "shield")
 			elif int(ev.amount) > 0:
-				_log("%s BARRICADE: %d" % [_whose(side), int(ev.amount)], side)
+				_log("%s BARRICADE: %d" % [_whose(side), int(ev.amount)], side, null, "shield")
 		"damage":
-			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side)
+			_log("%s lost %d Morale (%d left)" % [_who(side), int(ev.amount), int(ev.morale)], side, null, "hit")
 		"heal":
-			_log("%s gained %d Morale (%d)" % [_who(side), int(ev.amount), int(ev.morale)], side)
+			_log("%s gained %d Morale (%d)" % [_who(side), int(ev.amount), int(ev.morale)], side, null, "plus")
 		"status":
-			_log("%s: %s" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper())], side)
+			_log("%s: %s" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper())], side, ev.get("card"), str(ev.kind))
 		"status_tick":
-			_log("%s: %s %d" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper()), int(ev.get("amount", 0))], side)
+			_log("%s: %s %d" % [_cname(ev.card), STATUS_WORDS.get(str(ev.kind), str(ev.kind).to_upper()), int(ev.get("amount", 0))], side, ev.get("card"), str(ev.kind))
 		"bounce":
-			_log("%s went back to the hand" % _cname(ev.card), side)
+			_log("%s went back to the hand" % _cname(ev.card), side, ev.card, "back")
 		"mill":
-			_log("%s was sent from the deck to the Gutter" % _cname(ev.card), side)
+			_log("%s was sent from the deck to the Gutter" % _cname(ev.card), side, ev.card, "card")
 		"recover":
-			_log("%s got %s back from the Gutter" % [_who(side), _cname(ev.card)], side)
+			_log("%s got %s back from the Gutter" % [_who(side), _cname(ev.card)], side, ev.card, "plus")
 		"plunder":
-			_log("%s PLUNDERED %s from %s %s" % [_who(side), _cname(ev.card), _whose(str(ev.get("from_side", ""))).to_lower(), str(ev.get("from", "hand"))], side)
+			_log("%s PLUNDERED %s from %s %s" % [_who(side), _cname(ev.card), _whose(str(ev.get("from_side", ""))).to_lower(), str(ev.get("from", "hand"))], side, ev.card, "charm")
 		"promote":
-			_log("%s promoted to %s" % [_cname(ev.get("from")), _cname(ev.card)], side)
+			_log("%s promoted to %s" % [_cname(ev.get("from")), _cname(ev.card)], side, ev.card, "up")
 		"effect":   # ("Megan Downs Kade", not "Megan: Megan Downs Kade")
 			var said := str(ev.get("text", ""))
 			var who := _cname(ev.card)
 			var body := said.trim_prefix(who + ": ").trim_prefix(who + " ") if said.begins_with(who) else ""
-			_log(said if body != "" else "%s: %s" % [who, said], side)
+			_log(said if body != "" else "%s: %s" % [who, said], side, ev.get("card"), "spark")
 		"stand":
-			_log("%s stood back up" % _cname(ev.card), side)
+			_log("%s stood back up" % _cname(ev.card), side, ev.card, "up")
 		"discard":
-			_log("%s discarded %s" % [_who(side), _cname(ev.card)], side)
+			_log("%s discarded %s" % [_who(side), _cname(ev.card)], side, ev.card, "ko")
 		"charm":
 			if ev.get("back", false):
-				_log("%s goes back to its owner" % _cname(ev.card), str(ev.to_side))
+				_log("%s goes back to its owner" % _cname(ev.card), str(ev.to_side), ev.card, "back")
 			elif ev.get("plunder", false):
-				_log("%s is PLUNDERED" % _cname(ev.card), str(ev.to_side))
+				_log("%s is PLUNDERED" % _cname(ev.card), str(ev.to_side), ev.card, "charm")
 			else:
-				_log("%s is CHARMED" % _cname(ev.card), str(ev.to_side))
+				_log("%s is CHARMED" % _cname(ev.card), str(ev.to_side), ev.card, "charm")
 		"position":
-			_log("%s switched to %s" % [_cname(ev.card), "DEF" if ev.card.get("position") == "def" else "ATK"], side)
+			_log("%s switched to %s" % [_cname(ev.card), "DEF" if ev.card.get("position") == "def" else "ATK"], side, ev.card)
 		"awaken":
-			_log("%s awakened!" % _cname(ev.card), side)
+			_log("%s awakened!" % _cname(ev.card), side, ev.card, "crown")
 		"leader_hit":
-			_log("%s leader took %d" % [_whose(side), int(ev.amount)], side)
+			_log("%s leader took %d" % [_whose(side), int(ev.amount)], side, ev.get("card"), "hit")
 		"leader_heal":
-			_log("%s leader regained %d Influence" % [_whose(side), int(ev.amount)], side)
+			_log("%s leader regained %d Influence" % [_whose(side), int(ev.amount)], side, ev.get("card"), "plus")
 		"leader_down":
-			_log("%s leader %s fell" % [_whose(side), _cname(ev.card)], side)
+			_log("%s leader %s fell" % [_whose(side), _cname(ev.card)], side, ev.card, "ko")
 		"game_over":
-			_log("%s won!" % ("You" if ev.winner == "player" else "Your opponent"), str(ev.winner))
+			_log("%s won!" % ("You" if ev.winner == "player" else "Your opponent"), str(ev.winner), null, "crown")
 		"notice":
 			var note := str(ev.text).to_lower()   # (in sentence case: "No attacks on turn 1")
 			_log(note.left(1).to_upper() + note.substr(1), "")
@@ -946,8 +1028,9 @@ func _build_from_view() -> void:
 		p.morale.text = str(int(s.morale))
 		p.bar.size.x = p.bar.get_parent().size.x * clampf(float(s.morale) / _max_morale(side), 0.0, 1.0)
 	_ui.turn_num.text = "TURN %d" % duel.turn
+	CardView.turn_now = int(duel.turn)
 	_ui.turn_who.text = _turn_text(duel.active == "player")
-	_set_phase_ui(duel.phase)
+	_set_phase_ui(duel.phase, str(duel.active))
 	_refresh_guards()
 
 
@@ -2186,6 +2269,7 @@ func _ev_turn(ev: Dictionary) -> void:
 	var mine: bool = ev.side == "player"
 	_cancel_interaction()
 	_ui.turn_num.text = "TURN %d" % ev.turn
+	CardView.turn_now = int(ev.turn)
 	_ui.turn_num.pivot_offset = Vector2(0, _ui.turn_num.size.y / 2)   # (the new number punches in)
 	_ui.turn_num.scale = Vector2.ONE * 1.3
 	_ui.turn_num.modulate = Color(1.6, 1.6, 1.6) if mine else Color(1.3, 1.1, 1.1)
@@ -2194,6 +2278,8 @@ func _ev_turn(ev: Dictionary) -> void:
 	punch.tween_property(_ui.turn_num, "modulate", Color.WHITE, 0.5)
 	_ui.turn_who.text = _turn_text(mine, ev.side)
 	_ui.turn_who.label_settings.font_color = BLUE if mine else _side_color(ev.side)
+	_phase_side = str(ev.side)
+	_ui.phase_track.queue_redraw()
 	Sfx.play("turn_yours" if mine else "turn_theirs")
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
@@ -2209,7 +2295,7 @@ func _ev_turn(ev: Dictionary) -> void:
 
 
 func _ev_phase(ev: Dictionary) -> void:
-	_set_phase_ui(ev.phase)
+	_set_phase_ui(ev.phase, str(ev.get("side", "")))
 	if not PHASE_NAMES.has(ev.phase):
 		return
 	Sfx.play("phase_" + str(ev.phase), 1.0, -2.0)
@@ -2914,6 +3000,10 @@ func _shards(at: Vector2, dir: Vector2, amount: int, palette: Array = []) -> voi
 
 ## A round burst of spectral flame, blooming and dying away.
 func _flame_burst(at: Vector2, size: float, core: Color, outer: Color, secs := 0.45) -> void:
+	if Game.photosafe():   # (Photosensitive mode: no bright core, and it comes and goes slower)
+		outer = outer.darkened(0.35)
+		core = outer.lerp(core, 0.2)
+		secs = maxf(secs, 0.6)
 	var f := _fx_rect(FX_FIRE, at, Vector2.ONE * size, {"shape": 1, "core": core, "outer": outer, "life": 1.0, "seed": randf() * 50.0, "speed": 2.4}, fx, 81)
 	var m: ShaderMaterial = f.material
 	f.pivot_offset = f.size / 2.0
@@ -5184,8 +5274,9 @@ func _ev_damage(ev: Dictionary) -> void:
 	var lethal: bool = int(ev.morale) <= 0
 	var root: Control = p.root
 	if _strike_at != Vector2.INF and _game_time - _strike_time < 2.5:
-		await _comet(_strike_at, root.position + root.size / 2, RED if side == "player" else GOLD)
+		await _comet(_strike_at, root.position + root.size / 2, _strike_tint if _strike_tint.a > 0.0 else (RED if side == "player" else GOLD))
 		_strike_at = Vector2.INF
+	_strike_tint = Color(0, 0, 0, 0)
 	Sfx.play("damage")
 	Sfx.play("boom", 0.8 if lethal else 1.0, 0.0 if lethal or amount >= 1000 else -6.0)
 	shake(clampf(amount / 60.0, 8.0, 28.0) * (1.4 if lethal else 1.0))
@@ -5208,30 +5299,285 @@ func _ev_status(ev: Dictionary) -> void:
 	var v: CardView = field[ev.side].get(ev.slot)
 	if v == null:
 		return
-	var style: Array = CardView.STATUS_STYLE.get(ev.kind, [GOLD, "", str(ev.kind).to_upper()])
-	var col: Color = CardView.status_color(ev.kind) if CardView.STATUS_STYLE.has(ev.kind) else style[0]
-	if ev.kind != "shock" and not v.statuses.has(ev.kind):
+	var kind := str(ev.kind)
+	var style: Array = CardView.STATUS_STYLE.get(kind, [GOLD, "", kind.to_upper()])
+	var col: Color = CardView.status_color(kind) if CardView.STATUS_STYLE.has(kind) else style[0]
+	var from := _status_source()
+	var fly := from != Vector2.INF and from.distance_to(v.position) > 60.0
+	_status_arrive(v, ev, col, str(style[2]), from if fly else Vector2.INF)
+	# (one effect on several characters: they land one after another, not one at a time)
+	var more := not _queue.is_empty() and str(_queue[0].get("type", "")) == "status"
+	await _wait(0.16 if more else (0.8 if fly else 0.5))
+
+
+## Where the status about to land came from: the card whose effect call-out follows it (the rules name an
+## effect once it has happened), or nowhere known (Vector2.INF).
+func _status_source() -> Vector2:
+	for i in mini(_queue.size(), 12):
+		var nxt: Dictionary = _queue[i]
+		var type := str(nxt.get("type", ""))
+		if type == "effect":
+			return _effect_origin(nxt)
+		if not type in ["status", "stats", "position", "downed", "ko"]:
+			return Vector2.INF
+	return Vector2.INF
+
+
+## Where the card behind an effect call-out is on the table.
+func _effect_origin(ev: Dictionary) -> Vector2:
+	var side := str(ev.get("side", ""))
+	if int(ev.get("slot", -1)) >= 0:
+		var v: CardView = field.get(side, {}).get(int(ev.slot))
+		return v.position if v else Vector2.INF
+	match str(ev.get("card", {}).get("cardType", "")):
+		"leader":
+			return pile_pos(side, "leader")
+		"hustle", "ambush":
+			return Vector2(1080, DIVIDER_Y)   # (where a Hustle is shown as it's played)
+	return Vector2.INF
+
+
+const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "stun_until", "blind_until",
+	"suppress_until", "silence_until"]
+
+## What a status event says of the card's statuses (amounts, turns left) goes onto the view's card: the
+## badges and the card panel read it there. (A copy: the view's card can be the rules' own.)
+func _merge_status(v: CardView, c: Dictionary) -> void:
+	if c.is_empty() or v.card.is_empty():
+		return
+	var mine := v.card.duplicate()
+	for k in STATUS_KEYS:
+		if c.has(k):
+			mine[k] = c[k]
+		else:
+			mine.erase(k)
+	v.card = mine
+
+
+## A status's moment: it flies in from the card that caused it (when that's known), then lands its own
+## way: flames catch up the card, ice closes in from its edges, lightning strikes it...
+func _status_arrive(v: CardView, ev: Dictionary, col: Color, word: String, from: Vector2) -> void:
+	var kind := str(ev.kind)
+	if from != Vector2.INF:
+		await _status_shot(from, v.position, kind, col)
+		if not is_instance_valid(v):
+			return
+	_merge_status(v, ev.get("card", {}))
+	if kind != "shock" and not v.statuses.has(kind):
 		var st := v.statuses.duplicate()
-		st.append(ev.kind)
+		st.append(kind)
 		v.statuses = st
-	Sfx.play("effect")
+	v.pop_badge(kind)
 	v.flash()
 	_pulse_glow(v, col)
-	_float_text(v.position + Vector2(0, -110 if ev.side == "player" else 110), style[2], col, 34)
-	match ev.kind:
+	var at := v.position
+	_float_text(at + Vector2(0, -110 if ev.side == "player" else 110), word, col, 34)
+	match kind:
+		"burn":   # it catches: flames shoot up the card, embers fly off it
+			v.flare("burn", 2.6)
+			Sfx.play("fire_roar", 1.5, -5.0)
+			Sfx.play("ignite", 0.8, -2.0)
+			_flame_burst(at + Vector2(0, 26), 300.0, Color(1.0, 0.95, 0.7), Color(1.0, 0.42, 0.08), 0.5)
+			_burst(at + Vector2(0, 60), col, 36, 420, 0.9, -620.0)
+			_sparks(at + Vector2(0, 80), Vector2.UP, Color(1.0, 0.7, 0.3), 16, 55.0)
+		"poison":   # a splash that runs down it, and the fumes coming off
+			v.flare("poison", 2.2)
+			Sfx.play("splash", 0.8, -3.0)
+			_burst(at + Vector2(0, -30), col, 30, 320, 0.8, 900.0)
+			_smoke_puff(at + Vector2(0, 30), 250.0, Color(0.2, 0.5, 0.14, 0.55))
+			_burst(at + Vector2(0, 60), col.lightened(0.3), 12, 110, 1.2, -170.0)
+		"bleed":   # cut open
+			v.flare("bleed", 2.0)
+			Sfx.play("hit", 1.35, -3.0)
+			_slash(at, col, v.scale.x)
+			v.kick(Vector2(1, 0.4), 9.0)
+			_burst(at, col, 24, 300, 0.7, 1000.0)
 		"shock":
-			_burst(v.position, col, 40, 520, 0.45, 0.0)
+			Sfx.play("laser", 1.9, -4.0)
+			Sfx.play("hit", 1.6, -6.0)
+			if from == Vector2.INF:   # (out of the sky)
+				_lightning(Vector2(at.x + randf_range(-90.0, 90.0), at.y - 620.0), at, col)
+			for d in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				_sparks(at, d, col, 6, 60.0)
+			_burst(at, col, 40, 520, 0.45, 0.0)
+			_screen_flash(col, 0.12)
+			v.kick(Vector2(randf_range(-1.0, 1.0), -1), 10.0)
 			shake(8)
-		"stasis":
-			_ring(v.position, col, 1.4)
-			_burst(v.position, col, 30, 160, 1.2, -60.0)
-		"freeze":
-			_burst(v.position, col, 30, 220, 0.9, 120.0)
-		"burn":
-			_burst(v.position, col, 30, 260, 0.8, -420.0)
+		"freeze":   # the ice takes it from the edges in (the shader), with a crack and a breath of cold
+			Sfx.play("glass_smash", 1.7, -9.0)
+			_smoke_puff(at, 280.0, Color(0.75, 0.92, 1.0, 0.4))
+			_ring_in(at, col, 1.7)
+			_shards(at + Vector2(0, -40), Vector2.UP, 12, [Color(0.95, 1.0, 1.0), Color(0.65, 0.88, 1.0, 0.85), Color(0.5, 0.8, 1.0, 0.0)])
+			_burst(at, col, 26, 200, 1.0, 140.0)
+		"blind":   # a flash-bang: white, then the dark over its eyes
+			v.flare("blind", 1.6)
+			Sfx.play("boom", 1.7, -8.0)
+			_flame_burst(at + Vector2(0, -30), 260.0, Color.WHITE, Color(0.75, 0.82, 1.0), 0.22)
+			_ring(at + Vector2(0, -30), Color.WHITE, 1.7)
+			_screen_flash(Color.WHITE, 0.14)
+			_smoke_puff(at + Vector2(0, -30), 230.0, Color(0.05, 0.05, 0.1, 0.85))
+		"stun":   # seeing stars
+			Sfx.play("slam", 1.4, -4.0)
+			v.kick(Vector2(-1.0 if randf() < 0.5 else 1.0, -0.6), 16.0)
+			_burst(at + Vector2(0, -70), Color(1.0, 0.85, 0.35), 26, 400, 0.6, 500.0)
+			_ring(at + Vector2(0, -60), col, 0.9)
+			shake(5)
+		"stasis":   # time closes in around it
+			Sfx.play("riser", 0.7, -8.0)
+			_ring_in(at, col, 1.9)
+			_burst(at, col, 30, 160, 1.2, -60.0)
+		"shield":
+			v.flare("shield", 2.4)
+			Sfx.play("promote", 1.5, -6.0)
+			_ring(at, col, 1.3)
+			_light_column(at, col)
+		"suppress":   # pinned down under fire
+			Sfx.play("hit", 1.9, -5.0)
+			for i in 4:
+				var to := at + Vector2(randf_range(-50.0, 50.0), randf_range(-70.0, 70.0))
+				_tracer(to + Vector2(-560.0 if at.x > 1080.0 else 560.0, -180.0 + i * 40.0), to, col)
+			_sparks(at, Vector2.UP, col, 12, 80.0)
+			shake(4)
+		"silence":   # the sound drawn out of it
+			Sfx.play("down", 1.5, -6.0)
+			_ring_in(at + Vector2(0, -40), col, 1.3)
+			_burst(at, col, 18, 180, 0.7, -120.0)
+		"charm":
+			Sfx.play("promote", 1.8, -8.0)
+			_ring(at, col, 1.2)
+			_burst(at, col, 28, 260, 1.0, -260.0)
+		"undead":
+			Sfx.play("riser", 0.6, -6.0)
+			_souls(at, col, 10)
+			_ring(at, col, 1.2)
 		_:
-			_burst(v.position, col, 26, 240, 0.8, -200.0)
-	await _wait(0.45)
+			Sfx.play("effect")
+			_burst(at, col, 26, 240, 0.8, -200.0)
+
+
+## A status on its way from the card that caused it: a fireball for BURN, a lobbed flask for POISON, a bolt
+## for SHOCK, a shard of ice for FREEZE... (awaited: it ends as it arrives)
+func _status_shot(from: Vector2, to: Vector2, kind: String, col: Color) -> void:
+	_ring(from, col, 0.55)
+	if kind == "shock":
+		_lightning(from, to, col)
+		await _wait(0.08)
+		return
+	if kind == "suppress":
+		for i in 3:
+			_tracer(from, to + Vector2(randf_range(-40.0, 40.0), randf_range(-60.0, 60.0)), col)
+			await _wait(0.05)
+		return
+	# [how far it bows up off the straight line, seconds, head size, the trail's fall, the trail's spread]
+	var style: Array = {"burn": [110.0, 0.3, 2.6, -260.0, 70.0], "poison": [210.0, 0.36, 2.2, 520.0, 40.0],
+		"freeze": [0.0, 0.2, 1.8, 60.0, 16.0], "bleed": [30.0, 0.16, 1.6, 300.0, 20.0],
+		"blind": [170.0, 0.34, 2.0, 0.0, 30.0]}.get(kind, [90.0, 0.28, 2.2, 0.0, 50.0])
+	var head := Sprite2D.new()
+	head.texture = _dot
+	head.material = _add_mat
+	head.self_modulate = col.lerp(Color.WHITE, 0.45)
+	head.scale = Vector2.ONE * float(style[2])
+	head.position = from
+	head.z_index = 82
+	fx.add_child(head)
+	var trail := CPUParticles2D.new()
+	trail.amount = 46
+	trail.lifetime = 0.34
+	trail.local_coords = false
+	trail.texture = _dot
+	trail.material = _add_mat
+	trail.gravity = Vector2(0, float(style[3]))
+	trail.spread = 180.0
+	trail.initial_velocity_max = float(style[4])
+	trail.scale_amount_min = 0.4
+	trail.scale_amount_max = 1.3
+	var g := Gradient.new()
+	g.set_color(0, col.lerp(Color.WHITE, 0.25))
+	g.set_color(1, Color(col, 0.0))
+	trail.color_ramp = g
+	head.add_child(trail)
+	trail.scale = Vector2.ONE / head.scale
+	Sfx.play("whoosh", 1.5, -6.0)
+	var ctrl := from.lerp(to, 0.5) + Vector2(0, -float(style[0]))
+	var t := create_tween()
+	t.tween_method(func(k: float): head.position = from.lerp(ctrl, k).lerp(ctrl.lerp(to, k), k), 0.0, 1.0, float(style[1])) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await t.finished
+	trail.emitting = false
+	head.self_modulate.a = 0.0   # (the trail thins away behind it)
+	get_tree().create_timer(0.5).timeout.connect(head.queue_free)
+
+
+## A bolt of lightning from one point to another: a jagged line and a fork off it, there and gone.
+func _lightning(from: Vector2, to: Vector2, col: Color) -> void:
+	var across := (to - from).orthogonal().normalized()
+	for fork in 2:
+		var pts := PackedVector2Array()
+		var steps := 9
+		for i in steps + 1:
+			var off := 0.0 if i == 0 or i == steps else randf_range(-30.0, 30.0) * (0.7 if fork == 0 else 1.5)
+			pts.append(from.lerp(to, float(i) / steps) + across * off)
+		var l := Line2D.new()
+		l.points = pts
+		l.width = 5.0 if fork == 0 else 2.5
+		l.default_color = Color.WHITE if fork == 0 else col.lightened(0.4)
+		l.joint_mode = Line2D.LINE_JOINT_ROUND
+		l.material = _add_mat
+		l.z_index = 83
+		fx.add_child(l)
+		var halo := Line2D.new()   # (its glow)
+		halo.points = pts
+		halo.width = 18.0
+		halo.default_color = Color(col, 0.3)
+		halo.material = _add_mat
+		halo.z_index = 82
+		fx.add_child(halo)
+		var t := l.create_tween()
+		t.tween_interval(0.07)
+		t.tween_property(l, "modulate:a", 0.0, 0.16)
+		t.parallel().tween_property(halo, "modulate:a", 0.0, 0.2)
+		t.tween_callback(func():
+			l.queue_free()
+			halo.queue_free())
+
+
+## A cut across a card: a bright line drawn fast from corner to corner, left hanging a moment.
+func _slash(at: Vector2, col: Color, s := 1.0) -> void:
+	var a := at + Vector2(-58, -76) * s
+	var b := at + Vector2(58, 76) * s
+	var l := Line2D.new()
+	l.width = 8.0
+	var thin := Curve.new()   # (to a point at both ends)
+	thin.add_point(Vector2(0.0, 0.0))
+	thin.add_point(Vector2(0.5, 1.0))
+	thin.add_point(Vector2(1.0, 0.0))
+	l.width_curve = thin
+	l.default_color = col.lerp(Color.WHITE, 0.6)
+	l.material = _add_mat
+	l.z_index = 83
+	fx.add_child(l)
+	var t := l.create_tween()
+	t.tween_method(func(k: float): l.points = PackedVector2Array([a, a.lerp(b, k * 0.5), a.lerp(b, k)]), 0.02, 1.0, 0.09)
+	t.tween_interval(0.12)
+	t.tween_property(l, "modulate:a", 0.0, 0.25)
+	t.tween_callback(l.queue_free)
+	_sparks(at, b - a, col, 12, 30.0)
+
+
+## A ring that closes in on a spot (the other way round from _ring).
+func _ring_in(pos: Vector2, color: Color, size_from: float) -> void:
+	var s := Sprite2D.new()
+	s.texture = _ring_tex
+	s.material = _add_mat
+	s.modulate = Color(color, 0.0)
+	s.position = pos
+	s.scale = Vector2.ONE * size_from
+	fx.add_child(s)
+	var t := create_tween().set_parallel()
+	t.tween_property(s, "scale", Vector2.ONE * 0.4, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(s, "modulate:a", 1.0, 0.3)
+	t.chain().tween_property(s, "modulate:a", 0.0, 0.15)
+	t.chain().tween_callback(s.queue_free)
 
 
 ## POISON / BURN tick at the start of the owner's turn; BLEED after a brawl.
@@ -5239,19 +5585,42 @@ func _ev_status_tick(ev: Dictionary) -> void:
 	var v: CardView = field[ev.side].get(ev.slot)
 	if v == null:
 		return
-	var col: Color = CardView.status_color(ev.kind) if CardView.STATUS_STYLE.has(ev.kind) else GOLD
+	var kind := str(ev.kind)
+	var col: Color = CardView.status_color(kind) if CardView.STATUS_STYLE.has(kind) else GOLD
 	var text := "-%d ATK" % int(ev.amount)
-	if ev.kind == "burn":
+	if kind == "burn":
 		text = "BURN -%d" % int(ev.amount)
-	elif ev.kind == "bleed":
+	elif kind == "bleed":
 		text = "-%d ATK/DEF" % int(ev.amount)
-	if ev.kind != "bleed" and not ev.card.has(ev.kind):
-		v.statuses = v.statuses.filter(func(k): return k != ev.kind)
-	Sfx.play("down", 1.3, -6.0)
+	_merge_status(v, ev.get("card", {}))
+	if kind != "bleed" and not ev.card.has(kind):
+		v.statuses = v.statuses.filter(func(k): return k != kind)
+	v.flare(kind, 2.4)   # (the last of it flares too, then dies away)
+	v.pop_badge(kind)
 	v.flash()
-	_float_text(v.position + Vector2(0, -90 if ev.side == "player" else 90), text, col, 30)
-	_burst(v.position, col, 18, 200, 0.7, -150.0)
-	await _wait(0.35)
+	_pulse_glow(v, col)
+	var at := v.position
+	match kind:
+		"burn":   # the fire roars up, and what it costs flies to its owner's Morale (the damage that follows)
+			Sfx.play("fire_roar", 1.6, -4.0)
+			_flame_burst(at + Vector2(0, 20), 320.0, Color(1.0, 0.95, 0.7), Color(1.0, 0.42, 0.08), 0.5)
+			_burst(at + Vector2(0, 50), col, 30, 420, 0.9, -620.0)
+			_strike_at = at
+			_strike_time = _game_time
+			_strike_tint = Color(1.0, 0.55, 0.15)
+		"poison":   # it sickens: a shudder, the fumes thicker
+			Sfx.play("down", 1.3, -6.0)
+			_smoke_puff(at + Vector2(0, 20), 230.0, Color(0.2, 0.5, 0.14, 0.5))
+			_burst(at + Vector2(0, 40), col, 20, 150, 1.1, -190.0)
+			v.kick(Vector2(0.3, 1), 5.0)
+		"bleed":
+			Sfx.play("down", 1.3, -6.0)
+			_burst(at, col, 24, 260, 0.7, 1000.0)
+		_:
+			Sfx.play("down", 1.3, -6.0)
+			_burst(at, col, 18, 200, 0.7, -150.0)
+	_float_text(at + Vector2(0, -90 if ev.side == "player" else 90), text, col, 36)
+	await _wait(0.4)
 
 
 ## A character is sacrificed so a Heavy can take its lane.
@@ -7221,6 +7590,14 @@ const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}
 
 
+## How long a status has left, after its name in the card panel: " (this turn)", " (2 turns)"
+func _status_left(c: Dictionary, k: String) -> String:
+	var left := CardView.status_turns(c, k)
+	if left <= 0:
+		return ""
+	return " [color=#8a8aa0](%s)[/color]" % ("this turn" if left == 1 and not c.get(k) is Dictionary else "%d turn%s" % [left, "" if left == 1 else "s"])
+
+
 ## A status in the card panel, in its colour: "DOWNED" red, "STASIS" violet...
 func _status_word(k, amt := "") -> String:
 	var word: String = STATUS_WORDS.get(k, str(k).to_upper())
@@ -7239,7 +7616,7 @@ func _status_word(k, amt := "") -> String:
 func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	# (nothing hovered: the last card played and what just happened, else the player's own card back)
 	var mine := duel != null and duel.sides.has("player")
-	var key := "%s:%s:%s" % [c.get("uid", c.get("id", "")), live_stats, live_status] if not c.is_empty() \
+	var key := "%s:%s:%s:%d" % [c.get("uid", c.get("id", "")), live_stats, live_status, CardView.turn_now] if not c.is_empty() \
 		else "idle:%s:%s:%d" % [_back_clan("player") if mine else "", _last_played.get("card", {}).get("uid", ""), _log_lines]
 	if key == _detail_key:
 		return
@@ -7294,7 +7671,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_stats.text = ""
 	var body := Keywords.markup(str(c.get("effectText", "")))
 	if not live_status.is_empty():
-		var words: Array = live_status.map(func(k): return _status_word(k, CardView.status_amount(c, str(k))))
+		var words: Array = live_status.map(func(k): return _status_word(k, CardView.status_amount(c, str(k))) + _status_left(c, str(k)))
 		body = "[color=#8a8aa0]Status:[/color] %s\n\n%s" % ["[color=#8a8aa0]  ·  [/color]".join(words), body]
 	if c.get("flavourText") is String:
 		body += "\n\n[i][color=#8a8aa0]%s[/color][/i]" % c.flavourText
@@ -7492,19 +7869,30 @@ func _build_phase_bar() -> void:
 	cap.text = "PHASE"
 	cap.position = Vector2(16, 12)
 	p.add_child(cap)
+	# The turn's three phases as a track: a line down their marks, the one being played lit in its side's colour
+	var track := Control.new()
+	track.position = Vector2(0, 34)
+	track.size = Vector2(p.size.x, PHASE_ROW * PHASE_NAMES.size())
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.draw.connect(_draw_phase_track.bind(track))
+	p.add_child(track)
+	_ui.phase_track = track
 	_ui.phase_labels = {}
 	var i := 0
 	for key in PHASE_NAMES:
-		var l := _label(26, Color(1, 1, 1, 0.3), true)
+		var l := _label(26, Color(1, 1, 1, 0.5), true)
 		l.text = PHASE_NAMES[key]
-		l.position = Vector2(16, 38 + i * 42)
+		l.position = Vector2(54, track.position.y + i * PHASE_ROW)
+		l.size = Vector2(p.size.x - 62, PHASE_ROW)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		p.add_child(l)
 		_ui.phase_labels[key] = l
 		i += 1
 	var next := Button.new()
 	next.position = Vector2(14, p.size.y - 92)
 	next.size = Vector2(p.size.x - 28, 76)
-	next.add_theme_font_size_override("font_size", 24)
+	next.add_theme_font_override("font", _font)
+	next.add_theme_font_size_override("font_size", 28)
 	next.pressed.connect(_on_next)
 	p.add_child(next)
 	var hint := _label(12, Color(0.55, 0.57, 0.7))
@@ -7515,13 +7903,53 @@ func _build_phase_bar() -> void:
 	_update_next_btn()
 
 
-func _set_phase_ui(phase: String) -> void:
+const PHASE_ROW := 52.0   # a phase's row on the track
+var _phase_shown := ""     # the phase the track shows (what's on screen: the engine may be further on)
+var _phase_side := ""      # ...and whose turn it is
+
+
+## The phase on show, and whose turn it's in (side "": as it was).
+func _set_phase_ui(phase: String, side := "") -> void:
+	_phase_shown = phase
+	if side != "":
+		_phase_side = side
 	for key in _ui.phase_labels:
 		var l: Label = _ui.phase_labels[key]
-		var on: bool = key == phase
-		l.text = ("▸ " if on else "") + str(PHASE_NAMES[key])
-		l.label_settings.font_color = GOLD if on else Color(1, 1, 1, 0.3)
+		l.label_settings.font_color = Color.WHITE if key == phase else Color(1, 1, 1, 0.5)
+	if _ui.has("phase_track"):
+		_ui.phase_track.queue_redraw()
 	_update_next_btn()
+
+
+## The track beside the phase names: a diamond a phase, joined by a line. The phase being played has a
+## band of its side's colour behind it and a bright mark; the ones done are filled, the ones to come hollow.
+func _draw_phase_track(t: Control) -> void:
+	var keys: Array = PHASE_NAMES.keys()
+	var at := keys.find(_phase_shown)
+	var col: Color = BLUE if _phase_side in ["", "player"] else _side_color(_phase_side)
+	var x := 32.0
+	var y := func(i: int) -> float: return PHASE_ROW * (i + 0.5)
+	t.draw_line(Vector2(x, y.call(0)), Vector2(x, y.call(keys.size() - 1)), Color(1, 1, 1, 0.16), 2.0)
+	if at > 0:
+		t.draw_line(Vector2(x, y.call(0)), Vector2(x, y.call(at)), Color(col, 0.7), 2.0)
+	for i in keys.size():
+		var c := Vector2(x, y.call(i))
+		if i == at:
+			var band := Rect2(8, PHASE_ROW * i + 3, t.size.x - 16, PHASE_ROW - 6)
+			t.draw_polygon(PackedVector2Array([band.position, Vector2(band.end.x, band.position.y), band.end, Vector2(band.position.x, band.end.y)]),
+				PackedColorArray([Color(col, 0.42), Color(col, 0.0), Color(col, 0.0), Color(col, 0.42)]))
+			t.draw_rect(Rect2(band.position, Vector2(4, band.size.y)), col.lightened(0.2))
+			t.draw_circle(c, 15.0, Color(col, 0.22))
+		var rad := 9.5 if i == at else 6.5
+		var dia := PackedVector2Array([c + Vector2(0, -rad), c + Vector2(rad, 0), c + Vector2(0, rad), c + Vector2(-rad, 0)])
+		if i == at:
+			t.draw_colored_polygon(dia, col.lightened(0.55))
+		elif i < at:
+			t.draw_colored_polygon(dia, col.darkened(0.25))
+		else:
+			t.draw_colored_polygon(dia, Color(0.05, 0.06, 0.12))
+			dia.append(dia[0])
+			t.draw_polyline(dia, Color(1, 1, 1, 0.4), 1.5, true)
 
 
 func _update_next_btn() -> void:
@@ -7531,6 +7959,7 @@ func _update_next_btn() -> void:
 	if _watching():
 		b.disabled = true   # a replay or a friend's match: only watching
 		b.text = "WATCHING" if _spectating else "REPLAY"
+		_style_next()
 		return
 	var mine := duel.active == "player" and not "player" in ai_sides
 	b.disabled = not mine or duel.winner != "" or not duel.pending.is_empty() or _awaiting or not _tut_ok({"kind": "next"})
@@ -7548,6 +7977,34 @@ func _update_next_btn() -> void:
 				b.text = "TO REGROUP  ▶"
 			_:
 				b.text = "END TURN  ▶"
+	_style_next()
+
+
+## The button's look: a lit plate when the move is yours (gold to end the turn, blue to go on a phase), and
+## a dark one that still reads when it isn't. Its words shrink to fit ("YOU'RE OUT · 3RD PLACE").
+func _style_next() -> void:
+	var b: Button = _ui.next
+	var accent: Color = GOLD if b.text.begins_with("END TURN") else BLUE
+	if not b.disabled and duel != null and duel.active != "player":
+		accent = _side_color(str(duel.active))
+	var look := "%s:%s:%s" % [accent.to_html(), b.disabled, b.text]
+	if _ui.get("next_look", "") == look:
+		return
+	_ui.next_look = look
+	for state in ["normal", "hover", "pressed"]:
+		b.add_theme_stylebox_override(state, UI.button_box(accent, state, true))
+	var off := UI.box(Color(0.05, 0.055, 0.1, 0.92), Color(1, 1, 1, 0.2), 2, 8)
+	off.trim = false
+	off.depth = 0.4
+	b.add_theme_stylebox_override("disabled", off)
+	b.add_theme_color_override("font_color", Color.WHITE)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_color_override("font_pressed_color", Color.WHITE)
+	b.add_theme_color_override("font_disabled_color", Color(0.82, 0.84, 0.95, 0.62))
+	var font_size := 28
+	while font_size > 15 and _font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > b.size.x - 22:
+		font_size -= 1
+	b.add_theme_font_size_override("font_size", font_size)
 
 
 ## Under the phase panel, for as long as it lasts: whose move it is ("YOUR MOVE", or "<NAME> IS
@@ -7916,6 +8373,9 @@ func _close_tip() -> void:
 ## A prompt from a card effect: buttons for each option, and the cards it refers to light up
 ## (click one of those to choose it too).
 func _show_choice(p: Dictionary) -> void:
+	if str(p.get("key", "")) == "mulligan":
+		_show_mulligan(p)
+		return
 	# Choosing a card on the field (an effect's target): click it there, no list over the board
 	var on_field: Array = p.options.filter(func(o): return o.has("slot"))
 	var rest: Array = p.options.filter(func(o): return not o.has("slot"))
@@ -7967,6 +8427,89 @@ func _show_choice(p: Dictionary) -> void:
 	_menu = box
 	Sfx.play("effect", 1.3, -6.0)
 	queue_redraw()
+
+
+## The opening hand: its cards laid out large to look over (hover one to read it), then keep them, or
+## shuffle them back and draw again. KEEP is always on the left; the engine's suggestion is the lit one.
+func _show_mulligan(p: Dictionary) -> void:
+	_cancel_interaction()
+	_mode = "choose"
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.035, 0.085, 0.97), PROMPT_EDGE, 2, 14))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	box.add_child(col)
+	var title := _label(40, GOLD, true)
+	title.text = "YOUR OPENING HAND"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	var suggested := str(p.options[0].id) if not p.options.is_empty() else "keep"
+	var sub := _label(19, Color(0.78, 0.8, 0.92))
+	sub.text = "Keep it, or shuffle it back into your deck and draw again. You get this choice once."
+	if suggested == "redraw":   # (the rule: no Gang Member of 2 Authority or less)
+		sub.text = "No Gang Member here costs 2 Authority or less, so a redraw may serve you better. You get this choice once."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(sub)
+	var cards: Array = hand.get("player", []).filter(func(v): return is_instance_valid(v)).map(func(v): return v.card)
+	if cards.is_empty() and duel != null:   # (not dealt on screen yet: the hand itself)
+		cards = duel.sides.get("player", {}).get("hand", [])
+	var fan := HBoxContainer.new()
+	fan.alignment = BoxContainer.ALIGNMENT_CENTER
+	fan.add_theme_constant_override("separation", 14)
+	col.add_child(fan)
+	var size := CARD * (1.4 if cards.size() <= 5 else 1.15)
+	var i := 0
+	for c in cards:
+		if not c is Dictionary:
+			continue
+		var b := TextureButton.new()
+		b.texture_normal = CardDB.art_for(c)
+		b.ignore_texture_size = true
+		b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		b.custom_minimum_size = size
+		b.pivot_offset = size / 2
+		b.mouse_entered.connect(func():
+			_show_detail(c)
+			Sfx.play("click", 1.4, -12.0)
+			b.create_tween().tween_property(b, "scale", Vector2.ONE * 1.07, 0.1))
+		b.mouse_exited.connect(func(): b.create_tween().tween_property(b, "scale", Vector2.ONE, 0.1))
+		b.pressed.connect(func(): _show_detail(c))
+		fan.add_child(b)
+		# (dealt out one after another)
+		b.modulate.a = 0.0
+		b.scale = Vector2.ONE * 0.86
+		var deal := b.create_tween().set_parallel()
+		deal.tween_property(b, "modulate:a", 1.0, 0.2).set_delay(0.08 + i * 0.07)
+		deal.tween_property(b, "scale", Vector2.ONE, 0.28).set_delay(0.08 + i * 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		i += 1
+	var hint := _label(15, Color(0.7, 0.72, 0.85))
+	hint.text = "Hold a card to read it" if Game.mobile() else "Hover a card to read it"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(hint)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	col.add_child(row)
+	var options: Array = p.options.duplicate()
+	options.sort_custom(func(a, b): return str(a.id) == "keep" and str(b.id) != "keep")
+	for o in options:
+		var id := str(o.id)
+		var b := Button.new()
+		b.text = "KEEP THIS HAND" if id == "keep" else "SHUFFLE AND REDRAW" if id == "redraw" else str(o.label)
+		b.custom_minimum_size = Vector2(340, 64)
+		b.add_theme_font_override("font", _font)
+		b.add_theme_font_size_override("font_size", 28)
+		UI.tint_button(b, GOLD if id == suggested else BLUE, id == suggested)
+		UI.juice(b)
+		b.pressed.connect(_pick.bind(id))
+		row.add_child(b)
+	overlay.add_child(box)
+	var sz := box.get_combined_minimum_size()
+	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
+	box.modulate.a = 0.0
+	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	_menu = box
+	Sfx.play("draw", 1.2, -6.0)
 
 
 ## A search (or Gutter) pick: the cards laid out to choose from, like a pile's view. Hovering one
