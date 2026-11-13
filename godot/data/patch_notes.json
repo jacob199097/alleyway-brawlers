@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.149",
+        "notes": [
+            "On phones, the ATK and DEF numbers under each card no longer run into the next lane's.",
+            "A card with several statuses at once keeps its picture: where burn, poison and frost pile up, their glow is held back so it doesn't wash the card out.",
+            "A heal is easier to follow: more light streams from the card that gave it to your Morale. A discard is named clear of the card and held a moment, and a hit on a leader flashes less harshly.",
+            "Settings keeps one size on every tab, so CLOSE stays where it was, the open tab is lit, and the rows keep clear of the panel's edge.",
+            "Turf Map: the week's tally and the rules sit on a dark band, so they read over the map. Achievements: a long reward line breaks between its rewards, not inside one."
+        ]
+    },
+    {
         "version": "0.9.148",
         "notes": [
             "When a card's ATK or DEF changes in a match, the change pops up over it (+300 ATK, -200 DEF) with arrows running up or down, so you can see what an effect just did.",

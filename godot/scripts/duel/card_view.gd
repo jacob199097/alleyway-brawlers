@@ -112,6 +112,7 @@ const BADGE_W := 112.0
 const BADGE_OVERLAP := 4.0   # how far the badge tucks under the card's bottom edge
 const BADGE_W_PHONE := 130.0      # (a phone: bigger numbers, tucked further under the card)
 const BADGE_OVERLAP_PHONE := 10.0
+const BADGE_FIT := 144.0          # (the widest an ATK / DEF strip may be: the lanes are 150 px apart)
 var _stats := []
 var _tw: Tween
 var _mat := ShaderMaterial.new()
@@ -166,8 +167,8 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	var phone := Game.mobile()
 	_badge.custom_minimum_size = Vector2(BADGE_W_PHONE if phone else BADGE_W, 0)
 	_badge.size = Vector2(BADGE_W_PHONE if phone else BADGE_W, 20)
-	_badge.add_theme_font_size_override("normal_font_size", 19 if phone else 15)
-	_badge.add_theme_font_size_override("bold_font_size", 19 if phone else 15)
+	_badge.add_theme_font_size_override("normal_font_size", 17 if phone else 15)
+	_badge.add_theme_font_size_override("bold_font_size", 17 if phone else 15)
 	_badge.add_theme_constant_override("outline_size", 3)
 	_badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_badge_box = StyleBoxFlat.new()
@@ -300,9 +301,9 @@ func stop_moving() -> void:
 		_tw.kill()
 
 
-## A quick white hit-flash over the card.
-func flash() -> void:
-	_flash = 0.9
+## A quick white hit-flash over the card (amount: how white, a leader's is softer).
+func flash(amount := 0.9) -> void:
+	_flash = amount
 	var t := create_tween()
 	t.tween_property(self, "_flash", 0.0, 0.3)
 
@@ -360,8 +361,8 @@ func _update_badge() -> void:
 	_badge_box.border_color = (Color(1.0, 0.65, 0.19, 0.9) if Keywords.cb() else Color(1.0, 0.36, 0.36, 0.85)) if downed else Color(1, 1, 1, 0.16)
 	var atk_col := _stat_color(_stats[0], _stats[2], "ffe6a8")
 	var def_col := _stat_color(_stats[1], _stats[3], "cfe9ff")
-	var small := 12 if Game.mobile() else 10
-	_badge.text = "[center][font_size=%d][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d%s[/color][/b]   [font_size=%d][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d%s[/color][/b][/center]" \
+	var small := 11 if Game.mobile() else 10
+	_badge.text = "[center][font_size=%d][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d%s[/color][/b]  [font_size=%d][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d%s[/color][/b][/center]" \
 		% [small, atk_col, _stats[0], _stat_mark(_stats[0], _stats[2]), small, def_col, _stats[1], _stat_mark(_stats[1], _stats[3])]
 
 
@@ -430,8 +431,13 @@ func _process(delta: float) -> void:
 	if _badge.visible:
 		var sideways := absf(sin(rotation)) > 0.7
 		var half_h: float = (SIZE.x if sideways else SIZE.y) * scale.y / 2.0
-		_badge.scale = Vector2.ONE * board_scale   # (its own top-level node: it doesn't inherit the card's scale)
-		_badge.global_position = global_position + Vector2(-_badge.size.x * board_scale / 2.0, half_h - (BADGE_OVERLAP_PHONE if Game.mobile() else BADGE_OVERLAP) * board_scale)
+		# Its own top-level node: it doesn't inherit the card's scale. Four-figure stats on a phone would
+		# run into the next lane's strip, so a strip wider than its lane shrinks to fit
+		var fit := board_scale
+		if badge_text == "" and _badge.size.x > BADGE_FIT:
+			fit *= BADGE_FIT / _badge.size.x
+		_badge.scale = Vector2.ONE * fit
+		_badge.global_position = global_position + Vector2(-_badge.size.x * fit / 2.0, half_h - (BADGE_OVERLAP_PHONE if Game.mobile() else BADGE_OVERLAP) * board_scale)
 		_badge.z_index = z_index + 1
 
 
@@ -570,6 +576,8 @@ func _update_sheet(delta: float) -> void:
 	var thin: float = SHEET_THIN[mini(on, SHEET_THIN.size() - 1)]
 	for k in SHEET:
 		mat.set_shader_parameter(SHEET[k][0], float(_sheet_amt.get(k, 0.0)) * thin)
+	# ...and where their lights add up over the card's face, the sheet holds them down (status.gdshader)
+	mat.set_shader_parameter("crowd", clampf((on - 1) * 0.5, 0.0, 1.0))
 	mat.set_shader_parameter("up", Vector2.UP.rotated(-rotation))
 	mat.set_shader_parameter("calm", 1.0 if Game.photosafe() else 0.0)
 	mat.set_shader_parameter("shield_color", status_color("shield"))

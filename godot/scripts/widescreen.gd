@@ -38,8 +38,11 @@ func _fit() -> void:
 
 
 ## A control covering the whole frame (a background, a dimmer, a fade) reaches the screen's edges.
-func _reach(c: Control) -> void:
-	if not is_instance_valid(c) or not c.is_inside_tree() or c.is_in_group(FILLED):
+func _reach(node) -> void:   # (untyped: it is called a frame late, and the control may be gone by then)
+	if not is_instance_valid(node):
+		return
+	var c: Control = node
+	if not c.is_inside_tree() or c.is_in_group(FILLED):
 		return
 	if not (c is ColorRect or c is TextureRect or c.has_method("fill_frame")):
 		return

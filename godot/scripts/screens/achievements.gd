@@ -144,13 +144,30 @@ func _row(a: Dictionary) -> Control:
 		col.add_child(line)
 	elif got:
 		col.add_child(UI.label("Unlocked %s" % str(a.get("unlockedAt", "")).left(10), 16, UI.MUTED))
-	var gift := UI.label(UI.reward_text(a.get("reward", {})), 18, UI.GOLD if got else UI.MUTED, true)
+	var gift := UI.label("", 18, UI.GOLD if got else UI.MUTED, true)
+	gift.text = _by_parts(UI.reward_text(a.get("reward", {})), gift.label_settings, 322.0)
 	gift.custom_minimum_size = Vector2(330, 0)
 	gift.autowrap_mode = TextServer.AUTOWRAP_WORD
 	gift.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	gift.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(gift)
 	return p
+
+
+## A reward line broken between its parts ("300 Karat · Title: Loyalist" / "Avatar · Card back"), never inside one.
+static func _by_parts(text: String, ls: LabelSettings, width: float) -> String:
+	var sep := "  ·  "
+	var lines: Array = []
+	var line := ""
+	for part in text.split(sep):
+		var longer: String = part if line == "" else line + sep + part
+		if line != "" and ls.font.get_string_size(longer, HORIZONTAL_ALIGNMENT_LEFT, -1, ls.font_size).x > width:
+			lines.append(line)
+			line = part
+		else:
+			line = longer
+	lines.append(line)
+	return "\n".join(PackedStringArray(lines))
 
 
 static func _clan_color(clan) -> Color:

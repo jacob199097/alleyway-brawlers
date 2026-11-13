@@ -316,6 +316,147 @@ func _auction_shots() -> void:
 			break
 
 
+## 0.9.148's touches. In a match, slowed down so each shows: a stat change, BLOCKED, a heal streaming to
+## the Morale, a leader hit and healed, a change of position, a card sent back to the hand, a discard,
+## several statuses on one card, the card panel with the wordiest card (at the largest Text Size too).
+## Then the Deck Builder's warnings with an empty Hideout, and the Shop's packs and starters.
+func _polish_shots() -> void:
+	var phone := Game.mobile()
+	var n := 4 if phone else 7   # (shots per moment)
+	Game.duel_setup = await Game.load_duel_deck()
+	Game.duel_setup.first = "player"
+	Game.duel_setup.arena = "alley"
+	Game.go("duel")
+	await get_tree().create_timer(4.5).timeout
+	var d = _screen()
+	if d._menu:
+		d._menu.visible = false
+	d._cancel_interaction()
+	var units: Array = CardDB.all().keys().filter(func(i): return CardDB.get_card(i).get("cardType") == "gang_member")
+	var turn := 4
+	CardView.turn_now = turn
+	var put := func(side: String, slot: int, k: int, statuses: Array, extra: Dictionary) -> CardView:
+		var c: Dictionary = CardDB.get_card(units[k % units.size()]).duplicate()
+		c.uid = 900 + slot + (10 if side == "player" else 0)
+		c.position = "atk"
+		c.merge(extra)
+		var old = d.field[side].get(slot)
+		if old:
+			old.queue_free()
+		var v: CardView = d._new_view(c, side, true)
+		v.position = d.slot_pos(side, slot)
+		v.home = v.position
+		v.show_badge = true
+		v.set_stats(int(c.attack), int(c.defense), int(c.attack), int(c.defense))
+		v.statuses = statuses
+		d.field[side][slot] = v
+		return v
+	for slot in 5:
+		put.call("opponent", slot, 3 + slot * 4, [], {})
+		put.call("player", slot, 23 + slot * 4, [], {})
+	# A stat change: the first report of each card is quiet, the second shows what moved
+	var values := func(changes: Dictionary) -> Dictionary:
+		var out := {"player": {}, "opponent": {}}
+		for side in out:
+			for slot in 5:
+				var v: CardView = d.field[side][slot]
+				var ch: Array = changes.get("%s%d" % [side[0], slot], [0, 0])
+				out[side][slot] = [int(v.card.attack) + ch[0], int(v.card.defense) + ch[1], int(v.card.attack), int(v.card.defense)]
+		return out
+	d._ev_stats({"values": values.call({})})
+	await _shot("pol_board", 1.0)
+	Engine.time_scale = 0.4
+	d._ev_stats({"values": values.call({"p1": [300, 0], "p3": [200, 200], "o2": [-400, 0], "o4": [0, -200]})})
+	for i in n + 1:
+		await _shot("pol_stats_%02d" % i, 0.06)
+	await get_tree().create_timer(0.5).timeout
+	# BLOCKED: the rival's card in lane 2 holds
+	d._ev_blocked({"side": "opponent", "slot": 2})
+	for i in n:
+		await _shot("pol_blocked_%02d" % i, 0.05)
+	await get_tree().create_timer(0.5).timeout
+	# A heal, from my card in lane 2 to my Morale
+	var src: CardView = d.field["player"][2]
+	d._queue = [{"type": "effect", "side": "player", "slot": 2, "card": src.card, "text": ""}]
+	d._ev_heal({"side": "player", "amount": 500, "morale": int(d.duel.sides.player.morale) + 500})
+	d._queue = []
+	for i in n + 2:
+		await _shot("pol_heal_%02d" % i, 0.06)
+	await get_tree().create_timer(0.4).timeout
+	# The leaders: the rival's hit, mine healed
+	if d.leaders.has("opponent"):
+		d._ev_leader_hit({"side": "opponent", "amount": 2, "influence": 8})
+		for i in n - 2:
+			await _shot("pol_leader_hit_%02d" % i, 0.05)
+		await get_tree().create_timer(0.4).timeout
+	if d.leaders.has("player"):
+		d._ev_leader_heal({"side": "player", "amount": 2, "influence": 12})
+		for i in n - 2:
+			await _shot("pol_leader_heal_%02d" % i, 0.05)
+		await get_tree().create_timer(0.4).timeout
+	# A change of position, a card sent back to the hand, a discard
+	var turned: Dictionary = d.field["player"][0].card.duplicate()
+	turned.position = "def"
+	d._ev_position({"side": "player", "slot": 0, "card": turned})
+	for i in n - 2:
+		await _shot("pol_position_%02d" % i, 0.05)
+	await get_tree().create_timer(0.4).timeout
+	d._ev_bounce({"side": "opponent", "slot": 0, "card": d.field["opponent"][0].card})
+	for i in n - 2:
+		await _shot("pol_bounce_%02d" % i, 0.05)
+	await get_tree().create_timer(0.4).timeout
+	if not d.hand.player.is_empty():
+		d._ev_discard({"side": "player", "card": d.hand.player[0].card})
+		for i in n:
+			await _shot("pol_discard_%02d" % i, 0.08)
+	Engine.time_scale = 1.0
+	await get_tree().create_timer(1.2).timeout
+	# Several statuses on one card: one, two, three and five of them side by side
+	put.call("player", 1, 27, ["burn"], {"burn": {"amt": 200, "left": 3}})
+	put.call("player", 2, 31, ["burn", "poison"], {"burn": {"amt": 200, "left": 3}, "poison": {"amt": 300, "left": 2}})
+	put.call("player", 3, 35, ["burn", "poison", "freeze"], {"burn": {"amt": 200, "left": 3}, "poison": {"amt": 300, "left": 2}, "freeze_until": turn + 1})
+	put.call("player", 4, 39, ["burn", "poison", "bleed", "freeze", "resting"],
+		{"burn": {"amt": 400, "left": 1}, "poison": {"amt": 100, "left": 3}, "bleed": 200, "freeze_until": turn + 1})
+	await _shot("pol_statuses", 1.6)
+	# The card panel: the wordiest character, then a plain one
+	var wordiest: String = units[0]
+	for id in units:
+		if str(CardDB.get_card(id).get("effectText", "")).length() > str(CardDB.get_card(wordiest).get("effectText", "")).length():
+			wordiest = id
+	d._show_detail(CardDB.get_card(wordiest))
+	await _shot("pol_panel_long", 0.8)
+	d._show_detail(d.field["opponent"][1].card)
+	await _shot("pol_panel_short", 0.6)
+	if not phone:   # (the same card at the largest Text Size: a new match, as its labels are sized when it opens)
+		Game.settings.text_size = 2
+		UI.reset_theme()
+		Game.duel_setup = await Game.load_duel_deck()
+		Game.duel_setup.first = "player"
+		Game.duel_setup.arena = "alley"
+		Game.go("duel")
+		await get_tree().create_timer(4.5).timeout
+		d = _screen()
+		if d._menu:
+			d._menu.visible = false
+		d._cancel_interaction()
+		d._show_detail(CardDB.get_card(wordiest))
+		await _shot("pol_panel_long_text2", 0.8)
+		Game.settings.text_size = 0
+		UI.reset_theme()
+	# The Deck Builder with nothing in the Hideout (its Strivers can't promote), then the Shop
+	Game.go("deck_builder")
+	await _shot("pol_deck", 2.8)
+	var db = _screen()
+	db._hideout = []
+	db._render_deck()
+	db._render_stats()
+	await _shot("pol_deck_warnings", 0.8)
+	Game.go("shop")
+	await _shot("pol_shop_packs", 2.8)
+	_screen()._show("starters")
+	await _shot("pol_shop_starters", 2.0)
+
+
 ## A controller button pressed and let go (scripts/pad.gd).
 func _pad(button: int) -> void:
 	for down in [true, false]:
@@ -349,6 +490,24 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--polish" in OS.get_cmdline_user_args():   # (0.9.148's touches; with --phone --mobile, the same on a phone)
+		await _polish_shots()
+		get_tree().quit()
+		return
+	if "--rest" in OS.get_cmdline_user_args():   # (Achievements, every Settings tab, the Auction House, the turf map, Turf Defense, the lobbies)
+		for s in ["achievements", "auction_house", "territory", "turf_defense", "fight_mode", "ffa_lobby", "matchmaking"]:
+			Game.go(s)
+			await _shot("r_" + s, 2.8)
+		Game.go("main_menu")
+		await get_tree().create_timer(1.5).timeout
+		SettingsPanel.open(_screen())
+		await get_tree().process_frame
+		var sp: SettingsPanel = _screen().get_children().filter(func(c): return c is SettingsPanel)[0]
+		for tab in sp._tabs.keys():
+			sp._show(tab)
+			await _shot("r_settings_" + str(tab), 0.5)
 		get_tree().quit()
 		return
 	if "--site" in OS.get_cmdline_user_args():   # (the website's pictures)

@@ -5375,15 +5375,15 @@ func _wisps(from: Vector2, to: Vector2, col: Color, n: int) -> void:
 		var w := Sprite2D.new()
 		w.texture = ArenaLife._soft_dot()
 		w.material = _add_mat
-		w.modulate = Color(col.lightened(0.3), 0.9)
-		w.scale = Vector2.ONE * randf_range(0.3, 0.55)
+		w.modulate = Color(col.lightened(0.35), 1.0)
+		w.scale = Vector2.ONE * randf_range(0.55, 0.95)
 		w.position = from + Vector2(randf_range(-40, 40), randf_range(-50, 50))
 		w.z_index = 450
 		fx.add_child(w)
 		var bend := Vector2(randf_range(-90, 90), randf_range(-90, 90))
 		var a := w.position
 		var t := w.create_tween()
-		t.tween_method(func(k: float): w.position = a.lerp(to, k) + bend * 4.0 * k * (1.0 - k), 0.0, 1.0, randf_range(0.35, 0.5)).set_delay(i * 0.03).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_method(func(k: float): w.position = a.lerp(to, k) + bend * 4.0 * k * (1.0 - k), 0.0, 1.0, randf_range(0.4, 0.55)).set_delay(i * 0.022).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		t.tween_callback(w.queue_free)
 
 
@@ -5903,8 +5903,9 @@ func _ev_heal(ev: Dictionary) -> void:
 	var from := _source_ahead()
 	if from != Vector2.INF:   # (it streams from the card that gave it to the Morale it restores)
 		Sfx.play("whoosh", 1.5, -8.0)
-		_wisps(from, plate, GREEN, 10)
-		await _wait(0.42)
+		_ring(from, GREEN, 0.8)
+		_wisps(from, plate, GREEN, 18)
+		await _wait(0.5)
 	_set_morale(side, ev.morale)
 	Sfx.play("promote", 1.4, -4.0)
 	_ring(plate, GREEN, 1.2)
@@ -6372,7 +6373,8 @@ func _ev_discard(ev: Dictionary) -> void:
 	if not v.face_up:
 		v.flip(true)
 	await v.move_to(v.position + Vector2(0, -90 if side == "player" else 90), 1.3, 0.0, 0.2).finished
-	_float_text(v.position + Vector2(0, -130 if side == "player" else 130), "DISCARDED", Color(0.8, 0.82, 0.95), 28)
+	_float_text(v.position + Vector2(0, -165 if side == "player" else 200), "DISCARDED", Color(0.93, 0.94, 1.0), 34)   # (clear of the card)
+	await _wait(0.25)   # (long enough to read which card went)
 	await _to_gutter(v, side)
 
 
@@ -6543,7 +6545,7 @@ func _ev_leader_hit(ev: Dictionary) -> void:
 	v.badge_text = _influence_text(ev.influence)
 	_float_text(v.home + Vector2(0, -40), "-%d" % ev.amount, RED, 56)
 	Sfx.play("damage", 1.2)
-	v.flash()
+	v.flash(0.5)   # (softer than a card's: the leader's face stays in view under it)
 	v.kick(Vector2(randf_range(-1, 1), -1), 14.0)
 	_burst(v.home, RED, 20, 320, 0.5)
 	_ring(v.home, RED, 1.0)

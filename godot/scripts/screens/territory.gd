@@ -308,6 +308,13 @@ func _build_city(districts: Array) -> void:
 			locals += 1
 		else:
 			held[who] = int(held.get(who, 0)) + 1
+	# The week's tally and the rules sit on a dark band, so they read over the map and its markers
+	var band := Panel.new()
+	band.add_theme_stylebox_override("panel", UI.box(Color(0.03, 0.03, 0.08, 0.8), Color(1, 1, 1, 0.14), 1, 12))
+	band.position = Vector2(250, 956)
+	band.size = Vector2(1420, 102)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 26)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

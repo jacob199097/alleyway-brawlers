@@ -42,12 +42,18 @@ func _ready() -> void:
 	veil.size = size
 	add_child(veil)
 	var p := UI.panel(UI.BLUE, Color(0.05, 0.05, 0.12, 0.98))
-	p.position = Vector2(360, 140)
-	p.custom_minimum_size = Vector2(1200, 800)
+	p.position = Vector2(360, 115)
+	p.custom_minimum_size = Vector2(1200, 850)
 	add_child(p)
+	var pad := MarginContainer.new()   # (the rows keep clear of the panel's edge)
+	for side in ["left", "right"]:
+		pad.add_theme_constant_override("margin_" + side, 30)
+	for side in ["top", "bottom"]:
+		pad.add_theme_constant_override("margin_" + side, 8)
+	p.add_child(pad)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 20)
-	p.add_child(col)
+	pad.add_child(col)
 	var h := UI.panel_title("SETTINGS", 48, UI.BLUE)
 	col.add_child(h)
 	var tabs := HBoxContainer.new()
@@ -63,7 +69,7 @@ func _ready() -> void:
 		_tabs[t[0]] = b
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 22)
-	_body.custom_minimum_size = Vector2(1100, 480)
+	_body.custom_minimum_size = Vector2(1100, 580)   # (room for the longest tab, so the panel and CLOSE stay put between tabs)
 	col.add_child(_body)
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -91,6 +97,7 @@ func _show(tab: String) -> void:
 	_tab = tab
 	for k in _tabs:
 		_tabs[k].set_pressed_no_signal(k == tab)
+		UI.tint_button(_tabs[k], UI.BLUE, k == tab)   # (the open tab lit)
 	for c in _body.get_children():
 		c.queue_free()
 	match tab:
@@ -133,7 +140,7 @@ func _show(tab: String) -> void:
 			_body.add_child(note)
 		"controls":
 			var cols := HBoxContainer.new()
-			cols.add_theme_constant_override("separation", 60)
+			cols.add_theme_constant_override("separation", 40)
 			_body.add_child(cols)
 			if Game.mobile():
 				cols.add_child(_key_list("TOUCH", TOUCH))
@@ -305,7 +312,7 @@ func _account_tab() -> void:
 	var pw := LineEdit.new()
 	pw.secret = not no_password
 	pw.placeholder_text = "DELETE" if no_password else "Password"
-	pw.custom_minimum_size = Vector2(420, 52)
+	pw.custom_minimum_size = Vector2(320, 52)   # (the row fits the panel's width)
 	row.add_child(pw)
 	var status := UI.label("", 22, UI.RED)
 	var go := func():

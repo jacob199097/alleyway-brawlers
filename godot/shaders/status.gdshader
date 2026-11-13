@@ -17,6 +17,7 @@ uniform float frost = 0.0;
 uniform float shield = 0.0;
 uniform float blind = 0.0;
 uniform float calm = 0.0;    // Photosensitive mode: 1 = no flicker
+uniform float crowd = 0.0;   // several statuses at once (0.5 = two, 1 = three or more)
 uniform float seed = 0.0;
 uniform vec4 shield_color : source_color = vec4(1.0, 0.84, 0.35, 1.0);
 
@@ -172,6 +173,16 @@ void fragment() {
 		vec3 sc = shield_color.rgb;
 		rgb += sc * (line * (0.16 + 0.26 * wave + 0.5 * sweep * flick) * within + edge * (0.7 + 0.2 * wave)) * min(shield, 1.4);
 		rgb += sc * within * 0.05 * shield;
+	}
+
+	// Several statuses' lights piling up would white out the card's face: over the card they are held
+	// to a ceiling (lower the more there are); around its edge they stay as they were
+	if (crowd > 0.001) {
+		float peak = max(rgb.r, max(rgb.g, rgb.b));
+		float lim = mix(1.6, 0.55, crowd);
+		float k = mix(1.0, min(1.0, lim / max(peak, 0.001)), inside);
+		rgb *= k;
+		a *= k;
 	}
 
 	COLOR = vec4(rgb, clamp(a, 0.0, 1.0)) * COLOR.a;
