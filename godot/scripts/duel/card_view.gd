@@ -28,6 +28,7 @@ static var _status_shader: Shader = preload("res://shaders/status.gdshader")
 const SHEET := {"burn": ["burn", 2.6], "poison": ["poison", 1.6], "bleed": ["bleed", 1.4], "freeze": ["frost", 1.2],
 	"shield": ["shield", 3.0], "blind": ["blind", 2.2]}
 const SHEET_MARGIN := 22.0   # (how far past the card's edge flames and icicles reach)
+const SHEET_THIN := [1.0, 1.0, 0.8, 0.66, 0.56, 0.5]   # how strongly each shows, by how many are on at once
 ## Statuses that run out: where the card keeps the turn each lasts through
 const STATUS_UNTIL := {"freeze": "freeze_until", "stasis": "stasis_until", "stun": "stun_until", "blind": "blind_until",
 	"suppress": "suppress_until", "silence": "silence_until"}
@@ -109,6 +110,8 @@ var _badge: RichTextLabel
 var _badge_box: StyleBoxFlat
 const BADGE_W := 112.0
 const BADGE_OVERLAP := 4.0   # how far the badge tucks under the card's bottom edge
+const BADGE_W_PHONE := 130.0      # (a phone: bigger numbers, tucked further under the card)
+const BADGE_OVERLAP_PHONE := 10.0
 var _stats := []
 var _tw: Tween
 var _mat := ShaderMaterial.new()
@@ -160,10 +163,11 @@ func setup(c: Dictionary, owner_side: String, up: bool) -> CardView:
 	_badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# A slim pill just under the card (the rows are 17 px apart), so it never covers the art
-	_badge.custom_minimum_size = Vector2(BADGE_W, 0)
-	_badge.size = Vector2(BADGE_W, 20)
-	_badge.add_theme_font_size_override("normal_font_size", 15)
-	_badge.add_theme_font_size_override("bold_font_size", 15)
+	var phone := Game.mobile()
+	_badge.custom_minimum_size = Vector2(BADGE_W_PHONE if phone else BADGE_W, 0)
+	_badge.size = Vector2(BADGE_W_PHONE if phone else BADGE_W, 20)
+	_badge.add_theme_font_size_override("normal_font_size", 19 if phone else 15)
+	_badge.add_theme_font_size_override("bold_font_size", 19 if phone else 15)
 	_badge.add_theme_constant_override("outline_size", 3)
 	_badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_badge_box = StyleBoxFlat.new()
@@ -356,8 +360,9 @@ func _update_badge() -> void:
 	_badge_box.border_color = (Color(1.0, 0.65, 0.19, 0.9) if Keywords.cb() else Color(1.0, 0.36, 0.36, 0.85)) if downed else Color(1, 1, 1, 0.16)
 	var atk_col := _stat_color(_stats[0], _stats[2], "ffe6a8")
 	var def_col := _stat_color(_stats[1], _stats[3], "cfe9ff")
-	_badge.text = "[center][font_size=10][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d%s[/color][/b]   [font_size=10][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d%s[/color][/b][/center]" \
-		% [atk_col, _stats[0], _stat_mark(_stats[0], _stats[2]), def_col, _stats[1], _stat_mark(_stats[1], _stats[3])]
+	var small := 12 if Game.mobile() else 10
+	_badge.text = "[center][font_size=%d][color=#ff8f80]ATK[/color][/font_size] [b][color=#%s]%d%s[/color][/b]   [font_size=%d][color=#7fb6ff]DEF[/color][/font_size] [b][color=#%s]%d%s[/color][/b][/center]" \
+		% [small, atk_col, _stats[0], _stat_mark(_stats[0], _stats[2]), small, def_col, _stats[1], _stat_mark(_stats[1], _stats[3])]
 
 
 static func _stat_color(v: int, base: int, normal: String) -> String:
@@ -426,7 +431,7 @@ func _process(delta: float) -> void:
 		var sideways := absf(sin(rotation)) > 0.7
 		var half_h: float = (SIZE.x if sideways else SIZE.y) * scale.y / 2.0
 		_badge.scale = Vector2.ONE * board_scale   # (its own top-level node: it doesn't inherit the card's scale)
-		_badge.global_position = global_position + Vector2(-_badge.size.x * board_scale / 2.0, half_h - BADGE_OVERLAP * board_scale)
+		_badge.global_position = global_position + Vector2(-_badge.size.x * board_scale / 2.0, half_h - (BADGE_OVERLAP_PHONE if Game.mobile() else BADGE_OVERLAP) * board_scale)
 		_badge.z_index = z_index + 1
 
 
@@ -557,8 +562,14 @@ func _update_sheet(delta: float) -> void:
 		add_child(_sheet)
 		move_child(_sheet, _status_layer.get_index())   # (under the badges)
 	var mat: ShaderMaterial = _sheet.material
+	# Several at once: each is drawn thinner, so the card under them stays readable (a flare still shows)
+	var on := 0
 	for k in SHEET:
-		mat.set_shader_parameter(SHEET[k][0], float(_sheet_amt.get(k, 0.0)))
+		if float(_sheet_amt.get(k, 0.0)) > 0.5:
+			on += 1
+	var thin: float = SHEET_THIN[mini(on, SHEET_THIN.size() - 1)]
+	for k in SHEET:
+		mat.set_shader_parameter(SHEET[k][0], float(_sheet_amt.get(k, 0.0)) * thin)
 	mat.set_shader_parameter("up", Vector2.UP.rotated(-rotation))
 	mat.set_shader_parameter("calm", 1.0 if Game.photosafe() else 0.0)
 	mat.set_shader_parameter("shield_color", status_color("shield"))

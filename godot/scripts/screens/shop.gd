@@ -221,6 +221,7 @@ func _pack(p: Dictionary) -> Control:
 	var sway := art.create_tween().set_loops()
 	sway.tween_property(art, "rotation", 0.015, phase * 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	sway.tween_property(art, "rotation", -0.015, phase * 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	holder.add_child(_text_band(at + Vector2(-6, 550), Vector2(412, 88), p.color))
 	var name := UI.label(str(p.label).to_upper(), 30, p.color, true)
 	name.size = Vector2(400, 40)
 	name.position = at + Vector2(0, 555)
@@ -252,6 +253,16 @@ func _pack(p: Dictionary) -> Control:
 	return holder
 
 
+## A dark band behind text that sits on the shop's backdrop, so it reads whatever is behind it.
+func _text_band(at: Vector2, band_size: Vector2, col: Color) -> Panel:
+	var band := Panel.new()
+	band.position = at
+	band.size = band_size
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.add_theme_stylebox_override("panel", UI.box(Color(0.03, 0.035, 0.08, 0.72), Color(col, 0.3), 1, 8))
+	return band
+
+
 ## One clan's starter deck on the shelf: its deck box, what's in it and its prices.
 func _starter(d: Dictionary) -> Control:
 	var id := str(d.get("id", ""))
@@ -274,6 +285,7 @@ func _starter(d: Dictionary) -> Control:
 	bob.tween_property(box, "position:y", 82.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	bob.tween_property(box, "position:y", 94.0, phase).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_arts[id] = box
+	holder.add_child(_text_band(Vector2(-6, 514), Vector2(412, 150 if str(d.get("blurb", "")) != "" else 98), col))
 	var name := UI.label("%s STARTER" % str(d.get("name", info.get("name", id))).to_upper(), 30, col, true)
 	name.size = Vector2(400, 40)
 	name.position = Vector2(0, 520)

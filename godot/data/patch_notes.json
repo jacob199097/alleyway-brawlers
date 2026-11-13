@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.9.148",
+        "notes": [
+            "When a card's ATK or DEF changes in a match, the change pops up over it (+300 ATK, -200 DEF) with arrows running up or down, so you can see what an effect just did.",
+            "More to see in a match: a blocked attack glances off a shield, a heal streams from the card that gave it to your Morale, a card sent back to the hand is whisked off the board, and a leader hit in the Hideout takes the blow. A discard now says so.",
+            "A card with several statuses at once stays readable: each one is drawn lighter the more there are.",
+            "The card panel in a match makes room for long text by shrinking the picture before it scrolls. This helps most with a bigger Text Size.",
+            "On phones: bigger ATK and DEF numbers under each card, a bigger LOG button, no keyboard hints, and tips, pack opening and How to Play say tap where they said click.",
+            "Deck Builder: Strivers that can't promote share one warning line, so the deck list keeps its room. Shop: a pack's name and odds sit on a dark band so they read over the backdrop."
+        ]
+    },
+    {
         "version": "0.9.147",
         "notes": [
             "Statuses you can see. A BURNING card stands in flames, a FROZEN one is iced over, POISON runs down it and so on, and each one lands in its own way: fire catches, a blade cuts, lightning strikes, a flash-bang goes off. A status now flies from the card that caused it to the card it hits.",

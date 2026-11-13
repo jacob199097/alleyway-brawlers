@@ -146,7 +146,7 @@ func _show(tab: String) -> void:
 		b.queue_free()
 	_grid.visible = tab in ["KEYWORDS", "CARD TERMS"]
 	if _grid.visible:
-		_text.text = "Keywords are the coloured words in card text (hover one on a card to read it). Pick one to see what it does, and cards that have it." \
+		_text.text = UI.touch_words("Keywords are the coloured words in card text (hover one on a card to read it). Pick one to see what it does, and cards that have it.") \
 			if tab == "KEYWORDS" else "What card text means. Pick a term to see how it works, and cards that use it."
 		for p in _pages(tab):
 			var b := UI.button(p.name, _open_page.bind(p), Vector2(330, 52))
@@ -158,7 +158,7 @@ func _show(tab: String) -> void:
 		return
 	for s in SECTIONS:
 		if s[0] == tab:
-			_text.text = _colour_keywords(s[1])
+			_text.text = _colour_keywords(UI.touch_words(s[1]))
 	_show_cards(tab)
 
 
@@ -218,7 +218,7 @@ func _open_page(p: Dictionary) -> void:
 	_grid.visible = false
 	_back.text = "◀  ALL " + _tab
 	_back.visible = true
-	_text.text = "[font_size=34][color=#%s]%s[/color][/font_size]\n\n%s" % [p.color.to_html(false), p.name, _colour_keywords(p.text)]
+	_text.text = "[font_size=34][color=#%s]%s[/color][/font_size]\n\n%s" % [p.color.to_html(false), p.name, _colour_keywords(UI.touch_words(p.text))]
 	# The cards that do it first, then ones that mention it; tokens only when no other card has it
 	var ranked: Array = []
 	for c in _pool(true):

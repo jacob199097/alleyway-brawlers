@@ -1173,7 +1173,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 					veil.queue_free()
 			veil.accept_event())
 	veil.grab_focus.call_deferred()
-	var hint := label("Click anywhere to close" + ("  ·  ◀ ▶ or click a level to see it" if levels.size() > 1 else ""), 18, MUTED)
+	var hint := label(touch_words("Click anywhere to close" + ("  ·  ◀ ▶ or click a level to see it" if levels.size() > 1 else "")), 18, MUTED)
 	hint.size = Vector2(1920, 26)
 	hint.position = Vector2(0, 1010)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

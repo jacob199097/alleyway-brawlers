@@ -190,7 +190,7 @@ func start(data: Dictionary) -> void:
 	if not is_inside_tree():
 		return
 	_phase = Phase.READY
-	_show_hint("SWIPE ACROSS THE PACK TO TEAR IT OPEN", "or click it  ·  SPACE")
+	_show_hint("SWIPE ACROSS THE PACK TO TEAR IT OPEN", "or tap it" if Game.mobile() else "or click it  ·  SPACE")
 
 
 ## The shop bought another one: clear the table and open it.
@@ -544,7 +544,10 @@ func _open_up() -> void:
 	beam.queue_free()
 	_pack_root.queue_free()
 	_phase = Phase.PICK
-	_show_hint("CLICK A CARD TO TURN IT OVER", "SPACE turns the next one")
+	if Game.mobile():
+		_show_hint("TAP A CARD TO TURN IT OVER", "")
+	else:
+		_show_hint("CLICK A CARD TO TURN IT OVER", "SPACE turns the next one")
 	_reveal_btn = UI.button("REVEAL ALL", reveal_all, Vector2(240, 56), UI.PURPLE)
 	_reveal_btn.position = Vector2(1648, 996)
 	_ui.add_child(_reveal_btn)

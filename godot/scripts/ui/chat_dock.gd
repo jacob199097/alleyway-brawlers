@@ -433,7 +433,7 @@ func _message_toast(id: String, who: String, avatar, body: String, heading := ""
 	preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	preview.custom_minimum_size = Vector2(320, 0)
 	col.add_child(preview)
-	col.add_child(_text("Click to reply" if id != "" else "Click to read", 14, UI.MUTED))
+	col.add_child(_text(UI.touch_words("Click to reply" if id != "" else "Click to read"), 14, UI.MUTED))
 	Net.corner_toast(p, "chat_message", func():
 		if id != "":
 			open_with(id, who, avatar)

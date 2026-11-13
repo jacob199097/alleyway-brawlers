@@ -597,6 +597,10 @@ func _jump_to(i: int) -> void:
 func _build_log() -> void:
 	var b := UI.button("LOG", _toggle_log, Vector2(100, 48))
 	b.position = Vector2(440, 1004)   # left of the hand, even when it's full
+	if Game.mobile():   # (a thumb's size, grown to the left: the hand stays clear)
+		b.custom_minimum_size = Vector2(136, 64)
+		b.size = b.custom_minimum_size
+		b.position = Vector2(404, 992)
 	b.tooltip_text = "Battle log (L)"
 	ui.add_child(b)
 	var p := PanelContainer.new()
@@ -5196,10 +5200,40 @@ class ThrownCard extends Node2D:
 		draw_set_transform(Vector2.ZERO)
 
 
+## An attack that didn't get through a defender: its guard snaps up, the blow glances off.
 func _ev_blocked(ev: Dictionary) -> void:
+	var at := slot_pos(ev.side, ev.slot)
+	var v: CardView = field.get(ev.side, {}).get(ev.slot)
+	var back := Vector2(0, -1 if ev.side == "player" else 1)   # (towards whoever attacked)
 	Sfx.play("set", 0.7)
-	_float_text(slot_pos(ev.side, ev.slot), "BLOCKED", BLUE, 40)
+	Sfx.play("slam", 1.5, -8.0)
+	_guard_flash(at, BLUE)
+	_sparks(at + back * 60.0, back, Color(0.7, 0.9, 1.0), 16, 70.0)
+	if v:
+		_pulse_glow(v, BLUE)
+		v.kick(-back, 8.0)
+	_float_text(at, "BLOCKED", BLUE, 40)
 	await _wait(0.45)
+
+
+## A guard holding: a shield's outline snaps up over the card and fades.
+func _guard_flash(at: Vector2, col: Color) -> void:
+	var s := Node2D.new()
+	s.position = at
+	s.z_index = 446
+	s.material = _add_mat
+	var pts := PackedVector2Array([Vector2(0, -92), Vector2(66, -64), Vector2(66, 14), Vector2(0, 92),
+		Vector2(-66, 14), Vector2(-66, -64), Vector2(0, -92)])
+	s.draw.connect(func():
+		s.draw_colored_polygon(pts.slice(0, 6), Color(col, 0.16))
+		s.draw_polyline(pts, col.lightened(0.4), 6.0, true))
+	s.scale = Vector2.ONE * 0.7
+	fx.add_child(s)
+	var t := s.create_tween()
+	t.tween_property(s, "scale", Vector2.ONE * 1.08, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(0.12)
+	t.tween_property(s, "modulate:a", 0.0, 0.3)
+	t.tween_callback(s.queue_free)
 
 
 func _ev_downed(ev: Dictionary) -> void:
@@ -5321,6 +5355,36 @@ func _status_source() -> Vector2:
 		if not type in ["status", "stats", "position", "downed", "ko"]:
 			return Vector2.INF
 	return Vector2.INF
+
+
+## The same for anything an effect does (a heal): the card whose call-out follows, or Vector2.INF.
+func _source_ahead() -> Vector2:
+	for i in mini(_queue.size(), 12):
+		var nxt: Dictionary = _queue[i]
+		var type := str(nxt.get("type", ""))
+		if type == "effect":
+			return _effect_origin(nxt)
+		if not type in ["status", "stats", "position", "downed", "ko", "heal", "leader_heal", "damage"]:
+			return Vector2.INF
+	return Vector2.INF
+
+
+## Soft lights streaming from one place to another (a heal on its way to the Morale it restores).
+func _wisps(from: Vector2, to: Vector2, col: Color, n: int) -> void:
+	for i in n:
+		var w := Sprite2D.new()
+		w.texture = ArenaLife._soft_dot()
+		w.material = _add_mat
+		w.modulate = Color(col.lightened(0.3), 0.9)
+		w.scale = Vector2.ONE * randf_range(0.3, 0.55)
+		w.position = from + Vector2(randf_range(-40, 40), randf_range(-50, 50))
+		w.z_index = 450
+		fx.add_child(w)
+		var bend := Vector2(randf_range(-90, 90), randf_range(-90, 90))
+		var a := w.position
+		var t := w.create_tween()
+		t.tween_method(func(k: float): w.position = a.lerp(to, k) + bend * 4.0 * k * (1.0 - k), 0.0, 1.0, randf_range(0.35, 0.5)).set_delay(i * 0.03).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_callback(w.queue_free)
 
 
 ## Where the card behind an effect call-out is on the table.
@@ -5660,6 +5724,8 @@ func _ev_bounce(ev: Dictionary) -> void:
 	v.set_card(ev.card)
 	Sfx.play("whoosh", 1.2)
 	_ring(v.position, BLUE, 1.2)
+	_speed_lines(v.position, Vector2(0, 1 if side == "player" else -1), 8)   # (whisked off towards its hand)
+	_burst(v.position, BLUE, 14, 240, 0.45, 0.0)
 	_float_text(v.position + Vector2(0, -110 if side == "player" else 110), "BACK TO HAND", BLUE, 30)
 	if side != "player" and v.face_up:   # (any other player's hand: FFA seats too, or it showed as a "?")
 		v.flip(false)
@@ -5833,8 +5899,15 @@ func _ev_gutter_exile(ev: Dictionary) -> void:
 func _ev_heal(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var root: Control = _panels[side].root
+	var plate: Vector2 = get_viewport().get_canvas_transform().affine_inverse() * (root.position + root.size / 2)
+	var from := _source_ahead()
+	if from != Vector2.INF:   # (it streams from the card that gave it to the Morale it restores)
+		Sfx.play("whoosh", 1.5, -8.0)
+		_wisps(from, plate, GREEN, 10)
+		await _wait(0.42)
 	_set_morale(side, ev.morale)
 	Sfx.play("promote", 1.4, -4.0)
+	_ring(plate, GREEN, 1.2)
 	var up: bool = side in ["player", "ally"]   # (off the plate, like damage: the Morale stays readable)
 	_float_text(Vector2(root.position.x + root.size.x / 2, root.position.y - 50 if up else root.position.y + root.size.y + 50),
 		"+%d" % int(ev.amount), GREEN, 64)
@@ -6213,6 +6286,7 @@ func _ev_absorb(ev: Dictionary) -> void:
 		return
 	var from := slot_pos(side, int(ev.get("from_slot", ev.slot)))
 	var col := _clan_color(ev.card)
+	v.set_meta("stat_quiet", _game_time + 2.0)   # (its numbers' change is shown here, not again by _stat_change)
 	Sfx.play("promote", 0.8, -4.0)
 	for i in 10:   # wisps flying from where it was into the card
 		var w := Sprite2D.new()
@@ -6298,19 +6372,95 @@ func _ev_discard(ev: Dictionary) -> void:
 	if not v.face_up:
 		v.flip(true)
 	await v.move_to(v.position + Vector2(0, -90 if side == "player" else 90), 1.3, 0.0, 0.2).finished
+	_float_text(v.position + Vector2(0, -130 if side == "player" else 130), "DISCARDED", Color(0.8, 0.82, 0.95), 28)
 	await _to_gutter(v, side)
 
 
 func _ev_stats(ev: Dictionary) -> void:
+	var shown := 0
 	for side in ev.values:
 		var vals: Dictionary = ev.values[side]
 		for slot in vals:
 			var v: CardView = field[side].get(slot)
 			if v:
 				var s: Array = vals[slot]
+				var was: Array = v.stats()
 				v.set_stats(s[0], s[1], s[2], s[3])
 				if s.size() > 5:
 					v.statuses = s[5]
+				if _stat_change(v, was, shown):
+					shown += 1
+
+
+## A character's ATK or DEF moved (a card's effect, a status, an aura): the change pops up over its
+## numbers, rising for a gain and sinking for a loss. Not for a card just placed, a new form (a promotion
+## counts its own up) or a change already shown (a tribute's strength, _ev_absorb). Says whether it showed.
+func _stat_change(v: CardView, was: Array, nth: int) -> bool:
+	var key := "%s:%s" % [v.uid, str(v.card.get("id", ""))]
+	var same: bool = str(v.get_meta("stat_key", "")) == key
+	v.set_meta("stat_key", key)
+	var quiet: bool = _game_time < float(v.get_meta("stat_quiet", 0.0))
+	var now: Array = v.stats()
+	if not same or quiet or was.size() < 2 or now.size() < 2 or not v.face_up or v.busy:
+		return false
+	var d_atk := int(now[0]) - int(was[0])
+	var d_def := int(now[1]) - int(was[1])
+	if d_atk == 0 and d_def == 0:
+		return false
+	var line := 0
+	for pair in [[d_atk, "ATK"], [d_def, "DEF"]]:
+		var d: int = pair[0]
+		if d == 0:
+			continue
+		var col := Color.html(CardView._stat_color(1 if d > 0 else -1, 0, "ffffff"))
+		_stat_pop(v.home + Vector2(0, 24.0 + line * 30.0), "%s%d %s" % ["+" if d > 0 else "-", absi(d), pair[1]], col, d > 0, nth * 0.05)
+		line += 1
+	var up := d_atk + d_def > 0
+	_stat_arrows(v.home, Color.html(CardView._stat_color(1 if up else -1, 0, "ffffff")), up)
+	if nth == 0:
+		Sfx.play("effect", 1.5 if up else 0.75, -10.0)
+	return true
+
+
+func _stat_pop(at: Vector2, text: String, col: Color, up: bool, delay: float) -> void:
+	var l := _label(26, col, true)
+	l.text = text
+	l.size = Vector2(300, 36)
+	l.position = at - l.size / 2
+	l.pivot_offset = l.size / 2
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.modulate.a = 0.0
+	l.scale = Vector2.ONE * 1.5
+	overlay.add_child(l)
+	var t := l.create_tween()
+	t.tween_interval(maxf(delay, 0.01))
+	t.tween_property(l, "modulate:a", 1.0, 0.05)
+	t.parallel().tween_property(l, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_interval(0.5)
+	t.tween_property(l, "position:y", l.position.y + (-34.0 if up else 34.0), 0.45)
+	t.parallel().tween_property(l, "modulate:a", 0.0, 0.45)
+	t.tween_callback(l.queue_free)
+
+
+## Small arrows running up (a gain) or down (a loss) over a card: the direction says it without the colour.
+func _stat_arrows(pos: Vector2, col: Color, up: bool) -> void:
+	var dir := -1.0 if up else 1.0
+	for i in 3:
+		var ch := Node2D.new()
+		ch.position = pos + Vector2((i - 1) * 34.0, -dir * 34.0)
+		ch.z_index = 445
+		ch.material = _add_mat
+		ch.modulate.a = 0.0
+		ch.draw.connect(func():
+			ch.draw_polyline(PackedVector2Array([Vector2(-12, -dir * 7.0), Vector2(0, dir * 7.0), Vector2(12, -dir * 7.0)]), col, 5.0, true))
+		fx.add_child(ch)
+		var t := ch.create_tween()
+		t.tween_interval(0.01 + i * 0.06)
+		t.tween_property(ch, "modulate:a", 0.95, 0.06)
+		t.tween_property(ch, "position:y", ch.position.y + dir * 72.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(ch, "modulate:a", 0.0, 0.45).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		t.tween_callback(ch.queue_free)
 
 
 func _ev_move(ev: Dictionary) -> void:
@@ -6325,6 +6475,8 @@ func _ev_move(ev: Dictionary) -> void:
 	Sfx.play("whoosh", 1.3)
 	_arrow.from = to
 	_burst(v.position, BLUE, 12, 220, 0.4, 0.0)
+	if to.distance_to(v.position) > 10.0:
+		_speed_lines(to, (to - v.position).normalized(), 6)
 	await v.move_to(to, v.scale.x, v.home_rot, 0.22, Tween.TRANS_BACK).finished
 	_float_text(to + Vector2(0, -110 if side == "player" else 110), "LANE SHIFT", BLUE, 30)
 
@@ -6348,6 +6500,7 @@ func _ev_position(ev: Dictionary) -> void:
 	if not v.face_up:
 		v.flip(true)
 	Sfx.play("set", 1.2)
+	_ring(v.home, BLUE if c.position == "def" else GOLD, 1.0)
 	_float_text(v.home + Vector2(0, -110 if ev.side == "player" else 110),
 		"DEF POSITION" if c.position == "def" else "ATK POSITION", BLUE if c.position == "def" else GOLD, 30)
 	await v.move_to(v.home, 1.0, v.home_rot, 0.28, Tween.TRANS_BACK).finished
@@ -6390,6 +6543,11 @@ func _ev_leader_hit(ev: Dictionary) -> void:
 	v.badge_text = _influence_text(ev.influence)
 	_float_text(v.home + Vector2(0, -40), "-%d" % ev.amount, RED, 56)
 	Sfx.play("damage", 1.2)
+	v.flash()
+	v.kick(Vector2(randf_range(-1, 1), -1), 14.0)
+	_burst(v.home, RED, 20, 320, 0.5)
+	_ring(v.home, RED, 1.0)
+	shake(6.0)
 	await _wait(0.35)
 
 
@@ -6400,6 +6558,8 @@ func _ev_leader_heal(ev: Dictionary) -> void:
 	v.badge_text = _influence_text(ev.influence)
 	_float_text(v.home + Vector2(0, -40), "+%d" % ev.amount, Color(1.0, 0.85, 0.42), 56)
 	Sfx.play("heal", 1.1)
+	_ring(v.home, Color(1.0, 0.85, 0.42), 1.0)
+	_burst(v.home, Color(1.0, 0.85, 0.42), 16, 220, 0.7, -260.0)
 	await _wait(0.35)
 
 
@@ -7561,6 +7721,30 @@ func _build_detail() -> void:
 	_show_detail({})
 
 
+const DETAIL_ART_MIN := 300.0   # the card panel's picture never gets smaller than this (the zoom shows it whole)
+
+## The card panel laid out for the text it has: a long one (or a bigger Text Size) takes its room from
+## the picture, and only scrolls once the picture is as small as it goes.
+func _fit_detail() -> void:
+	var p: Panel = $HUD/UI/Detail
+	var text: RichTextLabel = _ui.detail_text
+	var full := 420.0 if Game.mobile() else 482.0
+	var room := p.size.y - (full + 24.0) - 104.0 - 14.0   # (the text's height under a full-size picture)
+	var art_h := clampf(full - maxf(float(text.get_content_height()) + 6.0 - room, 0.0), DETAIL_ART_MIN, full)
+	var art: TextureRect = _ui.detail_art
+	if is_equal_approx(art.size.y, art_h):
+		return
+	art.size = Vector2(art_h * 340.0 / 482.0, art_h)
+	art.position = Vector2((p.size.x - art.size.x) / 2, 18)
+	(art.material as ShaderMaterial).set_shader_parameter("quad_size", art.size)
+	var y := art_h + 24.0
+	_ui.detail_title.position.y = y
+	_ui.detail_kind.position.y = y + 40
+	_ui.detail_stats.position.y = y + 66
+	text.position.y = y + 104
+	text.size.y = p.size.y - y - 104 - 14
+
+
 ## The card panel's type line ("CHARACTER · NEBULA · AUTHORITY 3"): bigger on a phone.
 func _kind_size() -> int:
 	return 18 if Game.mobile() else 15
@@ -7634,6 +7818,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 		_ui.detail_kind.text = ""
 		_ui.detail_stats.text = ""
 		_ui.detail_text.text = "\n".join(["[color=#8a8aa0]%s[/color]" % UI.touch_words("Hover a card to see it here. Right-click it to zoom in.")] + _rival_leader_lines())
+		_fit_detail()
 		return
 	var tex := CardDB.art_for(c)   # (a token shows the same one of its artworks as on the field)
 	# A face-down card shows its side's card back (its clan's, or the one its player chose)
@@ -7678,6 +7863,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	if c.get("note") is String:   # (where the card is: shown above its text, not part of it)
 		body = "[color=#8a8aa0]%s[/color]\n\n%s" % [Keywords._escape(c.note), body]
 	_ui.detail_text.text = body
+	_fit_detail()
 
 
 ## Nothing hovered, once a card has been played: that card ("LAST PLAYED · OPPONENT"), the last few
@@ -7704,6 +7890,7 @@ func _show_idle() -> void:
 	for r in _recent:
 		lines.append("[color=%s]%s[/color]" % [r[0], Keywords._escape(str(r[1]))])
 	_ui.detail_text.text = "\n".join(lines + _rival_leader_lines())
+	_fit_detail()
 
 
 ## When the rival leader Awakens (or that it already has): for the idle card panel.
@@ -7897,6 +8084,7 @@ func _build_phase_bar() -> void:
 	p.add_child(next)
 	var hint := _label(12, Color(0.55, 0.57, 0.7))
 	hint.text = "SPACE"
+	hint.visible = not Game.mobile()   # (no keyboard on a phone)
 	hint.position = Vector2(p.size.x - 62, p.size.y - 112)
 	p.add_child(hint)
 	_ui.next = next
@@ -8589,7 +8777,7 @@ func _show_target_choice(p: Dictionary) -> void:
 	row.add_theme_constant_override("separation", 14)
 	box.add_child(row)
 	var title := _label(18, Color.WHITE, true)
-	title.text = "%s  ·  click a glowing card" % p.prompt
+	title.text = "%s  ·  %s" % [p.prompt, UI.touch_words("click a glowing card")]
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(title)
 	for o in p.options:
@@ -8817,7 +9005,7 @@ func _update_hover() -> void:
 				var shown: Dictionary = CardDB.get_card(top).duplicate()
 				shown.note = UI.touch_words("Top of the Gutter · click to see every card in it")
 				if side == "player" and _gutter_glow:
-					shown.note = "A Gutter ability is ready · click your Gutter to use it"
+					shown.note = UI.touch_words("A Gutter ability is ready · click your Gutter to use it")
 				shown.uid = "gutter:%s:%s" % [side, top]
 				_show_detail(shown)
 		# The deck and Hideout show that side's card back, with how many cards are in them

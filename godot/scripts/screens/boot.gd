@@ -299,7 +299,7 @@ func _next_tip() -> void:
 		_tip_order = range(TIPS.size())
 		_tip_order.shuffle()
 	var tip: Array = TIPS[_tip_order.pop_back()]
-	_tip.text = "TIP  ·  %s\n%s" % [tip[0], tip[1]]
+	_tip.text = "TIP  ·  %s\n%s" % [tip[0], UI.touch_words(tip[1])]
 
 
 func _on_progress(done: int, total: int, id: String, tex: Texture2D) -> void:

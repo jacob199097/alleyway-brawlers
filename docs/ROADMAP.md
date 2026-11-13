@@ -30,14 +30,17 @@ when it ships, or delete it if it's dropped.
   clan, three levels each (Street, Hard, Nightmare), phases as its Morale drops, an entrance cutscene,
   phase cutscenes and lines mid-fight, and its prize card on the first Street clear. Bosses and rewards:
   `godot/data/bosses.json`; server: `backend/socket/coopMatch.js`, `backend/economy/turf.js`.
-  Later: boss-only cards and prize cards of their own (the prizes are the clan Legendaries for now),
-  a boss music track (`assets/sfx/music_boss.mp3` is used when it exists), friend invites.
+  Since then: friend invites (0.9.128) and prize cards of the bosses' own (never in packs).
+  Later: boss-only cards (ones only the boss plays), and a boss music track: the game already plays
+  `assets/sfx/music_boss.mp3` in a Turf Defense match once that recording exists (no build needed).
 - [x] **Wildcard cards.** In the game (44 cards, with packs and a starter deck).
 - [x] **Re-import Continuous / Equip cards** through the Forge, so their effect text loses the old
   "CONTINUOUS" / "EQUIP:" line (removed from the text box in Forge v84; it's on the type line).
 - [x] **How to Play pages for every keyword and mechanic** (0.9.120): KEYWORDS and CARD TERMS in How to Play,
   a page each with real cards that use it (`godot/scripts/ui/how_to_play.gd`).
-- [ ] **Ranked seasons:** a season reset with end-of-season rewards (ties in with the seasonal emails).
+- [x] **Ranked seasons.** Season 0 runs until launch: rewards by the highest rank reached, a Legend prize
+  card, every rank dropping two when a new season starts (`backend/economy/seasons.js`,
+  `godot/scripts/ui/seasons.gd`). The seasonal news emails are still open (under Accounts & email).
 
 ## Accounts & email
 
@@ -73,5 +76,7 @@ when it ships, or delete it if it's dropped.
   small print, headings stay), Colour-Blind Colours (`Keywords.color`: keywords by what they do in
   Okabe-Ito colours, stat changes blue ▲ / orange ▼), with the colour-blind symbols, photosensitive mode
   and screen shake. `screens_tour.gd --access` shoots the screens with them off and on.
+  - [x] The duel's card panel shrinks its picture to make room for a long text or a bigger Text Size,
+    before it scrolls (0.9.148, `_fit_detail`).
   - [ ] Still open: the card pictures' own text (baked into the art by the Card Forge) keeps its colours
-    and size; a bigger Text Size makes the duel's card panel scroll sooner (the zoom shows all).
+    and size. That is the Forge's to change (the zoom and the card panel show the text at any size).

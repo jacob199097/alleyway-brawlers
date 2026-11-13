@@ -1001,12 +1001,17 @@ func _render_stats() -> void:
 		warn.append("Only %d characters: most decks want 25 or more." % kinds.gang_member)
 	if most_tributes > 0 and cheap < 4 + 2 * most_tributes:
 		warn.append("Heavies need characters to sacrifice: only %d characters cost 3 Authority or less." % cheap)
-	for name in stuck:
-		warn.append(("%s can't promote: put %s in the Hideout." if stuck[name][1] else "%s can't promote: you don't own %s.") % [name, stuck[name][0]])
+	for own in [true, false]:   # (Strivers that can't promote: one line for the lot once there's more than one)
+		var names: Array = stuck.keys().filter(func(n): return stuck[n][1] == own)
+		if names.size() == 1:
+			warn.append(("%s can't promote: put %s in the Hideout." if own else "%s can't promote: you don't own %s.") % [names[0], stuck[names[0]][0]])
+		elif names.size() > 1:
+			warn.append(("%d Strivers can't promote (%s): put their next level in the Hideout." if own
+				else "%d Strivers can't promote (%s): you don't own their next level.") % [names.size(), ", ".join(PackedStringArray(names))])
 	if curve[6] > 6:
 		warn.append("%d cards cost 7+ Authority: you may draw them long before you can play them." % curve[6])
 	for w in warn.slice(0, 4):
-		var l := UI.label("⚠ " + w, 15, Color("ffb35c"))
+		var l := UI.label("⚠ " + w, 16, Color("ffb35c"))
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(640, 0)
 		_stats.add_child(l)
