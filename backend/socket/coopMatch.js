@@ -32,6 +32,7 @@
  */
 
 const { randomUUID } = require('crypto');
+const { awayNotGone } = require('./away');
 const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 const { rename } = require('./ffaMatch');
 
@@ -507,7 +508,7 @@ function createCoopService(io, deps) {
             sendStart(match, seat, true);
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', (reason) => {
             if (sockets.get(me) !== socket) return;
             sockets.delete(me);
             leaveQueue(me);
@@ -517,6 +518,7 @@ function createCoopService(io, deps) {
             const s = match.seats[seat];
             s.connected = false;
             if (match.state.sides[seat].out) return;
+            if (awayNotGone(reason)) return;   // (the game minimized on a phone: its moves go on being played, the away rule decides)
             tellOthers(match, seat, { status: 'disconnected', graceSecs: secs('reconnectSecs', RECONNECT_SECS), name: s.profile?.username || '' });
             s.grace = setTimeout(() => goOut(match, seat, 'disconnect'), secs('reconnectSecs', RECONNECT_SECS) * 1000);
         });

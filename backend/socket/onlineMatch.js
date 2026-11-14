@@ -35,6 +35,7 @@
  */
 
 const { randomUUID } = require('crypto');
+const { awayNotGone } = require('./away');
 
 const TURN_SECS        = 90;    // a player who doesn't act for this long is auto-played
 // Once auto-played, a player who still isn't acting gets AWAY_SECS per move, and loses after
@@ -486,7 +487,7 @@ function createOnlineService(io, deps) {
     function armTimer(match) {
         clearTimeout(match.timer);
         const s = match.seats[seatToAct(match.state)];
-        if (!s.bot && !s.connected) {   // (gone: no moves played for them; RECONNECT_SECS decides)
+        if (!s.bot && !s.connected && !s.away) {   // (gone: no moves played for them; RECONNECT_SECS decides)
             match.clockEnds = null;
             return deps.turnSecs ?? TURN_SECS;
         }
@@ -933,6 +934,7 @@ function createOnlineService(io, deps) {
             const s = match.seats[seat];
             if (!s.connected) {
                 s.connected = true;
+                s.away = false;
                 s.goneUntil = 0;
                 clearTimeout(s.grace);
                 emitTo(match.seats[other(seat)].playerId, 'mp:opponent', { status: 'back' });
@@ -941,7 +943,7 @@ function createOnlineService(io, deps) {
             sendStart(match, seat, true);
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', (reason) => {
             if (sockets.get(me) !== socket) return;   // an older connection closing
             sockets.delete(me);
             leaveQueue(me);
@@ -954,6 +956,11 @@ function createOnlineService(io, deps) {
             const seat = match.seats.player.playerId === me ? 'player' : 'opponent';
             const s = match.seats[seat];
             s.connected = false;
+            if (awayNotGone(reason)) {   // (the game minimized on a phone: its moves go on being played, AFK_FORFEIT decides)
+                s.away = true;
+                if (seatToAct(match.state) === seat) armTimer(match);
+                return;
+            }
             s.goneUntil = Date.now() + RECONNECT_SECS * 1000;
             if (seatToAct(match.state) === seat) armTimer(match);   // (their clock stops: nothing is played for them)
             emitTo(match.seats[other(seat)].playerId, 'mp:opponent', { status: 'disconnected', graceSecs: RECONNECT_SECS });

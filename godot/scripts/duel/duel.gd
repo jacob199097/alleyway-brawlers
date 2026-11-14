@@ -1129,10 +1129,12 @@ func _on_net_opened() -> void:
 
 
 func _on_net_closed() -> void:
-	if _mode != "over" and not _spectating:   # (the server keeps the seat for 60 seconds: backend/socket/onlineMatch.js)
+	# (just back from a phone's background: the seat was kept and the connection is coming back at once)
+	var back := Time.get_ticks_msec() - Net.resumed_msec < 15000
+	if _mode != "over" and not _spectating and not back:   # (the server keeps the seat for 60 seconds: backend/socket/onlineMatch.js)
 		_countdown_box("CONNECTION LOST — RECONNECTING…", "Your seat is kept for a minute. If the game closed, open it again to rejoin.", 60, RED)
 	elif _mode != "over":
-		_show_net_banner("CONNECTION LOST — RECONNECTING…")
+		_show_net_banner("RECONNECTING…" if back else "CONNECTION LOST — RECONNECTING…")
 
 
 ## A panel at the top of the board counting down: someone dropped and has secs seconds to come back.

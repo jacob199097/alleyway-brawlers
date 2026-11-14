@@ -37,6 +37,20 @@ func _ready() -> void:
 	add_child(chat)
 
 
+## When a phone last brought the game back from the background (Time.get_ticks_msec)
+var resumed_msec := -100000
+
+
+## A phone minimizing the game freezes it until it's back, so its connection times out: the server keeps
+## its seat (away, not gone: backend/socket/away.js). Back on screen, it reconnects at once if the
+## connection dropped meanwhile (the duel screen then asks for its match again).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
+		resumed_msec = Time.get_ticks_msec()
+		_retry_in = 0.0
+		_retry_delay = 1.0
+
+
 func connect_to_server() -> void:
 	_want = true
 	if _connecting or is_open or Api.token == "":

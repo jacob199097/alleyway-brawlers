@@ -29,6 +29,7 @@
  */
 
 const { randomUUID } = require('crypto');
+const { awayNotGone } = require('./away');
 const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 
 const LOBBY_SECS   = 60;
@@ -473,7 +474,7 @@ function createFfaService(io, deps) {
             sendStart(match, seat, true);
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', (reason) => {
             if (sockets.get(me) !== socket) return;
             sockets.delete(me);
             leaveLobby(me);
@@ -486,6 +487,7 @@ function createFfaService(io, deps) {
                 byPlayer.delete(me);
                 return;
             }
+            if (awayNotGone(reason)) return;   // (the game minimized on a phone: its moves go on being played, the away rule decides)
             tellOthers(match, seat, { status: 'disconnected', graceSecs: secs('reconnectSecs', RECONNECT_SECS), name: s.profile?.username || '' });
             s.grace = setTimeout(() => goOut(match, seat, 'disconnect'), secs('reconnectSecs', RECONNECT_SECS) * 1000);
         });

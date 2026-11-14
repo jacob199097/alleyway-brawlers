@@ -109,6 +109,30 @@ const count = (s, ev) => s.got.filter(([e]) => e === ev).length;
     check(await until(() => count(f, 'mp:update') > updates, 3000), 'her clock runs again');
     f.handlers['mp:concede']({ matchId });
 
+    // 5. A phone with the game minimized: it freezes, so its connection times out ("ping timeout"). That's
+    //    away, not gone: no countdown for the other player, the match goes on with its moves played for it,
+    //    and it comes back into the same match. Closing the game (its connection ends at once: "transport
+    //    close") is gone: the countdown, as in 4.
+    for (const why of ['ping timeout', 'transport close']) {
+        const g = fakeSocket(), h = fakeSocket();
+        svc.register(g, { playerId: 'gina', username: 'gina' });
+        svc.register(h, { playerId: 'hugo', username: 'hugo' });
+        await startPair('gina', 'hugo', g, h);   // (gina goes first)
+        const id = last(g, 'mp:start').matchId;
+        h.got.length = 0;
+        g.handlers['disconnect'](why);
+        const away = why === 'ping timeout';
+        check(h.got.some(([ev, d]) => ev === 'mp:opponent' && d.status === 'disconnected') === !away,
+            away ? 'minimized (ping timeout): hugo gets no countdown' : 'closed (transport close): hugo gets the countdown');
+        if (away) check(await until(() => count(h, 'mp:update') > 0, 3000), 'her moves are played for her');
+        const g2 = fakeSocket();
+        svc.register(g2, { playerId: 'gina', username: 'gina' });
+        await g2.handlers['mp:resync']();
+        check(last(g2, 'mp:start')?.matchId === id, 'she comes back into the same match');
+        h.handlers['mp:concede']({ matchId: id });
+        await until(() => last(h, 'mp:over'));
+    }
+
     console.log(bad ? `${bad} problem(s)` : 'all good');
     process.exit(bad ? 1 : 0);
 })();
