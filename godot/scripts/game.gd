@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS := {
 	"anim_speed": 1.0,              # duel animation speed (1, 1.5 or 2)
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
+	"phone_notifications": true,    # Android: invites, the daily reward, results and updates (scripts/push.gd)
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
 	"cb_colors": false,             # colour-blind colours: keywords by what they do, stat changes blue ▲ / orange ▼ (Keywords.color)
 	"text_size": 0,                 # 0 normal, 1 large, 2 larger: reading text and small print (UI.text_size)
@@ -337,6 +338,7 @@ func sync_steam_achievements() -> void:
 
 
 func sign_out() -> void:
+	Net.push.stop()   # (this phone stops getting the account's notifications)
 	Net.disconnect_from_server()
 	Api.token = ""
 	player = {}

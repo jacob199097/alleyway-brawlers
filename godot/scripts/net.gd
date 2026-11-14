@@ -28,6 +28,7 @@ var _retry_in := 0.0
 var _retry_delay := 1.0
 var _banners: Array = []      # achievements waiting to be shown, one banner at a time
 var _banner_layer: CanvasLayer
+var push: Node                # phone notifications (scripts/push.gd): started once connected
 
 
 func _ready() -> void:
@@ -35,6 +36,8 @@ func _ready() -> void:
 	event.connect(_on_global_event)
 	chat = preload("res://scripts/ui/chat_dock.gd").new()   # (friends chat on every screen)
 	add_child(chat)
+	push = preload("res://scripts/push.gd").new()
+	add_child(push)
 
 
 ## When a phone last brought the game back from the background (Time.get_ticks_msec)
@@ -42,11 +45,16 @@ var resumed_msec := -100000
 
 
 ## A phone minimizing the game freezes it until it's back, so its connection times out: the server keeps
-## its seat (away, not gone: backend/socket/away.js). Back on screen, it reconnects at once if the
-## connection dropped meanwhile (the duel screen then asks for its match again).
+## its seat (away, not gone: backend/socket/away.js). It tells the server as it goes (an invite then also
+## comes to the phone as a notification: backend/utils/push.js), and back on screen it says so and
+## reconnects at once if the connection dropped meanwhile (the duel screen then asks for its match again).
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_RESUMED:
+	if what == NOTIFICATION_APPLICATION_PAUSED:
+		if send("app:state", {"background": true}):
+			_ws.poll()   # (out now: nothing runs until the game is back)
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		resumed_msec = Time.get_ticks_msec()
+		send("app:state", {"background": false})
 		_retry_in = 0.0
 		_retry_delay = 1.0
 
@@ -135,6 +143,7 @@ func _handle(msg: String) -> void:
 				is_open = true
 				_retry_delay = 1.0
 				opened.emit()
+				push.start()
 				if _rejoin:
 					_rejoin = false
 					send("mp:resync")
@@ -249,6 +258,8 @@ func _on_global_event(name: String, data) -> void:
 			if data is Dictionary and data.get("unlocked") is Array:
 				show_achievements(data.unlocked)
 				Game.refresh_player()   # their Karat or Dust may have gone up
+		"mp:notice", "coop:notice":   # (e.g. a friend was offline: their phone got a notification)
+			_toast(str(data.get("message", "")), UI.BLUE)
 		"mp:error", "ffa:error", "coop:error":
 			var scene := get_tree().current_scene
 			if not (scene and scene.has_method("on_online_error")):

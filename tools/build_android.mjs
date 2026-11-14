@@ -18,6 +18,11 @@
 // have), from ANDROID_KEYSTORE, ANDROID_KEYSTORE_PASS and ANDROID_KEYSTORE_ALIAS, or the file
 // %USERPROFILE%\Android\release-keystore.json {"path", "alias", "password"}.
 //
+// Phone notifications: with the Firebase project's android/alleyway_push/google-services.json there, an
+// APK build also builds the notification plugin (android/alleyway_push, a small Android library), puts it
+// into the copy with Firebase Cloud Messaging, and exports with Godot's Gradle build (the first time it
+// downloads Gradle and the Android build tools). --prepare (for patches) never does: patches don't change.
+//
 // Writes builds/AlleywayBrawlers-<version>-android.apk (-debug.apk with --debug), for downloads/ on
 // the server: node tools/deploy.mjs --build-android. A release build also writes the game's files as
 // builds/android_<version>/AlleywayBrawlers.pck: keep it, Android patches are made against it (the
@@ -60,6 +65,7 @@ const LIGHTER = [
 ];
 
 const signing = debug || prepare ? null : releaseKey();
+const PUSH = join(ROOT, 'android', 'alleyway_push');
 
 // 1. The copy: changed files copied over (keeping their times, so Godot sees what really changed),
 //    files gone from godot/ removed. The first time, godot/.godot comes too (no importing everything).
@@ -94,6 +100,7 @@ writeFileSync(presets, cfg);
 console.log('Importing …');
 execFileSync(godot, ['--headless', '--path', COPY, '--import'], { stdio: 'inherit', timeout: 3600 * 1000 });
 if (prepare) process.exit(0);
+const gradle = pushPlugin();
 const out = join(ROOT, 'builds', `AlleywayBrawlers-${version}-android${debug ? '-debug' : ''}.apk`);
 if (existsSync(out)) rmSync(out);
 console.log(`Exporting the Android ${debug ? 'debug' : 'release'} build ${version} (version code ${code}) …`);
@@ -103,7 +110,8 @@ if (signing) {
     env.GODOT_ANDROID_KEYSTORE_RELEASE_USER = signing.alias;
     env.GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = signing.password;
 }
-execFileSync(godot, ['--headless', '--path', COPY, debug ? '--export-debug' : '--export-release', 'Android', out], { stdio: 'inherit', env });
+execFileSync(godot, ['--headless', '--path', COPY, ...(gradle ? ['--install-android-build-template'] : []),
+    debug ? '--export-debug' : '--export-release', 'Android', out], { stdio: 'inherit', env });
 if (!existsSync(out)) throw new Error('Godot did not write the APK (are the Android export templates, JDK and SDK set up? docs/ANDROID.md).');
 for (const extra of [out + '.idsig']) if (existsSync(extra)) rmSync(extra);
 console.log(`\nWrote ${out} (${Math.round(statSync(out).size / 1048576)} MB).`);
@@ -167,11 +175,62 @@ function forget(rel) {
     for (const f of readdirSync(dir)) if (f.startsWith(name)) rmSync(join(dir, f));
 }
 
+/**
+ * The notification plugin into the copy (an APK build only): its library built with the Firebase project's
+ * IDs (res/values/firebase.xml, as Google's own Gradle plugin would write them: Firebase starts itself from
+ * them, so notifications show even when the game isn't running), the export plugin that adds it and
+ * Firebase Cloud Messaging to the APK, switched on, and the Gradle build. → whether it did (no
+ * google-services.json: an APK without notifications, as before).
+ */
+function pushPlugin() {
+    const gs = join(PUSH, 'google-services.json');
+    if (!existsSync(gs)) {
+        console.log('No android/alleyway_push/google-services.json: this APK gets no phone notifications.');
+        return false;
+    }
+    const pkg = (/^package\/unique_name="([^"]+)"/m.exec(readFileSync(join(COPY, 'export_presets.cfg'), 'utf8')) || [])[1];
+    const g = JSON.parse(readFileSync(gs, 'utf8'));
+    const client = (g.client || []).find(c => c.client_info?.android_client_info?.package_name === pkg);
+    if (!client) throw new Error(`google-services.json has no Android app ${pkg}: add it in the Firebase console and download the file again.`);
+    const ids = {
+        google_app_id: client.client_info.mobilesdk_app_id, gcm_defaultSenderId: g.project_info.project_number,
+        google_api_key: client.api_key?.[0]?.current_key || '', project_id: g.project_info.project_id,
+        google_storage_bucket: g.project_info.storage_bucket || '',
+    };
+    mkdirSync(join(PUSH, 'src', 'main', 'res', 'values'), { recursive: true });
+    writeFileSync(join(PUSH, 'src', 'main', 'res', 'values', 'firebase.xml'), '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' +
+        Object.entries(ids).map(([k, v]) => `    <string name="${k}" translatable="false">${v}</string>\n`).join('') + '</resources>\n');
+    // Godot's library to compile against, the JDK and the SDK: from Godot's Android template and editor settings
+    const roaming = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
+    const tver = execFileSync(godot, ['--version'], { encoding: 'utf8' }).trim().split('.').slice(0, 4).join('.');   // (4.7.2.stable)
+    const zip = join(roaming, 'Godot', 'export_templates', tver, 'android_source.zip');
+    const lib = join(ROOT, 'builds', 'android_template', 'libs', 'release', 'godot-lib.template_release.aar');
+    mkdirSync(join(ROOT, 'builds', 'android_template'), { recursive: true });
+    execFileSync('tar', ['-xf', zip, '-C', join(ROOT, 'builds', 'android_template'), 'libs/release/godot-lib.template_release.aar']);
+    const settings = readdirSync(join(roaming, 'Godot')).filter(n => /^editor_settings-.*\.tres$/.test(n)).sort().pop();
+    const setting = (k) => (new RegExp(`^export/android/${k} = "([^"]*)"`, 'm').exec(readFileSync(join(roaming, 'Godot', settings), 'utf8')) || [])[1];
+    writeFileSync(join(PUSH, 'local.properties'), `sdk.dir=${setting('android_sdk_path').replace(/\\/g, '/')}\n`);
+    console.log('Building the notification plugin …');
+    execFileSync(process.platform === 'win32' ? 'cmd.exe' : './gradlew', [...(process.platform === 'win32' ? ['/c', 'gradlew.bat'] : []), 'assembleRelease', '--no-daemon'],
+        { cwd: PUSH, stdio: 'inherit', env: { ...process.env, JAVA_HOME: setting('java_sdk_path'), GODOT_LIB: lib } });
+    // Into the copy, switched on; and the Gradle build
+    const addon = join(COPY, 'addons', 'alleyway_push');
+    mkdirSync(join(addon, 'bin'), { recursive: true });
+    for (const n of ['plugin.cfg', 'plugin.gd']) copyFileSync(join(PUSH, 'addon', n), join(addon, n));
+    copyFileSync(join(PUSH, 'build', 'outputs', 'aar', 'alleyway_push-release.aar'), join(addon, 'bin', 'alleyway_push-release.aar'));
+    const proj = join(COPY, 'project.godot');
+    let text = readFileSync(proj, 'utf8').replace(/\n\[editor_plugins\]\n\nenabled=.*\n/, '\n');
+    writeFileSync(proj, text.trimEnd() + '\n\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/alleyway_push/plugin.cfg")\n');
+    writeFileSync(presets, readFileSync(presets, 'utf8').replace(/^gradle_build\/use_gradle_build=.*$/m, 'gradle_build/use_gradle_build=true'));
+    return true;
+}
+
 function* walk(dir) {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
         const p = join(dir, e.name);
         if (e.isDirectory()) {
-            if (e.name !== '.godot') yield* walk(p);
+            // (the copy's Android build template stays: Godot installs it once for the Gradle build)
+            if (e.name !== '.godot' && !(dir === COPY && e.name === 'android')) yield* walk(p);
         } else {
             yield p;
         }

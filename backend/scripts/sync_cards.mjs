@@ -5,7 +5,7 @@
 //   node backend/scripts/sync_cards.mjs
 //
 // A clan that's new to the database becomes a pack type, and the shop offers its pack once
-// it has at least 3 cards.
+// it has at least 3 cards. New cards are news for the players' phones (push_outbox, utils/push.js).
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -23,6 +23,7 @@ if (!cards.length) {
 }
 
 let added = 0, updated = 0, failed = 0;
+const fresh = [];   // the new cards' names (a Striver's levels once)
 try {
     // New clans become pack types (DDL can't take parameters, so check the names first)
     const clans = [...new Set(cards.map(c => c.clan))];
@@ -59,6 +60,7 @@ try {
                         tribute_cost, rarity, effect_text, effect_key, art_url, flavour_text)
                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`, row);
                 added++;
+                if (!fresh.includes(c.name)) fresh.push(c.name);
             }
         } catch (err) {
             failed++;
@@ -66,6 +68,12 @@ try {
         }
     }
     console.log(`Forge cards synced: ${added} added, ${updated} updated${failed ? `, ${failed} failed` : ''}.`);
+    if (fresh.length) {
+        const names = fresh.length > 4 ? `${fresh.slice(0, 4).join(', ')} and ${fresh.length - 4} more` : fresh.join(', ');
+        await pool.query('INSERT INTO push_outbox (title, body) VALUES ($1, $2)',
+            ['New cards on the streets', `${names}. Open a pack and find them.`])
+            .catch(() => {});   // (no push_outbox before the server has run its migrations)
+    }
 } finally {
     await pool.end();
 }

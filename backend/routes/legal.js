@@ -14,7 +14,7 @@
 const router = require('express').Router();
 
 const GAME = 'AlleyWay Brawlers';
-const UPDATED = '11 November 2026';
+const UPDATED = '15 November 2026';
 
 const contact = () => process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
 const contactLink = () => contact()
@@ -93,6 +93,11 @@ Questions: ${contactLink()}.</p>
   example a search engine). We keep only those daily totals. To count each visitor once a day, the server makes a
   scrambled code from your IP address and browser that changes every day and is kept only in its memory for that
   day, never saved. The website sets no cookies and loads nothing from other companies.</li>
+ <li><b>Phone notifications:</b> on Android, if you allow the game's notifications, we keep your phone's notification
+  token (a code from Google's Firebase Cloud Messaging that lets us reach the game on that phone), the account it's
+  signed in to, and how far your phone's clock is from UTC (so reminders come in your daytime), plus a record of which
+  reminders we've sent. We delete the token when you sign out, turn notifications off in the game's settings, or
+  delete your account.</li>
  <li><b>On your device:</b> the game saves your settings and your sign-in session in its own folder on your
   computer. This stays on your device.</li>
 </ul>
@@ -107,6 +112,9 @@ phone number, contacts or location.</p>
   have chosen to receive them.</li>
  <li>To fix bugs, balance cards, and stop cheating, abuse and attacks on the service.</li>
  <li>In the Steam version: to unlock the achievements you earn on your Steam account as well.</li>
+ <li>On Android, if you allow notifications: to tell you about a friend's challenge or Turf Defense invite, your daily
+  reward, a finished season or turf map week with rewards to claim, and new game versions and cards. You can turn
+  them off in the game's settings, or each kind in your phone's settings.</li>
 </ul>
 
 <h2>What other players can see</h2>
@@ -124,6 +132,8 @@ person you send them to. Your email address and Steam ID aren't shown to other p
   payments (we send your Steam ID and the item and its price) and to unlock your achievements on Steam. Valve's
   privacy policy covers what Steam does with your information;</li>
  <li><b>our email provider</b>, to deliver activation and password-reset emails;</li>
+ <li><b>Google (Firebase Cloud Messaging)</b>, if you allow notifications on Android: to deliver them, we send it your
+  phone's notification token and the notification's text. Google's privacy policy covers what it does with them;</li>
  <li><b>DuckDNS</b>, which points our web address at our server (it doesn't receive your game data).</li>
 </ul>
 <p>We may also share information if the law requires it, or to protect players and the service from fraud or abuse.</p>

@@ -1,0 +1,15 @@
+// The Android build's notification plugin (README.md). Built by tools/build_android.mjs.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = 'alleyway_push'

@@ -123,6 +123,8 @@ func _show(tab: String) -> void:
 			_cycle("Animation Speed", ANIM_SPEEDS, ["NORMAL", "FAST (1.5×)", "FASTER (2×)"], "anim_speed")
 			_cycle("Turn Alerts", [true, false], ["ON", "OFF"], "turn_alert")
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
+			if Net.push.available():   # (an Android phone)
+				_cycle("Phone Notifications", [true, false], ["ON", "OFF"], "phone_notifications", false, func(on): Net.push.set_enabled(on))
 			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind help, text size and photosensitive mode are on the Accessibility tab.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)

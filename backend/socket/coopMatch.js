@@ -54,6 +54,19 @@ const engine = import('../../shared/duel/DuelState.js');
 const cpu = import('../../shared/duel/DuelAI.js');
 const turf = import('../../shared/turf.js');
 
+/** An invite as a phone notification (utils/push.js, required here so tests without a database load this file).
+ *  → whether the player has a phone to send it to. */
+async function phoneInvite(playerId, title, body) {
+    try {
+        const push = require('../utils/push');
+        if (!(await push.hasPhone(playerId))) return false;
+        push.invite(playerId, title, body);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 /** Seat → what `viewer` calls it: their own "player", their partner "ally", the boss "boss". */
 function namesFor(viewer) {
     return { p1: viewer === 'p1' ? 'player' : 'ally', p2: viewer === 'p2' ? 'player' : 'ally', boss: 'boss' };
@@ -185,7 +198,7 @@ function createCoopService(io, deps) {
         const lv = bossLevel(boss, level);
         if (!boss || !lv) return socket.emit('coop:error', { message: 'That boss isn\'t on the streets.' });
         if (inMatch(me)) return socket.emit('coop:error', { message: 'You are already in a match.' });
-        if (!sockets.get(targetPlayerId)?.connected) return socket.emit('coop:error', { message: 'That player is offline.' });
+        const target = sockets.get(targetPlayerId);
         if (inMatch(targetPlayerId)) return socket.emit('coop:error', { message: 'That player is in a match.' });
         try {
             if (deps.areFriends && !(await deps.areFriends(me, targetPlayerId))) {
@@ -196,6 +209,14 @@ function createCoopService(io, deps) {
         }
         const mine = await loadEntry(me, boss, lv);   // (the level is open to you and your deck is ready)
         if (mine.error) return socket.emit('coop:error', { message: mine.error });
+        const title = `${myName} needs a partner`, body = `Turf Defense against ${boss.name} (${lv.name}). Open Alleyway Brawlers to join them.`;
+        if (!target?.connected) {   // (not in the game: their phone hears about it, if they have one)
+            if (await phoneInvite(targetPlayerId, title, body)) {
+                return socket.emit('coop:notice', { message: "They're offline. We've sent a notification to their phone." });
+            }
+            return socket.emit('coop:error', { message: 'That player is offline.' });
+        }
+        if (target.data?.background) phoneInvite(targetPlayerId, title, body);   // (a phone with the game minimized)
         invites.set(`${me}:${targetPlayerId}`, { boss: boss.id, level: lv.level, expires: Date.now() + INVITE_SECS * 1000 });
         emitTo(targetPlayerId, 'coop:invite', { fromPlayerId: me, fromUsername: myName, boss: boss.id, level: lv.level,
             boss_name: boss.name, level_name: lv.name });

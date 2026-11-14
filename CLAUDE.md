@@ -45,7 +45,10 @@
 - Android (`docs/ANDROID.md`): `node tools/build_android.mjs <godot>` (lighter pictures, from a copy in `builds/android_project/`),
   `node tools/deploy.mjs --build-android`; touch controls in `godot/scripts/touch.gd`, `Game.mobile()` for phone-only behaviour,
   no black bars via `godot/scripts/widescreen.gd` (the 1920×1080 frame centred, `Game.wide.margin`). Android gets its own
-  patch each update too: `make_patch.mjs <godot> --android`.
+  patch each update too: `make_patch.mjs <godot> --android`. Phone notifications (Firebase Cloud Messaging): server
+  `backend/utils/push.js` (`FCM_SERVICE_ACCOUNT` in .env), game `godot/scripts/push.gd`, the APK's plugin `android/alleyway_push`
+  (built in by build_android.mjs when its `google-services.json` is there); see "Phone notifications" in docs/ANDROID.md.
+  A phone with the game minimized is away, not gone, in a match (`backend/socket/away.js`).
 - The website (https://alleywaybrawlers.com, `website/README.md`): the game server sends it too. Addresses in `backend/routes/site.js`,
   pages in `backend/site/pages.js`, built from the game's own files (`backend/site/data.js`: cards, clans, keywords, How to Play,
   patch notes), so it names no clan and needs no upkeep for new cards. Styles, script and screenshots in `website/`

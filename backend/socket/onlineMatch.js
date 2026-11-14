@@ -818,12 +818,24 @@ function createOnlineService(io, deps) {
 
         socket.on('mp:challenge', ({ targetPlayerId } = {}) => {
             if (typeof targetPlayerId !== 'string' || targetPlayerId === me) return;
-            if (!sockets.get(targetPlayerId)?.connected) {
-                return socket.emit('mp:error', { message: 'That player is offline.' });
+            const target = sockets.get(targetPlayerId);
+            // A friend whose game isn't on screen hears about it on their phone, if they have one (utils/push.js)
+            const friend = async () => { try { return !deps.areFriends || await deps.areFriends(me, targetPlayerId); } catch { return false; } };
+            if (!target?.connected) {
+                return (async () => {
+                    const sent = (await friend()) && await phoneInvite(targetPlayerId, `${playerData.username} wants to brawl`,
+                        'Open Alleyway Brawlers and challenge them back.');
+                    if (sent) socket.emit('mp:notice', { message: "They're offline. We've sent a notification to their phone." });
+                    else socket.emit('mp:error', { message: 'That player is offline.' });
+                })();
             }
             if (busy(targetPlayerId)) return socket.emit('mp:error', { message: 'That player is in a match.' });
             challenges.set(`${me}:${targetPlayerId}`, Date.now() + CHALLENGE_SECS * 1000);
             emitTo(targetPlayerId, 'mp:challenge', { fromPlayerId: me, fromUsername: playerData.username });
+            if (target.data?.background) {   // (a phone with the game minimized: it can't show the pop-up until it's back)
+                friend().then((f) => f && phoneInvite(targetPlayerId, `${playerData.username} challenges you`,
+                    `Open the game within ${CHALLENGE_SECS} seconds to take them on.`));
+            }
             socket.emit('mp:challengeSent', { targetPlayerId });
         });
 
@@ -969,6 +981,19 @@ function createOnlineService(io, deps) {
     }
 
     return { register, isInMatch: (playerId) => busy(playerId), isBusyHere: busyHere, leaveQueue, notify: emitTo, _matches: matches };
+}
+
+/** An invite as a phone notification (utils/push.js, required here so tests without a database load this file).
+ *  → whether the player has a phone to send it to. */
+async function phoneInvite(playerId, title, body) {
+    try {
+        const push = require('../utils/push');
+        if (!(await push.hasPhone(playerId))) return false;
+        push.invite(playerId, title, body);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 /** A setup's card ids, leader and hideout too (veteran tiers). */

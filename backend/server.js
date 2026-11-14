@@ -101,6 +101,7 @@ app.use('/api/territory', require('./routes/territory'));   // the turf map (eco
 app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (economy/veterans.js)
 app.use('/api/auction', require('./routes/auction'));   // the auction house (economy/auction.js)
 app.use('/api/seasons', require('./routes/seasons'));   // ranked seasons and their rewards (economy/seasons.js)
+app.use('/api/push', require('./routes/push'));   // phone notifications (utils/push.js)
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
 
@@ -270,6 +271,10 @@ io.on('connection', (socket) => {
             [playerData.playerId, friendId]).catch(err => console.error('[Chat] Read failed:', err.message));
     });
 
+    // A phone minimizing the game or bringing it back: an invite then also goes to the phone as a
+    // notification (utils/push.js; a minimized game is frozen and can't show it)
+    socket.on('app:state', ({ background } = {}) => { socket.data.background = background === true; });
+
     // ── Disconnect ───────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
         console.log(`[Socket] Disconnected: ${playerData.username}`);
@@ -289,6 +294,7 @@ migrate(pool)
         console.log(`[Server] AlleyWay Brawlers running on port ${PORT}`);
         // Pre-launch: everyone gets every clan's starter deck (routes/onboarding.js GIVE_ALL_STARTERS)
         onboardingRoutes.grantStartersToEveryone().catch(err => console.error('[Onboarding] starters:', err.message));
+        require('./utils/push').start();   // phone notifications: reminders and news (FCM_SERVICE_ACCOUNT)
         // The auction house: finish auctions as their time runs out, and forget old ones once a day
         const auction = require('./economy/auction');
         setInterval(() => auction.settleDue().catch(err => console.error('[Auction] settle:', err.message)), 30 * 1000);

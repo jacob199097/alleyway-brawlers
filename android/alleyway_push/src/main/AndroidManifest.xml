@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into the game's manifest by Godot's Gradle build. Firebase Cloud Messaging's own service shows the
+     notifications the server sends (backend/utils/push.js), the game open or not: with this icon and colour,
+     on the channel each message names (the channels: AlleywayPush.createChannel, from scripts/push.gd). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <meta-data
+            android:name="org.godotengine.plugin.v2.AlleywayPush"
+            android:value="com.alleywaybrawlers.push.AlleywayPush" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/alleyway_notify" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/alleyway_notify" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="updates" />
+    </application>
+</manifest>

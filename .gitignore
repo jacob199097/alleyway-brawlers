@@ -8,3 +8,9 @@ dist/
 builds/
 downloads/
 backend/.cache/
+# The Android notification plugin's build (tools/build_android.mjs) and the Firebase key (never in git)
+android/alleyway_push/build/
+android/alleyway_push/.gradle/
+android/alleyway_push/local.properties
+android/alleyway_push/src/main/res/values/firebase.xml
+firebase-service-account*.json

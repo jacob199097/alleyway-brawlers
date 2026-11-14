@@ -91,6 +91,8 @@ jobs:
         run: npm ci --prefix backend --omit=dev
       - name: Only the game and the server's own pages may call in (CORS)
         run: node backend/utils/origins.test.cjs
+      - name: Phone notifications (the message to FCM, the signed sign-in to Google, dead tokens, which reminders are due when)
+        run: node backend/utils/push.test.cjs
       - name: The website (every page, card and Striver line; nothing loaded from other sites; the game's calls left alone)
         run: node backend/site/site.test.cjs
       - name: The account emails (the link, pictures only from the website, nothing that tracks, under Gmail's size limit)

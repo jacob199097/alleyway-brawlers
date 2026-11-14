@@ -96,6 +96,27 @@ and turn to the right. Small print (under 20 points) is 3 points bigger on a pho
 To look at it on a PC: `godot --path godot --resolution 1200x540 res://tests/screens_tour.tscn -- <out dir> --phone --mobile`
 (against the mock server, `node godot/tests/mock_server.mjs`).
 
+## Phone notifications
+
+The server sends them through Firebase Cloud Messaging (`backend/utils/push.js`): a friend's challenge or Turf
+Defense invite while the game is closed or minimized (at once), the daily reward when it hasn't been claimed (from
+6 pm on the phone's clock), a finished season or turf map week with rewards to claim, and a new game version or new
+cards (between 9 am and 10 pm on the phone's clock, each once). Each kind is a notification channel, so a player can
+turn any of them off in the phone's settings; Settings → Gameplay → Phone Notifications turns them all off.
+
+- **The game:** `godot/scripts/push.gd` (Net starts it once connected) gets the phone's token from the
+  `AlleywayPush` plugin and sends it to `POST /api/push/token` with the clock's offset from UTC.
+- **The plugin:** `android/alleyway_push` (a small Android library, Java), built and put into the Android copy by
+  `tools/build_android.mjs` with Godot's Gradle build, only when `android/alleyway_push/google-services.json` is
+  there. Firebase starts itself from that file's IDs (written as `res/values/firebase.xml`), so notifications show
+  with the game closed. `godot/` never has the plugin, so the PC and Mac builds and every patch stay as they were;
+  a phone needs the new APK for notifications (older APKs just don't get them).
+- **The server:** `FCM_SERVICE_ACCOUNT` in `backend/.env` is the path to the Firebase project's service account
+  key (JSON, kept next to `.env`, never in git). Without it nothing is sent and the log says so at start-up.
+- **The Firebase project** ("Alleyway Brawlers", console.firebase.google.com, Google Analytics off): its Android
+  app is `com.alleywaybrawlers.game`; `google-services.json` from there, the key from Project settings → Service
+  accounts.
+
 ## Set up on this PC (done once, 2026-11-10)
 
 - **JDK 17:** `C:\Users\jacob\Android\jdk-17.0.21.0.2+1` (Microsoft OpenJDK).

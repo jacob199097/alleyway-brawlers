@@ -217,4 +217,4 @@ async function claim(playerId, now = new Date()) {
     }
 }
 
-module.exports = { record, overview, claim, weekMap, payFrom, pointsFor, locals, weekOf, gangOf, starsOf, DISTRICTS, KARAT, POINTS, GANG_STARS };
+module.exports = { record, overview, claim, unclaimed, weekMap, payFrom, pointsFor, locals, weekOf, gangOf, starsOf, DISTRICTS, KARAT, POINTS, GANG_STARS };

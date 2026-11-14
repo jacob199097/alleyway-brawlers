@@ -43,7 +43,8 @@ const CLEARED = {
     matches: 'matches in the history', solo_matches: 'CPU match records', match_replays: 'replays',
 };
 const KEPT = ['players', 'friendships', 'messages', 'seasons', 'player_seasons', 'payment_grants', 'steam_orders',
-    'player_avatar_gifts', 'match_stats', 'client_errors', 'site_counts', 'cards', 'level_thresholds'];
+    'player_avatar_gifts', 'match_stats', 'client_errors', 'site_counts', 'cards', 'level_thresholds',
+    'push_tokens', 'push_outbox', 'push_sent'];
 
 /**
  * The wipe, inside the caller's transaction. → { lines: what it did, problems: why --apply must not go ahead }

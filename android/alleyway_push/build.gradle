@@ -1,0 +1,24 @@
+// An Android library (.aar) for Godot's Gradle build: the same Android Gradle Plugin, SDK and Java as
+// Godot 4.7's build template (its config.gradle). The template's godot-lib .aar: GODOT_LIB, which
+// tools/build_android.mjs sets (or -PgodotLib=...).
+plugins {
+    id 'com.android.library' version '8.6.1'
+}
+
+android {
+    namespace 'com.alleywaybrawlers.push'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    compileOnly files(project.findProperty('godotLib') ?: System.getenv('GODOT_LIB'))
+    // (the APK gets the same through the export plugin: addon/plugin.gd)
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
+}
