@@ -858,10 +858,16 @@ func _log_event(ev: Dictionary) -> void:
 
 # ── Emotes ───────────────────────────────────────────────────────────────────
 
+## Above the LOG button (_build_log), both left of the hand; a thumb's size on a phone, like it.
 func _build_emote_button() -> void:
 	var b := UI.button("EMOTE", _toggle_emote_menu, Vector2(130, 48), BLUE)
-	b.position = Vector2(420, 1004)
+	b.position = Vector2(420, 948)
+	if Game.mobile():
+		b.custom_minimum_size = Vector2(136, 64)
+		b.size = b.custom_minimum_size
+		b.position = Vector2(404, 920)
 	ui.add_child(b)
+	_ui.emote_button = b
 
 
 func _toggle_emote_menu() -> void:
@@ -891,7 +897,7 @@ func _toggle_emote_menu() -> void:
 	ui.add_child(box)
 	box.reset_size()
 	var sz := box.get_combined_minimum_size()
-	box.position = Vector2(420, 1000 - sz.y - 8)
+	box.position = Vector2(420, (_ui.emote_button.position.y if _ui.has("emote_button") else 1000.0) - sz.y - 8)
 	_ui.emotes = box
 	# It opens up from the button, the choices fading in one after another
 	box.pivot_offset = Vector2(0, sz.y)
