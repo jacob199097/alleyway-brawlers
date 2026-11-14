@@ -55,6 +55,7 @@ const conn = (database) => new Client({
     const app = express();
     app.use(express.json());
     app.use('/api/steam', steam);
+    app.use('/api/shop', require('./shop'));
     app.use('/api/account', require('./account'));
     const server = http.createServer(app).listen(0);
     const port = server.address().port;
@@ -100,6 +101,22 @@ const conn = (database) => new Client({
     assert.equal(r.status, 200);
     r = await call('POST', '/api/steam/login', { ticket: 'aaaaaaaaaaaaaaaa3' });
     assert.equal(r.body.player.username, 'Mailer', 'now Steam signs them in');
+
+    // Before the game is released Contraband isn't on sale: no order is opened, and the shop says so
+    r = await call('POST', '/api/steam/purchase/init', { bundleId: 'cb_1200' }, steamToken);
+    assert.equal(r.status, 403);
+    assert.equal(r.body.code, 'sales_closed');
+    assert.match(r.body.error, /when the game is released/);
+    r = await call('POST', '/api/shop/contraband/purchase', { bundleId: 'cb_1200' }, steamToken);
+    assert.equal(r.status, 403, 'not by card or the developer switch either');
+    r = await call('POST', '/api/shop/contraband/create-intent', { bundleId: 'cb_1200' }, steamToken);
+    assert.equal(r.status, 403);
+    r = await call('GET', '/api/shop/contraband', null, steamToken);
+    assert.deepEqual([r.status, r.body.open], [200, false]);
+    assert.equal((await q('SELECT count(*)::int AS n FROM steam_orders')).rows[0].n, 0);
+    require('./shop').setContrabandSales(true);
+    r = await call('GET', '/api/shop/contraband', null, steamToken);
+    assert.equal(r.body.open, true);
 
     // A Steam wallet purchase: granted once
     r = await call('POST', '/api/steam/purchase/init', { bundleId: 'cb_1200' }, steamToken);

@@ -928,7 +928,7 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_035",
         "code": "NEBU-035",
         "flavourText": "DS? Yeah.. It stands for Destroyer Services as you're about to find out.",
-        "effectText": "This card is immune to POISON, BURN, BLEED, SUPPRESS and CHARM.\nAt the end of your turn: SHOCK one enemy character for 800.",
+        "effectText": "This card is immune to POISON, BURN, BLEED, SUPPRESS, SILENCE and CHARM.\nAt the end of your turn: SHOCK one enemy character for 800.",
         "effects": [
             {
                 "when": "passive",
@@ -938,6 +938,7 @@ export const FORGE_CARDS = {
                     "burn",
                     "bleed",
                     "suppress",
+                    "silence",
                     "charm"
                 ]
             },
@@ -950,7 +951,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
-        "attack": 2800,
+        "attack": 3000,
         "defense": 3000,
         "level": 1,
         "subtype": "heavy",
@@ -2138,14 +2139,15 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_032",
         "code": "MILI-032",
         "flavourText": "The barricade isn't much. The people behind it are.",
-        "effectText": "At the end of your opponent's turn: If you control 2 or more MILITIA characters, DOWN one enemy character.",
+        "effectText": "At the end of your opponent's turn: If you control 3 or more MILITIA characters, DOWN one enemy character in ATK position.",
         "effects": [
             {
                 "when": "foe_turn_end",
                 "do": "down",
                 "target": "enemy",
                 "if": "allies",
-                "n": 2,
+                "only": "atk",
+                "n": 3,
                 "if_clan": "militia"
             }
         ],
@@ -3944,7 +3946,7 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_036",
         "code": "WILD-036",
         "flavourText": "You can't stop a man on fire.",
-        "effectText": "Flip a coin. If heads, your WILDCARD characters gain +600 ATK until the end of your turn. If tails, your WILDCARD characters gain +200 ATK until the end of your turn.",
+        "effectText": "Flip a coin. If heads, your WILDCARD characters gain +700 ATK until the end of your turn. If tails, your WILDCARD characters gain +300 ATK until the end of your turn.",
         "effects": [
             {
                 "when": "deploy",
@@ -3953,7 +3955,7 @@ export const FORGE_CARDS = {
                 "until": "turn",
                 "clan": "wildcard",
                 "luck": "coin",
-                "atk": 600
+                "atk": 700
             },
             {
                 "when": "deploy",
@@ -3962,7 +3964,7 @@ export const FORGE_CARDS = {
                 "until": "turn",
                 "clan": "wildcard",
                 "if_luck": "lost",
-                "atk": 200
+                "atk": 300
             }
         ],
         "clanName": "Wildcard",
@@ -5218,13 +5220,13 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_017",
         "code": "UNDE-017",
         "flavourText": "Hush now, little soul. Struggling only tangles the thread... and I do so hate having to start over.",
-        "effectText": "At the end of your turn: If your Gutter has 2 or more UNDERWORLD cards, PROMOTE this card.",
+        "effectText": "At the end of your turn: If your Gutter has 3 or more UNDERWORLD cards, PROMOTE this card.",
         "effects": [
             {
                 "when": "turn_end",
                 "do": "promote",
                 "if": "gutter_ge",
-                "n": 2,
+                "n": 3,
                 "if_clan": "underworld"
             }
         ],
@@ -5249,7 +5251,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_019",
         "code": "UNDE-019",
         "flavourText": "Hush now, little soul. Struggling only tangles the thread... and I do so hate having to start over.",
-        "effectText": "At the end of your turn: Give one of your other UNDERWORLD characters UNDEAD.\nWhen another of your characters is KO'd: If your Gutter has 5 or more UNDERWORLD cards, PROMOTE this card.",
+        "effectText": "At the end of your turn: Give one of your other UNDERWORLD characters UNDEAD.\nWhen another of your characters is KO'd: If your Gutter has 7 or more UNDERWORLD cards, PROMOTE this card.",
         "effects": [
             {
                 "when": "turn_end",
@@ -5261,7 +5263,7 @@ export const FORGE_CARDS = {
                 "when": "ally_ko",
                 "do": "promote",
                 "if": "gutter_ge",
-                "n": 5,
+                "n": 7,
                 "if_clan": "underworld"
             }
         ],
@@ -5421,7 +5423,7 @@ export const FORGE_CARDS = {
         "name": "Haunting",
         "clan": "underworld",
         "cardType": "ambush",
-        "authority": 3,
+        "authority": 4,
         "tributeCost": 0,
         "rarity": 3,
         "clanTag": "underworld",
@@ -5456,14 +5458,15 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_026",
         "code": "UNDE-026",
         "flavourText": "Ring the bell. Somebody's time is up.",
-        "effectText": "If your Gutter has 8 or more cards, EXILE one enemy character.",
+        "effectText": "If your Gutter has 8 or more UNDERWORLD cards, EXILE one enemy character.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "exile",
                 "target": "enemy",
                 "if": "gutter_ge",
-                "n": 8
+                "n": 8,
+                "if_clan": "underworld"
             }
         ],
         "clanName": "Underworld",
@@ -5509,13 +5512,14 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_028",
         "code": "UNDE-028",
         "flavourText": "Hold them close. Death never lets go.",
-        "effectText": "When an enemy attacks one of your characters: Give your UNDERWORLD characters UNDEAD.",
+        "effectText": "When an enemy attacks one of your characters: Give your UNDERWORLD characters UNDEAD and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "give_undead",
                 "target": "allies",
-                "clan": "underworld"
+                "clan": "underworld",
+                "negate": true
             }
         ],
         "clanName": "Underworld",
@@ -6125,11 +6129,11 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_unde_043",
         "code": "UNDE-043",
-        "flavourText": "The throne is hollow. The army is not.",
-        "effectText": "When this card is Downed: PROMOTE this card.\nWhen deployed: Send the top 2 cards of your deck to your Gutter.",
+        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
+        "effectText": "When this card hits your opponent directly: PROMOTE this card.\nWhen deployed: Send the top 2 cards of your deck to your Gutter.",
         "effects": [
             {
-                "when": "self_downed",
+                "when": "direct",
                 "do": "promote"
             },
             {
@@ -6151,15 +6155,15 @@ export const FORGE_CARDS = {
         "name": "Herald of the Hollow Throne",
         "clan": "underworld",
         "cardType": "gang_member",
-        "authority": 5,
+        "authority": 6,
         "tributeCost": 0,
         "rarity": 5,
         "clanTag": "underworld",
         "effectKey": "",
         "art_url": "card_unde_044",
         "code": "UNDE-044",
-        "flavourText": "The throne is hollow. The army is not.",
-        "effectText": "Once per turn, when another of your characters is Downed: Give the characters next to this card UNDEAD.\nWhen an enemy character is KO'd: If your Gutter has 7 or more UNDERWORLD cards, PROMOTE this card.",
+        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
+        "effectText": "Once per turn, when another of your characters is Downed: Give the characters next to this card UNDEAD.\nWhen an enemy character is KO'd: If your Gutter has 8 or more UNDERWORLD cards, PROMOTE this card.",
         "effects": [
             {
                 "when": "ally_downed",
@@ -6171,7 +6175,7 @@ export const FORGE_CARDS = {
                 "when": "foe_ko",
                 "do": "promote",
                 "if": "gutter_ge",
-                "n": 7,
+                "n": 8,
                 "if_clan": "underworld"
             }
         ],
@@ -6188,14 +6192,14 @@ export const FORGE_CARDS = {
         "name": "Herald of the Hollow Throne",
         "clan": "underworld",
         "cardType": "gang_member",
-        "authority": 8,
+        "authority": 9,
         "tributeCost": 0,
         "rarity": 5,
         "clanTag": "underworld",
         "effectKey": "",
         "art_url": "card_unde_045",
         "code": "UNDE-045",
-        "flavourText": "The throne is hollow. The army is not.",
+        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
         "effectText": "When deployed: EXILE one enemy character.\nThis card has LIFESTEAL.\nWhen this card is KO'd: Give your other characters UNDEAD.",
         "effects": [
             {
@@ -6215,7 +6219,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
-        "attack": 3400,
+        "attack": 3600,
         "defense": 2600,
         "level": 3,
         "subtype": "striver",
@@ -7648,7 +7652,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_010",
         "code": "ARSO-010",
         "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
-        "effectText": "When this card is attacked: Give the attacker STOKE 400.\nAt the start of your turn: CLEANSE the characters next to this card.",
+        "effectText": "When this card is attacked: Give the attacker STOKE 400.\nAt the start of your turn: CLEANSE the characters next to this card.\nYour opponent must attack this card first if it is standing.",
         "effects": [
             {
                 "when": "defend",
@@ -7660,6 +7664,10 @@ export const FORGE_CARDS = {
                 "when": "turn_start",
                 "do": "cleanse",
                 "target": "neighbors"
+            },
+            {
+                "when": "passive",
+                "do": "guard"
             }
         ],
         "clanName": "Arsonists",
@@ -8234,13 +8242,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_028",
         "code": "ARSO-028",
         "flavourText": "A little air. That's all a fire ever wants.",
-        "effectText": "Give all enemy characters STOKE 200.",
+        "effectText": "Give all enemy characters STOKE 250.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "stoke",
                 "target": "enemies",
-                "amount": 200
+                "amount": 250
             }
         ],
         "clanName": "Arsonists",
@@ -8622,7 +8630,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Neutral",
         "clanColor": "#9aa4b1",
-        "attack": 1800,
+        "attack": 1700,
         "defense": 900,
         "level": 1,
         "subtype": "brawler",
@@ -8930,7 +8938,7 @@ export const FORGE_CARDS = {
         "name": "Dirty Trick",
         "clan": "neutral",
         "cardType": "ambush",
-        "authority": 2,
+        "authority": 1,
         "tributeCost": 0,
         "rarity": 1,
         "clanTag": "neutral",
@@ -8938,13 +8946,12 @@ export const FORGE_CARDS = {
         "art_url": "card_neut_019",
         "code": "NEUT-019",
         "flavourText": "Sand in the eyes. Classic.",
-        "effectText": "When an enemy attacks one of your characters: The attacker loses 900 ATK for this Brawl.",
+        "effectText": "When an enemy attacks one of your characters: BLIND the attacker.",
         "effects": [
             {
                 "when": "defend",
-                "do": "buff",
-                "target": "attacker",
-                "atk": -900
+                "do": "blind",
+                "target": "attacker"
             }
         ],
         "clanName": "Neutral",
@@ -9304,7 +9311,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_052",
         "code": "UNDE-052",
         "flavourText": "The living pay to get in. The dead pay to get out. And nobody leaves without my permission.",
-        "effectText": "This card gains +300 ATK and +400 DEF for each UNDERWORLD card in your Gutter.\nYour opponent must attack this card first if it is standing.",
+        "effectText": "This card gains +250 ATK and +350 DEF for each UNDERWORLD card in your Gutter.\nYour opponent must attack this card first if it is standing.",
         "effects": [
             {
                 "when": "passive",
@@ -9312,8 +9319,8 @@ export const FORGE_CARDS = {
                 "target": "self",
                 "per": "gutter",
                 "per_clan": "underworld",
-                "atk": 300,
-                "def": 400
+                "atk": 250,
+                "def": 350
             },
             {
                 "when": "passive",
@@ -9400,7 +9407,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_001",
         "code": "PIRA-001",
         "flavourText": "Everything in this city floats. Everything that floats is mine.",
-        "effectText": "Once per turn, while this leader is Dormant, when one of your characters Downs an enemy character: PLUNDER the top card of your opponent's deck (into your hand).\nAWAKEN: When your Authority reaches 7 or your opponent's Morale is 3000 or less, this leader may take the field.\nWhen this leader Awakens: PLUNDER one enemy character: it fights for you from now on.",
+        "effectText": "Once per turn, while this leader is Dormant, when one of your characters Downs an enemy character: PLUNDER the top card of your opponent's deck (into your hand).\nAWAKEN: When your Authority reaches 7, this leader may take the field.\nWhen this leader Awakens: PLUNDER one enemy character: it fights for you from now on.",
         "effects": [
             {
                 "when": "dormant_down",
@@ -9424,8 +9431,7 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "awakenCondition": {
-            "authority": 7,
-            "foe_morale": 3000
+            "authority": 7
         },
         "influence": 5000,
         "forge": "forge2"
@@ -10731,7 +10737,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_040",
         "code": "PIRA-040",
         "flavourText": "Every shipwreck is my kingdom, every treasure is my crown, and every sailor is my supper.",
-        "effectText": "Once per turn, when this leader is attacked while Dormant: PLUNDER the most recent card from your opponent's Gutter (into your hand).\nOnce per turn, while this leader is Dormant, when your opponent deploys a character: Add the first PIRATES card from your deck to your hand.\nAWAKEN: When your Authority reaches 7, this leader may take the field.\nWhen this leader Awakens: Put up to 2 enemy characters on top of its owner's deck.",
+        "effectText": "Once per turn, when this leader is attacked while Dormant: PLUNDER the most recent card from your opponent's Gutter (into your hand).\nOnce per turn, while this leader is Dormant, when your opponent deploys a character: Add the first PIRATES card from your deck to your hand.\nAWAKEN: When you've PLUNDERED 6 or more cards this game, this leader may take the field.\nWhen this leader Awakens: Put up to 2 enemy characters on top of its owner's deck.",
         "effects": [
             {
                 "when": "dormant_hit",
@@ -10757,14 +10763,224 @@ export const FORGE_CARDS = {
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
         "attack": 2600,
-        "defense": 3400,
+        "defense": 3600,
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null,
         "awakenCondition": {
-            "authority": 7
+            "plunder": 6
         },
         "influence": 6000,
+        "forge": "forge2"
+    },
+    "card_arso_034": {
+        "id": "card_arso_034",
+        "name": "Madame Wildfire",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_034",
+        "code": "ARSO-034",
+        "flavourText": "Darling, I don't start trouble. I simply make sure it spreads.",
+        "effectText": "ACTIVATE (once per turn): Give the enemy character across from this card and the enemy characters next to it STOKE 200.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "stoke",
+                "target": "opposite_wide",
+                "amount": 200
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1300,
+        "defense": 800,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_035": {
+        "id": "card_arso_035",
+        "name": "IronHammer",
+        "clan": "arsonists",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_035",
+        "code": "ARSO-035",
+        "flavourText": "I've spent thirty years feeding the furnace. Now it's my turn to burn something.",
+        "effectText": "At the end of your turn: One of your other ARSONISTS characters gains +300 ATK permanently.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "buff",
+                "target": "ally",
+                "until": "forever",
+                "clan": "arsonists",
+                "atk": 300
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "attack": 1100,
+        "defense": 1000,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null
+    },
+    "card_arso_036": {
+        "id": "card_arso_036",
+        "name": "Inferno Shockwave",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_036",
+        "code": "ARSO-036",
+        "flavourText": "By the time you hear the blast, the fire's already swallowed you.",
+        "effectText": "Give all enemy characters BURN 200. If you do, SHOCK all enemy characters for 400.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "burn",
+                "target": "enemies",
+                "amount": 200
+            },
+            {
+                "when": "deploy",
+                "do": "shock",
+                "target": "enemies",
+                "amount": 400,
+                "if_done": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815"
+    },
+    "card_arso_037": {
+        "id": "card_arso_037",
+        "name": "Inferno Wall",
+        "clan": "arsonists",
+        "cardType": "ambush",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_037",
+        "code": "ARSO-037",
+        "flavourText": "The screams don't last long. The flames will make sure of that.",
+        "effectText": "When an enemy attacks one of your ARSONISTS characters: DOWN the attacker and negate the attack. If you do, give all enemy characters in ATK position BURN 200.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "down",
+                "target": "attacker",
+                "negate": true
+            },
+            {
+                "when": "defend",
+                "do": "burn",
+                "target": "enemies",
+                "only": "atk",
+                "amount": 200,
+                "if_done": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "ambushClan": "arsonists"
+    },
+    "card_arso_038": {
+        "id": "card_arso_038",
+        "name": "Explosive Trap",
+        "clan": "arsonists",
+        "cardType": "ambush",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_038",
+        "code": "ARSO-038",
+        "flavourText": "The click is quiet. Everything else after isn't.",
+        "effectText": "When an enemy attacks one of your ARSONISTS characters: Give the attacker BURN 400 and negate the attack.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "burn",
+                "target": "attacker",
+                "amount": 400,
+                "negate": true
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "ambushClan": "arsonists"
+    },
+    "card_arso_039": {
+        "id": "card_arso_039",
+        "name": "Rain of Embers",
+        "clan": "arsonists",
+        "cardType": "hustle",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "arsonists",
+        "effectKey": "",
+        "art_url": "card_arso_039",
+        "code": "ARSO-039",
+        "flavourText": "When the sky starts falling, there's nowhere left to run.",
+        "effectText": "At the end of your turn: Give all enemy characters STOKE 150.",
+        "effects": [
+            {
+                "when": "turn_end",
+                "do": "stoke",
+                "target": "enemies",
+                "amount": 150
+            }
+        ],
+        "clanName": "Arsonists",
+        "clanColor": "#f45815",
+        "subtype": "continuous"
+    },
+    "card_pira_041": {
+        "id": "card_pira_041",
+        "name": "Bermuda Triangle",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 5,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_041",
+        "code": "PIRA-041",
+        "flavourText": "The sea keeps the count, and never pays it back.",
+        "effectText": "Once per turn, at the end of your opponent's turn: If your opponent controls 4 or more characters, EXILE one enemy character.",
+        "effects": [
+            {
+                "when": "foe_turn_end",
+                "do": "exile",
+                "target": "enemy",
+                "if": "enemies_ge",
+                "n": 4,
+                "once": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "subtype": "continuous",
         "forge": "forge2"
     }
 };

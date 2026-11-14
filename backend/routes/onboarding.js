@@ -71,7 +71,7 @@ router.post('/start-clan', requireAuth, async (req, res) => {
             body: `Welcome to AlleyWay Brawlers!\n\n` +
                   `Your starter inventory and a 40-card ${info.name} deck have been added to your account. ` +
                   `Open the Deck Editor to customise it, then head to Fight Mode to take it for a spin.\n\n` +
-                  `— Find new packs and Contraband bundles in the Shop. The mailbox here will deliver any system messages, daily-quest rewards or future news.`,
+                  `— Find new packs in the Shop. The mailbox here will deliver any system messages, daily-quest rewards or future news.`,
         });
 
         res.json({ success: true, clan });
@@ -188,3 +188,4 @@ async function seedStarter(client, playerId, recipe, clanName, active = true, na
 module.exports = router;
 module.exports.grantStartersToEveryone = grantStartersToEveryone;
 module.exports.seedStarter = seedStarter;
+module.exports.GIVE_ALL_STARTERS = GIVE_ALL_STARTERS;   // (scripts/launch_wipe.js won't run while it's on)

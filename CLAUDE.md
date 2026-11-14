@@ -53,4 +53,6 @@
   It shows nothing about players and loads no cookies, trackers or files from other sites: keep it so. Visits are counted as
   daily totals only (`backend/site/visits.js`), shown at `/stats` behind `SITE_STATS_PASSWORD` in the server's .env.
 - `docs/LAUNCH_CHECKLIST.md` — what changes at launch (the wipe, starters off, 1.0.0, Steam live), in order.
+  The wipe is `backend/scripts/launch_wipe.js` (shows what it would do; `--apply` does it). Contraband can't be bought
+  until launch: `contrabandSales` in `backend/routes/shop.js`.
 - `docs/ROADMAP.md` — the to do / eventually list: bigger features parked for later (not started).

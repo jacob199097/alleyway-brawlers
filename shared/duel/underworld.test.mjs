@@ -297,14 +297,16 @@ shielded.shield = true;
 st.sides.player.field[1] = shielded;
 assert.equal(st.fxCan('player', -1, src, { do: 'shield', target: 'ally' }), false, 'already SHIELDED');
 
-// "When this card is Downed: PROMOTE this card" (Herald of the Hollow Throne): Downed is what promotes it
+// "When this card is Downed: PROMOTE this card" (Flint; Herald of the Hollow Throne until 2026-11-14): Downed is
+// what promotes it
 st = duel();
-const herald = st.makeCard('card_unde_043');
-st.sides.player.field[2] = herald;
-st.sides.player.hideout.push(st.makeCard('card_unde_044'));
-st._goDown('player', 2, herald);
+const flint = st.makeCard('card_arso_005');
+assert.ok(flint.effects.some(e => e.when === 'self_downed' && e.do === 'promote'), 'Flint still promotes when Downed');
+st.sides.player.field[2] = flint;
+st.sides.player.hideout.push(st.makeCard('card_arso_006'));
+st._goDown('player', 2, flint);
 assert.equal(st._asks.length, 1, 'asked for its position');
 answer(st, 'atk');
-assert.equal(st.cardAt('player', 2).id, 'card_unde_044', 'promoted to LV2');
+assert.equal(st.cardAt('player', 2).id, 'card_arso_006', 'promoted to LV2');
 
 console.log('underworld: ok');

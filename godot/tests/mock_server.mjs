@@ -296,7 +296,8 @@ const routes = {
         return [200, { success: true, totalCopies: n }];
     },
     'PATCH /api/deck/:id/activate': (_b, id) => { decks.forEach(d => d.is_active = d.id === id); return [200, { success: true }]; },
-    'GET /api/shop/packs': () => [200, { karat: player.karat, freePacks: player.free_packs, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
+    'GET /api/shop/contraband': () => [200, { open: !process.env.CB_CLOSED, message: process.env.CB_CLOSED ? 'Contraband goes on sale when the game is released.' : '' }],
+    'GET /api/shop/packs': () => [200, { karat: player.karat, freePacks: player.free_packs, contrabandOpen: !process.env.CB_CLOSED, packs: [...new Set(cards.filter(c => c.clan).map(c => c.clan))]
         .map(id => ({ id, name: id, cost: 200, cards: 3, odds: { 3: 1, 4: 0.504, 5: 0.134 } })).concat(extraClans().map(c => ({ id: c.id, name: c.name, cost: 200, cards: 3 }))) }],
     'GET /api/shop/starters': () => [200, { cost: { karat: 800, contraband: 400 }, starters: pickableClans().map(c => ({ id: c.id, name: c.name, leader: starterRecipe(c.id).leader, blurb: clanBlurb(c.id) })) }],
     'POST /api/shop/starter': (b) => {
@@ -326,6 +327,7 @@ const routes = {
             newKarat: player.karat, newContraband: player.contraband, freePacks: player.free_packs }];
     },
     'POST /api/shop/contraband/purchase': (b) => {
+        if (process.env.CB_CLOSED) return [403, { error: 'Contraband goes on sale when the game is released.', code: 'sales_closed' }];
         const amounts = { cb_500: 500, cb_1200: 1200, cb_2500: 2500, cb_7000: 7000, cb_15000: 15000 };
         if (!amounts[b.bundleId]) return [400, { error: 'Invalid bundle.' }];
         player.contraband += amounts[b.bundleId];

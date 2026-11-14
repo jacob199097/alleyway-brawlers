@@ -285,6 +285,26 @@ static func button(text: String, on_press: Callable, size := Vector2(240, 56), a
 	return b
 
 
+## A button that can't be used for now: switched off, with a line struck through its words (why shows
+## on hover).
+static func strike(b: Button, why := "") -> void:
+	b.disabled = true
+	b.tooltip_text = why
+	b.focus_mode = Control.FOCUS_NONE
+	var font := b.get_theme_font("font")
+	var words := font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, b.get_theme_font_size("font_size")).x
+	var w := minf(words + 20.0, maxf(b.custom_minimum_size.x - 24.0, 40.0))
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.75)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(line)
+	line.set_anchors_preset(Control.PRESET_CENTER)
+	line.offset_left = -w / 2.0
+	line.offset_right = w / 2.0
+	line.offset_top = -1.0
+	line.offset_bottom = 2.0
+
+
 ## Rows of a list arriving one after another: each fades up and grows from slightly small (from its
 ## left edge, so they read as sliding in). Works inside containers (it doesn't move them).
 static func stagger(nodes: Array, delay := 0.05, step := 0.045) -> void:

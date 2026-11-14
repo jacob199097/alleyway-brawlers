@@ -45,6 +45,7 @@ router.get('/packs', requireAuth, async (req, res) => {
         res.json({
             karat: rows[0]?.karat ?? 0,
             freePacks: rows[0]?.free_packs ?? 0,
+            contrabandOpen: contrabandSales,   // (false: the game crosses out PURCHASE CONTRABAND)
             packs: (await validPacks()).map(p => ({
                 id:    p,
                 name:  p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -158,8 +159,26 @@ function devFreePurchases() {
     return process.env.NODE_ENV !== 'production' && process.env.DEV_FREE_PURCHASES === 'true';
 }
 
+// Buying Contraband with real money. Off until the game is released (docs/LAUNCH_CHECKLIST.md turns it
+// on): the game shows the store crossed out, and every way to buy (card, Steam's wallet in routes/steam.js,
+// the developer switch above) is refused here. Contraband a player already has spends as before.
+let contrabandSales = false;
+const SALES_CLOSED = 'Contraband goes on sale when the game is released.';
+
+/** Is Contraband on sale? If not, and given the response, answers it with why. */
+function salesOpen(res) {
+    if (!contrabandSales && res) res.status(403).json({ error: SALES_CLOSED, code: 'sales_closed' });
+    return contrabandSales;
+}
+
+// ── GET /api/shop/contraband — is Contraband on sale? (the game's Contraband screen asks) ────
+router.get('/contraband', requireAuth, (_req, res) => {
+    res.json({ open: contrabandSales, message: contrabandSales ? '' : SALES_CLOSED });
+});
+
 // ── POST /api/shop/contraband/create-intent — create Stripe PaymentIntent ────
 router.post('/contraband/create-intent', requireAuth, async (req, res) => {
+    if (!salesOpen(res)) return;
     const { bundleId } = req.body;
     const bundle = CONTRABAND_BUNDLES[bundleId];
     if (!bundle) return res.status(400).json({ error: 'Invalid bundle.' });
@@ -178,6 +197,7 @@ router.post('/contraband/create-intent', requireAuth, async (req, res) => {
 
 // ── POST /api/shop/contraband/purchase — verify payment, then grant once ─────
 router.post('/contraband/purchase', requireAuth, async (req, res) => {
+    if (!salesOpen(res)) return;
     const { paymentIntentId, bundleId } = req.body;
 
     let grantKey, grantBundleId;
@@ -259,3 +279,5 @@ async function grantContraband(grantKey, playerId, bundleId) {
 module.exports = router;
 module.exports.CONTRABAND_BUNDLES = CONTRABAND_BUNDLES;
 module.exports.grantContraband = grantContraband;
+module.exports.salesOpen = salesOpen;
+module.exports.setContrabandSales = (on) => { contrabandSales = !!on; };   // (tests)

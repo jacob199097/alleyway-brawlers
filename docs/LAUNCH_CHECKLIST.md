@@ -15,7 +15,8 @@ Tick items off as you go. The steps that need a decision are marked **Decide**.
   badge then links to it (the same for Google Play once that page is up).
 - [ ] **Test build on Steam:** `node tools/steam_build.mjs <Godot console exe> --upload --live` puts it on
   the "beta" branch. Install it from Steam (a free key from Steamworks), sign in with Steam, buy
-  Contraband in the sandbox, and try it on a Steam Deck if you can.
+  Contraband in the sandbox, and try it on a Steam Deck if you can. (Buying is switched off until launch,
+  see "Contraband sales" below: switch it on for this test, or test against a server on the PC.)
 - [x] **Contact address:** `CONTACT_EMAIL=support@alleywaybrawlers.com` in `backend/.env` since 0.9.140
   (Cloudflare Email Routing forwards it to alleywaybrawlers@gmail.com; the website, privacy policy and terms show it).
 - [ ] **Read `/privacy` and `/terms` once more:** they must match what the server stores.
@@ -44,11 +45,26 @@ what to keep. My suggestion:
 | | Achievements, quests, mastery, veteran cards, turf map, match history and replays |
 | | The auction house: every auction and bid (the cards in running auctions go with the collections) |
 
-A wipe script doesn't exist yet: once you've decided, I'll write one like `reset_progress.js`. It will
-show what it would do first, and only change things with `--apply`.
+The wipe script is `backend/scripts/launch_wipe.js` (run on the server). Without `--apply` it only shows what it
+would do: how many accounts, cards, decks, auctions and so on. With `--apply` it does it, all or nothing.
+Each player gets their chosen clan's starter deck, the Karat of a new account and a "fresh start" mail
+(`--no-mail` leaves the mail out). It refuses to run when:
+
+- no season has been ended yet (the Season 0 rewards would be lost; `--season-running` overrides),
+- `GIVE_ALL_STARTERS` is still on (the server would hand every starter back; `--starters-on` overrides),
+- Contraband purchases are on record and you haven't said what happens to them: `--bought keep` gives each
+  player the Contraband they paid for back, `--bought drop` treats them as test purchases,
+- the database has a table the script doesn't know (added after it was written): add it to the script's
+  list of tables to clear or to keep first.
+
+Its test (`backend/scripts/launch_wipe.test.cjs`) runs on every push.
 
 - [ ] **Starter decks:** set `GIVE_ALL_STARTERS = false` in `backend/routes/onboarding.js`. New players then
   get only their chosen clan's starter, and the "Every starter deck, on the house" mail stops.
+- [ ] **Contraband sales:** set `contrabandSales = true` in `backend/routes/shop.js`. Until then the server
+  refuses every Contraband purchase (card, Steam, and the developer free-purchase switch), and the game
+  shows PURCHASE CONTRABAND crossed out with "on sale at release". No game update is needed: the game
+  asks the server.
 
 ## The launch version: 1.0.0
 
@@ -79,7 +95,9 @@ same build:
    reward is recorded (by the highest rank they reached) and claimed in the game after the launch. Put the Legend
    prize card's game ID in `SEASON_PRIZES[0]` (`shared/seasons.js`) when it's made: Legends who claim later still
    get it. **The wipe must keep `player_seasons` and `seasons`.**
-   Then run the wipe on the server: first without `--apply` to read what it will do, then with it.
+   Then the wipe, on the server: `node backend/scripts/launch_wipe.js` to read what it will do, then stop the
+   game server (`sudo systemctl stop alleyway-backend`), run it again with `--apply` (and `--bought keep` or
+   `--bought drop` if it asks), and start the server again.
 5. [ ] On the server, in `backend/.env`: `STEAM_MTX_SANDBOX=false` (real Steam purchases), and the live
    Stripe key if you decided to sell outside Steam. Then `node tools/deploy.mjs` to restart.
 6. [ ] Steamworks: make the 1.0.0 build the default branch, then press Release.

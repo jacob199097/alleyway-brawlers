@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.150",
+        "notes": [
+            "New cards. Arsonists: Madame Wildfire, IronHammer, Inferno Shockwave, Inferno Wall, Explosive Trap and Rain of Embers. Pirates: Bermuda Triangle.",
+            "Card changes: Fan the Flames, Haze, Checkpoint Zero, Hot Streak, DS-022, Bare-Knuckle Bruno, Dirty Trick, Captain Marlow, The Reef King, Vespera — The Soul Weaver, Haunting, Last Rites, Death's Embrace, Herald of the Hollow Throne and Mortis, the Cryptkeeper.",
+            "The Arsonists starter deck: Madame Wildfire, IronHammer, Inferno Wall and Explosive Trap come in for Gas Leak, Burn Notice, Flashpoint and one Cinderblock.",
+            "Contraband can't be bought until the game is released: PURCHASE CONTRABAND is crossed out until then.",
+            "A SILENCED card no longer has a second speech bubble drawn over its status badges."
+        ]
+    },
+    {
         "version": "0.9.149",
         "notes": [
             "On phones, the ATK and DEF numbers under each card no longer run into the next lane's.",

@@ -775,19 +775,10 @@ func _heart(L: Node2D, at: Vector2, size: float, col: Color) -> void:
 	L.draw_colored_polygon(PackedVector2Array([at + Vector2(-size * 1.05, size * 0.15), at + Vector2(size * 1.05, size * 0.15), at + Vector2(0, size * 1.4)]), col)
 
 
-## SILENCE: a speech bubble over its art with a red cross through it, bobbing gently; its effects are muted.
+## SILENCE: a faint grey hush over the card, breathing slowly; its effects are muted. (The crossed-out speech
+## bubble is its badge: a second one drawn here sat on top of the badges.)
 func _draw_silenced(L: Node2D, r: Rect2, t: float) -> void:
-	L.draw_rect(r, Color(0.45, 0.43, 0.55, 0.16))   # a faint grey hush over the card
-	var at := Vector2(r.position.x + 26.0, r.position.y + 44.0 + sin(t * 2.0) * 2.0)
-	var bubble := Rect2(at - Vector2(17, 12), Vector2(34, 24))
-	L.draw_rect(Rect2(bubble.position + Vector2(2, 2), bubble.size), Color(0, 0, 0, 0.35))
-	L.draw_rect(bubble, Color(0.95, 0.95, 0.98, 0.95))
-	L.draw_colored_polygon(PackedVector2Array([at + Vector2(-8, 11), at + Vector2(-1, 11), at + Vector2(-11, 19)]), Color(0.95, 0.95, 0.98, 0.95))   # its tail
-	for i in 3:   # the words it can't say
-		L.draw_circle(at + Vector2(-8 + i * 8, 0), 2.2, Color(0.35, 0.35, 0.45))
-	var red := Color(0.9, 0.12, 0.15, 0.95)
-	L.draw_line(at + Vector2(-13, -9), at + Vector2(13, 9), red, 3.2, true)
-	L.draw_line(at + Vector2(13, -9), at + Vector2(-13, 9), red, 3.2, true)
+	L.draw_rect(r, Color(0.45, 0.43, 0.55, 0.16 + 0.05 * sin(t * 2.0)))
 
 
 ## BOUNTY: a little WANTED poster pinned to the card's right edge, swaying, with what it pays out

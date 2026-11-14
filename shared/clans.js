@@ -128,19 +128,22 @@ const CURATED = {
     // --vs arsonists,<clan> --starters): the list in docs/ARSONISTS_STARTER_PROMPTS.md won 36-43%; more
     // Strivers (the strongest cards) and fewer mid-cost characters made it 51% Nebula / 58% Militia /
     // 49% Wildcard / 51% Underworld.
+    // 2026-11-14: Gas Leak, Burn Notice, Flashpoint and one Cinderblock (the cards that did least) made way for
+    // Madame Wildfire, IronHammer, Inferno Wall and Explosive Trap. CPU against CPU, 2000 games each, before → after:
+    // Nebula 50 → 58%, Militia 64 → 71%, Wildcard 56 → 61%, Underworld 46 → 53%, Pirates 74 → 78%.
     arsonists: {
         blurb: 'Burn them down: set enemies BURNING, STOKE the fires higher, and cash in on every enemy that burns.',
         leader: 'card_arso_001',   // Cinder
         deck: [
             // Strivers: Kindle, Flint, Haze, Blaze Maddox, Fuse
             ['card_arso_002', 3], ['card_arso_005', 3], ['card_arso_008', 3], ['card_arso_011', 3], ['card_arso_014', 2],
-            // Characters: Matchstick Molly, Soot, The Pyre Twins, Cinderblock, Tinder, Sparky, Flashpoint, Smokestack;
-            // Heavy The Furnace
-            ['card_arso_017', 3], ['card_arso_019', 2], ['card_arso_020', 1], ['card_arso_021', 2], ['card_arso_022', 2],
-            ['card_arso_023', 2], ['card_arso_024', 1], ['card_arso_025', 2], ['card_arso_026', 1],
-            // Hustles: Molotov, Fan the Flames, Gas Leak, Burn Notice; Ambushes: Backdraft, Up in Smoke
-            ['card_arso_027', 3], ['card_arso_028', 1], ['card_arso_029', 1], ['card_arso_030', 1],
-            ['card_arso_031', 2], ['card_arso_032', 2],
+            // Characters: Matchstick Molly, Soot, The Pyre Twins, Cinderblock, Tinder, Sparky, Smokestack, Madame Wildfire,
+            // IronHammer; Heavy The Furnace
+            ['card_arso_017', 3], ['card_arso_019', 2], ['card_arso_020', 1], ['card_arso_021', 1], ['card_arso_022', 2],
+            ['card_arso_023', 2], ['card_arso_025', 2], ['card_arso_034', 1], ['card_arso_035', 1], ['card_arso_026', 1],
+            // Hustles: Molotov, Fan the Flames; Ambushes: Backdraft, Up in Smoke, Inferno Wall, Explosive Trap
+            ['card_arso_027', 3], ['card_arso_028', 1],
+            ['card_arso_031', 2], ['card_arso_032', 2], ['card_arso_037', 1], ['card_arso_038', 1],
         ],
         hideout: [
             ['card_arso_003', 3], ['card_arso_004', 3], ['card_arso_006', 3], ['card_arso_007', 3],

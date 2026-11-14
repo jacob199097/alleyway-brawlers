@@ -137,6 +137,13 @@ jobs:
           DB_PORT: 5432
           DB_USER: postgres
           DB_PASS: postgres
+      - name: The launch wipe (a dry run changes nothing, refused until it's safe, every account as new with its starter)
+        run: node backend/scripts/launch_wipe.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
       - name: The auction house (listing, bids, the end, limits, abuse flags)
         run: node backend/economy/auction.test.cjs
         env:

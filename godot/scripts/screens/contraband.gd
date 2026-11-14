@@ -1,6 +1,7 @@
 extends Screen
 ## Contraband bundles. The client only names a bundle; the server owns price and amount and
-## grants it once per verified payment.
+## grants it once per verified payment. The server also says whether Contraband is on sale at all
+## (not before the game is released): if not, the bundles are shown but can't be bought.
 
 const BUNDLES := [
 	{"id": "cb_500", "image": "contraband_4.99.png", "label": "500 CB · $4.99"},
@@ -11,6 +12,7 @@ const BUNDLES := [
 ]
 
 var _balance: Label
+var _closed := ""   # why nothing can be bought (the server's words), "" while Contraband is on sale
 
 
 func _ready() -> void:
@@ -47,6 +49,30 @@ func _ready() -> void:
 		col.add_child(l)
 		col.add_child(UI.button("PURCHASE", _purchase.bind(b), Vector2(330, 60), UI.PURPLE))
 	UI.stagger(row.get_children(), 0.1, 0.07)
+	var s := await Api.request("GET", "/api/shop/contraband")   # (an older server has no such page: on sale)
+	if s.ok and s.data is Dictionary and s.data.get("open", true) == false:
+		_close(row, str(s.data.get("message", "")))
+
+
+## Not on sale (before the game is released): the bundles dimmed, every PURCHASE crossed out, and a
+## sign that says so.
+func _close(row: Control, why: String) -> void:
+	_closed = why if why != "" else "Contraband goes on sale when the game is released."
+	row.modulate = Color(0.62, 0.62, 0.7)
+	for col in row.get_children():
+		var b := col.get_child(col.get_child_count() - 1) as Button
+		if b:
+			UI.strike(b, _closed)
+	var banner := UI.label("ON SALE WHEN THE GAME IS RELEASED", 36, UI.GOLD, true)
+	banner.size = Vector2(1920, 48)
+	banner.position = Vector2(0, 176)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(banner)
+	var note := UI.label("Nothing can be bought yet. The Contraband you have still spends in the Shop.", 22, Color(0.86, 0.88, 0.96))
+	note.size = Vector2(1920, 30)
+	note.position = Vector2(0, 230)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(note)
 
 
 ## A bundle's picture: it floats gently (each on its own beat), and lifts and brightens under the
@@ -88,6 +114,9 @@ func _refresh(from := -1) -> void:
 
 
 func _purchase(b: Dictionary) -> void:
+	if _closed != "":
+		UI.toast(self, _closed, UI.MUTED)
+		return
 	if Game.steam.active:
 		_steam_purchase(b)
 		return

@@ -56,6 +56,13 @@ func _ready() -> void:
 	add_child(ah)
 	var packs: Array = PACKS.duplicate()
 	var r := await Api.request("GET", "/api/shop/packs")
+	if r.ok and r.data is Dictionary and r.data.get("contrabandOpen", true) == false:   # (not on sale before the game is released)
+		UI.strike(cb, "Contraband goes on sale when the game is released")
+		var soon := UI.label("ON SALE AT RELEASE", 16, UI.MUTED, true)
+		soon.size = Vector2(380, 22)
+		soon.position = Vector2(1500, 1055)
+		soon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		add_child(soon)
 	if r.ok and r.data is Dictionary:
 		_free = int(r.data.get("freePacks", 0))
 		Game.player.free_packs = _free

@@ -19,7 +19,7 @@ const { pool } = require('../db/pool');
 const { ipHash } = require('../utils/ipHash');
 const { requireAuth } = require('./middleware');
 const steam = require('../utils/steam');
-const { CONTRABAND_BUNDLES, grantContraband } = require('./shop');
+const { CONTRABAND_BUNDLES, grantContraband, salesOpen } = require('./shop');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -93,6 +93,7 @@ router.post('/link', requireAuth, async (req, res) => {
 });
 
 router.post('/purchase/init', requireAuth, async (req, res) => {
+    if (!salesOpen(res)) return;   // (not on sale before the game is released)
     const { bundleId, language } = req.body || {};
     const bundle = CONTRABAND_BUNDLES[bundleId];
     if (!bundle) return res.status(400).json({ error: 'Invalid bundle.' });
@@ -115,6 +116,7 @@ router.post('/purchase/init', requireAuth, async (req, res) => {
 });
 
 router.post('/purchase/finalize', requireAuth, async (req, res) => {
+    if (!salesOpen(res)) return;
     const orderId = String((req.body || {}).orderId || '');
     if (!/^\d{1,19}$/.test(orderId)) return res.status(400).json({ error: 'Missing orderId.' });
     try {
