@@ -201,6 +201,8 @@ var _boards := {}          # FFA: side -> {c: centre, s: card scale, p: spacing 
 var _paint := {}           # the slots painted on the mat (front, back, pile), when there's a mat
 var _neon := {}            # the mat whose neon stutters now and then: {mat: ShaderMaterial, zones: [{zone, at}]}
 var _tense := false        # the music has turned tense (someone is close to losing)
+var _music_clan := ""      # the clan whose music plays (_music)
+var _turf_phase := 0       # Turf Defense: the boss's phase (its music turns to battle from the second)
 var _out := {}             # FFA: side -> finishing place, once they're out
 var _direct_btns: Array = []
 var _coop := false         # Turf Defense (backend/socket/coopMatch.js): you and your ally against a boss
@@ -1803,9 +1805,53 @@ func _tension() -> void:
 	for side in _sides:
 		if not _out.has(side) and duel.sides.has(side) and int(duel.sides[side].get("morale", DuelState.START_MORALE)) <= _max_morale(side) / 3.0:
 			_tense = true
-			if Game.sound.has_track("duel_tense"):
-				Game.sound.music("duel_tense", 2.5)
+			_music(2.5)
 			return
+
+
+## The music follows the clan that's ahead: its theme, then its battle track once the match turns
+## tense (music_clan_<clan>, music_clan_<clan>_battle). It opens on your own clan and changes hands
+## only on a clear lead, looked at as each turn starts (_follow_lead), so a swing doesn't flip it back
+## and forth. Turf Defense plays the boss's clan: its theme, then its battle track from the boss's
+## second phase. A clan without its tracks gets the plain duel ones.
+const LEAD_SWAP := 0.2   # the lead (a share of the starting Morale) that hands the music to another clan
+
+func _music(fade := 2.0) -> void:
+	if _music_clan == "" and duel != null:
+		_music_clan = str(_boss.get("clan", "")) if _turf != null else _clan_of("player")
+	Game.sound.music(_music_track(), fade)
+
+
+func _music_track() -> String:
+	var battle := _tense or (_turf != null and _turf_phase >= 1)
+	var clan := "clan_%s%s" % [_music_clan, "_battle" if battle else ""]
+	if _music_clan != "" and Game.sound.has_track(clan):
+		return clan
+	if _turf != null and Game.sound.has_track("boss"):
+		return "boss"
+	return "duel_tense" if battle and Game.sound.has_track("duel_tense") else "duel"
+
+
+func _follow_lead() -> void:
+	if _turf != null or _music_clan == "" or _mode == "over" or duel == null:
+		return
+	var top := ""
+	var best := -INF
+	var held := -INF   # the clan playing now: its best Morale
+	for side in _sides:
+		if _out.has(side) or not duel.sides.has(side):
+			continue
+		var m := float(duel.sides[side].get("morale", DuelState.START_MORALE))
+		if m > best:
+			best = m
+			top = side
+		if _clan_of(side) == _music_clan:
+			held = maxf(held, m)
+	var clan := _clan_of(top) if top != "" else ""
+	if clan == "" or clan == _music_clan or best - held < LEAD_SWAP * DuelState.START_MORALE:
+		return
+	_music_clan = clan
+	_music(3.0)
 
 
 ## Steam rising from a manhole (soft puffs that grow, drift and fade).
@@ -2271,6 +2317,7 @@ func _ev_mulligan(ev: Dictionary) -> void:
 
 func _ev_turn(ev: Dictionary) -> void:
 	var mine: bool = ev.side == "player"
+	_follow_lead()
 	_cancel_interaction()
 	_ui.turn_num.text = "TURN %d" % ev.turn
 	CardView.turn_now = int(ev.turn)
@@ -8327,7 +8374,9 @@ var _ambience := "city_rain"
 
 ## The duel's music and the street around it (Game.sound); the neon starts acting up.
 func _play_music() -> void:
-	Game.sound.music("duel", 2.0)
+	# (once the duel is set up, at the end of _ready; in Turf Defense the boss's entrance starts it)
+	if _turf == null or Game.duel_setup.get("start", {}).get("resync", false):
+		_music.call_deferred(2.0)
 	Game.sound.ambience(_ambience)
 	_neon_loop()
 

@@ -264,14 +264,10 @@ func say(key: String) -> void:
 	t.tween_callback(box.queue_free)
 
 
-## The music: the boss's own track if the game has one, the tense one once it's angry.
+## The music: the boss's clan's theme, its battle track once it's angry (duel.gd _music).
 func music(phase_now: int) -> void:
-	if Game.sound.has_track("boss"):
-		Game.sound.music("boss", 1.5)
-	elif phase_now >= 1 and Game.sound.has_track("duel_tense"):
-		Game.sound.music("duel_tense", 1.5)
-	else:
-		Game.sound.music("duel", 1.5)
+	d._turf_phase = phase_now
+	d._music(1.5)
 
 
 # ── The boss's plate and intel ──────────────────────────────────────────────

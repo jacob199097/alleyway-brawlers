@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.151",
+        "notes": [
+            "Every clan has its own music now: a theme and a battle track.",
+            "In a match the music follows the clan that's winning: it opens on your clan's theme, goes over to your rival's when they take a clear lead, and turns to the leading clan's battle track when the match gets tense.",
+            "Turf Defense plays the boss's clan music: its theme, then its battle track once the boss gets angry.",
+            "Dirty Trick (and anything else that BLINDS an attacker mid-attack) now makes that same attack flip the coin, not just the attacker's next one."
+        ]
+    },
+    {
         "version": "0.9.150",
         "notes": [
             "New cards. Arsonists: Madame Wildfire, IronHammer, Inferno Shockwave, Inferno Wall, Explosive Trap and Rain of Embers. Pirates: Bermuda Triangle.",

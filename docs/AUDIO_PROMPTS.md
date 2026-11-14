@@ -28,6 +28,28 @@ Suno: put the style line in "Style of Music", turn on Instrumental, aim for 2 to
 | `music_victory` | A win (5 to 8 seconds) | `short triumphant victory fanfare, synth brass and big drum hit, cyberpunk, ends on a held major chord, 6 seconds` (or cut the first seconds of a longer take) |
 | `music_defeat` | A loss (5 to 8 seconds) | `short somber defeat sting, dark descending synth, heavy low hit, ends on a low drone, cyberpunk, 6 seconds` |
 
+### Clan music
+
+Each clan has a theme (`music_clan_<clan>`) and a battle track (`music_clan_<clan>_battle`), the clan
+being its id in the card data (`nebula`, `militia`, `wildcard`, `underworld`, `arsonists`, `pirates`).
+In Casual, Ranked, the CPU and Free-for-all the music follows the clan that's ahead: it opens on your
+own clan's theme, goes to another clan's once that side leads by a fifth of the starting Morale (looked at
+as each turn starts), and turns to the leading clan's battle track once the match is tense. Turf Defense
+plays the boss's clan: its theme, then its battle track from the boss's second phase (`duel.gd` `_music`).
+A clan without its tracks gets `music_duel` / `music_duel_tense`. Exclude styles in Suno:
+`vocals, singing, rap, spoken word, long intro, fade in`.
+
+| Clan | Theme | Battle |
+|---|---|---|
+| Nebula | `cosmic darksynth, cyberpunk, cold glassy arpeggios, vast reverb pads, wordless synth choir, deep sub bass, slow hip-hop drums, frozen-in-time feeling, mysterious and in control, 90 bpm, instrumental, loopable` | `cosmic darksynth battle, cyberpunk, icy pulsing bass, tight electronic drums, crystalline arpeggios, time-stop tension, minimal melody, background game soundtrack, 108 bpm, instrumental, loopable` |
+| Militia | `military darksynth, cyberpunk, marching snare rolls, heavy war drums, low brass synth stabs, gritty analog bass, radio static, disciplined and unstoppable, 95 bpm, instrumental, loopable` | `industrial military darksynth battle, cyberpunk, pounding war drums, snare rolls, chugging distorted bass, alarm-like synth stabs, relentless advance, minimal melody, 112 bpm, instrumental, loopable` |
+| Wildcard | `neo-noir casino lounge, synthwave, upright walking bass, muted trumpet, Rhodes piano, swung hip-hop drums, shuffling cards and poker chips, sly and confident, 92 bpm, instrumental, loopable` | `neo-noir casino synthwave battle, cyberpunk, walking synth bass, swung driving drums, stabbing brass, ticking roulette tension, high-stakes gamble, minimal melody, 110 bpm, instrumental, loopable` |
+| Underworld | `gothic darkwave, cyberpunk, eerie pipe organ synth, tolling church bells, music box melody, deep sub drones, rattling bone percussion, halftime trap drums, haunted and regal, 80 bpm, instrumental, loopable` | `gothic darksynth battle, cyberpunk, rising undead horde, pounding halftime drums, trap hi-hats, distorted organ bass, bell tolls, dread, minimal melody, 100 bpm, instrumental, loopable` |
+| Arsonists | `industrial darksynth, cyberpunk, crackling distorted bass, punk energy, driving drums, fire crackle and roaring flame textures, smouldering synth lead, dangerous and gleeful, 110 bpm, instrumental, loopable` | `aggressive industrial darksynth battle, cyberpunk, blazing distorted bass, pounding drums, fire crackle textures, rising heat, wild and destructive, minimal melody, 125 bpm, instrumental, loopable` |
+| Pirates | `cyberpunk sea shanty instrumental, darksynth, accordion and fiddle hook, deep analog bass, hip-hop drums, 6/8 swagger, creaking ship and foghorn, harbour at night, roguish, 100 bpm, instrumental, loopable` | `darksynth pirate battle, cyberpunk, stomping 6/8 drums, driving synth bass, fiddle and accordion stabs, crashing waves, plunder and chaos, minimal melody, 112 bpm, instrumental, loopable` |
+
+A new clan needs only its two files: nothing in the code names a clan.
+
 ## Ambience (ElevenLabs Sound Effects, loops)
 
 20 to 22 seconds each; turn on Loop if it's offered, so they repeat without a bump. These play

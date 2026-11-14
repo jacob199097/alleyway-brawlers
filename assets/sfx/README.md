@@ -38,6 +38,7 @@ ships with them. Keep files short (most are under a second) and use `.ogg` for s
 | `music_duel` | duels | generated (Suno) |
 | `music_duel_tense` | duels, once someone is down to a third of their Morale | generated (Suno) |
 | `music_victory`, `music_defeat` | the end of a match (a sting; the menu music follows) | generated (Suno) |
+| `music_clan_<clan>`, `music_clan_<clan>_battle` | duels: the theme, then the battle track, of the clan that's ahead (Turf Defense: the boss's clan); see docs/AUDIO_PROMPTS.md | generated (Suno), all six clans |
 | `amb_city_rain` | duels: rain and the city around the mat | generated (ElevenLabs) |
 | `amb_crowd` | finding a match, the Free-for-all lobby, Rock Paper Scissors | generated (ElevenLabs) |
 | `amb_rooftop` | Fight Mode | generated (ElevenLabs) |
