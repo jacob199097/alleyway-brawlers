@@ -132,10 +132,17 @@ func _run() -> void:
 		_check(not Sfx.streams(name).is_empty(), "a recording of " + name)
 	await _set_hustle()
 	var frames := 0
+	var started := Time.get_ticks_msec()
+	var noted := 0
 	while frames < 60 * 1800 and (summons < 6 or attacks < 6 or not set_activated):
 		await get_tree().process_frame
 		frames += 1
 		var d: DuelState = duel_screen.duel
+		# On GitHub, a note every minute (its log needs a login; a "::notice::" line becomes an annotation anyone can read)
+		if OS.get_environment("GITHUB_ACTIONS") == "true" and Time.get_ticks_msec() - started > (noted + 1) * 60000:
+			noted += 1
+			print("::notice title=UI smoke::%d min: %d frames, turn %d, summons %d, attacks %d, playing %s, mode %s, music %s" % [noted, frames,
+				d.turn if d != null else -1, summons, attacks, duel_screen._playing, duel_screen._mode, Game.sound.current()])
 		if d == null or d.winner != "":
 			break
 		if duel_screen._playing:
