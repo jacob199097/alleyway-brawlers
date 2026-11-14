@@ -32,8 +32,13 @@ To put a change live: commit, push, `node tools/deploy.mjs`.
 - **Downloads:** the newest build of each platform in `downloads/` on the server. A platform with no
   build says "Not available yet".
 - **Screenshots:** `shots/` and `shots/shots.json`, made by `node tools/site_shots.mjs <Godot exe>`
-  (it runs the game's screenshot tour, about 15 minutes). Run it again when the game's look changes;
-  `SHOTS` in that file picks the screenshots and their captions.
+  (it runs the game's screenshot tour with windows open, about 20 minutes; set `APPDATA` to a short
+  folder first, e.g. `C:\Users\<you>\gt`). The matches are staged (`SITE_SCENES` in
+  `godot/tests/screens_tour.gd`): two different clans in a different arena each, one move played, a
+  run of frames of it. Then a pack, Victory, Turf Defense with a test partner and a free-for-all.
+  Run it again when the game's look changes; `SHOTS` in `tools/site_shots.mjs` picks a frame for each
+  picture and gives its caption (the frame numbers change from run to run: look through
+  `builds/site_shots/site/` and pick again).
 - **Card art:** `assets/cards/` and friends, resized the first time each picture is asked for and kept
   in `backend/.cache/site/` (not in git, safe to delete).
 

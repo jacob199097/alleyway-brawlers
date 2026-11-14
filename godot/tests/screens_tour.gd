@@ -35,6 +35,8 @@ func _shot(name: String, wait := 1.6) -> void:
 			w.size = Vector2i(1920, 1080)
 			w.position = Vector2i.ZERO
 			await get_tree().create_timer(0.5).timeout
+	if "--site" in OS.get_cmdline_user_args():   # (the mouse in a corner: no card lifted or shown by hovering it)
+		get_viewport().warp_mouse(Vector2(4, 4))
 	await get_tree().create_timer(wait).timeout
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [_out, name])
 	print("shot ", name)
@@ -62,27 +64,374 @@ func _clan_shots() -> void:
 	await _shot("10_shop_starter_buy", 0.8)
 
 
-## The website's pictures: the menus, then matches in a few arenas that the CPU plays for both sides,
-## a shot every few seconds to pick from (tools/site_shots.mjs picks and shrinks them).
+## The website's pictures (tools/site_shots.mjs picks and shrinks them). First, staged matches: two
+## different clans in a different arena each, full boards (every kind of card, veteran frames, statuses),
+## then one real move, so the game's own animation runs, with a run of shots to pick the best frame from.
+## Then the menus, a pack opening, a victory and a rank up, Turf Defense (the partner is tests/online_bot.tscn,
+## which site_shots.mjs starts on SITE_BOSS) and a free-for-all against the mock server; with --autoplay (as
+## site_shots.mjs runs it) the CPU plays this seat in those two, so it isn't put out for being away.
+## A card in a scene is an id, or {id, down, def, set (face down), burn, poison, bleed (amounts),
+## stasis, freeze, blind, silence, stun (on), equip (the front slot it's attached to)}. Front slot i faces
+## the rival's slot 4 - i. move: attack (from, target, spring: the rival's Ambush slot), summon (hand,
+## slot), hustle (hand), awaken (slot), luck (slot).
+const SITE_BOSS := "veyr"
+const SITE_PACK := "arsonists"
+const SITE_SCENES := [
+	{"name": "casino", "arena": "casino", "turn": 9, "detail": "card_wild_013", "frames": 34, "every": 0.07,
+		"move": {"kind": "attack", "from": 2, "target": 1},
+		"you": {"name": "NEONVIPER", "avatar": "card_wild_013", "leader": "card_wild_001", "morale": 4300, "auth": [4, 9], "mastery": 9,
+			"front": [{"id": "card_wild_058", "burn": 300}, "card_wild_046", "card_wild_012", "card_wild_055", "card_wild_013"],
+			"back": ["card_wild_017", {"id": "card_wild_016", "set": true}, null, {"id": "card_wild_018", "equip": 4}, null],
+			"hand": ["card_wild_015", "card_wild_019", "card_wild_041", "card_wild_036", "card_wild_043"],
+			"gutter": ["card_wild_010", "card_wild_042"], "vets": {"card_wild_013": 3, "card_wild_012": 2, "card_wild_046": 3, "card_wild_055": 1}},
+		"foe": {"name": "SCORCHMARK", "avatar": "card_arso_033", "level": 41, "leader": "card_arso_001", "morale": 3100, "mastery": 8,
+			"front": ["card_arso_034", {"id": "card_arso_025", "bleed": 200}, "card_arso_026", "card_arso_033", "card_arso_004"],
+			"back": ["card_arso_039", null, {"id": "card_arso_031", "set": true}, null, {"id": "card_arso_038", "set": true}],
+			"hand": ["card_arso_027", "card_arso_028", "card_arso_029", "card_arso_030"], "gutter": ["card_arso_022"],
+			"vets": {"card_arso_033": 3, "card_arso_026": 2}}},
+	{"name": "deploy", "arena": "base", "turn": 6, "phase": "deployment", "detail": "card_mili_044", "frames": 20, "every": 0.08,
+		"move": {"kind": "summon", "hand": 0, "slot": 2},
+		"you": {"name": "NEONVIPER", "avatar": "card_mili_040", "leader": "card_mili_011", "morale": 5200, "auth": [8, 8], "mastery": 7,
+			"front": ["card_mili_037", "card_mili_046", null, "card_mili_058", "card_mili_009"],
+			"back": [{"id": "card_mili_032", "set": true}, {"id": "card_mili_005", "set": true}, null, null, null],
+			"hand": ["card_mili_044", "card_mili_052", "card_mili_013", "card_mili_031", "card_mili_040"],
+			"gutter": ["card_mili_003"], "vets": {"card_mili_037": 2, "card_mili_044": 3, "card_mili_046": 1}},
+		"foe": {"name": "GRAVEWALTZ", "avatar": "card_unde_045", "level": 28, "leader": "card_unde_001", "morale": 4700, "mastery": 6,
+			"front": ["card_unde_034", "card_unde_002", "card_unde_045", "card_unde_002", "card_unde_013"],
+			"back": ["card_unde_027", {"id": "card_unde_024", "set": true}, null, null, null],
+			"hand": ["card_unde_021", "card_unde_022", "card_unde_026"], "gutter": ["card_unde_012", "card_unde_007"],
+			"vets": {"card_unde_045": 3}}},
+	{"name": "evolve", "arena": "observatory", "turn": 7, "detail": "card_nebu_012", "frames": 36, "every": 0.12,
+		"move": {"kind": "attack", "from": 2, "target": 1},
+		"you": {"name": "NEONVIPER", "avatar": "card_nebu_053", "leader": "card_nebu_009", "morale": 3900, "auth": [3, 8], "mastery": 9,
+			"front": ["card_nebu_045", "card_nebu_025", "card_nebu_012", "card_nebu_042", "card_nebu_053"],
+			"back": ["card_nebu_043", {"id": "card_nebu_026", "set": true}, null, null, null],
+			"hand": ["card_nebu_027", "card_nebu_008", "card_nebu_054", "card_nebu_041"], "hideout": ["card_nebu_013", "card_nebu_014"],
+			"gutter": ["card_nebu_011"], "vets": {"card_nebu_053": 3, "card_nebu_012": 2, "card_nebu_013": 2, "card_nebu_025": 1}},
+		"foe": {"name": "SALTWATER", "avatar": "card_pira_036", "level": 33, "leader": "card_pira_001", "morale": 4400, "mastery": 7,
+			"front": ["card_pira_024", {"id": "card_pira_020", "down": true}, "card_pira_036", "card_pira_034", "card_pira_026"],
+			"back": ["card_pira_031", {"id": "card_pira_032", "set": true}, null, null, null],
+			"hand": ["card_pira_027", "card_pira_028", "card_pira_029"], "gutter": ["card_pira_017"]}},
+	{"name": "brawl", "arena": "docks", "turn": 8, "detail": "card_pira_038", "frames": 36, "every": 0.08,
+		"move": {"kind": "attack", "from": 2, "target": 2},
+		"you": {"name": "NEONVIPER", "avatar": "card_pira_038", "leader": "card_pira_040", "morale": 4600, "auth": [2, 9], "mastery": 8,
+			"front": ["card_pira_033", "card_pira_035", "card_pira_038", "card_pira_037", "card_pira_013"],
+			"back": ["card_pira_041", {"id": "card_pira_032", "set": true}, null, null, null],
+			"hand": ["card_pira_030", "card_pira_028", "card_pira_027", "card_pira_026"],
+			"gutter": ["card_pira_005", "card_pira_018"], "vets": {"card_pira_038": 3, "card_pira_033": 2, "card_pira_013": 2}},
+		"foe": {"name": "IRONSIDE", "avatar": "card_mili_040", "level": 37, "leader": "card_mili_011", "morale": 3800, "mastery": 8,
+			"front": ["card_mili_035", "card_mili_001", "card_mili_054", "card_mili_034", "card_mili_058"],
+			"back": [{"id": "card_mili_005", "set": true}, {"id": "card_mili_031", "set": true}, null, null, null],
+			"hand": ["card_mili_038", "card_mili_043", "card_mili_030"], "gutter": ["card_mili_002"]}},
+	{"name": "ko", "arena": "graveyard", "turn": 10, "detail": "card_unde_045", "frames": 36, "every": 0.08,
+		"move": {"kind": "attack", "from": 2, "target": 1},
+		"you": {"name": "NEONVIPER", "avatar": "card_unde_045", "leader": "card_unde_001", "morale": 2900, "auth": [5, 10], "mastery": 9,
+			"front": ["card_unde_002", "card_unde_011", "card_unde_045", "card_unde_036", "card_unde_002"],
+			"back": ["card_unde_054", {"id": "card_unde_030", "equip": 1}, {"id": "card_unde_028", "set": true}, null, null],
+			"hand": ["card_unde_026", "card_unde_021", "card_unde_029", "card_unde_047"],
+			"gutter": ["card_unde_010", "card_unde_033", "card_unde_012"], "vets": {"card_unde_045": 3, "card_unde_011": 2}},
+		"foe": {"name": "HIGHROLLER", "avatar": "card_wild_046", "level": 45, "leader": "card_wild_001", "morale": 2400, "mastery": 9,
+			"front": ["card_wild_035", {"id": "card_wild_009", "down": true}, "card_wild_007", "card_wild_034", "card_wild_041"],
+			"back": ["card_wild_056", {"id": "card_wild_057", "set": true}, null, null, null],
+			"hand": ["card_wild_014", "card_wild_044"], "gutter": ["card_wild_005", "card_wild_033"], "vets": {"card_wild_007": 2}}},
+	{"name": "ambush", "arena": "caldera", "turn": 8, "detail": "card_arso_037", "frames": 46, "every": 0.12,
+		"move": {"kind": "attack", "from": 3, "target": 2, "spring": 7},
+		"you": {"name": "NEONVIPER", "avatar": "card_mili_047", "leader": "card_mili_011", "morale": 4100, "auth": [3, 9], "mastery": 8,
+			"front": ["card_mili_047", "card_mili_040", "card_mili_026", "card_mili_044", "card_mili_037"],
+			"back": [{"id": "card_mili_013", "equip": 0}, null, null, null, null],
+			"hand": ["card_mili_038", "card_mili_043", "card_mili_030", "card_mili_005"],
+			"gutter": ["card_mili_015"], "vets": {"card_mili_040": 3, "card_mili_047": 2}},
+		"foe": {"name": "SCORCHMARK", "avatar": "card_arso_033", "level": 41, "leader": "card_arso_001", "morale": 3500, "mastery": 8,
+			"front": ["card_arso_022", "card_arso_013", "card_arso_021", "card_arso_020", "card_arso_016"],
+			"back": [null, null, {"id": "card_arso_037", "set": true}, null, {"id": "card_arso_032", "set": true}],
+			"hand": ["card_arso_027", "card_arso_028"], "gutter": ["card_arso_017"]}},
+	{"name": "inferno", "arena": "junkyard", "turn": 9, "phase": "deployment", "detail": "card_arso_036", "frames": 36, "every": 0.1,
+		"move": {"kind": "hustle", "hand": 0},
+		"you": {"name": "NEONVIPER", "avatar": "card_arso_033", "leader": "card_arso_001", "awake": 2, "morale": 3300, "auth": [6, 10], "mastery": 9,
+			"front": ["card_arso_033", "card_arso_034", null, "card_arso_025", "card_arso_010"],
+			"back": ["card_arso_039", {"id": "card_arso_038", "set": true}, null, null, null],
+			"hand": ["card_arso_036", "card_arso_028", "card_arso_027", "card_arso_029", "card_arso_026"],
+			"gutter": ["card_arso_018", "card_arso_019"], "vets": {"card_arso_033": 3, "card_arso_001": 3, "card_arso_010": 2}},
+		"foe": {"name": "STARDUST", "avatar": "card_nebu_048", "level": 36, "leader": "card_nebu_009", "morale": 3700, "mastery": 7,
+			"front": ["card_nebu_024", "card_nebu_019", "card_nebu_028", {"id": "card_nebu_036", "poison": 200}, "card_nebu_033"],
+			"back": [{"id": "card_nebu_029", "set": true}, null, null, null, null],
+			"hand": ["card_nebu_010", "card_nebu_027"], "gutter": ["card_nebu_023"]}},
+	{"name": "stasis", "arena": "frozen", "turn": 7, "detail": "card_nebu_029", "frames": 30, "every": 0.12,
+		"move": {"kind": "attack", "from": 2, "target": 2, "spring": 5},
+		"you": {"name": "NEONVIPER", "avatar": "card_unde_034", "leader": "card_unde_001", "morale": 3600, "auth": [2, 8], "mastery": 9,
+			"front": ["card_unde_002", "card_unde_036", "card_unde_034", "card_unde_010", "card_unde_002"],
+			"back": ["card_unde_027", null, null, null, null],
+			"hand": ["card_unde_022", "card_unde_023", "card_unde_025"], "gutter": ["card_unde_008"], "vets": {"card_unde_034": 3}},
+		"foe": {"name": "STARDUST", "avatar": "card_nebu_048", "level": 36, "leader": "card_nebu_009", "morale": 4200, "mastery": 7,
+			"front": ["card_nebu_045", "card_nebu_047", "card_nebu_024", "card_nebu_019", "card_nebu_042"],
+			"back": [{"id": "card_nebu_029", "set": true}, null, {"id": "card_nebu_026", "set": true}, null, null],
+			"hand": ["card_nebu_041", "card_nebu_040"], "gutter": ["card_nebu_030"]}},
+	{"name": "awaken", "arena": "clocktower", "turn": 11, "phase": "deployment", "detail": "card_pira_001", "frames": 18, "every": 0.12,
+		"move": {"kind": "awaken", "slot": 2},
+		"you": {"name": "NEONVIPER", "avatar": "card_pira_001", "leader": "card_pira_001", "morale": 2800, "auth": [7, 10], "mastery": 9,
+			"front": ["card_pira_024", "card_pira_035", null, "card_pira_036", "card_pira_020"],
+			"back": ["card_pira_031", {"id": "card_pira_032", "set": true}, null, null, null],
+			"hand": ["card_pira_029", "card_pira_028", "card_pira_030"], "gutter": ["card_pira_002", "card_pira_022"],
+			"vets": {"card_pira_001": 3, "card_pira_036": 2}},
+		"foe": {"name": "GRAVEWALTZ", "avatar": "card_unde_045", "level": 28, "leader": "card_unde_001", "morale": 3400, "mastery": 6,
+			"front": ["card_unde_033", "card_unde_002", "card_unde_034", "card_unde_002", "card_unde_010"],
+			"back": ["card_unde_054", {"id": "card_unde_029", "set": true}, null, null, null],
+			"hand": ["card_unde_021", "card_unde_022"], "gutter": ["card_unde_013"]}},
+	{"name": "luck", "arena": "pit", "turn": 8, "detail": "card_wild_023", "frames": 16, "every": 0.09,
+		"move": {"kind": "luck", "slot": 1},
+		"you": {"name": "NEONVIPER", "avatar": "card_wild_046", "leader": "card_wild_001", "morale": 3600, "auth": [4, 9], "mastery": 9,
+			"front": ["card_wild_052", "card_wild_023", "card_wild_049", "card_wild_004", "card_wild_029"],
+			"back": [{"id": "card_wild_018", "equip": 1}, "card_wild_017", {"id": "card_wild_037", "set": true}, null, null],
+			"hand": ["card_wild_015", "card_wild_036", "card_wild_044", "card_wild_019"], "gutter": ["card_wild_002"],
+			"vets": {"card_wild_023": 3, "card_wild_049": 2, "card_wild_052": 1}},
+		"foe": {"name": "STARDUST", "avatar": "card_nebu_048", "level": 36, "leader": "card_nebu_009", "morale": 4100, "mastery": 7,
+			"front": ["card_nebu_048", {"id": "card_nebu_056", "stasis": true}, "card_nebu_045", "card_nebu_050", "card_nebu_032"],
+			"back": ["card_nebu_046", null, {"id": "card_nebu_007", "set": true}, null, null],
+			"hand": ["card_nebu_027", "card_nebu_008"], "gutter": ["card_nebu_004"], "vets": {"card_nebu_048": 3}}},
+]
+
+
 func _site_shots() -> void:
-	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "shop", "territory", "leaderboard", "achievements", "profile"]:
+	Engine.time_scale = 1.0
+	# A player with a name of their own (the plates in online matches show it)
+	var r := await Api.request("POST", "/api/auth/login", {"email": "neonviper@example.com", "password": "x"})
+	if r.ok:
+		Api.token = r.data.token
+		Game.player = r.data.player
+	Game.settings.tutorial_offered = true
+	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
+	if not "--online-only" in OS.get_cmdline_user_args():   # (--online-only: just Turf Defense and the free-for-all again)
+		for s in SITE_SCENES:
+			await _site_scene(s)
+		await _site_menus()
+	await _site_online()
+
+
+func _site_scene(s: Dictionary) -> void:
+	var you: Dictionary = s.you
+	var foe: Dictionary = s.foe
+	Game.player.username = str(you.name)
+	Game.player.level = 34
+	Game.player.avatar_url = "card:" + str(you.avatar)
+	Game.duel_setup = {"first": "player", "arena": str(s.arena)}
+	Game.go("duel")
+	await get_tree().create_timer(4.0).timeout
+	var d = _screen()
+	var st = d.duel
+	d.ai_sides = []
+	get_viewport().warp_mouse(Vector2(4, 4))
+	if d._menu:   # (the opening hand: keep it, so the events waiting on it play out)
+		for b in d._menu.find_children("*", "Button", true, false):
+			b.pressed.emit()
+			break
+	var waited := 0.0
+	while d._playing and waited < 6.0:
+		await get_tree().create_timer(0.2).timeout
+		waited += 0.2
+	d._queue.clear()
+	d._playing = false
+	st.turn = int(s.get("turn", 8))
+	st.active = "player"
+	st.phase = str(s.get("phase", "brawl"))
+	st.pending = {}
+	st._asks = []
+	_site_side(st, st.sides.player, you)
+	_site_side(st, st.sides.opponent, foe)
+	st._recalc()
+	# The rival's plate as a player's (name, picture, level, clan mastery); yours with your mastery
+	var opp: Panel = d.get_node("HUD/UI/OppPanel")
+	for ch in opp.get_children():
+		ch.queue_free()
+	d._build_panel("opponent", opp, str(foe.name), "card:" + str(foe.avatar), "LV %d  ·  ONLINE" % int(foe.level), int(foe.level))
+	d._names = {"player": str(you.name), "opponent": str(foe.name)}
+	d._clan_line(opp, {"clan": str(CardDB.get_card(str(foe.leader)).clanTag), "clan_level": int(foe.mastery)})
+	d._clan_line(d.get_node("HUD/UI/PlayerPanel"), {"clan": str(CardDB.get_card(str(you.leader)).clanTag), "clan_level": int(you.mastery)})
+	# The board, from the staged state
+	for side in ["player", "opponent"]:
+		for v in d.hand[side]:
+			v.queue_free()
+		d.hand[side] = []
+		for slot in d.field[side]:
+			if d.field[side][slot] != null:
+				d.field[side][slot].queue_free()
+		d.field[side] = {}
+	for side in d.leaders:
+		d.leaders[side].queue_free()
+	d.leaders.clear()
+	for key in d._pile_backs:   # (the piles' moving backs, made with the first leader's clan: made again)
+		d._pile_backs[key].rect.queue_free()
+	d._pile_backs.clear()
+	d._vets = {"player": you.get("vets", {}), "opponent": foe.get("vets", {})}
+	d._make_leader_views()
+	d._build_from_view()
+	d.counts = st._counts()
+	d._refresh_hud()
+	d.queue_redraw()
+	d._show_detail(CardDB.get_card(str(s.detail)))
+	await _shot("site_%s_still" % s.name, 1.4)
+	var mv: Dictionary = s.move
+	var ok := true
+	Engine.time_scale = 0.35   # (slowed, so the shots catch more of the move)
+	match str(mv.kind):
+		"attack":
+			ok = d._act("player", {"kind": "attack", "from": int(mv.from), "target": int(mv.target)})
+		"summon":
+			d._phase_flash("DEPLOYMENT PHASE", d.BLUE)
+			ok = d._act("player", {"kind": "summon", "uid": int(st.sides.player.hand[int(mv.hand)].uid), "slot": int(mv.slot)})
+		"hustle":
+			ok = d._act("player", {"kind": "hustle", "uid": int(st.sides.player.hand[int(mv.hand)].uid)})
+		"awaken":
+			var sd: Dictionary = st.sides.player
+			sd.leader_state = "awake"
+			sd.leader.deployed_turn = st.turn
+			sd.field[int(mv.slot)] = sd.leader
+			d._ev_awaken({"side": "player", "slot": int(mv.slot), "card": sd.leader.duplicate(true)})
+		"luck":
+			d._ev_luck({"side": "player", "slot": int(mv.slot), "kind": "coin", "value": 1, "won": true, "need": 1})
+	# The questions the move raises, answered here (their events follow the move's in the queue): the
+	# rival springs the Ambush the scene names or none; anything else takes its first option (e.g. ATK
+	# for a card that promoted)
+	var asked := 0
+	while ok and not st.pending.is_empty() and asked < 6:
+		asked += 1
+		var side := str(st.pending.get("side", ""))
+		var ids: Array = st.pending.get("options", []).map(func(o): return str(o.get("id", "")))
+		var pick := ""
+		if side == "opponent" and mv.has("spring") and ids.has(str(mv.spring)):
+			pick = str(mv.spring)
+		elif ids.has("no"):
+			pick = "no"
+		elif not ids.is_empty():
+			pick = ids[0]
+		if pick == "" or not st.do_action(side, {"kind": "choose", "option": pick}):
+			break
+		d._queue.append_array(st.take_events())
+	print("site scene %s: the move %s (%d answered)" % [s.name, "went through" if ok else "was REFUSED", asked])
+	for i in int(s.get("frames", 16)):
+		await _shot("site_%s_%02d" % [s.name, i], float(s.get("every", 0.1)))
+	Engine.time_scale = 1.0
+	await get_tree().create_timer(1.0).timeout
+
+
+## One side of a staged match: its leader (Dormant, or on the street in slot "awake"), field, hand,
+## Gutter, Hideout, a deck, Morale and Authority.
+func _site_side(st, sd: Dictionary, p: Dictionary) -> void:
+	var leader: Dictionary = st.make_card(str(p.leader))
+	leader.influence = int(leader.influence) if leader.get("influence") != null else int(leader.base_defense)
+	leader.influence_max = leader.influence
+	sd.leader = leader
+	sd.leader_state = "dormant"
+	var field: Array = []
+	field.resize(10)
+	var front: Array = p.get("front", [])
+	for i in front.size():
+		if front[i] != null:
+			field[i] = _site_card(st, front[i])
+	var back: Array = p.get("back", [])
+	for i in back.size():
+		if back[i] != null:
+			var c := _site_card(st, back[i])
+			if back[i] is Dictionary and back[i].has("equip") and field[int(back[i].equip)] != null:
+				c.equipped_to = field[int(back[i].equip)].uid
+			field[5 + i] = c
+	if p.has("awake"):
+		sd.leader_state = "awake"
+		leader.deployed_turn = 1
+		field[int(p.awake)] = leader
+	sd.field = field
+	sd.hand = p.get("hand", []).map(func(e): return _site_card(st, e))
+	sd.gutter = p.get("gutter", []).map(func(e): return _site_card(st, e))
+	sd.hideout = p.get("hideout", []).map(func(e): return _site_card(st, e))
+	sd.deck = []
+	for i in 17:
+		sd.deck.append(st.make_card(str(p.hand[0])))
+	sd.morale = int(p.morale)
+	sd.authority = int(p.auth[0]) if p.has("auth") else 4
+	sd.authority_max = int(p.auth[1]) if p.has("auth") else 9
+
+
+func _site_card(st, e) -> Dictionary:
+	var spec: Dictionary = e if e is Dictionary else {"id": e}
+	var c: Dictionary = st.make_card(str(spec.id))
+	c.deployed_turn = 1
+	if spec.get("down", false):
+		c.downed = true
+	if spec.get("def", false):
+		c.position = "def"
+	if spec.get("set", false):
+		c.face_down = true
+	if spec.has("burn"):
+		c.burn = {"amt": int(spec.burn), "left": 3}
+	if spec.has("poison"):
+		c.poison = {"amt": int(spec.poison), "left": 3}
+	if spec.has("bleed"):
+		c.bleed = int(spec.bleed)
+	for k in ["stasis", "freeze", "blind", "silence", "stun"]:
+		if spec.get(k, false):
+			c[k + "_until"] = st.turn + 1
+	return c
+
+
+## The menus, a pack opening (its Epic or better turning over), a victory and a rank up.
+func _site_menus() -> void:
+	for s in ["main_menu", "fight_mode", "card_library", "deck_builder", "territory", "shop"]:
 		Game.go(s)
 		await _shot("site_" + s, 2.8)
-	for arena in ["alley", "casino", "docks"]:
-		Game.duel_setup = await Game.load_duel_deck()
-		Game.duel_setup.first = "player"
-		Game.duel_setup.arena = arena
-		Game.go("duel")
-		await get_tree().create_timer(4.5).timeout
-		var d = _screen()
-		if d._menu:   # (the opening hand: keep it)
-			for b in d._menu.find_children("*", "Button", true, false):
-				b.pressed.emit()
-				break
-		d.ai_sides = ["player", "opponent"]
-		d._after_events()
+	var clan: Dictionary = CardDB.clan(SITE_PACK)
+	_screen()._buy({"id": SITE_PACK, "label": str(clan.get("name", SITE_PACK)), "image": "%s_booster.png" % SITE_PACK, "color": clan.get("color", "#ff7a3d")}, "karat")
+	await _shot("site_pack_ready", 1.8)
+	var opening = _screen()._opening
+	opening.tear_now()
+	for i in 8:
+		await _shot("site_pack_burst_%02d" % i, 0.12)
+	await get_tree().create_timer(2.0).timeout
+	for k in opening._cards:   # the Epic or better, at full length
+		if k.rarity >= 4:
+			opening._enqueue(k)
+	for i in 26:
+		await _shot("site_pack_epic_%02d" % i, 0.22)
+	opening.reveal_all()
+	await _shot("site_pack_done", 4.0)
+	var session := await Api.request("POST", "/api/match/start", {"ranked": true})
+	Game.match_result = {"result": "win", "player_morale": 2900, "opponent_morale": 0, "turns": 13, "cards_played": 11,
+		"match_id": session.data.matchId if session.ok else "",
+		"mvp": {"card": CardDB.get_card("card_unde_045"), "owner": "player", "damage": 4100, "kos": 3},
+		"mastery": {"clan": "underworld", "name": "Underworld", "color": "#4f1c5e", "xp": 1250, "gained": 100,
+			"levels": [0, 300, 700, 1200, 1800, 2500, 3300, 4200, 5200, 6300]}}
+	Game.go("post_match")
+	await _shot("site_victory", 2.6)
+	_screen()._rank_up("underboss")
+	await _shot("site_rank_up", 3.0)
+
+
+## Turf Defense against SITE_BOSS with tests/online_bot.tscn as the partner (its entrance, then the fight),
+## then a free-for-all (the mock server fills the table with CPUs of random clans).
+func _site_online() -> void:
+	Net.connect_to_server()
+	await get_tree().create_timer(1.5).timeout
+	Net.coop_join = {"boss": SITE_BOSS, "level": 1}
+	Game.go("turf_defense")
+	var waited := 0.0
+	while _screen().name != "Duel" and waited < 120.0:
+		await get_tree().create_timer(0.25).timeout
+		waited += 0.25
+	if _screen().name == "Duel":
+		for i in 26:   # the boss's entrance
+			await _shot("site_turf_intro_%02d" % i, 0.4)
+		for i in 14:
+			await _shot("site_turf_%02d" % i, 5.0)
+	else:
+		print("site: no Turf Defense match (is the partner bot running?)")
+	Game.go("ffa_lobby")
+	await get_tree().create_timer(2.5).timeout
+	_screen()._toggle_ready()
+	waited = 0.0
+	while _screen().name != "Duel" and waited < 90.0:
+		await get_tree().create_timer(0.5).timeout
+		waited += 0.5
+	if _screen().name == "Duel":
 		for i in 16:
-			await _shot("site_duel_%s_%02d" % [arena, i], 4.5)
+			await _shot("site_ffa_%02d" % i, 7.0)
 
 
 ## Settings → Accessibility: the same screens with everything off ("acc_off_") and with Larger text and

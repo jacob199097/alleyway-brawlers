@@ -66,8 +66,8 @@ const RANKS = [['rookie', 'Rookie'], ['street_tough', 'Street Tough'], ['enforce
 
 // The screenshot next to a How to Play section (website/shots/, tools/site_shots.mjs)
 const SECTION_SHOTS = {
-    'the-goal': 'duel-casino', 'a-turn': 'duel-turn', characters: 'promote', brawls: 'duel-docks',
-    'downed-and-ko': 'duel-alley', 'hustles-and-ambushes': 'duel-ambush', 'game-modes': 'fight-mode',
+    'the-goal': 'duel-casino', 'a-turn': 'duel-turn', characters: 'promote', brawls: 'duel-brawl',
+    'downed-and-ko': 'duel-ko', 'hustles-and-ambushes': 'duel-ambush', 'game-modes': 'fight-mode',
 };
 
 const CARD_W = 360, CARD_H = 510;   // a card's shape (1054 × 1492)
@@ -314,7 +314,7 @@ ${clans.map((c) => clanTile(c, { ctx })).join('\n')}
 
 <div class="wrap features">
 ${feature('Brawl for the block', `<p>Deploy characters, play Hustles and set Ambushes face-down. Attack in ATK, hold the line in DEF, and bring your opponent's Morale from 6000 to 0.</p>
-<p>A fighter that loses a brawl goes Down. Hit it again and it's KO'd.</p>`, shot(ctx, 'duel-docks'), ['/how-to-play', 'How to play'])}
+<p>A fighter that loses a brawl goes Down. Hit it again and it's KO'd.</p>`, shot(ctx, 'duel-brawl'), ['/how-to-play', 'How to play'])}
 ${line ? `<section class="feature strivers"${clanStyle(lineClan)}>
 <div class="feature-text">
 <h2>Strivers rise mid-fight</h2>

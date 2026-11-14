@@ -1,56 +1,88 @@
 [
   {
     "name": "duel-casino",
-    "caption": "A brawl in the casino: one attack, straight across the table.",
-    "alt": "A match in the casino arena, with an attack landing on the opponent's side of the board.",
-    "w": 1600,
-    "h": 900,
-    "tags": []
-  },
-  {
-    "name": "duel-docks",
-    "caption": "An attack on the docks.",
-    "alt": "A match on the docks, with an attack beam between two characters.",
-    "w": 1600,
-    "h": 900,
-    "tags": []
-  },
-  {
-    "name": "duel-alley",
-    "caption": "Downed in the back alley. One more hit and it's a KO.",
-    "alt": "A match in the back alley: a character lies turned on its side under a DOWNED stamp.",
+    "caption": "Wildcard against Arsonists in the casino: Garrison, the Pit Boss, deals Smokestack a losing hand.",
+    "alt": "A match in the casino between a Wildcard deck and an Arsonists deck, both boards full: playing cards fly from Garrison, the Pit Boss, toward Smokestack.",
     "w": 1600,
     "h": 900,
     "tags": []
   },
   {
     "name": "duel-turn",
-    "caption": "Every turn starts with the Deployment Phase.",
-    "alt": "A match on turn 7 with the words DEPLOYMENT PHASE across the board.",
+    "caption": "Every turn starts with the Deployment Phase: call in fighters, play Hustles, set Ambushes.",
+    "alt": "A Militia against Underworld match in a military base, with the words DEPLOYMENT PHASE across the board.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-brawl",
+    "caption": "Pirates against Militia on the docks: Hellstorm loses the brawl to Dreadmaw and goes Down.",
+    "alt": "A match on the docks: a Militia character turned on its side under a DOWNED stamp after an attack by a Pirates Heavy.",
+    "w": 1600,
+    "h": 900,
+    "tags": []
+  },
+  {
+    "name": "duel-ko",
+    "caption": "Hit a fighter while it's Down and it's KO'd: the Herald of the Hollow Throne finishes Catherine.",
+    "alt": "A match in a graveyard: a Wildcard character bursts into playing cards under a K.O. stamp after an Underworld attack.",
     "w": 1600,
     "h": 900,
     "tags": []
   },
   {
     "name": "duel-ambush",
-    "caption": "The Brawl Phase, with cards set face-down on both sides.",
-    "alt": "A match with the words BRAWL PHASE across the board and face-down cards in both back rows.",
+    "caption": "AMBUSH! A Militia attack runs into the Arsonists' Inferno Wall.",
+    "alt": "A match in a volcanic arena: the word AMBUSH! over a face-down Arsonists card turning up as the Militia attacks.",
     "w": 1600,
     "h": 900,
     "tags": []
+  },
+  {
+    "name": "awaken",
+    "caption": "Captain Marlow AWAKENS: when the moment comes, a leader takes the street himself.",
+    "alt": "A Pirates leader card in a burst of rays under the words CAPTAIN MARLOW AWAKENS.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "legendary",
+    "caption": "A Legendary takes the street: Iron Lieutenant Kessler drops in for the Militia.",
+    "alt": "A Militia card in a burst of golden rays under the words LEGENDARY · IRON LIEUTENANT KESSLER.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "inferno",
+    "caption": "Inferno Shockwave: the whole Nebula line catches fire at once.",
+    "alt": "An Arsonists Hustle sets every Nebula character on the board burning, with Cinder, the Arsonists' leader, on the field.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "turf-boss",
+    "caption": "Turf Defense: you and a partner against Veyr, the Hollow King, and his army of the dead.",
+    "alt": "The entrance of a Turf Defense boss: Veyr, the Hollow King, Sovereign of the Dead, with his card and his first line.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
   },
   {
     "name": "promote",
-    "caption": "A Striver up close: what it takes to promote is on the card.",
-    "alt": "A Striver card enlarged, with a strip under it saying it promotes as it fights.",
-    "w": 1600,
-    "h": 900,
-    "tags": []
-  },
-  {
-    "name": "evolved",
-    "caption": "A Striver promotes to level 2 in the middle of a fight.",
-    "alt": "A character card in a burst of light under the word EVOLVED, two stars lit, level 1 to level 2.",
+    "caption": "Lyra Quell promotes mid-attack: level 1 to level 2, stronger on the spot.",
+    "alt": "A Nebula card in a burst of light under the word EVOLVED, two stars lit, with its new level, ATK and DEF underneath.",
     "w": 1600,
     "h": 900,
     "tags": [
@@ -59,8 +91,68 @@
   },
   {
     "name": "pack",
-    "caption": "Three cards from a booster pack.",
-    "alt": "Three cards face-up after opening a booster pack.",
+    "caption": "A Legendary from an Arsonists pack: Pyra, the Undying Flame.",
+    "alt": "A card in a shower of gold under the word LEGENDARY!, just turned over after opening an Arsonists booster pack.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "stasis",
+    "caption": "Hull Breach: a Nebula Ambush locks the whole Underworld line in STASIS.",
+    "alt": "On a frozen board, rings of light lock each Underworld character in STASIS after a Nebula Ambush springs.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "ffa",
+    "caption": "Free-for-all: four players, one board.",
+    "alt": "A four-player match, each player with a corner of the board.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "victory",
+    "caption": "Victory, and the match's most valuable card.",
+    "alt": "The Victory screen after a match, with the match numbers and the most valuable card.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "main-menu",
+    "caption": "The main menu.",
+    "alt": "The main menu in neon signs: Fight, Deck Editor, Shop, Auction House, Card Library, Achievements, Turf Map and the daily quests.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "deck-builder",
+    "caption": "The deck builder.",
+    "alt": "The deck builder: the card collection on the left, the deck and its leader on the right.",
+    "w": 1600,
+    "h": 900,
+    "tags": [
+      "gallery"
+    ]
+  },
+  {
+    "name": "turf-zoom",
+    "caption": "The Frozen Lake and The Lab, up close on the turf map.",
+    "alt": "The turf map zoomed in on two districts: a frozen lake and a glowing green laboratory.",
     "w": 1600,
     "h": 900,
     "tags": [
@@ -92,64 +184,12 @@
     "tags": []
   },
   {
-    "name": "main-menu",
-    "caption": "The main menu.",
-    "alt": "The main menu in neon signs: Fight, Deck Editor, Shop, Auction House, Card Library, Achievements, Turf Map and the daily quests.",
-    "w": 1600,
-    "h": 900,
-    "tags": [
-      "gallery"
-    ]
-  },
-  {
-    "name": "deck-builder",
-    "caption": "The deck builder.",
-    "alt": "The deck builder: the card collection on the left, the deck of 40 cards and its leader on the right.",
-    "w": 1600,
-    "h": 900,
-    "tags": [
-      "gallery"
-    ]
-  },
-  {
-    "name": "ffa",
-    "caption": "Free-for-all: four players, one board.",
-    "alt": "A four-player match, each player with a corner of the board.",
-    "w": 1600,
-    "h": 900,
-    "tags": [
-      "gallery"
-    ]
-  },
-  {
-    "name": "victory",
-    "caption": "Victory.",
-    "alt": "The Victory screen after a match, with the match numbers and the most valuable card.",
-    "w": 1600,
-    "h": 900,
-    "tags": [
-      "gallery"
-    ]
-  },
-  {
     "name": "rank-up",
     "caption": "Ranking up to Underboss.",
     "alt": "The words RANK UP over the Underboss emblem.",
     "w": 1600,
     "h": 900,
-    "tags": [
-      "gallery"
-    ]
-  },
-  {
-    "name": "turf-zoom",
-    "caption": "The Frozen Lake and The Lab, up close on the turf map.",
-    "alt": "The turf map zoomed in on two districts: a frozen lake and a glowing green laboratory.",
-    "w": 1600,
-    "h": 900,
-    "tags": [
-      "gallery"
-    ]
+    "tags": []
   },
   {
     "name": "district",
@@ -157,8 +197,6 @@
     "alt": "A district's panel on the turf map: the clan that holds it and each clan's influence there this week.",
     "w": 1600,
     "h": 900,
-    "tags": [
-      "gallery"
-    ]
+    "tags": []
   }
 ]
