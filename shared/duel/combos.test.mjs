@@ -398,4 +398,44 @@ for (const heads of [false, true]) {
     }
 }
 
+// Destroying Hustles and Ambushes (break_ambush / shatter / wreck): with more of them than it destroys,
+// its player chooses which, one at a time (a face-down one shows nothing of itself; face-up ones first)
+{
+    const st = duel();
+    st.phase = 'deployment';
+    const c = put(st, 'player', 0, unit(st));
+    const set = (slot, extra = {}) => {
+        const a = st.makeCard({ id: `test_set${slot}`, name: `Set ${slot}`, cardType: 'ambush', clanTag: 'test', authority: 1, effects: [], ...extra });
+        a.face_down = !extra.subtype;
+        st.sides.opponent.field[slot] = a;
+        return a;
+    };
+    const s5 = set(5), s7 = set(7), s9 = set(9);
+    st.takeEvents();
+    st._doFx('player', 0, c, { do: 'break_ambush', amount: 1 });
+    st._flushAsks();
+    assert.equal(st.pending.key, 'wreck', 'three face-down cards, one to destroy: a choice');
+    assert.deepEqual(st.pending.options.map(o => o.id), ['5', '7', '9']);
+    assert.ok(st.pending.options.every(o => o.label === 'A FACE-DOWN CARD' && o.side === 'opponent'), 'nothing of a face-down card shows');
+    assert.ok(st.doAction('player', { kind: 'choose', option: '7' }));
+    assert.ok(st.sides.opponent.field[7] == null && st.sides.opponent.gutter.includes(s7), 'the one chosen is destroyed');
+    assert.ok(st.sides.opponent.field[5] === s5 && st.sides.opponent.field[9] === s9, 'the others stay');
+    // Two to destroy from two: no choice, both go
+    st._doFx('player', 0, c, { do: 'break_ambush', amount: 2 });
+    st._flushAsks();
+    assert.ok(Object.keys(st.pending).length === 0 && st.sides.opponent.field[5] == null && st.sides.opponent.field[9] == null);
+    // wreck: face-up (Continuous / Equip) and face-down alike, the face-up ones listed first; two picks for two
+    const d6 = set(6), u8 = set(8, { subtype: 'continuous', cardType: 'hustle' }), d9 = set(9);
+    st._doFx('player', 0, c, { do: 'wreck', amount: 2 });
+    st._flushAsks();
+    assert.deepEqual(st.pending.options.map(o => o.id), ['8', '6', '9']);
+    assert.equal(st.pending.options[0].label, String(u8.name).toUpperCase());
+    assert.ok(st.doAction('player', { kind: 'choose', option: '9' }));
+    assert.equal(st.pending.key, 'wreck', 'the second pick');
+    assert.deepEqual(st.pending.options.map(o => o.id), ['8', '6']);
+    assert.ok(st.doAction('player', { kind: 'choose', option: '6' }));
+    assert.ok(st.sides.opponent.field[6] == null && st.sides.opponent.field[9] == null && st.sides.opponent.field[8] === u8);
+    assert.ok(!d6.face_down || st.sides.opponent.gutter.includes(d6) && st.sides.opponent.gutter.includes(d9));
+}
+
 console.log('combos: ok');

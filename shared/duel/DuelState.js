@@ -2682,24 +2682,11 @@ export class DuelState {
             case 'shatter':
             case 'wreck': {
                 // The opponent's face-down cards in the back row (break_ambush), its face-up Continuous and
-                // Equip cards (shatter), or either (wreck), left to right
+                // Equip cards (shatter), or either (wreck): with more of them than it destroys, the player
+                // chooses which (_wreckPick)
                 const kind = String(e.do);
                 const hit = (a) => a != null && (kind === 'wreck' || !!a.face_down === (kind === 'break_ambush'));
-                this._withFoe(side, c, vs, (f) => BACK.some(b => hit(this.sides[f].field[b])), (foe) => {
-                    let k = n;
-                    for (const b of BACK) {
-                        const a = this.sides[foe].field[b];
-                        if (k <= 0 || !hit(a)) continue;
-                        this.sides[foe].field[b] = null;
-                        this.sides[foe].gutter.push(a);
-                        const up = !a.face_down;
-                        if (up) delete a.equipped_to;
-                        this._emit('ko', { side: foe, slot: b, card: clone(a) });
-                        this._effect(side, c, up ? `${c.name}: destroys ${a.name}` : `${c.name}: destroys a face-down card`, slot);
-                        k -= 1;
-                    }
-                    this._recalc();   // (what a face-up one gave is gone)
-                });
+                this._withFoe(side, c, vs, (f) => BACK.some(b => hit(this.sides[f].field[b])), (foe) => this._wreckPick(side, slot, c, foe, hit, n));
                 break;
             }
             case 'recover': {
@@ -3116,6 +3103,42 @@ export class DuelState {
         } else {
             for (const x of entries) this._effect(side, c, fn(x), slot);
         }
+    }
+
+    /** break_ambush / shatter / wreck: destroys k of foe's back-row cards that hit() picks. All of them when
+     *  there are no more than k; else the player chooses, one at a time (face-up ones listed first, the CPU's
+     *  pick; a face-down one shows nothing of itself). Same as _wreck_pick in duel_state.gd. */
+    _wreckPick(side, slot, c, foe, hit, k) {
+        if (k <= 0 || this.winner !== '') return;
+        const f = this.sides[foe];
+        const rest = BACK.filter(b => hit(f.field[b]));
+        if (!rest.length) return;
+        const destroy = (b) => {
+            const a = f.field[b];
+            f.field[b] = null;
+            f.gutter.push(a);
+            const up = !a.face_down;
+            if (up) delete a.equipped_to;
+            this._emit('ko', { side: foe, slot: b, card: clone(a) });
+            this._effect(side, c, up ? `${c.name}: destroys ${a.name}` : `${c.name}: destroys a face-down card`, slot);
+        };
+        if (rest.length <= k) {
+            for (const b of rest) destroy(b);
+            this._recalc();   // (what a face-up one gave is gone)
+            return;
+        }
+        rest.sort((a, b) => Number(!!f.field[a].face_down) - Number(!!f.field[b].face_down) || a - b);
+        const cards = new Map(rest.map(b => [b, f.field[b]]));
+        const options = rest.map(b => ({ id: String(b), label: f.field[b].face_down ? 'A FACE-DOWN CARD' : String(f.field[b].name).toUpperCase(), side: foe, slot: b }));
+        const ask = this._ask(side, 'wreck', `${c.name}: choose a card to destroy${k > 1 ? ` (${k} to go)` : ''}`, c, options, (choice) => {
+            const b = toInt(choice);
+            if (!cards.has(b) || f.field[b] !== cards.get(b)) return;
+            destroy(b);
+            this._recalc();
+            this._wreckPick(side, slot, c, foe, hit, k - 1);
+        });
+        // Shown later (after other prompts)? Only the cards still there are offered then
+        if (ask) ask.refresh = () => options.filter(o => f.field[toInt(o.id)] === cards.get(toInt(o.id)));
     }
 
     /** "Choose N" (count): up to N different ones, one at a time; each happens before the next is

@@ -161,8 +161,11 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     b.sides.opponent.field[8] = b.makeCard({ id: 'test_grunt', cardType: 'ambush' });
     b.sides.opponent.field[6].face_down = b.sides.opponent.field[8].face_down = true;   // (set, as Ambushes are)
     b._doFx('player', 0, b.cardAt('player', 0), { do: 'break_ambush', amount: 1 });
-    assert.equal(b.cardAt('opponent', 6), null, 'leftmost face-down card destroyed');
-    assert.ok(b.cardAt('opponent', 8), 'only one');
+    b._flushAsks();
+    assert.equal(b.pending.key, 'wreck', 'two face-down cards, one to destroy: its player chooses');
+    assert.ok(b.doAction('player', { kind: 'choose', option: '8' }));
+    assert.equal(b.cardAt('opponent', 8), null, 'the chosen face-down card destroyed');
+    assert.ok(b.cardAt('opponent', 6), 'only one');
 }
 
 // Triggers: when the opponent deploys; when you play a Hustle. Conditions: leader Awake, hand N+

@@ -3120,24 +3120,12 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			more.call(mini(n, FRONT.size()), more)
 		"break_ambush", "shatter", "wreck":
 			# The opponent's face-down cards in the back row (break_ambush), its face-up Continuous and
-			# Equip cards (shatter), or either (wreck), left to right
+			# Equip cards (shatter), or either (wreck): with more of them than it destroys, the player
+			# chooses which (_wreck_pick)
 			var kind := str(e.get("do", ""))
 			var hit := func(a) -> bool: return a != null and (kind == "wreck" or bool(a.get("face_down", false)) == (kind == "break_ambush"))
 			_with_foe(side, c, vs, func(f): return BACK.any(func(b): return hit.call(sides[f].field[b])), func(foe: String):
-				var k := n
-				for b in BACK:
-					var a = sides[foe].field[b]
-					if k <= 0 or not hit.call(a):
-						continue
-					sides[foe].field[b] = null
-					sides[foe].gutter.append(a)
-					var up: bool = not a.get("face_down", false)
-					if up:
-						a.erase("equipped_to")
-					_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
-					_effect(side, c, ("%s: destroys %s" % [c.name, a.name]) if up else ("%s: destroys a face-down card" % c.name), slot)
-					k -= 1
-				_recalc())   # (what a face-up one gave is gone)
+				_wreck_pick(side, slot, c, foe, hit, n))
 		"recover":
 			var back := _fx_take(side, c, e, s.gutter, "%s: choose a card to return to your hand" % c.name, func(card: Dictionary) -> bool:
 				card.downed = false
@@ -3502,6 +3490,52 @@ func _status_ticks(side: String) -> void:
 						if is_same(card_at(foe, x.slot), x.card):
 							_run_fx(foe, x.slot, x.card, "foe_burned", null, {"amount": took})
 					_run_lasting(foe, "foe_burned", null, {"amount": took})
+
+
+## break_ambush / shatter / wreck: destroys k of foe's back-row cards that hit picks. All of them when
+## there are no more than k; else the player chooses, one at a time (face-up ones listed first, the
+## CPU's pick; a face-down one shows nothing of itself). Same as _wreckPick in DuelState.js.
+func _wreck_pick(side: String, slot: int, c: Dictionary, foe: String, hit: Callable, k: int) -> void:
+	if k <= 0 or winner != "":
+		return
+	var f: Dictionary = sides[foe]
+	var rest: Array = BACK.filter(func(b): return hit.call(f.field[b]))
+	if rest.is_empty():
+		return
+	var destroy := func(b: int) -> void:
+		var a: Dictionary = f.field[b]
+		f.field[b] = null
+		f.gutter.append(a)
+		var up: bool = not a.get("face_down", false)
+		if up:
+			a.erase("equipped_to")
+		_emit("ko", {"side": foe, "slot": b, "card": a.duplicate(true)})
+		_effect(side, c, ("%s: destroys %s" % [c.name, a.name]) if up else ("%s: destroys a face-down card" % c.name), slot)
+	if rest.size() <= k:
+		for b in rest:
+			destroy.call(b)
+		_recalc()   # (what a face-up one gave is gone)
+		return
+	rest.sort_custom(func(x, y):
+		var dx := 1 if f.field[x].get("face_down", false) else 0
+		var dy := 1 if f.field[y].get("face_down", false) else 0
+		return dx < dy or (dx == dy and x < y))
+	var cards := {}
+	var options: Array = []
+	for b in rest:
+		cards[b] = f.field[b]
+		options.append({"id": str(b), "label": "A FACE-DOWN CARD" if f.field[b].get("face_down", false) else str(f.field[b].name).to_upper(),
+			"side": foe, "slot": b})
+	var ask = _ask(side, "wreck", "%s: choose a card to destroy%s" % [c.name, (" (%d to go)" % k) if k > 1 else ""], c, options, func(choice: String):
+		var b := int(choice)
+		if not cards.has(b) or not is_same(f.field[b], cards[b]):
+			return
+		destroy.call(b)
+		_recalc()
+		_wreck_pick(side, slot, c, foe, hit, k - 1))
+	# Shown later (after other prompts)? Only the cards still there are offered then
+	if ask is Dictionary:
+		ask.refresh = func() -> Array: return options.filter(func(o): return is_same(f.field[int(o.id)], cards[int(o.id)]))
 
 
 ## Apply a targeted effect. \`pool_kind\`: any | standing | downed | attackers (in ATK, standing).
