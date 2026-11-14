@@ -134,7 +134,9 @@ func _run() -> void:
 	var frames := 0
 	var started := Time.get_ticks_msec()
 	var noted := 0
-	while frames < 60 * 1800 and (summons < 6 or attacks < 6 or not set_activated):
+	# (also stops after 8 minutes: a long match at the ~145 frames a second it runs at headless would pass
+	# GitHub's 10-minute limit before the frame count)
+	while frames < 60 * 1800 and Time.get_ticks_msec() - started < 480000 and (summons < 6 or attacks < 6 or not set_activated):
 		await get_tree().process_frame
 		frames += 1
 		var d: DuelState = duel_screen.duel
