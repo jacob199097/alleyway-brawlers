@@ -251,6 +251,8 @@ const FX_CARD_SAMPLES := [
 	[{"do": "draw", "amount": 1, "per": "hustles_turn"}],
 	[{"do": "plunder", "from": "hand", "amount": 2}, {"when": "gutter", "do": "damage", "amount": 200, "cost": "exile_self"}],
 	[{"do": "plunder", "from": "field", "target": "enemy"}],
+	# BLINDS the attacker: that attack is a coin flip already
+	[{"do": "blind", "target": "attacker"}],
 ]
 
 

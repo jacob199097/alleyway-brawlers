@@ -1308,12 +1308,13 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		att.has_attacked = false
 		att.second_attack = turn
 	# BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
-	if int(att.get("blind_until", 0)) >= turn and not _luck_gate(side, from, att, {"luck": "coin"}):
+	var blind := int(att.get("blind_until", 0)) >= turn
+	if blind and not _luck_gate(side, from, att, {"luck": "coin"}):
 		_emit("miss", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
 		_effect(side, att, "%s is BLIND: its attack misses" % att.name, from)
 		return true
 	_emit("attack", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
-	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0}
+	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0, "blind_flipped": blind}
 	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
 	if not _passive(side, from, att, "pierce").is_empty() or rules.get("pierce", false):
 		ctx.pierce = true
@@ -1502,8 +1503,23 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 		go.call()
 
 
+## BLINDED since its attack began (an Ambush, the attacked card's own effect): that attack gets its coin
+## flip too, once. true: tails, it misses and the attack ends.
+func _atk_blind_miss(ctx: Dictionary) -> bool:
+	if ctx.get("blind_flipped", false) or int(ctx.att.get("blind_until", 0)) < turn:
+		return false
+	ctx.blind_flipped = true
+	if _luck_gate(ctx.side, ctx.from, ctx.att, {"luck": "coin"}):
+		return false
+	_emit("miss", _with_foe_key({"side": ctx.side, "from": ctx.from, "target": ctx.target, "card": ctx.att.duplicate(true)}, ctx.foe))
+	_effect(ctx.side, ctx.att, "%s is BLIND: its attack misses" % ctx.att.name, ctx.from)
+	return true
+
+
 func _atk_resolve(ctx: Dictionary) -> void:
 	_recalc()   # (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
+	if _atk_blind_miss(ctx):
+		return
 	var side: String = ctx.side
 	var foe: String = ctx.foe
 	var from: int = ctx.from
@@ -1550,6 +1566,8 @@ func _atk_resolve(ctx: Dictionary) -> void:
 			_do_fx(foe, target, def, e, vs)
 	# The defender's effects may have removed or stopped the attacker (or itself)
 	if winner != "" or card_at(side, from) != att or att.downed or card_at(foe, target) != def:
+		return
+	if _atk_blind_miss(ctx):
 		return
 	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
 	var bonus: int = ctx.bonus + _brawl_bonus(side, from, att, def)

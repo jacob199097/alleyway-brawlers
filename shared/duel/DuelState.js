@@ -1133,13 +1133,14 @@ export class DuelState {
             att.second_attack = this.turn;
         }
         // BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
-        if (toInt(att.blind_until ?? 0) >= this.turn && !this._luckGate(side, from, att, { luck: 'coin' })) {
+        const blind = toInt(att.blind_until ?? 0) >= this.turn;
+        if (blind && !this._luckGate(side, from, att, { luck: 'coin' })) {
             this._emit('miss', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
             this._effect(side, att, `${att.name} is BLIND: its attack misses`, from);
             return true;
         }
         this._emit('attack', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
-        const ctx = { side, foe, from, target, att, bonus: 0 };
+        const ctx = { side, foe, from, target, att, bonus: 0, blindFlipped: blind };
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
         if (this._passive(side, from, att, 'pierce') || this.rules.pierce) ctx.pierce = true;
         const defNow = target >= 0 ? this.cardAt(foe, target) : null;
@@ -1286,8 +1287,20 @@ export class DuelState {
             });
     }
 
+    /** BLINDED since its attack began (an Ambush, the attacked card's own effect): that attack gets its coin
+     *  flip too, once (same as _atk_blind_miss in duel_state.gd). true: tails, it misses and the attack ends. */
+    _atkBlindMiss(ctx) {
+        if (ctx.blindFlipped || toInt(ctx.att.blind_until ?? 0) < this.turn) return false;
+        ctx.blindFlipped = true;
+        if (this._luckGate(ctx.side, ctx.from, ctx.att, { luck: 'coin' })) return false;
+        this._emit('miss', this._withFoeKey({ side: ctx.side, from: ctx.from, target: ctx.target, card: clone(ctx.att) }, ctx.foe));
+        this._effect(ctx.side, ctx.att, `${ctx.att.name} is BLIND: its attack misses`, ctx.from);
+        return true;
+    }
+
     _atkResolve(ctx) {
         this._recalc();   // (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
+        if (this._atkBlindMiss(ctx)) return;
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
             const dmg = Math.max(0, att.attack + ctx.bonus);
@@ -1326,6 +1339,7 @@ export class DuelState {
         }
         // The defender's effects may have removed or stopped the attacker (or itself)
         if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
+        if (this._atkBlindMiss(ctx)) return;
         this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
         let bonus = ctx.bonus + this._brawlBonus(side, from, att, def);
         if (def.effectKey === 'bulwark') {

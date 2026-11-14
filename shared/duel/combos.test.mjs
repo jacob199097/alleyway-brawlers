@@ -368,4 +368,34 @@ assert.equal(friend.attack, 1200, '"when another of your characters is Downed" h
     assert.ok(!foe.blind_until);
 }
 
+// BLINDED during its own attack (an Ambush like Dirty Trick): that attack is a coin flip too, once
+for (const heads of [false, true]) {
+    const st = duel();
+    st.phase = 'brawl';
+    st.turn = 5;
+    st.active = 'opponent';
+    const c = put(st, 'player', 0, unit(st, [], 1000, 1000));
+    const trick = st.makeCard({ id: 'test_trick', name: 'Trick', cardType: 'ambush', clanTag: 'test', authority: 1,
+        effects: [{ when: 'defend', do: 'blind', target: 'attacker' }] });
+    trick.face_down = true;
+    st.sides.player.field[5] = trick;
+    const foe = put(st, 'opponent', 2, unit(st, [], 3000, 1000));
+    st.takeEvents();
+    let flips = 0;
+    st._luck = () => { flips += 1; return heads ? 0.1 : 0.9; };
+    assert.ok(st.doAction('opponent', { kind: 'attack', from: 2, target: 0 }));
+    assert.equal(st.pending.key, 'ambush');
+    assert.ok(st.doAction('player', { kind: 'choose', option: st.pending.options[0].id }), 'springs the Trick');
+    const evs = st.takeEvents();
+    assert.ok(foe.blind_until >= 5, 'the attacker is BLIND');
+    assert.equal(flips, 1, 'one coin, for this attack');
+    if (heads) {
+        assert.ok(!evs.some(e => e.type === 'miss'));
+        assert.ok(c.downed || st.cardAt('player', 0) !== c, 'heads: it hits');
+    } else {
+        assert.ok(evs.some(e => e.type === 'miss' && e.from === 2 && e.target === 0), 'tails: it misses');
+        assert.ok(st.cardAt('player', 0) === c && !c.downed, 'its target is untouched');
+    }
+}
+
 console.log('combos: ok');
