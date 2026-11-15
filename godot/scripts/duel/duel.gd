@@ -2288,6 +2288,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_echo(ev)
 		"debt":
 			await _ev_debt(ev)
+		"combo":
+			await _ev_combo(ev)
 		"contract":
 			await _ev_contract(ev)
 		"leader_hit":
@@ -2827,6 +2829,26 @@ func _contract_tag(c: Dictionary) -> void:
 	head.text = "CONTRACT  ·  %s" % ("DONE ✓" if done else "%d KARAT" % int(c.get("payout", 0)))
 	head.add_theme_color_override("font_color", GREEN if done else GOLD)
 	body.text = str(c.get("text", "")) + ("" if done or progress == "" else "   %s" % progress)
+
+
+## COMBO: a card played in a chain of its clan this turn: "COMBO x2" bursts off it in its clan's colour.
+func _ev_combo(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var n := int(ev.get("n", 2))
+	var v: CardView = field[side].get(int(ev.slot)) if int(ev.slot) >= 0 else null
+	var at: Vector2 = v.position if v else Vector2(1080, DIVIDER_Y)
+	var col := _clan_color(ev.card)
+	Sfx.play("promote", 1.0 + 0.15 * n, -4.0)
+	Sfx.play("hit", 1.6, -9.0)
+	for i in mini(n, 4):
+		_ring(at, col.lightened(0.15 * i), 0.8 + 0.45 * i)
+	_burst(at, col, 18 + 8 * n, 300 + 60 * n, 0.6, -200.0)
+	if v:
+		_pulse_glow(v, col)
+		v.kick(Vector2(0, -1 if side == "player" else 1), 8.0)
+	_float_text(at + Vector2(0, -130 if side == "player" else 130), "COMBO ×%d" % n, col.lightened(0.25), 40 + 4 * mini(n, 4))
+	shake(2 + n)
+	await _wait(0.45)
 
 
 ## DEBT: a stamp on the opponent's Authority: their next card costs more.

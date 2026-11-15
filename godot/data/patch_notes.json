@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.159",
+        "notes": [
+            "COMBO, a new trigger for cards: a COMBO line happens when the card is played right after another card of its clan this turn (a character from your hand or a Hustle), and COMBO ×3 on the third in a row. Plan the order you play your cards in.",
+            "Two new Pirates cards, Stormcaller Veyra and Mimic Chest, and a balance pass over 29 cards. Haze and Cinderblock now TAUNT, Wren and Nix have SHROUD, and The Drowned Sovereign deals in DEBT."
+        ]
+    },
+    {
         "version": "0.9.158",
         "notes": [
             "Cards that are immune to statuses can now also ignore BRACE (no ATK lost), TAUNT (they attack whoever they like) and SHROUD (they can attack and target a SHROUDED card).",

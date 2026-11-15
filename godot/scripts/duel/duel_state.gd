@@ -1148,6 +1148,7 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 	_spend(side, cost_of(side, c))
 	_pay_debt(side)
 	sides[side].hand.remove_at(i)
+	var chain := _combo_chain(side, c)
 	var tribute_atk := 0
 	for slot_ in tribute_list(tribute):   # sacrificed, or deployed over
 		var t: Dictionary = card_at(side, slot_)
@@ -1173,9 +1174,33 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 		c.tribute_atk = tribute_atk
 	_emit("summon", {"side": side, "slot": slot, "card": c.duplicate(true)})
 	_on_deploy(side, slot, c)
+	_combo_fx(side, slot, c, chain)
 	if winner == "":   # (the others may flip a Continuous Ambush now)
 		_offer_flips()
 	return true
+
+
+## COMBO: a card played (a character from the hand, or a Hustle) right after another card of its clan this
+## turn continues a chain (Neutral cards and Ambushes set face-down don't: a set card's clan stays hidden).
+## -> how long the chain is now, this card included. Same as _comboChain in DuelState.js.
+func _combo_chain(side: String, c: Dictionary) -> int:
+	var s: Dictionary = sides[side]
+	var clan := str(c.get("clanTag", ""))
+	var own := clan != "" and clan != "neutral"
+	var cur = s.get("combo")
+	var n := 0
+	if own:
+		n = int(cur.n) + 1 if cur is Dictionary and int(cur.turn) == turn and str(cur.clan) == clan else 1
+	s.combo = {"turn": turn, "clan": clan if own else "", "n": n}
+	return n
+
+
+## Its COMBO effects (when "combo"; combo_n: the chain it needs, 2 by default): a chain of n just played.
+func _combo_fx(side: String, slot: int, c: Dictionary, n: int) -> void:
+	if n < 2 or winner != "" or not _fx(c, "combo").any(func(e): return n >= maxi(2, int(e.get("combo_n", 2)))):
+		return
+	_emit("combo", {"side": side, "slot": slot, "n": n, "card": c.duplicate(true)})
+	_run_fx(side, slot, c, "combo", null, {"combo": n})
 
 
 func _set_ambush(side: String, uid: int, slot: int) -> bool:
@@ -1221,6 +1246,7 @@ func _hustle(side: String, uid: int) -> bool:
 		return false
 	_spend(side, cost_of(side, c))
 	_pay_debt(side)
+	var chain := _combo_chain(side, c)
 	if i >= 0:
 		s.hand.remove_at(i)
 	else:
@@ -1247,16 +1273,19 @@ func _hustle(side: String, uid: int) -> bool:
 				_emit("equip", {"side": side, "slot": b, "target_side": x.get("side", on), "target_slot": x.slot, "card": c.duplicate(true)})
 				_effect(side, c, "%s is equipped to %s" % [c.name, x.card.name], b)
 				_recalc()
-				_run_fx(side, b, c, "deploy"))   # (an Equip's effects come once it's on its character)
+				_run_fx(side, b, c, "deploy")   # (an Equip's effects come once it's on its character)
+				_combo_fx(side, b, c, chain))
 		else:
 			_run_fx(side, b, c, "deploy")
+			_combo_fx(side, b, c, chain)
 	else:
 		c.face_down = false
 		s.gutter.append(c)
 		_emit("hustle", {"side": side, "card": c.duplicate(true), "slot": set, "set": true} if set >= 0 else {"side": side, "card": c.duplicate(true)})
-		# A Card Forge Hustle: all of its effects happen when it's played
+		# A Card Forge Hustle: all of its effects happen when it's played (its COMBO ones on a chain)
 		if not c.get("effects", []).is_empty():
 			_run_fx(side, NO_SLOT, c, "*")
+		_combo_fx(side, NO_SLOT, c, chain)
 	if int(s.get("hustle_turn", 0)) != turn:
 		s.hustle_turn = turn
 		s.hustles = 0
@@ -2583,7 +2612,7 @@ func _fx(c, when: String) -> Array:
 	# that stand it back up ("At the end of your turn: if this card is Downed, it stands back up")
 	var downed: bool = c.get("downed", false) and not when in ["self_downed", "self_ko"]
 	for e in _fold_if_done(c.get("effects", [])):
-		if e is Dictionary and (str(e.get("when", "")) != "gutter" if when == "*" else str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes), not a Gutter ability
+		if e is Dictionary and (not str(e.get("when", "")) in ["gutter", "combo"] if when == "*" else str(e.get("when", "")) == when):   # "*": all (Hustles, Ambushes), not a Gutter ability
 			if silenced and str(e.get("do", "")) != "promote":
 				continue
 			# (...but a "?" card keeps the ATK and DEF its own passive gives it: Downed isn't SILENCE)
@@ -2894,6 +2923,8 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 		# when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
 		var wc := str(e.get("when_clan", e.get("clan", "")))
 		if (when == "ally_deployed" or when == "dormant_ally_deployed") and wc != "" and (def == null or def.get("clanTag") != wc):
+			continue
+		if when == "combo" and int(vs.get("combo", 0)) < maxi(2, int(e.get("combo_n", 2))):
 			continue
 		var key := "%s%d" % [when, k]
 		opts = opts.filter(func(o): return _fx_cond(side, slot, o, def))

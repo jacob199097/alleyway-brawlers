@@ -982,6 +982,7 @@ export class DuelState {
         this._spend(side, this.costOf(side, c));
         this._payDebt(side);
         this.sides[side].hand.splice(i, 1);
+        const chain = this._comboChain(side, c);
         let tributeAtk = 0;
         for (const slot_ of DuelState.tributeList(tribute)) {   // sacrificed, or deployed over
             const t = this.cardAt(side, slot_);
@@ -1005,8 +1006,28 @@ export class DuelState {
         this.sides[side].field[slot] = c;
         this._emit('summon', { side, slot, card: clone(c) });
         this._onDeploy(side, slot, c);
+        this._comboFx(side, slot, c, chain);
         if (this.winner === '') this._offerFlips();   // (the others may flip a Continuous Ambush now)
         return true;
+    }
+
+    /** COMBO: a card played (a character from the hand, or a Hustle) right after another card of its clan this
+     *  turn continues a chain (Neutral cards and Ambushes set face-down don't: a set card's clan stays hidden).
+     *  → how long the chain is now, this card included. Same as _combo_chain in duel_state.gd. */
+    _comboChain(side, c) {
+        const s = this.sides[side];
+        const clan = String(c.clanTag ?? '');
+        const own = clan !== '' && clan !== 'neutral';
+        const n = own && s.combo && toInt(s.combo.turn) === this.turn && s.combo.clan === clan ? toInt(s.combo.n) + 1 : own ? 1 : 0;
+        s.combo = { turn: this.turn, clan: own ? clan : '', n };
+        return n;
+    }
+
+    /** Its COMBO effects (when "combo"; combo_n: the chain it needs, 2 by default): a chain of n just played. */
+    _comboFx(side, slot, c, n) {
+        if (n < 2 || this.winner !== '' || !this._fx(c, 'combo').some(e => n >= Math.max(2, toInt(e.combo_n ?? 2)))) return;
+        this._emit('combo', { side, slot, n, card: clone(c) });
+        this._runFx(side, slot, c, 'combo', null, { combo: n });
     }
 
     _setAmbush(side, uid, slot) {
@@ -1045,6 +1066,7 @@ export class DuelState {
         if (c == null || !this.canHustle(side, c)) return false;
         this._spend(side, this.costOf(side, c));
         this._payDebt(side);
+        const chain = this._comboChain(side, c);
         if (i >= 0) s.hand.splice(i, 1);
         else s.field[set] = null;
         if (DuelState.isLasting(c)) {
@@ -1066,14 +1088,19 @@ export class DuelState {
                     this._effect(side, c, `${c.name} is equipped to ${x.card.name}`, b);
                     this._recalc();
                     this._runFx(side, b, c, 'deploy');   // (an Equip's effects come once it's on its character)
+                    this._comboFx(side, b, c, chain);
                 });
-            } else this._runFx(side, b, c, 'deploy');
+            } else {
+                this._runFx(side, b, c, 'deploy');
+                this._comboFx(side, b, c, chain);
+            }
         } else {
             c.face_down = false;
             s.gutter.push(c);
             this._emit('hustle', set >= 0 ? { side, card: clone(c), slot: set, set: true } : { side, card: clone(c) });
-            // A Card Forge Hustle: all of its effects happen when it's played
+            // A Card Forge Hustle: all of its effects happen when it's played (its COMBO ones on a chain)
             if ((c.effects || []).length) this._runFx(side, NO_SLOT, c, '*');
+            this._comboFx(side, NO_SLOT, c, chain);
         }
         if (toInt(s.hustle_turn ?? 0) !== this.turn) { s.hustle_turn = this.turn; s.hustles = 0; }
         s.hustles = toInt(s.hustles ?? 0) + 1;   // (Hustles played this turn: "if"/"for each")
@@ -2232,7 +2259,7 @@ export class DuelState {
         // ...but a "?" card keeps the ATK and DEF its own passive gives it (Downed isn't SILENCE)
         const ownStats = (e) => when === 'passive' && !!c.varStats && String(e.do ?? '') === 'buff' && ['', 'self'].includes(String(e.target ?? ''));
         // "*": all of them (Hustles, Ambushes), but a Gutter ability waits for the Gutter
-        return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' ? String(e.when ?? '') !== 'gutter' : String(e.when ?? '') === when)
+        return foldIfDone(c.effects || []).filter(e => e && typeof e === 'object' && (when === '*' ? !['gutter', 'combo'].includes(String(e.when ?? '')) : String(e.when ?? '') === when)
             && !(silenced && String(e.do ?? '') !== 'promote')
             && !(downed && !(String(e.do ?? '') === 'stand' && String(e.target ?? '') === 'self') && !ownStats(e)));
     }
@@ -2471,6 +2498,7 @@ export class DuelState {
             // when_clan: only when an ally of that clan is deployed (without it, the effect's clan as before)
             const wc = String(e.when_clan ?? e.clan ?? '');
             if ((when === 'ally_deployed' || when === 'dormant_ally_deployed') && wc !== '' && (def == null || def.clanTag !== wc)) continue;
+            if (when === 'combo' && toInt(vs.combo ?? 0) < Math.max(2, toInt(e.combo_n ?? 2))) continue;
             opts = opts.filter(o => this._fxCond(side, slot, o, def));
             if (!opts.length || !this._fxCount(c, `${when}${k}`, e, vs)) continue;
             if (this._fxOnce(c, `${when}${k}`, e)) {

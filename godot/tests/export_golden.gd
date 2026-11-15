@@ -228,6 +228,9 @@ const FX_SAMPLES := [
 	# "immune" that also ignores BRACE / TAUNT / SHROUD; "Only if an enemy is SUPPRESSED" (foe_st_<status>)
 	[{"when": "passive", "do": "immune", "statuses": ["stun", "taunt", "shroud", "brace"]}, {"when": "turn_end", "do": "draw", "amount": 1, "if": "foe_st_suppress"}],
 	[{"when": "deploy", "do": "suppress", "target": "enemies", "amount": 200}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "if": "foe_st_corrode"}],
+	# COMBO: played right after another card of its clan this turn (combo_n 3: the third in a row)
+	[{"when": "combo", "do": "draw", "amount": 1}, {"when": "combo", "do": "damage", "amount": 300, "combo_n": 3}],
+	[{"when": "combo", "do": "buff", "target": "allies", "atk": 200}, {"when": "passive", "do": "buff", "target": "self", "atk": 100}],
 ]
 
 
@@ -270,6 +273,7 @@ const FX_CARD_SAMPLES := [
 	[{"do": "confuse", "target": "attacker"}, {"do": "corrode", "target": "enemy", "amount": 300}],
 	[{"do": "damage", "amount": 200, "echo": true}, {"do": "debt", "amount": 2}],
 	[{"do": "rally", "amount": 400}],
+	[{"do": "damage", "amount": 200}, {"when": "combo", "do": "draw", "amount": 2}],
 ]
 
 
@@ -366,6 +370,11 @@ func _init() -> void:
 						deck[i] = spec
 					elif kind in ["hustle", "ambush"]:
 						deck[i] = {"id": deck[i], "effectKey": "", "effects": FX_CARD_SAMPLES[rng.randi_range(0, FX_CARD_SAMPLES.size() - 1)]}
+				if g % 8 == 3:   # one clan's cards all through (COMBO chains: played one after another)
+					for i in deck.size():
+						if deck[i] is String:
+							deck[i] = {"id": deck[i]}
+						deck[i].clanTag = "pirates"
 		var first: String = seats[g % seats.size()] if seats.size() > 2 else ("player" if g % 2 == 0 else "opponent")
 		var levels := {}
 		for i in seats.size():

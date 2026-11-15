@@ -222,7 +222,9 @@ func _keyword_fx() -> void:
 			["heist", {"side": "player", "slot": a, "amount": 1}],
 			["echo", {"side": "player", "slot": a, "card": card}],
 			["echo", {"side": "player", "slot": -10, "card": card}],
-			["debt", {"side": "opponent", "amount": 2}]]:
+			["debt", {"side": "opponent", "amount": 2}],
+			["combo", {"side": "player", "slot": a, "n": 3, "card": card}],
+			["combo", {"side": "player", "slot": -10, "n": 2, "card": card}]]:
 		d._emit(ev[0], ev[1])   # (as the rules send them)
 	duel_screen._queue.append_array(d.take_events())
 	duel_screen._pump()

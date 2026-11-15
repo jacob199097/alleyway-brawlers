@@ -49,6 +49,7 @@ const LIST := {
 	"SHROUD": [Color("a29ec4"), "SHROUD: until it attacks, it can't be attacked and your opponent's effects can't choose it. It doesn't block direct attacks. Once it attacks, the SHROUD is gone."],
 	"CORRODE": [Color("c8bb52"), "CORRODE X: at the start of its owner's next 3 turns, it loses X DEF. The loss lasts until it leaves the field."],
 	"DEBT": [Color("e89a5c"), "DEBT X: the next card your opponent plays costs X more Authority (one they play before the end of their next turn)."],
+	"COMBO": [Color("ffd43b"), "COMBO: it happens only if the card you played just before this one, this turn, was of the same clan (a character from your hand or a Hustle; Neutral cards break a chain). COMBO ×3: the two before it were."],
 	"CONFUSE": [Color("ff9fd6"), "CONFUSE: until the end of its owner's next turn, each time it attacks a coin is flipped. Heads, it attacks as chosen. Tails, it attacks a random other target instead: another it could have attacked, or one of its own side's characters (its player loses the Morale as usual)."],
 }
 ## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
@@ -70,7 +71,7 @@ const CB_GROUPS := [
 	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL", "CORRODE", "DEBT"]],   # damage and weakening
 	[Color("eb9cd0"), ["STUN", "BLIND", "CONFUSE", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED", "TAUNT"]],   # holding back
 	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS", "BRACE", "SHROUD"]],   # protection and recovery
-	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE", "RECKLESS", "RALLY", "HEIST", "ECHO"]],   # card rules
+	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE", "RECKLESS", "RALLY", "HEIST", "ECHO", "COMBO"]],   # card rules
 ]
 const CB_STATUS := {"DOWNED": Color("ffa630"), "RESTING": Color("f0e442"), "GUARDED": Color("6cc4ff")}
 

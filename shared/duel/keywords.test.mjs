@@ -286,4 +286,49 @@ assert.ok(!st._fxCond('player', 0, { if: 'foe_st_corrode' }, null), 'but none is
 assert.ok(!st._fxCond('opponent', 0, { if: 'foe_st_suppress' }, null), "the SUPPRESSED one is the opponent's own");
 void pinned;
 
+// COMBO: a card played right after another of its clan this turn (from the hand: a character or a Hustle)
+const inHand = (st, effects, clan = 'test', extra = {}) => { const c = unit(st, effects, 1000, 1000, { clanTag: clan, ...extra }); st.sides.player.hand.push(c); return c; };
+const play = (st, c, slot) => st.doAction('player', c.cardType === 'hustle' ? { kind: 'hustle', uid: c.uid } : { kind: 'summon', uid: c.uid, slot, position: 'atk' });
+st = duel();
+st.sides.player.authority = 15;
+const drawCombo = [{ when: 'combo', do: 'draw', amount: 1 }];
+let opener = inHand(st, drawCombo), second = inHand(st, drawCombo), third = inHand(st, [{ when: 'combo', do: 'damage', amount: 300, combo_n: 3 }]);
+let handBefore = st.sides.player.hand.length;
+assert.ok(play(st, opener, 0));
+answerAll(st);
+assert.equal(st.sides.player.hand.length, handBefore - 1, 'the first card of a chain: no COMBO');
+assert.ok(play(st, second, 1));
+answerAll(st);
+assert.equal(st.sides.player.hand.length, handBefore - 2 + 1, 'the second in a row: its COMBO draws');
+assert.ok(st.takeEvents().some(e => e.type === 'combo' && e.n === 2), 'the game is told: COMBO x2');
+assert.ok(play(st, third, 2));
+answerAll(st);
+assert.equal(st.sides.opponent.morale, 6000 - 300, 'COMBO x3 on the third in a row');
+// another clan (or a Neutral card) in between starts it again; so does a new turn
+st = duel();
+st.sides.player.authority = 15;
+const c1 = inHand(st, []), cx = inHand(st, [], 'elsewhere'), c2 = inHand(st, drawCombo), cn = inHand(st, [], 'neutral'), c3 = inHand(st, drawCombo);
+handBefore = st.sides.player.hand.length;
+for (const [c, slot] of [[c1, 0], [cx, 1], [c2, 2], [cn, 3], [c3, 4]]) { assert.ok(play(st, c, slot)); answerAll(st); }
+assert.equal(st.sides.player.hand.length, handBefore - 5, 'no COMBO: the chain broke each time');
+// a Hustle continues a chain (its COMBO effects aren't part of its others), and its COMBO ones happen on it
+st = duel();
+st.sides.player.authority = 15;
+const starter = inHand(st, []);
+const trickCombo = st.makeCard({ id: 'test_combo_h', name: 'Combo Trick', cardType: 'hustle', clanTag: 'test', authority: 0,
+    effects: [{ do: 'damage', amount: 100 }, { when: 'combo', do: 'damage', amount: 400 }] });
+st.sides.player.hand.push(trickCombo);
+const lone = st.makeCard({ id: 'test_combo_h2', name: 'Lone Trick', cardType: 'hustle', clanTag: 'test', authority: 0,
+    effects: [{ do: 'damage', amount: 100 }, { when: 'combo', do: 'damage', amount: 400 }] });
+const st2 = duel();
+st2.sides.player.hand.push(st2.makeCard({ ...lone, id: 'test_combo_h2' }));
+assert.ok(st2.doAction('player', { kind: 'hustle', uid: st2.sides.player.hand[0].uid }));
+answerAll(st2);
+assert.equal(st2.sides.opponent.morale, 5900, 'played first: just its own effect');
+assert.ok(play(st, starter, 0));
+answerAll(st);
+assert.ok(play(st, trickCombo));
+answerAll(st);
+assert.equal(st.sides.opponent.morale, 6000 - 100 - 400, 'after another of its clan: its COMBO too');
+
 console.log('keywords: all passed');
