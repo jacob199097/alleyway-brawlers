@@ -7,7 +7,7 @@
  * postMatch.js counts each player's Ranked games (players.season_ranked) and keeps the most Rank Points
  * they've had (players.season_peak_points). When it ends (endSeason, run by backend/scripts/season.mjs):
  *   - everyone who played Ranked in it gets a player_seasons row: the highest rank they reached, and
- *     its reward (REWARDS; Legend: the season's prize card too), which they claim in the game;
+ *     its reward (REWARDS; Kingpin and Legend: the season's prize card too), which they claim in the game;
  *   - every rank drops SOFT_RESET_TIERS ranks, to the bottom of that rank, and the counts start again;
  *   - the next season starts.
  * Season 0 is the pre-launch season: it ends before the launch wipe, which keeps player_seasons, so
@@ -29,7 +29,10 @@ async function current(db = pool) {
     return s || null;
 }
 
-/** A tier's reward, with the season's prize card for Legend ({karat, free_packs, cards: [game ids]}). */
+/** The ranks whose reward includes the season's prize card, lowest first (['Kingpin', 'Legend']). */
+const prizeRanks = () => Object.keys(REWARDS).filter((t) => REWARDS[t].prize).map((t) => TIER_NAMES[t] || t);
+
+/** A tier's reward, with the season's prize card for the prize ranks ({karat, free_packs, cards: [game ids]}). */
 async function rewardFor(tier, season) {
     const r = REWARDS[tier] || REWARDS.rookie;
     const cards = r.prize ? (await shared()).seasonPrize(season) : [];
@@ -82,7 +85,7 @@ async function claim(playerId, season) {
         const { rows: [p] } = await client.query(
             'UPDATE players SET karat = karat + $2, free_packs = free_packs + $3 WHERE id = $1 RETURNING karat, free_packs',
             [playerId, Number(reward.karat) || 0, Number(reward.free_packs) || 0]);
-        // (a Legend reward recorded before the season's prize card was in the game: the card as it is now)
+        // (a prize reward recorded before the season's prize card was in the game: the card as it is now)
         const prizeIds = reward.prize && !(reward.cards || []).length ? (await shared()).seasonPrize(season) : reward.cards || [];
         const cards = [];
         for (const id of prizeIds) {
@@ -161,4 +164,4 @@ async function endSeason({ name, subtitle = '', weeks = DEFAULT_WEEKS } = {}, ap
     }
 }
 
-module.exports = { current, status, unclaimed, claim, endSeason, softReset, rewardFor, TIER_NAMES };
+module.exports = { current, status, unclaimed, claim, endSeason, softReset, rewardFor, prizeRanks, TIER_NAMES };

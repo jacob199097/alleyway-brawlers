@@ -31,10 +31,51 @@ static func reward_text(reward: Dictionary) -> String:
 	var t := UI.reward_text(reward)
 	var cards: Array = reward.get("cards", []) if reward.get("cards") is Array else []
 	if not cards.is_empty():
-		t += "  ·  Prize card: %s" % str(CardDB.get_card(str(cards[0])).get("name", "a Legend-only card"))
+		t += "  ·  Prize card: %s" % str(CardDB.get_card(str(cards[0])).get("name", "a season prize card"))
 	elif reward.get("prize", false):
-		t += "  ·  a Legend-only prize card"
+		t += "  ·  a season prize card (still being made)"
 	return t
+
+
+## The prize card itself, as a card: a click or tap shows it full size. null if it isn't in the game yet.
+static func _prize_tile(parent: Control, id: String, size: Vector2) -> CardTile:
+	var card := CardDB.get_card(id)
+	if card.is_empty():
+		return null
+	var tile := CardTile.make(card, size)
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tile.pressed.connect(func(t: CardTile): UI.card_zoom(parent, t.card))
+	tile.zoomed.connect(func(t: CardTile): UI.card_zoom(parent, t.card))
+	return tile
+
+
+## Beside the ranks: the season's prize card and the ranks that win it (Kingpin and Legend), or null.
+static func _prize_column(parent: Control, tiers: Array) -> Control:
+	var id := ""
+	var ranks: Array = []
+	for t in tiers:   # (Legend first)
+		var cards = t.get("reward", {}).get("cards") if t.get("reward") is Dictionary else null
+		if cards is Array and not cards.is_empty():
+			id = str(cards[0])
+			ranks.push_front(str(t.get("name", t.get("tier", ""))))
+	var tile := _prize_tile(parent, id, Vector2(230, 326))
+	if tile == null:
+		return null
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	var head := UI.label("SEASON PRIZE CARD", 20, UI.GOLD, true)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(head)
+	v.add_child(tile)
+	var how := UI.label("Reach %s this season to win it. Not in packs, crafting or the Auction House.
+%s it to see it up close." % [" or ".join(ranks), "Tap" if Game.mobile() else "Click"], 16, UI.MUTED)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD
+	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	how.custom_minimum_size = Vector2(270, 0)
+	v.add_child(how)
+	return v
 
 
 ## What each rank pays this season, the player's best rank marked.
@@ -74,8 +115,15 @@ static func rewards(parent: Control, s: Dictionary) -> void:
 		v.add_child(UI.label("%d+ RP  ·  %s" % [int(t.get("min", 0)), reward_text(t.get("reward", {}) if t.get("reward") is Dictionary else {})], 18, Color(0.88, 0.88, 0.96)))
 		list.add_child(row)
 	list.custom_minimum_size = Vector2(900, 0)
-	col.add_child(list)
-	col.move_child(list, 3)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var body := HBoxContainer.new()   # (the ranks, and the prize card beside them)
+	body.add_theme_constant_override("separation", 20)
+	body.add_child(list)
+	var prize := _prize_column(parent, tiers)
+	if prize:
+		body.add_child(prize)
+	col.add_child(body)
+	col.move_child(body, 3)
 	await parent.get_tree().process_frame
 	var p: Control = dlg.get_child(0)
 	p.reset_size()
@@ -98,10 +146,24 @@ static func claim_waiting(parent: Control, s: Dictionary = {}) -> void:
 				"" if int(u.get("ranked_games", 0)) == 1 else "es", reward_text(reward)],
 			[["CLAIM", func(): done[0] = true, UI.GREEN]], RANK_COLORS.get(tier, UI.GOLD))
 		var col: VBoxContainer = dlg.get_child(0).get_child(0)
+		var top := HBoxContainer.new()   # (the rank's emblem, and the prize card it won)
+		top.alignment = BoxContainer.ALIGNMENT_CENTER
+		top.add_theme_constant_override("separation", 40)
 		var emblem := UI.texture_rect(UI.tex("ranks/%s.png" % tier), Vector2(150, 150))
-		emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		col.add_child(emblem)
-		col.move_child(emblem, 1)
+		emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		top.add_child(emblem)
+		var cards: Array = reward.get("cards", []) if reward.get("cards") is Array else []
+		var prize := _prize_tile(parent, str(cards[0]), Vector2(170, 241)) if not cards.is_empty() else null
+		if prize:
+			top.add_child(prize)
+		col.add_child(top)
+		col.move_child(top, 1)
+		var p: Control = dlg.get_child(0)
+		parent.get_tree().process_frame.connect(func():   # (centred again once it has grown)
+			if is_instance_valid(p):
+				p.reset_size()
+				p.position = (Vector2(1920, 1080) - p.size) / 2
+				p.pivot_offset = p.size / 2, CONNECT_ONE_SHOT)
 		await dlg.tree_exited
 		if not done[0] or not parent.is_inside_tree():
 			continue

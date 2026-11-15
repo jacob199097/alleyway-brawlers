@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.160",
+        "notes": [
+            "LOADED DICE now asks first: when a flip or roll goes against you and your LOADED DICE is ready, you choose whether to use it on this one or keep it for a flip that matters more (still once a turn).",
+            "The season's prize card now goes to Kingpin as well as Legend. The season rewards window shows the card itself: click it (or tap it) to see it up close."
+        ]
+    },
+    {
         "version": "0.9.159",
         "notes": [
             "COMBO, a new trigger for cards: a COMBO line happens when the card is played right after another card of its clan this turn (a character from your hand or a Hustle), and COMBO ×3 on the third in a row. Plan the order you play your cards in.",

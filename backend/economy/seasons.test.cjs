@@ -83,6 +83,9 @@ const conn = (database) => new Client({
     assert.equal(rv.season_ranked, 0, 'the counts start again');
     assert.equal((await row(casual)).rank_points, 0, 'Enforcer drops back to Rookie');
     assert.equal(seasons.softReset(3500), 1000, 'Legend drops back to Underboss');
+    assert.deepEqual(seasons.prizeRanks(), ['Kingpin', 'Legend'], 'Kingpin and Legend win the prize card');
+    const kp = await seasons.rewardFor('kingpin', 0), rk = await seasons.rewardFor('underboss', 0);
+    assert.ok(kp.prize && kp.cards.length > 0 && rk.cards.length === 0, 'the prize card comes with Kingpin, not below');
 
     // Claimed once, paid once
     const before = (await q('SELECT karat, free_packs FROM players WHERE id = $1', [legend])).rows[0];

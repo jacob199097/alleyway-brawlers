@@ -64,7 +64,8 @@ const LUCK_TEST_SEED := 0x2545F491
 const M32 := 0xFFFFFFFF
 var _luck_t := 0
 var _luck_last := {}         # the last flip or roll: {won, value} (if_luck follows it)
-var _luck_wait := {}         # a DOUBLE OR NOTHING not yet decided: {uid, ask} (its "If tails" waits for it)
+var _luck_wait := {}         # a DOUBLE OR NOTHING (or LOADED DICE question) not yet answered: {uid, ask} (its "If tails" waits for it)
+var _loaded_asks := 0        # LOADED DICE questions asked so far (a brawl waits for one asked on the way: _atk_then)
 var _roll := 1               # the last die's value ("for each pip")
 var _attack_ctx := {}        # the attack being resolved
 var rules := {}              # a challenge's twist (see _init)
@@ -1381,25 +1382,48 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		att.second_attack = turn
 	# BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
 	var blind := int(att.get("blind_until", 0)) >= turn
-	if blind and not _luck_gate(side, from, att, {"luck": "coin"}):
-		_emit("miss", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
-		_effect(side, att, "%s is BLIND: its attack misses" % att.name, from)
+	if not blind:
+		_atk_confused(side, from, target, foe, att, false)
 		return true
-	# CONFUSE: a coin flip; on tails it attacks a random other target: another it could attack, or one of its own side
-	if int(att.get("confuse_until", 0)) >= turn:
-		var wrong := _confused_targets(side, foe, from, target)
-		if not wrong.is_empty() and not _luck_gate(side, from, att, {"luck": "coin"}):
-			var w: Dictionary = wrong[mini(wrong.size() - 1, int(floor(_luck_next() * wrong.size())))]
-			var cev := {"side": side, "from": from, "target": w.slot, "card": att.duplicate(true)}   # (the game shows it reeling first)
-			if ffa or w.side == side:
-				cev.foe = w.side
-			_emit("confused", cev)
-			if w.side == side:
-				_friendly_fire(side, from, att, w.slot)
-				return true
-			target = w.slot
-			var name: String = "directly" if target == DIRECT else "the Dormant leader" if target == LEADER else str(card_at(foe, target).name)
-			_effect(side, att, "%s is CONFUSED: it attacks %s instead" % [att.name, name], from)
+	_luck_gate(side, from, att, {"luck": "coin"}, func(seen: bool) -> void:
+		if seen:
+			_atk_confused(side, from, target, foe, att, true)
+			return
+		_emit("miss", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
+		_effect(side, att, "%s is BLIND: its attack misses" % att.name, from))
+	return true
+
+
+## CONFUSE: a coin flip; on tails it attacks a random other target (another it could attack, or one of its
+## own side). Then the attack (_atk_go). Same as _atkConfused in DuelState.js.
+func _atk_confused(side: String, from: int, target: int, foe: String, att: Dictionary, blind: bool) -> void:
+	if winner != "" or not is_same(card_at(side, from), att):
+		return
+	var wrong: Array = _confused_targets(side, foe, from, target) if int(att.get("confuse_until", 0)) >= turn else []
+	if wrong.is_empty():
+		_atk_go(side, from, target, foe, att, blind)
+		return
+	_luck_gate(side, from, att, {"luck": "coin"}, func(straight: bool) -> void:
+		if winner != "" or not is_same(card_at(side, from), att):
+			return
+		if straight:
+			_atk_go(side, from, target, foe, att, blind)
+			return
+		var w: Dictionary = wrong[mini(wrong.size() - 1, int(floor(_luck_next() * wrong.size())))]
+		var cev := {"side": side, "from": from, "target": w.slot, "card": att.duplicate(true)}   # (the game shows it reeling first)
+		if ffa or w.side == side:
+			cev.foe = w.side
+		_emit("confused", cev)
+		if w.side == side:
+			_friendly_fire(side, from, att, w.slot)
+			return
+		var name: String = "directly" if w.slot == DIRECT else "the Dormant leader" if w.slot == LEADER else str(card_at(foe, w.slot).name)
+		_effect(side, att, "%s is CONFUSED: it attacks %s instead" % [att.name, name], from)
+		_atk_go(side, from, w.slot, foe, att, blind))
+
+
+## The attack itself, once its BLIND and CONFUSE coins (if any) have gone its way.
+func _atk_go(side: String, from: int, target: int, foe: String, att: Dictionary, blind: bool) -> void:
 	_emit("attack", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
 	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0, "blind_flipped": blind}
 	_reckless(ctx)
@@ -1431,12 +1455,13 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		if not _fx_cond(side, from, e, def_now) or not _fx_count_fire(att, "%s%d" % [when, k], e) or not _fx_once(att, "%s%d" % [when, k], e):
 			continue
 		if self_buff:
-			if not _luck_gate(side, from, att, e):
-				continue
-			var se := _scaled(side, from, e)
-			if int(se.get("atk", 0)) != 0:
-				ctx.bonus += int(se.get("atk", 0))
-				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from)
+			_luck_gate(side, from, att, e, func(won: bool) -> void:
+				if not won:
+					return
+				var se := _scaled(side, from, e)
+				if int(se.get("atk", 0)) != 0:
+					ctx.bonus += int(se.get("atk", 0))
+					_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from))
 		elif str(e.get("do", "")) == "pierce":
 			ctx.pierce = true
 			_effect(side, att, "%s: piercing attack" % att.name, from)
@@ -1446,12 +1471,11 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		ctx.bonus += sides[side].brutus_bonus
 		sides[side].brutus_bonus = 0
 		_effect(side, att, "Brutus's momentum: +300 ATK", from)
-	# A choice its triggers ask for (a target, DOUBLE OR NOTHING) is made before the brawl: it waits
+	# A choice its triggers ask for (a target, DOUBLE OR NOTHING, LOADED DICE) is made before the brawl: it waits
 	if asks.size() > queued:
 		asks.append({"kind": "then", "side": side, "cb": func(): _atk_redirect(ctx)})
 	else:
 		_atk_redirect(ctx)
-	return true
 
 
 ## Block Enforcer: may take the hit for an allied LIONS character, once per turn.
@@ -1563,14 +1587,15 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 		if not _fx_cond(foe, NO_SLOT, e, ctx.att):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "")) == "attacker" and str(e.get("luck", "")) != "double":
-			if not _luck_gate(foe, NO_SLOT, a, e):   # (a coin flip or die roll on it)
-				continue
-			var atk := int(_scaled(foe, NO_SLOT, e).get("atk", 0))
-			if atk != 0:
-				ctx.bonus += atk
-				_effect(foe, a, "%s: the attacker gets %s ATK this brawl" % [a.name, _signed(atk)], NO_SLOT)
-			if e.get("negate", false):
-				_negate(foe, NO_SLOT, a, vs)
+			_luck_gate(foe, NO_SLOT, a, e, func(won: bool) -> void:   # (a coin flip or die roll on it)
+				if not won:
+					return
+				var atk := int(_scaled(foe, NO_SLOT, e).get("atk", 0))
+				if atk != 0:
+					ctx.bonus += atk
+					_effect(foe, a, "%s: the attacker gets %s ATK this brawl" % [a.name, _signed(atk)], NO_SLOT)
+				if e.get("negate", false):
+					_negate(foe, NO_SLOT, a, vs))
 		else:
 			_do_fx(foe, NO_SLOT, a, e, vs)
 	if winner != "":
@@ -1592,21 +1617,36 @@ func _spring_fx(ctx: Dictionary, foe: String, a: Dictionary) -> void:
 
 
 ## BLINDED since its attack began (an Ambush, the attacked card's own effect): that attack gets its coin
-## flip too, once. true: tails, it misses and the attack ends.
-func _atk_blind_miss(ctx: Dictionary) -> bool:
+## flip too, once; on tails it misses and the attack ends, else then goes on.
+func _atk_blind_miss(ctx: Dictionary, then: Callable) -> void:
 	if ctx.get("blind_flipped", false) or int(ctx.att.get("blind_until", 0)) < turn:
-		return false
+		then.call()
+		return
 	ctx.blind_flipped = true
-	if _luck_gate(ctx.side, ctx.from, ctx.att, {"luck": "coin"}):
-		return false
-	_emit("miss", _with_foe_key({"side": ctx.side, "from": ctx.from, "target": ctx.target, "card": ctx.att.duplicate(true)}, ctx.foe))
-	_effect(ctx.side, ctx.att, "%s is BLIND: its attack misses" % ctx.att.name, ctx.from)
-	return true
+	_luck_gate(ctx.side, ctx.from, ctx.att, {"luck": "coin"}, func(seen: bool) -> void:
+		if seen:
+			then.call()
+			return
+		_emit("miss", _with_foe_key({"side": ctx.side, "from": ctx.from, "target": ctx.target, "card": ctx.att.duplicate(true)}, ctx.foe))
+		_effect(ctx.side, ctx.att, "%s is BLIND: its attack misses" % ctx.att.name, ctx.from))
+
+
+## What comes next in a brawl: at once, or, if a LOADED DICE question came up on the way (more asked than
+## loaded before), once it's answered.
+func _atk_then(ctx: Dictionary, loaded: int, next: Callable) -> void:
+	if _loaded_asks > loaded:
+		(_new_asks if _in_answer else _asks).append({"kind": "then", "side": ctx.side, "cb": next})
+	else:
+		next.call()
 
 
 func _atk_resolve(ctx: Dictionary) -> void:
 	_recalc()   # (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
-	if _atk_blind_miss(ctx):
+	_atk_blind_miss(ctx, func(): _atk_strike(ctx))
+
+
+func _atk_strike(ctx: Dictionary) -> void:
+	if winner != "":
 		return
 	var side: String = ctx.side
 	var foe: String = ctx.foe
@@ -1633,8 +1673,8 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		return
 
 	var def: Dictionary = card_at(foe, target)
-	var def_atk := 0
-	var def_def := 0
+	ctx.def_atk = 0
+	ctx.def_def = 0
 	var vs := {"side": side, "slot": from, "card": att, "attacked": {"side": foe, "slot": target, "card": def}}
 	# "When another of your characters is attacked" (covering fire)
 	for x in characters(foe):
@@ -1642,25 +1682,36 @@ func _atk_resolve(ctx: Dictionary) -> void:
 			_run_fx(foe, x.slot, x.card, "ally_attacked", att, vs)
 	if card_at(side, from) == att:
 		_run_lasting(foe, "ally_attacked", att, vs)
+	var loaded := _loaded_asks
 	var k := 0
 	for e in _fx(def, "defend"):
 		k += 1
 		if winner != "" or card_at(foe, target) != def or not _fx_cond(foe, target, e, att) or not _fx_count_fire(def, "defend%d" % k, e) or not _fx_once(def, "defend%d" % k, e):
 			continue
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self":
-			if not _luck_gate(foe, target, def, e):
-				continue
-			var se := _scaled(foe, target, e)
-			def_atk += int(se.get("atk", 0))
-			def_def += int(se.get("def", 0))
-			_effect(foe, def, "%s: %s this brawl" % [def.name, _stat_text(se)], target)
+			_luck_gate(foe, target, def, e, func(won: bool) -> void:
+				if not won:
+					return
+				var se := _scaled(foe, target, e)
+				ctx.def_atk += int(se.get("atk", 0))
+				ctx.def_def += int(se.get("def", 0))
+				_effect(foe, def, "%s: %s this brawl" % [def.name, _stat_text(se)], target))
 		else:
 			_do_fx(foe, target, def, e, vs)
-	# The defender's effects may have removed or stopped the attacker (or itself)
-	if winner != "" or card_at(side, from) != att or att.downed or card_at(foe, target) != def:
-		return
-	if _atk_blind_miss(ctx):
-		return
+	_atk_then(ctx, loaded, func() -> void:
+		# The defender's effects may have removed or stopped the attacker (or itself)
+		if winner != "" or card_at(side, from) != att or att.downed or card_at(foe, target) != def:
+			return
+		_atk_blind_miss(ctx, func(): _atk_brawl(ctx, def)))
+
+
+## The brawl itself: BRACE, the brawl's bonuses (their coins may wait for LOADED DICE), then who wins.
+func _atk_brawl(ctx: Dictionary, def: Dictionary) -> void:
+	var side: String = ctx.side
+	var foe: String = ctx.foe
+	var from: int = ctx.from
+	var target: int = ctx.target
+	var att: Dictionary = ctx.att
 	# BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
 	var brace := _passive(foe, target, def, "brace")
 	if not brace.is_empty() and int(def.get("brace_turn", -1)) != turn and not _ignores(side, from, att, "brace"):
@@ -1670,7 +1721,23 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		_emit("brace", {"side": foe, "slot": target, "from_side": side, "from": from, "amount": x})
 		_effect(foe, def, "%s is BRACED: %s loses %d ATK this turn" % [def.name, att.name, x], target)
 	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
-	var bonus: int = ctx.bonus + _brawl_bonus(side, from, att, def)
+	var loaded := _loaded_asks
+	ctx.extra = 0
+	_brawl_bonus(ctx, def)
+	_atk_then(ctx, loaded, func(): _atk_clash(ctx, def))
+
+
+func _atk_clash(ctx: Dictionary, def: Dictionary) -> void:
+	if winner != "":
+		return
+	var side: String = ctx.side
+	var foe: String = ctx.foe
+	var from: int = ctx.from
+	var target: int = ctx.target
+	var att: Dictionary = ctx.att
+	var def_atk: int = ctx.def_atk
+	var def_def: int = ctx.def_def
+	var bonus: int = ctx.bonus + ctx.extra
 	if def.get("effectKey") == "bulwark":
 		bonus -= 300
 		_effect(foe, def, "Bulwark: the attacker loses 300 ATK", target)
@@ -2138,20 +2205,24 @@ func _end(win_side: String, reason: String) -> void:
 	_emit("game_over", {"winner": winner, "reason": reason})
 
 
-func _brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> int:
-	var extra := 0
+## The attacker's brawl-only boosts that depend on the defender (into ctx.extra; a coin on one may wait).
+func _brawl_bonus(ctx: Dictionary, def: Dictionary) -> void:
+	var side: String = ctx.side
+	var from: int = ctx.from
+	var att: Dictionary = ctx.att
 	var k := 0
 	for e in _fx(att, "attack"):
 		k += 1
 		if str(e.get("do", "")) == "buff" and str(e.get("target", "self")) == "self" \
 				and str(e.get("if", "")) != "" and _fx_cond(side, from, e, def) and _fx_once(att, "attack%d" % k, e):
-			if not _luck_gate(side, from, att, e):
-				continue
-			var se := _scaled(side, from, e)
-			if int(se.get("atk", 0)) != 0:
-				extra += int(se.get("atk", 0))
-				_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from)
-	return extra + _key_brawl_bonus(side, from, att, def)
+			_luck_gate(side, from, att, e, func(won: bool) -> void:
+				if not won:
+					return
+				var se := _scaled(side, from, e)
+				if int(se.get("atk", 0)) != 0:
+					ctx.extra += int(se.get("atk", 0))
+					_effect(side, att, "%s: %s ATK this brawl" % [att.name, _signed(int(se.get("atk", 0)))], from))
+	ctx.extra += _key_brawl_bonus(side, from, att, def)
 
 
 func _key_brawl_bonus(side: String, from: int, att: Dictionary, def: Dictionary) -> int:
@@ -2999,9 +3070,11 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 	if str(e.get("luck", "")) == "double":
 		_ask_double(side, slot, c, e, vs)
 		return
-	if not _luck_gate(side, slot, c, e):
-		return
-	_do_fx_run(side, slot, c, e, vs)
+	var now := [true]   # (answered later, after a LOADED DICE question: where the card is then)
+	_luck_gate(side, slot, c, e, func(won: bool) -> void:
+		if won and winner == "":
+			_do_fx_run(side, slot if now[0] else _slot_of(side, c, slot), c, e, vs))
+	now[0] = false
 
 
 ## DOUBLE OR NOTHING (same as _askDouble in DuelState.js): the player chooses to bet (a coin; heads,
@@ -3029,11 +3102,14 @@ func _ask_double(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				_effect(side, c, "%s: no bet, it happens once" % c.name, at)
 				_do_fx_run(side, at, c, e, vs)
 				return
-			if not _luck_gate(side, at, c, e):
-				return
-			_do_fx_run(side, at, c, e, vs)
-			if winner == "":
-				_do_fx_run(side, _slot_of(side, c, slot), c, e, vs))   # heads: twice
+			var now := [true]
+			_luck_gate(side, at, c, e, func(won: bool) -> void:
+				if not won or winner != "":
+					return
+				_do_fx_run(side, at if now[0] else _slot_of(side, c, slot), c, e, vs)
+				if winner == "":
+					_do_fx_run(side, _slot_of(side, c, slot), c, e, vs))   # heads: twice
+			now[0] = false)
 	_luck_wait = w
 
 
@@ -4729,28 +4805,51 @@ func _auth_ev(side: String, delta: int, hidden := false) -> void:
 ## Luck (Card Forge, same as _luckGate in DuelState.js): whether an effect happens.
 ##   luck: "coin" (heads: it happens) | "die" (it happens on luck_on or more, 1-6; "for each pip"
 ##   (per: "roll") multiplies it by the die). if_luck: "won" | "lost": no roll of its own, it
-##   follows the last flip or roll ("If tails, ..."). Anything else always happens.
-func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary) -> bool:
+##   follows the last flip or roll ("If tails, ..."). Anything else always happens. LOADED DICE (a passive):
+##   once a turn, a side's lost flip or roll may be tried again: its player is asked (a "loaded" prompt), so
+##   they can keep it for a flip that matters more. then(won): what follows, at once or once answered.
+func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary, then: Callable) -> void:
 	var follow := str(e.get("if_luck", ""))
 	if follow != "":
 		if _luck_last.is_empty():
-			return false
+			then.call(false)
+			return
 		_roll = int(_luck_last.value)
-		return (not _luck_last.won) if follow == "lost" else bool(_luck_last.won)
+		then.call((not _luck_last.won) if follow == "lost" else bool(_luck_last.won))
+		return
 	var kind := str(e.get("luck", ""))
 	if kind != "coin" and kind != "die" and kind != "double" and str(e.get("per", "")) != "roll":
-		return true
+		then.call(true)
+		return
 	var coin := kind == "coin" or kind == "double"
-	var won := _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6), kind == "double")
+	var need: int = 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6)
+	var won := _luck_toss(side, slot, c, coin, need, kind == "double")
 	var s = sides.get(side)
-	if not won and s != null and int(s.get("loaded_turn", -1)) != turn and winner == "":   # LOADED DICE: once a turn, try again
+	var by := {}
+	if not won and s != null and int(s.get("loaded_turn", -1)) != turn and winner == "":
 		for x in characters(side):
 			if not _passive(side, x.slot, x.card, "loaded").is_empty():
-				s.loaded_turn = turn
-				_effect(side, x.card, "%s: LOADED DICE, %s again" % [x.card.name, "flip" if coin else "roll"], x.slot)
-				won = _luck_toss(side, slot, c, coin, 1 if coin else clampi(int(e.get("luck_on", 1)), 1, 6), kind == "double", true)
+				by = x
 				break
-	return won
+	if by.is_empty():
+		then.call(won)
+		return
+	# LOADED DICE: once a turn, try again; the player says whether this is the flip to use it on
+	var w := {"uid": c.get("uid")}   # ("If tails, ..." after it waits for the answer: _do_fx)
+	w.ask = _ask(side, "loaded", "%s: %s. Use LOADED DICE to %s again? (once a turn)" % [c.name, "tails" if coin else "a %d" % _roll, "flip" if coin else "roll"], by.card,
+		[{"id": "loaded", "label": "LOADED DICE: %s AGAIN" % ("FLIP" if coin else "ROLL")}, {"id": "keep", "label": "KEEP IT (SAVE THE DICE)"}], func(choice: String) -> void:
+			if is_same(_luck_wait, w):
+				_luck_wait = {}
+			if winner != "":
+				return
+			if choice != "loaded" or int(s.get("loaded_turn", -1)) == turn:
+				then.call(false)
+				return
+			s.loaded_turn = turn
+			_effect(side, by.card, "%s: LOADED DICE, %s again" % [by.card.name, "flip" if coin else "roll"], _slot_of(side, by.card, by.slot))
+			then.call(_luck_toss(side, slot, c, coin, need, kind == "double", true)))
+	_luck_wait = w
+	_loaded_asks += 1
 
 
 ## One flip or roll for _luck_gate (with its luck event and its line in the log).

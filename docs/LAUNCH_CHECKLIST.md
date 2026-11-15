@@ -92,9 +92,9 @@ same build:
 3. [ ] Push the launch code (starters off, 1.0.0), then `node tools/deploy.mjs --build --build-mac`.
 4. [ ] End Season 0, before the wipe: `node backend/scripts/season.mjs end` to read what it will do, then
    `node backend/scripts/season.mjs end --apply --name "Season 1" --weeks 13`. Each Ranked player's Season 0
-   reward is recorded (by the highest rank they reached) and claimed in the game after the launch. Put the Legend
-   prize card's game ID in `SEASON_PRIZES[0]` (`shared/seasons.js`) when it's made: Legends who claim later still
-   get it. **The wipe must keep `player_seasons` and `seasons`.**
+   reward is recorded (by the highest rank they reached) and claimed in the game after the launch. Put the season's
+   prize card's game ID in `SEASON_PRIZES[0]` (`shared/seasons.js`) when it's made: Kingpins and Legends who claim
+   later still get it. **The wipe must keep `player_seasons` and `seasons`.**
    Then the wipe, on the server: `node backend/scripts/launch_wipe.js` to read what it will do, then stop the
    game server (`sudo systemctl stop alleyway-backend`), run it again with `--apply` (and `--bought keep` or
    `--bought drop` if it asks), and start the server again.

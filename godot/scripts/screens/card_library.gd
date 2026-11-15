@@ -370,7 +370,7 @@ func _fit_detail(below: Control) -> void:
 	_detail_panel.size = Vector2(520, 790)   # (the panel had grown with the text)
 
 
-## "HOW TO GET IT": a prize card's one way (its boss, or its ranked season's Legend), or the packs it
+## "HOW TO GET IT": a prize card's one way (its boss, or its ranked season's prize ranks), or the packs it
 ## drops from, its Dust price and the Auction House (backend/economy: packOpener, crafting, auction).
 func _obtain(c: Dictionary) -> Control:
 	var box := VBoxContainer.new()
@@ -384,7 +384,7 @@ func _obtain(c: Dictionary) -> Control:
 		lines = ["Beat %s in Turf Defense: its prize, for the first Street clear." % boss,
 			"Not in packs, crafting or the Auction House."]
 	elif season >= 0:
-		lines = ["Reach Legend in Ranked Season %d: the season's top prize." % season,
+		lines = ["Reach %s in Ranked Season %d: the season's prize card." % [" or ".join(_craft.get("seasonPrizeRanks", ["Legend"])), season],
 			"Not in packs, crafting or the Auction House."]
 	else:
 		var neutral := str(c.get("clan", "")) == "neutral"
@@ -403,7 +403,7 @@ func _obtain(c: Dictionary) -> Control:
 	return box
 
 
-## The ranked season whose Legend prize this card is (it or a lower level of it), or -1 (GET /api/craft).
+## The ranked season whose prize card this is (it or a lower level of it), or -1 (GET /api/craft).
 func _season_of(id: String) -> int:
 	var s = _craft.get("seasonPrizes", {}).get(id)
 	return int(s) if s != null else -1
@@ -564,12 +564,12 @@ func _render_bar() -> void:
 		var boss := _prize_of(str(_pick.get("id", "")))
 		var season := _season_of(str(_pick.get("id", "")))
 		var prize := "BOSS PRIZE  ·  BEAT %s" % boss.to_upper() if boss != "" \
-			else ("LEGEND PRIZE  ·  RANKED SEASON %d" % season if season >= 0 else "")
+			else ("SEASON PRIZE  ·  RANKED SEASON %d" % season if season >= 0 else "")
 		var scrap := UI.button("SCRAP  +%d" % int(v.get("scrap", 0)), _scrap, Vector2(200, 56), UI.RED)
 		scrap.disabled = have <= 0 or prize != ""
 		scrap.tooltip_text = "A prize card can't be scrapped." if prize != "" else ("Turn one copy into Dust." if have > 0 else "You don't own this card.")
 		_bar.add_child(scrap)
-		if prize != "":   # (a prize: only beating its boss, or reaching Legend that season, gives it)
+		if prize != "":   # (a prize: only beating its boss, or reaching its season's prize ranks, gives it)
 			var only := UI.label(prize, 20, UI.GOLD, true)
 			only.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			_bar.add_child(only)

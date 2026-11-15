@@ -6,13 +6,14 @@
  */
 
 // What a season pays, by the highest rank reached in it (only players who played Ranked that season).
-// A pack is worth 200 Karat (routes/shop.js). Legend also gets the season's prize card (shared/seasons.js).
+// A pack is worth 200 Karat (routes/shop.js). prize: the season's prize card too (shared/seasons.js): Kingpin
+// and Legend (decided 2026-11-15).
 const REWARDS = {
     rookie:       { karat: 100, free_packs: 0 },
     street_tough: { karat: 250, free_packs: 1 },
     enforcer:     { karat: 400, free_packs: 2 },
     underboss:    { karat: 600, free_packs: 3 },
-    kingpin:      { karat: 800, free_packs: 4 },
+    kingpin:      { karat: 800, free_packs: 4, prize: true },
     legend:       { karat: 1000, free_packs: 5, prize: true },
 };
 

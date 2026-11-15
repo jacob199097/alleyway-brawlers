@@ -1,6 +1,7 @@
-// Ranked seasons: the prize card each season gives everyone who reaches Legend in it (the server's
-// side is backend/economy/seasons.js). Like the Turf Defense bosses' prizes, a season's prize is never
-// in packs, never crafted, scrapped or sold: reaching Legend that season is the only way to get it.
+// Ranked seasons: the prize card each season gives everyone who reaches its prize ranks (Kingpin and Legend:
+// prize in backend/economy/season_settings.js; the server's side is backend/economy/seasons.js). Like the Turf
+// Defense bosses' prizes, a season's prize is never in packs, never crafted, scrapped or sold: reaching those
+// ranks that season is the only way to get it.
 // Set a season's prize to the card's game ID once the card is in the game ('' = none yet); a Striver
 // comes with its higher levels.
 

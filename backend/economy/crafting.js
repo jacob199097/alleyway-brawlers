@@ -60,18 +60,18 @@ async function summary(playerId) {
         extras += n;
         extrasDust += n * valueOf(r.rarity).scrap;
     }
-    // (each ranked season's Legend prize and its levels → the season: never crafted or scrapped)
+    // (each ranked season's prize card and its levels → the season: never crafted or scrapped; the ranks that win it)
     const { SEASON_PRIZES, seasonPrize } = await import('../../shared/seasons.js');
     const seasonPrizes = {};
     for (const s of Object.keys(SEASON_PRIZES)) for (const id of seasonPrize(s)) seasonPrizes[id] = Number(s);
-    return { dust: p?.dust ?? 0, values: VALUES, maxCopies: MAX_COPIES, extras, extrasDust, seasonPrizes };
+    return { dust: p?.dust ?? 0, values: VALUES, maxCopies: MAX_COPIES, extras, extrasDust, seasonPrizes, seasonPrizeRanks: require('./seasons').prizeRanks() };
 }
 
 /** Scrap `copies` of one card. → { dust, quantity, gained } */
 async function scrap(playerId, gameId, copies = 1) {
     if (!Number.isInteger(copies) || copies < 1 || copies > 99) throw new CraftError('Choose how many copies to scrap.');
     if ((await import('../../shared/turf.js')).prizeCardIds().has(gameId)) {   // (it couldn't be won back)
-        throw new CraftError("A prize card can't be scrapped: only beating a Turf Defense boss, or reaching Legend in a ranked season, gives it.");
+        throw new CraftError("A prize card can't be scrapped: only beating a Turf Defense boss, or reaching a ranked season's top ranks, gives it.");
     }
     const client = await pool.connect();
     try {

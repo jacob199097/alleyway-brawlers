@@ -38,8 +38,8 @@ when it ships, or delete it if it's dropped.
   "CONTINUOUS" / "EQUIP:" line (removed from the text box in Forge v84; it's on the type line).
 - [x] **How to Play pages for every keyword and mechanic** (0.9.120): KEYWORDS and CARD TERMS in How to Play,
   a page each with real cards that use it (`godot/scripts/ui/how_to_play.gd`).
-- [x] **Ranked seasons.** Season 0 runs until launch: rewards by the highest rank reached, a Legend prize
-  card, every rank dropping two when a new season starts (`backend/economy/seasons.js`,
+- [x] **Ranked seasons.** Season 0 runs until launch: rewards by the highest rank reached, a prize
+  card for Kingpin and Legend, every rank dropping two when a new season starts (`backend/economy/seasons.js`,
   `godot/scripts/ui/seasons.gd`). The seasonal news emails went out with 0.9.153 (under Accounts & email).
 
 ## Accounts & email

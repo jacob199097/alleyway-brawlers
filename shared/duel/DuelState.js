@@ -1199,28 +1199,43 @@ export class DuelState {
         }
         // BLIND: a coin flip; on tails the attack misses (it is still used up, and nothing of it happens)
         const blind = toInt(att.blind_until ?? 0) >= this.turn;
-        if (blind && !this._luckGate(side, from, att, { luck: 'coin' })) {
-            this._emit('miss', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
-            this._effect(side, att, `${att.name} is BLIND: its attack misses`, from);
+        if (!blind) {
+            this._atkConfused(side, from, target, foe, att, false);
             return true;
         }
-        // CONFUSE: a coin flip; on tails it attacks a random other target: another it could attack, or one of its own side
-        if (toInt(att.confuse_until ?? 0) >= this.turn) {
-            const wrong = this._confusedTargets(side, foe, from, target);
-            if (wrong.length && !this._luckGate(side, from, att, { luck: 'coin' })) {
-                const w = wrong[Math.min(wrong.length - 1, Math.floor(this._luck() * wrong.length))];
-                const cev = { side, from, target: w.slot, card: clone(att) };   // (the game shows it reeling first)
-                if (this.ffa || w.side === side) cev.foe = w.side;
-                this._emit('confused', cev);
-                if (w.side === side) {
-                    this._friendlyFire(side, from, att, w.slot);
-                    return true;
-                }
-                target = w.slot;
-                const name = target === DIRECT ? 'directly' : target === LEADER ? 'the Dormant leader' : this.cardAt(foe, target).name;
-                this._effect(side, att, `${att.name} is CONFUSED: it attacks ${name} instead`, from);
+        this._luckGate(side, from, att, { luck: 'coin' }, (seen) => {
+            if (seen) { this._atkConfused(side, from, target, foe, att, true); return; }
+            this._emit('miss', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
+            this._effect(side, att, `${att.name} is BLIND: its attack misses`, from);
+        });
+        return true;
+    }
+
+    /** CONFUSE: a coin flip; on tails it attacks a random other target (another it could attack, or one of its
+     *  own side). Then the attack (_atkGo). Same as _atk_confused in duel_state.gd. */
+    _atkConfused(side, from, target, foe, att, blind) {
+        if (this.winner !== '' || this.cardAt(side, from) !== att) return;
+        const wrong = toInt(att.confuse_until ?? 0) >= this.turn ? this._confusedTargets(side, foe, from, target) : [];
+        if (!wrong.length) { this._atkGo(side, from, target, foe, att, blind); return; }
+        this._luckGate(side, from, att, { luck: 'coin' }, (straight) => {
+            if (this.winner !== '' || this.cardAt(side, from) !== att) return;
+            if (straight) { this._atkGo(side, from, target, foe, att, blind); return; }
+            const w = wrong[Math.min(wrong.length - 1, Math.floor(this._luck() * wrong.length))];
+            const cev = { side, from, target: w.slot, card: clone(att) };   // (the game shows it reeling first)
+            if (this.ffa || w.side === side) cev.foe = w.side;
+            this._emit('confused', cev);
+            if (w.side === side) {
+                this._friendlyFire(side, from, att, w.slot);
+                return;
             }
-        }
+            const name = w.slot === DIRECT ? 'directly' : w.slot === LEADER ? 'the Dormant leader' : this.cardAt(foe, w.slot).name;
+            this._effect(side, att, `${att.name} is CONFUSED: it attacks ${name} instead`, from);
+            this._atkGo(side, from, w.slot, foe, att, blind);
+        });
+    }
+
+    /** The attack itself, once its BLIND and CONFUSE coins (if any) have gone its way. */
+    _atkGo(side, from, target, foe, att, blind) {
         this._emit('attack', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
         const ctx = { side, foe, from, target, att, bonus: 0, blindFlipped: blind };
         this._reckless(ctx);
@@ -1237,12 +1252,14 @@ export class DuelState {
             if (selfBuff && String(e.if ?? '') !== '' && when === 'attack') continue;   // settled in the brawl (_brawlBonus)
             if (!this._fxCond(side, from, e, defNow) || !this._fxCountFire(att, `${when}${k}`, e) || !this._fxOnce(att, `${when}${k}`, e)) continue;
             if (selfBuff) {
-                if (!this._luckGate(side, from, att, e)) continue;
-                const se = this._scaled(side, from, e);
-                if (toInt(se.atk) !== 0) {
-                    ctx.bonus += toInt(se.atk);
-                    this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
-                }
+                this._luckGate(side, from, att, e, (won) => {
+                    if (!won) return;
+                    const se = this._scaled(side, from, e);
+                    if (toInt(se.atk) !== 0) {
+                        ctx.bonus += toInt(se.atk);
+                        this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
+                    }
+                });
             } else if (String(e.do ?? '') === 'pierce') {
                 ctx.pierce = true;
                 this._effect(side, att, `${att.name}: piercing attack`, from);
@@ -1255,10 +1272,9 @@ export class DuelState {
             this.sides[side].brutus_bonus = 0;
             this._effect(side, att, "Brutus's momentum: +300 ATK", from);
         }
-        // A choice its triggers ask for (a target, DOUBLE OR NOTHING) is made before the brawl: it waits
+        // A choice its triggers ask for (a target, DOUBLE OR NOTHING, LOADED DICE) is made before the brawl: it waits
         if (asks.length > queued) asks.push({ kind: 'then', side, cb: () => this._atkRedirect(ctx) });
         else this._atkRedirect(ctx);
-        return true;
     }
 
     // An attack whose own trigger removed its target or the attacker ends there
@@ -1372,18 +1388,30 @@ export class DuelState {
 
     /** BLINDED since its attack began (an Ambush, the attacked card's own effect): that attack gets its coin
      *  flip too, once (same as _atk_blind_miss in duel_state.gd). true: tails, it misses and the attack ends. */
-    _atkBlindMiss(ctx) {
-        if (ctx.blindFlipped || toInt(ctx.att.blind_until ?? 0) < this.turn) return false;
+    _atkBlindMiss(ctx, then) {
+        if (ctx.blindFlipped || toInt(ctx.att.blind_until ?? 0) < this.turn) { then(); return; }
         ctx.blindFlipped = true;
-        if (this._luckGate(ctx.side, ctx.from, ctx.att, { luck: 'coin' })) return false;
-        this._emit('miss', this._withFoeKey({ side: ctx.side, from: ctx.from, target: ctx.target, card: clone(ctx.att) }, ctx.foe));
-        this._effect(ctx.side, ctx.att, `${ctx.att.name} is BLIND: its attack misses`, ctx.from);
-        return true;
+        this._luckGate(ctx.side, ctx.from, ctx.att, { luck: 'coin' }, (seen) => {
+            if (seen) { then(); return; }
+            this._emit('miss', this._withFoeKey({ side: ctx.side, from: ctx.from, target: ctx.target, card: clone(ctx.att) }, ctx.foe));
+            this._effect(ctx.side, ctx.att, `${ctx.att.name} is BLIND: its attack misses`, ctx.from);
+        });
+    }
+
+    /** What comes next in a brawl: at once, or, if a LOADED DICE question came up on the way (more asked than
+     *  loaded before), once it's answered. */
+    _atkThen(ctx, loaded, next) {
+        if (toInt(this._loadedAsks ?? 0) > loaded) (this._inAnswer ? this._newAsks : this._asks).push({ kind: 'then', side: ctx.side, cb: next });
+        else next();
     }
 
     _atkResolve(ctx) {
         this._recalc();   // (an attacker that promoted on the way, e.g. into a "?" form, hits with its new stats)
-        if (this._atkBlindMiss(ctx)) return;
+        this._atkBlindMiss(ctx, () => this._atkStrike(ctx));
+    }
+
+    _atkStrike(ctx) {
+        if (this.winner !== '') return;
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
             const dmg = Math.max(0, att.attack + ctx.bonus);
@@ -1404,29 +1432,41 @@ export class DuelState {
             return;
         }
         const def = this.cardAt(foe, target);
-        let defAtk = 0, defDef = 0, k = 0;
+        let k = 0;
+        ctx.defAtk = 0;
+        ctx.defDef = 0;
         const vs = { side, slot: from, card: att, attacked: { side: foe, slot: target, card: def } };
         // "When another of your characters is attacked" (covering fire)
         for (const x of this.characters(foe)) {
             if (x.slot !== target && this.winner === '' && this.cardAt(side, from) === att) this._runFx(foe, x.slot, x.card, 'ally_attacked', att, vs);
         }
         if (this.cardAt(side, from) === att) this._runLasting(foe, 'ally_attacked', att, vs);
+        const loaded = toInt(this._loadedAsks ?? 0);
         for (const e of this._fx(def, 'defend')) {
             k += 1;
             if (this.winner !== '' || this.cardAt(foe, target) !== def || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self') {
-                if (!this._luckGate(foe, target, def, e)) continue;
-                const se = this._scaled(foe, target, e);
-                defAtk += toInt(se.atk);
-                defDef += toInt(se.def);
-                this._effect(foe, def, `${def.name}: ${statText(se)} this brawl`, target);
+                this._luckGate(foe, target, def, e, (won) => {
+                    if (!won) return;
+                    const se = this._scaled(foe, target, e);
+                    ctx.defAtk += toInt(se.atk);
+                    ctx.defDef += toInt(se.def);
+                    this._effect(foe, def, `${def.name}: ${statText(se)} this brawl`, target);
+                });
             } else {
                 this._doFx(foe, target, def, e, vs);
             }
         }
-        // The defender's effects may have removed or stopped the attacker (or itself)
-        if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
-        if (this._atkBlindMiss(ctx)) return;
+        this._atkThen(ctx, loaded, () => {
+            // The defender's effects may have removed or stopped the attacker (or itself)
+            if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
+            this._atkBlindMiss(ctx, () => this._atkBrawl(ctx, def));
+        });
+    }
+
+    /** The brawl itself: BRACE, the brawl's bonuses (their coins may wait for LOADED DICE), then who wins. */
+    _atkBrawl(ctx, def) {
+        const { side, foe, from, target, att } = ctx;
         // BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
         const brace = this._passive(foe, target, def, 'brace');
         if (brace && toInt(def.brace_turn ?? -1) !== this.turn && !this._ignores(side, from, att, 'brace')) {
@@ -1437,7 +1477,17 @@ export class DuelState {
             this._effect(foe, def, `${def.name} is BRACED: ${att.name} loses ${x} ATK this turn`, target);
         }
         this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
-        let bonus = ctx.bonus + this._brawlBonus(side, from, att, def);
+        const loaded = toInt(this._loadedAsks ?? 0);
+        ctx.extra = 0;
+        this._brawlBonus(ctx, def);
+        this._atkThen(ctx, loaded, () => this._atkClash(ctx, def));
+    }
+
+    _atkClash(ctx, def) {
+        if (this.winner !== '') return;
+        const { side, foe, from, target, att } = ctx;
+        const defAtk = ctx.defAtk, defDef = ctx.defDef;
+        let bonus = ctx.bonus + ctx.extra;
         if (def.effectKey === 'bulwark') {
             bonus -= 300;
             this._effect(foe, def, 'Bulwark: the attacker loses 300 ATK', target);
@@ -1857,22 +1907,25 @@ export class DuelState {
         this._emit('game_over', { winner: this.winner, reason });
     }
 
-    _brawlBonus(side, from, att, def) {
-        let extra = 0;
+    /** The attacker's brawl-only boosts that depend on the defender (into ctx.extra; a coin on one may wait). */
+    _brawlBonus(ctx, def) {
+        const { side, from, att } = ctx;
         let k = 0;
         for (const e of this._fx(att, 'attack')) {
             k += 1;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? 'self') === 'self'
                     && String(e.if ?? '') !== '' && this._fxCond(side, from, e, def) && this._fxOnce(att, `attack${k}`, e)) {
-                if (!this._luckGate(side, from, att, e)) continue;
-                const se = this._scaled(side, from, e);
-                if (toInt(se.atk) !== 0) {
-                    extra += toInt(se.atk);
-                    this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
-                }
+                this._luckGate(side, from, att, e, (won) => {
+                    if (!won) return;
+                    const se = this._scaled(side, from, e);
+                    if (toInt(se.atk) !== 0) {
+                        ctx.extra += toInt(se.atk);
+                        this._effect(side, att, `${att.name}: ${signed(toInt(se.atk))} ATK this brawl`, from);
+                    }
+                });
             }
         }
-        return extra + this._keyBrawlBonus(side, from, att, def);
+        ctx.extra += this._keyBrawlBonus(side, from, att, def);
     }
 
     _keyBrawlBonus(side, from, att, def) {
@@ -2272,13 +2325,15 @@ export class DuelState {
             if (this.winner !== '') return;
             if (!this._fxCond(foe, NO_SLOT, e, ctx.att)) continue;
             if (String(e.do ?? '') === 'buff' && String(e.target ?? '') === 'attacker' && String(e.luck ?? '') !== 'double') {
-                if (!this._luckGate(foe, NO_SLOT, a, e)) continue;   // (a coin flip or die roll on it)
-                const atk = toInt(this._scaled(foe, NO_SLOT, e).atk ?? 0);
-                if (atk !== 0) {
-                    ctx.bonus += atk;
-                    this._effect(foe, a, `${a.name}: the attacker gets ${signed(atk)} ATK this brawl`, NO_SLOT);
-                }
-                if (e.negate) this._negate(foe, NO_SLOT, a, vs);
+                this._luckGate(foe, NO_SLOT, a, e, (won) => {   // (a coin flip or die roll on it)
+                    if (!won) return;
+                    const atk = toInt(this._scaled(foe, NO_SLOT, e).atk ?? 0);
+                    if (atk !== 0) {
+                        ctx.bonus += atk;
+                        this._effect(foe, a, `${a.name}: the attacker gets ${signed(atk)} ATK this brawl`, NO_SLOT);
+                    }
+                    if (e.negate) this._negate(foe, NO_SLOT, a, vs);
+                });
             } else {
                 this._doFx(foe, NO_SLOT, a, e, vs);
             }
@@ -2552,8 +2607,11 @@ export class DuelState {
             return;
         }
         if (String(e.luck ?? '') === 'double') { this._askDouble(side, slot, c, e, vs); return; }
-        if (!this._luckGate(side, slot, c, e)) return;
-        this._doFxRun(side, slot, c, e, vs);
+        const now = { yes: true };   // (answered later, after a LOADED DICE question: where the card is then)
+        this._luckGate(side, slot, c, e, (won) => {
+            if (won && this.winner === '') this._doFxRun(side, now.yes ? slot : this._slotOf(side, c, slot), c, e, vs);
+        });
+        now.yes = false;
     }
 
     /** DOUBLE OR NOTHING (same as _ask_double in duel_state.gd): the player chooses to bet (a coin;
@@ -2576,9 +2634,13 @@ export class DuelState {
                     this._doFxRun(side, at, c, e, vs);
                     return;
                 }
-                if (!this._luckGate(side, at, c, e)) return;
-                this._doFxRun(side, at, c, e, vs);
-                if (this.winner === '') this._doFxRun(side, this._slotOf(side, c, slot), c, e, vs);   // heads: twice
+                const now = { yes: true };
+                this._luckGate(side, at, c, e, (won) => {
+                    if (!won || this.winner !== '') return;
+                    this._doFxRun(side, now.yes ? at : this._slotOf(side, c, slot), c, e, vs);
+                    if (this.winner === '') this._doFxRun(side, this._slotOf(side, c, slot), c, e, vs);   // heads: twice
+                });
+                now.yes = false;
             });
         this._luckWait = w;
     }
@@ -4074,17 +4136,20 @@ export class DuelState {
      *   pip' (per: 'roll') multiplies it by the die) | 'double' (DOUBLE OR NOTHING: a coin; heads, it
      *   happens twice: see _doFx). if_luck: 'won' | 'lost': no roll of its own, it follows the last
      *   flip or roll ("If tails, ..."). Anything else always happens. LOADED DICE (a passive): once per
-     *   turn, a side's lost flip or roll is tried again.
+     *   turn, a side's lost flip or roll may be tried again: its player is asked (a "loaded" prompt), so they
+     *   can keep it for a flip that matters more.
+     *   then(won): what follows, at once, or once the player has answered. Same as _luck_gate in duel_state.gd.
      */
-    _luckGate(side, slot, c, e) {
+    _luckGate(side, slot, c, e, then) {
         const follow = String(e.if_luck ?? '');
         if (follow !== '') {
-            if (!this._luckLast) return false;
+            if (!this._luckLast) { then(false); return; }
             this._roll = this._luckLast.value;
-            return follow === 'lost' ? !this._luckLast.won : this._luckLast.won;
+            then(follow === 'lost' ? !this._luckLast.won : this._luckLast.won);
+            return;
         }
         const kind = String(e.luck ?? '');
-        if (kind !== 'coin' && kind !== 'die' && kind !== 'double' && String(e.per ?? '') !== 'roll') return true;
+        if (kind !== 'coin' && kind !== 'die' && kind !== 'double' && String(e.per ?? '') !== 'roll') { then(true); return; }
         const coin = kind === 'coin' || kind === 'double';
         const need = coin ? 1 : Math.max(1, Math.min(6, toInt(e.luck_on ?? 1)));
         const toss = (again = false) => {
@@ -4102,17 +4167,24 @@ export class DuelState {
                 : `${c.name} rolls a ${value}${need > 1 ? (won ? ` (${need}+ needed)` : ` (needed ${need}+)`) : ''}`, slot);
             return won;
         };
-        let won = toss();
+        const won = toss();
         const s = this.sides[side];
-        if (!won && s && toInt(s.loaded_turn ?? -1) !== this.turn && this.winner === '') {   // LOADED DICE: once a turn, try again
-            const by = this.characters(side).find(x => !isEmpty(this._passive(side, x.slot, x.card, 'loaded')));
-            if (by) {
+        const by = !won && s && toInt(s.loaded_turn ?? -1) !== this.turn && this.winner === ''
+            ? this.characters(side).find(x => !isEmpty(this._passive(side, x.slot, x.card, 'loaded'))) : null;
+        if (!by) { then(won); return; }
+        // LOADED DICE: once a turn, try again; the player says whether this is the flip to use it on
+        const w = { uid: c.uid, ask: null };   // ("If tails, ..." after it waits for the answer: _doFx)
+        w.ask = this._ask(side, 'loaded', `${c.name}: ${coin ? 'tails' : `a ${this._roll}`}. Use LOADED DICE to ${coin ? 'flip' : 'roll'} again? (once a turn)`, by.card,
+            [{ id: 'loaded', label: `LOADED DICE: ${coin ? 'FLIP' : 'ROLL'} AGAIN` }, { id: 'keep', label: 'KEEP IT (SAVE THE DICE)' }], (choice) => {
+                if (this._luckWait === w) this._luckWait = null;
+                if (this.winner !== '') return;
+                if (choice !== 'loaded' || toInt(s.loaded_turn ?? -1) === this.turn) { then(false); return; }
                 s.loaded_turn = this.turn;
-                this._effect(side, by.card, `${by.card.name}: LOADED DICE, ${coin ? 'flip' : 'roll'} again`, by.slot);
-                won = toss(true);
-            }
-        }
-        return won;
+                this._effect(side, by.card, `${by.card.name}: LOADED DICE, ${coin ? 'flip' : 'roll'} again`, this._slotOf(side, by.card, by.slot));
+                then(toss(true));
+            });
+        this._luckWait = w;
+        this._loadedAsks = toInt(this._loadedAsks ?? 0) + 1;
     }
 
     /** publicText: what the other players see instead (text names a card they mustn't know). */
