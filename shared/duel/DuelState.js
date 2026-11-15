@@ -1418,7 +1418,7 @@ export class DuelState {
         if (vsDef) {
             if (aVal > dVal) {
                 if (ctx.pierce) this._battleDamage(foe, target, def, aVal - dVal, side, from, att);
-                result = this._defeat(foe, target);
+                result = this._defeat(foe, target, { side, slot: from, card: att });
             }
             else {
                 this._emit('blocked', { side: foe, slot: target });
@@ -1428,14 +1428,14 @@ export class DuelState {
             }
         } else if (aVal > dVal) {
             this._battleDamage(foe, target, def, aVal - dVal, side, from, att);
-            result = this._defeat(foe, target);
+            result = this._defeat(foe, target, { side, slot: from, card: att });
         } else if (aVal < dVal) {
             this._battleDamage(side, from, att, dVal - aVal, foe, target, def);
-            this._defeat(side, from);
+            this._defeat(side, from, { side: foe, slot: target, card: def });
         } else {
             this._emit('notice', { text: 'TIE — BOTH GO DOWN' });
-            result = this._defeat(foe, target);
-            this._defeat(side, from);
+            result = this._defeat(foe, target, { side, slot: from, card: att });
+            this._defeat(side, from, { side: foe, slot: target, card: def });
         }
         if (this.winner === '' && this.cardAt(side, from) === att && !att.downed) {
             if (result === 'ko') {
@@ -1475,17 +1475,17 @@ export class DuelState {
         this._emit('clash', { side, from, target: slot, att: aVal, def: dVal, vs: vsDef ? 'DEF' : 'ATK', foe: side });
         if (aVal > dVal) {
             if (!vsDef) this._damage(side, aVal - dVal);
-            if (this.cardAt(side, slot) === def) this._defeat(side, slot);
+            if (this.cardAt(side, slot) === def) this._defeat(side, slot, { side, slot: from, card: att });
         } else if (vsDef) {
             this._emit('blocked', { side, slot });
             if (aVal < dVal) this._damage(side, dVal - aVal);
         } else if (aVal < dVal) {
             this._damage(side, dVal - aVal);
-            if (this.cardAt(side, from) === att) this._defeat(side, from);
+            if (this.cardAt(side, from) === att) this._defeat(side, from, { side, slot, card: def });
         } else {
             this._emit('notice', { text: 'TIE — BOTH GO DOWN' });
-            if (this.cardAt(side, slot) === def) this._defeat(side, slot);
-            if (this.cardAt(side, from) === att) this._defeat(side, from);
+            if (this.cardAt(side, slot) === def) this._defeat(side, slot, { side, slot: from, card: att });
+            if (this.cardAt(side, from) === att) this._defeat(side, from, { side, slot, card: def });
         }
         if (this.winner !== '') return;
         this._bleed(side, att);
@@ -1564,7 +1564,8 @@ export class DuelState {
 
     // ── Battle results ─────────────────────────────────────────────────────
 
-    _defeat(side, slot) {
+    /** by: the character that beat it in a brawl ({side, slot, card}), for its "when it's KO'd / Downed" effects. */
+    _defeat(side, slot, by = null) {
         const c = this.cardAt(side, slot);
         if (c.shield) {
             delete c.shield;
@@ -1573,29 +1574,29 @@ export class DuelState {
         }
         if (c.downed) {
             if (isLion(c) && c.subtype === 'striver' && this._springKingsTest(side, slot, c)) return 'saved';
-            this._ko(side, slot);
+            this._ko(side, slot, by);
             return 'ko';
         }
         if (this._staysUp(side, slot, c)) {
             this._effect(side, c, `${c.name} stays standing`, slot);
             return 'saved';
         }
-        return this._goDown(side, slot, c);
+        return this._goDown(side, slot, c, by);
     }
 
     /** A character goes Down, from a lost brawl or an effect: it drops to DEF, and its "when it's
      *  Downed" and its allies' "when another of your characters is Downed" effects happen. BRITTLE
      *  (Card Forge passive): it's KO'd instead (tokens like Skeletons don't clog the field).
      *  → 'ko' | 'downed' */
-    _goDown(side, slot, c) {
+    _goDown(side, slot, c, by = null) {
         if (this._passive(side, slot, c, 'brittle') != null) {
-            this._ko(side, slot);
+            this._ko(side, slot, by);
             return 'ko';
         }
         c.downed = true;
         c.position = 'def';   // a Downed character is in DEF
         this._emit('downed', { side, slot, card: clone(c) });
-        this._runFx(side, slot, c, 'self_downed');
+        this._runFx(side, slot, c, 'self_downed', null, by ? { side: by.side, slot: by.slot, card: by.card } : {});   // (target "attacker": the one that beat it)
         this._allyDowned(side, slot, c);
         return 'downed';
     }
@@ -1616,7 +1617,7 @@ export class DuelState {
         return !!c && (c.effects || []).some(e => e && e.when === 'passive' && String(e.do ?? '') === 'remains');
     }
 
-    _ko(side, slot) {
+    _ko(side, slot, by = null) {
         const c = this.cardAt(side, slot);
         if (c == null) return;
         const undead = !c.token && !c.risen && this._undeadNow(side, slot, c);
@@ -1632,7 +1633,7 @@ export class DuelState {
         // UNDEAD: the first time it's KO'd, it rises at the end of the turn
         if (undead) c.rise_turn = this.turn;
         this._emit('ko', { side, slot, card: clone(c) });
-        this._runFx(side, slot, c, 'self_ko');
+        this._runFx(side, slot, c, 'self_ko', null, by ? { side: by.side, slot: by.slot, card: by.card } : {});   // (target "attacker": the one that beat it)
         // "When another of your characters is KO'd"
         for (const x of this.characters(side)) this._runFx(side, x.slot, x.card, 'ally_ko', c);
         this._runLasting(side, 'ally_ko', c);

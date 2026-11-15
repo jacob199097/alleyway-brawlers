@@ -101,11 +101,13 @@ static func icon(L: CanvasItem, kind: String, c: Vector2, r: float, col: Color) 
 			L.draw_arc(c, r * 0.86, 0.0, TAU, 24, col, w * 1.2, true)
 			L.draw_arc(c, r * 0.5, 0.0, TAU, 20, lite, w, true)
 			L.draw_circle(c, r * 0.18, col)
-		"shroud":   # a hood, two eyes in its dark
-			L.draw_colored_polygon(_pts(c, r, [[-0.82, 0.92], [-0.78, 0.05], [-0.52, -0.6], [0.0, -0.94], [0.52, -0.6], [0.78, 0.05], [0.82, 0.92]]), col)
-			L.draw_circle(c + Vector2(0, 0.2) * r, r * 0.44, INK)
+		"shroud":   # a cloud of mist, two eyes peering out of it
+			for b in [[-0.42, 0.12, 0.42], [0.04, -0.16, 0.54], [0.46, 0.16, 0.38]]:
+				L.draw_circle(c + Vector2(b[0], b[1]) * r, r * b[2], col)
+			L.draw_rect(Rect2(c + Vector2(-0.84, 0.12) * r, Vector2(1.68, 0.42) * r), col)
 			for k in [-1.0, 1.0]:
-				L.draw_circle(c + Vector2(k * 0.16, 0.14) * r, r * 0.08, lite)
+				L.draw_circle(c + Vector2(k * 0.2, 0.08) * r, r * 0.11, INK)
+				L.draw_circle(c + Vector2(k * 0.2 + 0.03, 0.05) * r, r * 0.04, lite)
 		"resting":   # a Z
 			L.draw_polyline(_pts(c, r, [[-0.5, -0.65], [0.5, -0.65], [-0.5, 0.65], [0.5, 0.65]]), lite, w * 1.2, true)
 		"guarded":   # a padlock

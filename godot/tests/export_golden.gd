@@ -223,6 +223,8 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "shroud"}, {"when": "deploy", "do": "draw", "amount": 1, "echo": true}],
 	[{"when": "deploy", "do": "confuse", "target": "enemies"}, {"when": "deploy", "do": "buff", "target": "allies", "atk": 200, "echo": true}],
 	[{"when": "passive", "do": "shroud"}, {"when": "passive", "do": "taunt"}],
+	# "When it's KO'd / Downed": the character that beat it in the brawl ("attacker")
+	[{"when": "self_ko", "do": "ko", "target": "attacker"}, {"when": "self_downed", "do": "poison", "target": "attacker", "amount": 200}],
 ]
 
 

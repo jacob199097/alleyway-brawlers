@@ -1648,21 +1648,21 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		if a_val > d_val:
 			if ctx.get("pierce", false):
 				_battle_damage(foe, target, def, a_val - d_val, side, from, att)
-			result = _defeat(foe, target)
+			result = _defeat(foe, target, {"side": side, "slot": from, "card": att})
 		else:
 			_emit("blocked", {"side": foe, "slot": target})
 			if a_val < d_val:   # a failed attack costs the difference, as it does against ATK
 				_battle_damage(side, from, att, d_val - a_val, foe, target, def)
 	elif a_val > d_val:
 		_battle_damage(foe, target, def, a_val - d_val, side, from, att)
-		result = _defeat(foe, target)
+		result = _defeat(foe, target, {"side": side, "slot": from, "card": att})
 	elif a_val < d_val:
 		_battle_damage(side, from, att, d_val - a_val, foe, target, def)
-		_defeat(side, from)
+		_defeat(side, from, {"side": foe, "slot": target, "card": def})
 	else:
 		_emit("notice", {"text": "TIE — BOTH GO DOWN"})
-		result = _defeat(foe, target)
-		_defeat(side, from)
+		result = _defeat(foe, target, {"side": side, "slot": from, "card": att})
+		_defeat(side, from, {"side": foe, "slot": target, "card": def})
 
 	if winner == "" and card_at(side, from) == att and not att.downed:
 		if result == "ko":
@@ -1708,7 +1708,7 @@ func _friendly_fire(side: String, from: int, att: Dictionary, slot: int) -> void
 		if not vs_def:
 			_damage(side, a_val - d_val)
 		if is_same(card_at(side, slot), def):
-			_defeat(side, slot)
+			_defeat(side, slot, {"side": side, "slot": from, "card": att})
 	elif vs_def:
 		_emit("blocked", {"side": side, "slot": slot})
 		if a_val < d_val:
@@ -1716,13 +1716,13 @@ func _friendly_fire(side: String, from: int, att: Dictionary, slot: int) -> void
 	elif a_val < d_val:
 		_damage(side, d_val - a_val)
 		if is_same(card_at(side, from), att):
-			_defeat(side, from)
+			_defeat(side, from, {"side": side, "slot": slot, "card": def})
 	else:
 		_emit("notice", {"text": "TIE — BOTH GO DOWN"})
 		if is_same(card_at(side, slot), def):
-			_defeat(side, slot)
+			_defeat(side, slot, {"side": side, "slot": from, "card": att})
 		if is_same(card_at(side, from), att):
-			_defeat(side, from)
+			_defeat(side, from, {"side": side, "slot": slot, "card": def})
 	if winner != "":
 		return
 	_bleed(side, att)
@@ -1803,7 +1803,8 @@ func _hit_leader(ctx: Dictionary) -> void:
 # ── Battle results ───────────────────────────────────────────────────────────
 
 ## First loss Downs a character; losing again while Downed sends it to the Gutter.
-func _defeat(side: String, slot: int) -> String:
+## by: the character that beat it in a brawl ({side, slot, card}), for its "when it's KO'd / Downed" effects.
+func _defeat(side: String, slot: int, by := {}) -> String:
 	var c: Dictionary = card_at(side, slot)
 	if c.get("shield", false):
 		c.erase("shield")
@@ -1812,12 +1813,12 @@ func _defeat(side: String, slot: int) -> String:
 	if c.downed:
 		if is_lion(c) and c.get("subtype") == "striver" and _spring_kings_test(side, slot, c):
 			return "saved"
-		_ko(side, slot)
+		_ko(side, slot, by)
 		return "ko"
 	if _stays_up(side, slot, c):
 		_effect(side, c, "%s stays standing" % c.name, slot)
 		return "saved"
-	return _go_down(side, slot, c)
+	return _go_down(side, slot, c, by)
 
 
 ## A character goes Down, from a lost brawl or an effect: it drops to DEF, and its "when it's Downed"
@@ -1846,19 +1847,19 @@ func _undead_now(side: String, slot: int, c: Dictionary) -> bool:
 	return not p.is_empty()
 
 
-func _go_down(side: String, slot: int, c: Dictionary) -> String:
+func _go_down(side: String, slot: int, c: Dictionary, by := {}) -> String:
 	if not _passive(side, slot, c, "brittle").is_empty():
-		_ko(side, slot)
+		_ko(side, slot, by)
 		return "ko"
 	c.downed = true
 	c.position = "def"   # a Downed character is in DEF
 	_emit("downed", {"side": side, "slot": slot, "card": c.duplicate(true)})
-	_run_fx(side, slot, c, "self_downed")
+	_run_fx(side, slot, c, "self_downed", null, by.duplicate())   # (target "attacker": the one that beat it)
 	_ally_downed(side, slot, c)
 	return "downed"
 
 
-func _ko(side: String, slot: int) -> void:
+func _ko(side: String, slot: int, by := {}) -> void:
 	if card_at(side, slot) == null:
 		return
 	var c: Dictionary = card_at(side, slot)
@@ -1877,7 +1878,7 @@ func _ko(side: String, slot: int) -> void:
 	if undead:
 		c.rise_turn = turn
 	_emit("ko", {"side": side, "slot": slot, "card": c.duplicate(true)})
-	_run_fx(side, slot, c, "self_ko")
+	_run_fx(side, slot, c, "self_ko", null, by.duplicate())   # (target "attacker": the one that beat it)
 	# "When another of your characters is KO'd"
 	for x in characters(side):
 		_run_fx(side, x.slot, x.card, "ally_ko", c)

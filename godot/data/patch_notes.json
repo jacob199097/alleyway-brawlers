@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.156",
+        "notes": [
+            "Cards can now strike back from the grave: \"When this card is KO'd (or Downed)\" effects can hit the character that beat it in the brawl.",
+            "SHROUD's badge is now a cloud of mist, so it can't be mistaken for the padlock."
+        ]
+    },
+    {
         "version": "0.9.155",
         "notes": [
             "On phones, drag a finger up or down any list to scroll it, even when the drag starts on a card or a button in it, and let go mid-swipe to send it gliding. Dragging sideways still moves cards and sliders as before.",

@@ -231,4 +231,25 @@ proof = put(st, 'opponent', 1, unit(st, [{ when: 'passive', do: 'immune', status
 st._doFx('player', 0, src, { do: 'confuse', target: 'enemies' });
 assert.ok(!proof.confuse_until);
 
+// "When it's KO'd / Downed: ... the attacker": the character that beat it in the brawl
+st = duel('brawl');
+let avenger = put(st, 'opponent', 0, unit(st, [{ when: 'self_ko', do: 'ko', target: 'attacker' }], 1000, 1000));
+let hitter = put(st, 'player', 0, unit(st, [], 2000, 1000));
+avenger.downed = true;
+avenger.position = 'def';
+assert.ok(attack(st, 0, 0));
+assert.ok(!st.cardAt('opponent', 0), "the Downed avenger was KO'd");
+assert.ok(!st.cardAt('player', 0), "and it KO'd the character that KO'd it");
+st = duel('brawl');
+let spiteful = put(st, 'opponent', 0, unit(st, [{ when: 'self_downed', do: 'poison', target: 'attacker', amount: 200 }], 1000, 1000));
+hitter = put(st, 'player', 0, unit(st, [], 2000, 1000));
+assert.ok(attack(st, 0, 0));
+assert.ok(spiteful.downed && hitter.poison, 'Downed, it POISONED the attacker');
+st = duel();
+let quiet = put(st, 'opponent', 0, unit(st, [{ when: 'self_ko', do: 'ko', target: 'attacker' }]));
+let bystander = put(st, 'player', 1, unit(st));
+src = put(st, 'player', 0, unit(st));
+st._doFx('player', 0, src, { do: 'ko', target: 'enemies' });
+assert.ok(!st.cardAt('opponent', 0) && st.cardAt('player', 0) === src && st.cardAt('player', 1) === bystander, "KO'd by an effect: no character beat it, nothing happens");
+
 console.log('keywords: all passed');
