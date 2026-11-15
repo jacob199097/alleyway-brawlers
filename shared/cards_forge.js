@@ -6129,7 +6129,7 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_unde_043",
         "code": "UNDE-043",
-        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
+        "flavourText": "Thy's throne is hollow. Thy's army is not.",
         "effectText": "When this card hits your opponent directly: PROMOTE this card.\nWhen deployed: Send the top 2 cards of your deck to your Gutter.",
         "effects": [
             {
@@ -6162,7 +6162,7 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_unde_044",
         "code": "UNDE-044",
-        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
+        "flavourText": "Thy's throne is hollow. Thy's army is not.",
         "effectText": "Once per turn, when another of your characters is Downed: Give the characters next to this card UNDEAD.\nWhen an enemy character is KO'd: If your Gutter has 8 or more UNDERWORLD cards, PROMOTE this card.",
         "effects": [
             {
@@ -6199,7 +6199,7 @@ export const FORGE_CARDS = {
         "effectKey": "",
         "art_url": "card_unde_045",
         "code": "UNDE-045",
-        "flavourText": "Thy's throne is hollow. Thy's army's is not.",
+        "flavourText": "Thy's throne is hollow. Thy's army is not.",
         "effectText": "When deployed: EXILE one enemy character.\nThis card has LIFESTEAL.\nWhen this card is KO'd: Give your other characters UNDEAD.",
         "effects": [
             {
@@ -8345,11 +8345,11 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_032",
         "code": "ARSO-032",
         "flavourText": "Can't hit what you can't see.",
-        "effectText": "When an enemy attacks one of your characters: STUN all enemy characters and negate the attack. If you do, give the attacker BURN 300.",
+        "effectText": "When an enemy attacks one of your characters: BLIND all enemy characters and negate the attack. If you do, give the attacker BURN 300.",
         "effects": [
             {
                 "when": "defend",
-                "do": "stun",
+                "do": "blind",
                 "target": "enemies",
                 "negate": true
             },
@@ -10981,6 +10981,123 @@ export const FORGE_CARDS = {
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
         "subtype": "continuous",
+        "forge": "forge2"
+    },
+    "card_pira_042": {
+        "id": "card_pira_042",
+        "name": "The Drowned Sovereign",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 5,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_042",
+        "code": "PIRA-042",
+        "flavourText": "No captain. No crew. But i refuse to stay beneath the waves.",
+        "effectText": "Once per turn, when you PROMOTE a Striver: PLUNDER a random card from your opponent's hand.\nThis card has PIERCE.",
+        "effects": [
+            {
+                "when": "ally_promoted",
+                "do": "plunder",
+                "from": "hand",
+                "amount": 1,
+                "once": true
+            },
+            {
+                "when": "passive",
+                "do": "pierce"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2400,
+        "defense": 1500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_043": {
+        "id": "card_pira_043",
+        "name": "Leviathan's Grave",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 9,
+        "tributeCost": 2,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_043",
+        "code": "PIRA-043",
+        "flavourText": "A thousand ships have sailed into my jaws. Not one has ever sailed back out.",
+        "effectText": "Your opponent must attack this card first if it is standing.\nWhen an enemy character is KO'd: PLUNDER the most recent card from your opponent's Gutter (into your hand).\nACTIVATE (once per turn, discard 2 cards): Return a card of your choice from your Gutter to your hand. If you do, draw 2 cards.",
+        "effects": [
+            {
+                "when": "passive",
+                "do": "guard"
+            },
+            {
+                "when": "foe_ko",
+                "do": "plunder",
+                "from": "gutter",
+                "amount": 1
+            },
+            {
+                "when": "activate",
+                "do": "recover",
+                "cost": "discard",
+                "amount": 1,
+                "cost_n": 2,
+                "choose": true
+            },
+            {
+                "when": "activate",
+                "do": "draw",
+                "amount": 2,
+                "if_done": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 2800,
+        "defense": 4200,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_044": {
+        "id": "card_pira_044",
+        "name": "Razorfin",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_044",
+        "code": "PIRA-044",
+        "flavourText": "That's a fine sword you've got, mate. Shame you'll never get close enough to use it.",
+        "effectText": "When this card is attacked: It gains +500 ATK and +500 DEF for this Brawl.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "buff",
+                "target": "self",
+                "atk": 500,
+                "def": 500
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1750,
+        "defense": 1500,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
         "forge": "forge2"
     }
 };
