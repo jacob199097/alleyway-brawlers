@@ -1200,7 +1200,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_005",
         "code": "MILI-005",
         "flavourText": "I Forgot that we put that there",
-        "effectText": "When an enemy attacks one of your characters: DOWN the attacker and negate the attack.",
+        "effectText": "When an enemy attacks one of your MILITIA characters: DOWN the attacker and negate the attack.",
         "effects": [
             {
                 "when": "defend",
@@ -1210,7 +1210,8 @@ export const FORGE_CARDS = {
             }
         ],
         "clanName": "Militia",
-        "clanColor": "#a3e635"
+        "clanColor": "#a3e635",
+        "ambushClan": "militia"
     },
     "card_mili_006": {
         "id": "card_mili_006",
@@ -1615,12 +1616,11 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_017",
         "code": "MILI-017",
         "flavourText": "They call it junk. I call it next month's ammunition",
-        "effectText": "ACTIVATE (once per turn): Search your deck for a Hustle and add it to your hand.\nThis card has PIERCE.\nAt the end of your turn: If this card is next to another MILITIA character, destroy one of your opponent's face-down cards.",
+        "effectText": "ACTIVATE (once per turn): Search your deck for a card and add it to your hand.\nThis card has PIERCE.\nAt the end of your turn: If this card is next to another MILITIA character, destroy one of your opponent's face-down cards.",
         "effects": [
             {
                 "when": "activate",
                 "do": "search",
-                "kind": "hustle",
                 "amount": 1,
                 "choose": true
             },
@@ -2680,11 +2680,11 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_005",
         "code": "NEBU-005",
         "flavourText": "I'm not hiding, it's an ambush",
-        "effectText": "This card can't be attacked while you control another character that can be.\nWhen this card hits your opponent directly: PROMOTE this card.",
+        "effectText": "This card has SHROUD.\nWhen this card hits your opponent directly: PROMOTE this card.",
         "effects": [
             {
                 "when": "passive",
-                "do": "elusive"
+                "do": "shroud"
             },
             {
                 "when": "direct",
@@ -2712,11 +2712,11 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_006",
         "code": "NEBU-006",
         "flavourText": "I'm not hiding, it's an ambush",
-        "effectText": "This card can't be attacked while you control another character that can be.\nOnce per turn, when your opponent deploys a character: Put one enemy character in STASIS.",
+        "effectText": "This card has SHROUD.\nOnce per turn, when your opponent deploys a character: Put one enemy character in STASIS.",
         "effects": [
             {
                 "when": "passive",
-                "do": "elusive"
+                "do": "shroud"
             },
             {
                 "when": "foe_deployed",
@@ -3983,14 +3983,14 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_037",
         "code": "WILD-037",
         "flavourText": "Nice try. Show me your cards.",
-        "effectText": "When an enemy attacks one of your characters: Roll a die: the attacker loses 300 ATK for each pip rolled for this Brawl.",
+        "effectText": "When an enemy attacks one of your characters: Roll a die: the attacker loses 350 ATK for each pip rolled for this Brawl.",
         "effects": [
             {
                 "when": "defend",
                 "do": "buff",
                 "target": "attacker",
                 "per": "roll",
-                "atk": -300
+                "atk": -350
             }
         ],
         "clanName": "Wildcard",
@@ -5008,7 +5008,7 @@ export const FORGE_CARDS = {
         "clan": "underworld",
         "cardType": "gang_member",
         "authority": 8,
-        "tributeCost": 2,
+        "tributeCost": 3,
         "rarity": 4,
         "clanTag": "underworld",
         "effectKey": "",
@@ -5538,7 +5538,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_029",
         "code": "UNDE-029",
         "flavourText": "Watch your step. This one was dug for you.",
-        "effectText": "When an enemy attacks one of your characters: Put the attacker on top of its owner's deck.",
+        "effectText": "When an enemy attacks one of your UNDERWORLD characters: Put the attacker on top of its owner's deck.",
         "effects": [
             {
                 "when": "defend",
@@ -5547,7 +5547,8 @@ export const FORGE_CARDS = {
             }
         ],
         "clanName": "Underworld",
-        "clanColor": "#4f1c5e"
+        "clanColor": "#4f1c5e",
+        "ambushClan": "underworld"
     },
     "card_unde_030": {
         "id": "card_unde_030",
@@ -5592,13 +5593,13 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_031",
         "code": "UNDE-031",
         "flavourText": "Breathe deep. The cure is worse than the disease.",
-        "effectText": "When deployed: Give one enemy character POISON 250.",
+        "effectText": "When deployed: Give one enemy character POISON 400.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "poison",
                 "target": "enemy",
-                "amount": 250
+                "amount": 400
             }
         ],
         "clanName": "Underworld",
@@ -6282,14 +6283,8 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_045",
         "code": "MILI-045",
         "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
-        "effectText": "When this card attacks: SUPPRESS one enemy character for 300.\nWhen this card KOs a character: PROMOTE this card.",
+        "effectText": "When this card KOs a character: PROMOTE this card.",
         "effects": [
-            {
-                "when": "attack",
-                "do": "suppress",
-                "target": "enemy",
-                "amount": 300
-            },
             {
                 "when": "ko",
                 "do": "promote"
@@ -6428,7 +6423,7 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_049",
         "code": "MILI-049",
         "flavourText": "One shot. Then gone.",
-        "effectText": "This card has PIERCE.\nWhen this card KOs a character: PROMOTE this card.",
+        "effectText": "This card has PIERCE.\nAfter this card KOs 2 characters: PROMOTE this card.",
         "effects": [
             {
                 "when": "passive",
@@ -6436,7 +6431,8 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "ko",
-                "do": "promote"
+                "do": "promote",
+                "times": 2
             }
         ],
         "clanName": "Militia",
@@ -6460,26 +6456,26 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_050",
         "code": "MILI-050",
         "flavourText": "One shot. Then gone.",
-        "effectText": "This card has PIERCE.\nThis card can't be attacked while you control another character that can be.\nAt the end of your turn: SUPPRESS one enemy character for 600.",
+        "effectText": "This card has PIERCE.\nAt the end of your turn: SUPPRESS one enemy character for 600.\nThis card has SHROUD.",
         "effects": [
             {
                 "when": "passive",
                 "do": "pierce"
             },
             {
-                "when": "passive",
-                "do": "elusive"
-            },
-            {
                 "when": "turn_end",
                 "do": "suppress",
                 "target": "enemy",
                 "amount": 600
+            },
+            {
+                "when": "passive",
+                "do": "shroud"
             }
         ],
         "clanName": "Militia",
         "clanColor": "#a3e635",
-        "attack": 2900,
+        "attack": 3200,
         "defense": 1600,
         "level": 3,
         "subtype": "striver",
@@ -7218,14 +7214,14 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_057",
         "code": "WILD-057",
         "flavourText": "The wheel goes round. Somebody goes down.",
-        "effectText": "When an enemy attacks one of your characters: Roll a die: SHOCK all enemy characters for 400 for each pip rolled.",
+        "effectText": "When an enemy attacks one of your characters: Roll a die: SHOCK all enemy characters for 350 for each pip rolled.",
         "effects": [
             {
                 "when": "defend",
                 "do": "shock",
                 "target": "enemies",
                 "per": "roll",
-                "amount": 400
+                "amount": 350
             }
         ],
         "clanName": "Wildcard",
@@ -7544,13 +7540,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_007",
         "code": "ARSO-007",
         "flavourText": "Fill her up? Sure. With what, though?",
-        "effectText": "When this card KOs a character: Your opponent loses 300 Morale for each BURNING enemy character (up to 4).\nACTIVATE (once per turn): Return the enemy character across from this card to its owner's hand.",
+        "effectText": "When this card KOs a character: Your opponent loses 200 Morale for each BURNING enemy character (up to 4).\nACTIVATE (once per turn): Return the enemy character across from this card to its owner's hand.",
         "effects": [
             {
                 "when": "ko",
                 "do": "damage",
                 "per": "burning",
-                "amount": 300,
+                "amount": 200,
                 "per_max": 4
             },
             {
@@ -7616,7 +7612,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_009",
         "code": "ARSO-009",
         "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
-        "effectText": "When this card is attacked: Give the attacker STOKE 300.\nWhen an enemy character is KO'd: If you control a Downed ARSONISTS character, PROMOTE this card.",
+        "effectText": "When this card is attacked: Give the attacker STOKE 300.\nWhen an enemy character is KO'd: If you control a Downed ARSONISTS character, PROMOTE this card.\nThis card has TAUNT.",
         "effects": [
             {
                 "when": "defend",
@@ -7629,6 +7625,10 @@ export const FORGE_CARDS = {
                 "do": "promote",
                 "if": "ally_downed",
                 "if_clan": "arsonists"
+            },
+            {
+                "when": "passive",
+                "do": "taunt"
             }
         ],
         "clanName": "Arsonists",
@@ -7652,7 +7652,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_010",
         "code": "ARSO-010",
         "flavourText": "Twenty years jumping into fires. Turns out I liked them.",
-        "effectText": "When this card is attacked: Give the attacker STOKE 400.\nAt the start of your turn: CLEANSE the characters next to this card.\nYour opponent must attack this card first if it is standing.",
+        "effectText": "When this card is attacked: Give the attacker STOKE 400.\nAt the start of your turn: CLEANSE the characters next to this card.\nThis card has TAUNT.",
         "effects": [
             {
                 "when": "defend",
@@ -7667,7 +7667,7 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "passive",
-                "do": "guard"
+                "do": "taunt"
             }
         ],
         "clanName": "Arsonists",
@@ -7720,7 +7720,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_012",
         "code": "ARSO-012",
         "flavourText": "Hands up. Mine are on fire.",
-        "effectText": "When this card attacks: Give one enemy character BURN 300.\nWhen this card KOs a character: PROMOTE this card.",
+        "effectText": "When this card attacks: Give one enemy character BURN 300.\nAfter this card KOs 2 characters: PROMOTE this card.",
         "effects": [
             {
                 "when": "attack",
@@ -7730,7 +7730,8 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "ko",
-                "do": "promote"
+                "do": "promote",
+                "times": 2
             }
         ],
         "clanName": "Arsonists",
@@ -7754,14 +7755,14 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_013",
         "code": "ARSO-013",
         "flavourText": "Hands up. Mine are on fire.",
-        "effectText": "When this card KOs a character: This card gains +500 ATK and +200 DEF permanently.\nThis card has PIERCE.",
+        "effectText": "When this card KOs a character: This card gains +400 ATK and +200 DEF permanently.\nThis card has PIERCE.",
         "effects": [
             {
                 "when": "ko",
                 "do": "buff",
                 "target": "self",
                 "until": "forever",
-                "atk": 500,
+                "atk": 400,
                 "def": 200
             },
             {
@@ -8020,13 +8021,17 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_021",
         "code": "ARSO-021",
         "flavourText": "Go on. Hit the wall. See what happens.",
-        "effectText": "When this card is attacked: Give the attacker BURN 300.",
+        "effectText": "When this card is attacked: Give the attacker BURN 300.\nThis card has TAUNT.",
         "effects": [
             {
                 "when": "defend",
                 "do": "burn",
                 "target": "attacker",
                 "amount": 300
+            },
+            {
+                "when": "passive",
+                "do": "taunt"
             }
         ],
         "clanName": "Arsonists",
@@ -8267,13 +8272,14 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_029",
         "code": "ARSO-029",
         "flavourText": "Smell that? No? Good.",
-        "effectText": "Your opponent loses 300 Morale for each BURNING enemy character.",
+        "effectText": "Your opponent loses 300 Morale for each BURNING enemy character (up to 4).",
         "effects": [
             {
                 "when": "deploy",
                 "do": "damage",
                 "per": "burning",
-                "amount": 300
+                "amount": 300,
+                "per_max": 4
             }
         ],
         "clanName": "Arsonists",
@@ -9102,12 +9108,12 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_056",
         "code": "MILI-056",
         "flavourText": "Broken? Nah, mate. It's just got a few extra features now. Probably.",
-        "effectText": "At the end of your turn: If an enemy character is Downed, PROMOTE this card.\nWhen another of your characters is attacked: The attacker loses 500 ATK until the end of your next turn.",
+        "effectText": "At the end of your turn: If an enemy character is SUPPRESSED, PROMOTE this card.\nWhen another of your characters is attacked: The attacker loses 500 ATK until the end of your next turn.",
         "effects": [
             {
                 "when": "turn_end",
                 "do": "promote",
-                "if": "foe_downed"
+                "if": "foe_st_suppress"
             },
             {
                 "when": "ally_attacked",
@@ -9230,14 +9236,14 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_050",
         "code": "UNDE-050",
         "flavourText": "Every flame tells a story. Every shadow whispers a name. And every name belongs to someone who hasn't died yet.",
-        "effectText": "When an enemy character is KO'd: If your Gutter has 5 or more cards, PROMOTE this card.",
+        "effectText": "When an enemy character is KO'd: If your Gutter has 6 or more cards, PROMOTE this card.",
         "effects": [
             {
                 "when": "foe_ko",
                 "do": "promote",
                 "clan": "underworld",
                 "if": "gutter_ge",
-                "n": 5
+                "n": 6
             }
         ],
         "clanName": "Underworld",
@@ -9261,7 +9267,7 @@ export const FORGE_CARDS = {
         "art_url": "card_unde_051",
         "code": "UNDE-051",
         "flavourText": "Every flame tells a story. Every shadow whispers a name. And every name belongs to someone who hasn't died yet.",
-        "effectText": "This card is immune to POISON, BURN, BLEED, SHOCK, STASIS, SUPPRESS, SILENCE and CHARM.\nACTIVATE (once per turn, sacrifice another of your characters): KO one enemy character.\nAt the start of your turn: Swap the ATK and DEF of one enemy character until the end of your opponent's next turn.",
+        "effectText": "This card is immune to POISON, BURN, BLEED, CORRODE, SHOCK, STASIS, SUPPRESS, SILENCE and CHARM.\nACTIVATE (once per turn, sacrifice another of your characters): KO one enemy character.\nAt the start of your turn: Swap the ATK and DEF of one enemy character until the end of your turn.",
         "effects": [
             {
                 "when": "passive",
@@ -9270,6 +9276,7 @@ export const FORGE_CARDS = {
                     "poison",
                     "burn",
                     "bleed",
+                    "corrode",
                     "shock",
                     "stasis",
                     "suppress",
@@ -9287,7 +9294,7 @@ export const FORGE_CARDS = {
                 "when": "turn_start",
                 "do": "swap",
                 "target": "enemy",
-                "until": "next_turn"
+                "until": "turn"
             }
         ],
         "clanName": "Underworld",
@@ -10159,7 +10166,7 @@ export const FORGE_CARDS = {
         ],
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
-        "attack": 1350,
+        "attack": 1250,
         "defense": 600,
         "level": 1,
         "subtype": "brawler",
@@ -10321,13 +10328,15 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_027",
         "code": "PIRA-027",
         "flavourText": "Two fingers, one second, no witnesses.",
-        "effectText": "PLUNDER a random card from your opponent's hand.",
+        "effectText": "If you have 3 or fewer cards in hand, PLUNDER a random card from your opponent's hand.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "plunder",
+                "if": "hand_le",
                 "from": "hand",
-                "amount": 1
+                "amount": 1,
+                "n": 3
             }
         ],
         "clanName": "Pirates",
@@ -10347,12 +10356,14 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_028",
         "code": "PIRA-028",
         "flavourText": "Mind the gap.",
-        "effectText": "Return one enemy character to its owner's hand.",
+        "effectText": "If it is turn 5 or later, return one enemy character to its owner's hand.",
         "effects": [
             {
                 "when": "deploy",
                 "do": "bounce",
-                "target": "enemy"
+                "target": "enemy",
+                "if": "turn_ge",
+                "n": 5
             }
         ],
         "clanName": "Pirates",
@@ -10479,7 +10490,7 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_033",
         "code": "PIRA-033",
         "flavourText": "",
-        "effectText": "This card is UNDEAD.\nWhen deployed: PLUNDER a card of your choice from your opponent's Gutter (into your hand).\nACTIVATE (once per turn, discard 2 cards): KO one enemy character.",
+        "effectText": "This card is UNDEAD.\nWhen deployed: PLUNDER a card of your choice from your opponent's Gutter (into your hand).\nACTIVATE (once per turn, discard 2 cards): Give one of your other characters UNDEAD.",
         "effects": [
             {
                 "when": "passive",
@@ -10494,8 +10505,8 @@ export const FORGE_CARDS = {
             },
             {
                 "when": "activate",
-                "do": "ko",
-                "target": "enemy",
+                "do": "give_undead",
+                "target": "ally",
                 "cost": "discard",
                 "cost_n": 2
             }
@@ -10914,13 +10925,13 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_038",
         "code": "ARSO-038",
         "flavourText": "The click is quiet. Everything else after isn't.",
-        "effectText": "When an enemy attacks one of your ARSONISTS characters: Give the attacker BURN 400 and negate the attack.",
+        "effectText": "When an enemy attacks one of your ARSONISTS characters: Give the attacker BURN 300 and negate the attack.",
         "effects": [
             {
                 "when": "defend",
                 "do": "burn",
                 "target": "attacker",
-                "amount": 400,
+                "amount": 300,
                 "negate": true
             }
         ],
@@ -10967,15 +10978,14 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_041",
         "code": "PIRA-041",
         "flavourText": "The sea keeps the count, and never pays it back.",
-        "effectText": "Once per turn, at the end of your opponent's turn: If your opponent controls 4 or more characters, EXILE one enemy character.",
+        "effectText": "At the end of your opponent's turn: If your opponent controls 4 or more characters, EXILE one enemy character.",
         "effects": [
             {
                 "when": "foe_turn_end",
                 "do": "exile",
                 "target": "enemy",
                 "if": "enemies_ge",
-                "n": 4,
-                "once": true
+                "n": 4
             }
         ],
         "clanName": "Pirates",
@@ -10996,12 +11006,11 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_042",
         "code": "PIRA-042",
         "flavourText": "No captain. No crew. But i refuse to stay beneath the waves.",
-        "effectText": "Once per turn, when you PROMOTE a Striver: PLUNDER a random card from your opponent's hand.\nThis card has PIERCE.",
+        "effectText": "Once per turn, when this card KOs a character: DEBT 1.\nThis card has PIERCE.",
         "effects": [
             {
-                "when": "ally_promoted",
-                "do": "plunder",
-                "from": "hand",
+                "when": "ko",
+                "do": "debt",
                 "amount": 1,
                 "once": true
             },
@@ -11098,6 +11107,70 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "brawler",
         "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_045": {
+        "id": "card_pira_045",
+        "name": "Stormcaller Veyra",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_045",
+        "code": "PIRA-045",
+        "flavourText": "Kneel to the tide, or I'll have the storm drag you down with it.",
+        "effectText": "ACTIVATE (once per turn): SHOCK one enemy character for 500.",
+        "effects": [
+            {
+                "when": "activate",
+                "do": "shock",
+                "target": "enemy",
+                "amount": 500
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1400,
+        "defense": 1200,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_046": {
+        "id": "card_pira_046",
+        "name": "Mimic Chest",
+        "clan": "pirates",
+        "cardType": "ambush",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_046",
+        "code": "PIRA-046",
+        "flavourText": "",
+        "effectText": "When an enemy attacks one of your PIRATES characters: DOWN the attacker and negate the attack. If you do, DEBT 1.",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "down",
+                "target": "attacker",
+                "negate": true
+            },
+            {
+                "when": "defend",
+                "do": "debt",
+                "amount": 1,
+                "if_done": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "ambushClan": "pirates",
         "forge": "forge2"
     }
 };
