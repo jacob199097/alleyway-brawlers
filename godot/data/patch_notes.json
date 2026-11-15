@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.158",
+        "notes": [
+            "Cards that are immune to statuses can now also ignore BRACE (no ATK lost), TAUNT (they attack whoever they like) and SHROUD (they can attack and target a SHROUDED card).",
+            "New card conditions: \"if an enemy is SUPPRESSED\", and the same for every status (POISONED, CORRODED, CONFUSED, SHIELDED, with a BOUNTY...)."
+        ]
+    },
+    {
         "version": "0.9.157",
         "notes": [
             "Contracts, in the Shop: three a day, new ones every 24 hours. Pay some Karat for a goal (KO 3 enemy characters, win with 3000 Morale left...), do it in one of your next 3 matches (Casual, Ranked, or the CPU on Normal or Hard) and it pays out more. Don't, and the Karat is gone. One at a time; the match shows yours at the start and in the corner, and celebrates when it's done."

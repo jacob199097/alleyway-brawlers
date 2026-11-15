@@ -225,6 +225,9 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "shroud"}, {"when": "passive", "do": "taunt"}],
 	# "When it's KO'd / Downed": the character that beat it in the brawl ("attacker")
 	[{"when": "self_ko", "do": "ko", "target": "attacker"}, {"when": "self_downed", "do": "poison", "target": "attacker", "amount": 200}],
+	# "immune" that also ignores BRACE / TAUNT / SHROUD; "Only if an enemy is SUPPRESSED" (foe_st_<status>)
+	[{"when": "passive", "do": "immune", "statuses": ["stun", "taunt", "shroud", "brace"]}, {"when": "turn_end", "do": "draw", "amount": 1, "if": "foe_st_suppress"}],
+	[{"when": "deploy", "do": "suppress", "target": "enemies", "amount": 200}, {"when": "attack", "do": "buff", "target": "self", "atk": 300, "if": "foe_st_corrode"}],
 ]
 
 

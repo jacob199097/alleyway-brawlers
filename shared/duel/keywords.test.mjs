@@ -252,4 +252,38 @@ src = put(st, 'player', 0, unit(st));
 st._doFx('player', 0, src, { do: 'ko', target: 'enemies' });
 assert.ok(!st.cardAt('opponent', 0) && st.cardAt('player', 0) === src && st.cardAt('player', 1) === bystander, "KO'd by an effect: no character beat it, nothing happens");
 
+// An "immune" passive can ignore BRACE, TAUNT and SHROUD (named in its list; never by default)
+const ignores = (...kinds) => [{ when: 'passive', do: 'immune', statuses: ['stun', ...kinds] }];
+st = duel('brawl');
+put(st, 'opponent', 0, unit(st, [{ when: 'passive', do: 'taunt' }]));
+put(st, 'opponent', 1, unit(st));
+put(st, 'opponent', 2, unit(st, [{ when: 'passive', do: 'shroud' }]));
+put(st, 'player', 0, unit(st, [{ when: 'passive', do: 'immune' }], 2000, 1000));
+put(st, 'player', 1, unit(st, ignores('taunt'), 2000, 1000));
+put(st, 'player', 2, unit(st, ignores('shroud', 'taunt'), 2000, 1000));
+assert.deepEqual(st.attackTargets('player', 'opponent', 0), [0], 'immune to every status still has to attack the TAUNT');
+assert.deepEqual(st.attackTargets('player', 'opponent', 1), [0, 1], 'ignoring TAUNT: any it can see (not the SHROUDED one)');
+assert.deepEqual(st.attackTargets('player', 'opponent', 2), [0, 1, 2], 'ignoring SHROUD too: that one as well');
+const seer = st.cardAt('player', 2);
+assert.ok(st._fxTargets('player', 2, seer, { do: 'ko', target: 'enemy' }, {}, 'any').some(x => x.slot === 2), 'its effects can choose the SHROUDED one');
+assert.ok(!st._noTarget('opponent', 2, st.cardAt('opponent', 2), seer, 'player', 2), 'it sees through SHROUD');
+assert.ok(st._noTarget('opponent', 2, st.cardAt('opponent', 2), st.cardAt('player', 0), 'player', 0), 'another card does not');
+st = duel('brawl');
+let braced = put(st, 'opponent', 0, unit(st, [{ when: 'passive', do: 'brace', amount: 600 }], 1000, 1000));
+let steady = put(st, 'player', 0, unit(st, ignores('brace'), 1500, 1000));
+assert.ok(attack(st, 0, 0));
+assert.equal(steady.attack, 1500, 'ignoring BRACE: no ATK lost');
+assert.ok(braced.downed, 'and it won the brawl');
+
+// "Only if an enemy is SUPPRESSED" (foe_st_<status>): any status an enemy character has
+st = duel();
+src = put(st, 'player', 0, unit(st));
+let pinned = put(st, 'opponent', 0, unit(st));
+assert.ok(!st._fxCond('player', 0, { if: 'foe_st_suppress' }, null), 'no enemy SUPPRESSED yet');
+st._doFx('player', 0, src, { do: 'suppress', target: 'enemies', amount: 100 });
+assert.ok(st._fxCond('player', 0, { if: 'foe_st_suppress' }, null), 'now one is');
+assert.ok(!st._fxCond('player', 0, { if: 'foe_st_corrode' }, null), 'but none is CORRODED');
+assert.ok(!st._fxCond('opponent', 0, { if: 'foe_st_suppress' }, null), "the SUPPRESSED one is the opponent's own");
+void pinned;
+
 console.log('keywords: all passed');

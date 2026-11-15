@@ -457,7 +457,7 @@ export class DuelState {
         const out = [];
         for (const on of String(c.equip_to ?? 'ally') === 'enemy' ? this.foesOf(side) : [side]) {
             for (const x of this.characters(on)) {
-                if (!this.inStasis(x.card) && (on === side || !this._noTarget(on, x.slot, x.card))) out.push({ side: on, slot: x.slot, card: x.card });
+                if (!this.inStasis(x.card) && (on === side || !this._noTarget(on, x.slot, x.card, c, side))) out.push({ side: on, slot: x.slot, card: x.card });
             }
         }
         return out;
@@ -567,7 +567,7 @@ export class DuelState {
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
             promote_ally: 'promotable', charm: 'charmable', plunder: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
-        if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => !this._noTarget(x.side, x.slot, x.card));
+        if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => !this._noTarget(x.side, x.slot, x.card, c, side, slot));
         return entries.length > 0;
     }
 
@@ -651,9 +651,16 @@ export class DuelState {
         return c != null && !c.unshrouded && this._passive(side, slot, c, 'shroud') != null;
     }
 
-    /** Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED. */
-    _noTarget(side, slot, c) {
-        return !isEmpty(this._passive(side, slot, c, 'untargetable')) || this._shrouded(side, slot, c);
+    /** Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED
+     *  (by: the card whose effect it is, at bySide / bySlot: one that ignores SHROUD can choose it). */
+    _noTarget(side, slot, c, by = null, bySide = null, bySlot = NO_SLOT) {
+        return !isEmpty(this._passive(side, slot, c, 'untargetable'))
+            || (this._shrouded(side, slot, c) && !(by && this._ignores(bySide, bySlot, by, 'shroud')));
+    }
+
+    /** An "immune" passive that names BRACE, TAUNT or SHROUD (kind): this card ignores it. */
+    _ignores(side, slot, c, kind) {
+        return c != null && side != null && this._passive(side, slot, c, 'immune', im => Array.isArray(im.statuses) && im.statuses.includes(kind)) != null;
     }
 
     /** DEBT is paid: a card was played (it cost what it owed). */
@@ -706,17 +713,19 @@ export class DuelState {
     attackTargets(side, foe = null, from = null) {
         foe = foe ?? this.foesOf(side)[0];
         if (foe == null || foe === side || !this.sides[foe] || this.sides[foe].out) return [];
-        // (STASIS and SHROUD: it can't be attacked and doesn't block a direct attack)
-        const foes = this.characters(foe).filter(e => !this.inStasis(e.card) && !this._shrouded(foe, e.slot, e.card));
-        // TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE)
+        const att = from == null ? null : this.cardAt(side, from);
+        // (STASIS and SHROUD: it can't be attacked and doesn't block a direct attack; one that ignores SHROUD sees it)
+        const sees = this._ignores(side, from, att, 'shroud');
+        const foes = this.characters(foe).filter(e => !this.inStasis(e.card) && (sees || !this._shrouded(foe, e.slot, e.card)));
+        // TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE),
+        // unless the attacker ignores TAUNT
         const taunts = foes.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'taunt'));
-        if (taunts.length) return taunts.map(e => e.slot);
+        if (taunts.length && !this._ignores(side, from, att, 'taunt')) return taunts.map(e => e.slot);
         // Elusive characters can't be attacked while their owner has another character that can be
         const open = foes.filter(e => !this._passive(foe, e.slot, e.card, 'elusive'));
         const pool = open.length ? open : foes;
         // A standing Guard must be attacked first
         const guards = pool.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'guard'));
-        const att = from == null ? null : this.cardAt(side, from);
         const sneak = att != null && this._passive(side, from, att, 'infiltrate') != null;
         if (guards.length) return guards.map(e => e.slot).concat(sneak ? [DIRECT] : []);
         const targets = pool.map(e => e.slot);
@@ -1393,7 +1402,7 @@ export class DuelState {
         if (this._atkBlindMiss(ctx)) return;
         // BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
         const brace = this._passive(foe, target, def, 'brace');
-        if (brace && toInt(def.brace_turn ?? -1) !== this.turn) {
+        if (brace && toInt(def.brace_turn ?? -1) !== this.turn && !this._ignores(side, from, att, 'brace')) {
             def.brace_turn = this.turn;
             const x = Math.max(1, toInt(brace.amount ?? 1));
             att.mods.push({ atk: -x, def: 0, until_turn: this.turn });
@@ -2441,6 +2450,9 @@ export class DuelState {
             case 'morale_behind': return this.foesOf(side).some(f => this.sides[f].morale > s.morale);
             case 'morale_ahead': return this.foesOf(side).length > 0 && this.foesOf(side).every(f => this.sides[f].morale < s.morale);
         }
+        // "An enemy is SUPPRESSED" (foe_st_suppress): an enemy character with that status
+        const ifKey = String(e.if ?? '');
+        if (ifKey.startsWith('foe_st_')) return this._enemyChars(side).some(x => this.statuses(x.card).includes(ifKey.slice(7)));
         return true;
     }
 
@@ -3485,7 +3497,7 @@ export class DuelState {
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(status);
         if (IMMUNE_TO.includes(status)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
-        if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._noTarget(x.side, x.slot, x.card));
+        if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._noTarget(x.side, x.slot, x.card, c, side, slot));
         return entries;
     }
 
@@ -3872,7 +3884,8 @@ export class DuelState {
     _askTarget(side, key, prompt, source, entries, targetSide, cb, optional = false) {
         const sideOf = (e) => e.side ?? targetSide;
         // Your opponent's effects can't choose a card that can't be targeted
-        entries = entries.filter(e => sideOf(e) === side || !this._noTarget(sideOf(e), e.slot, e.card));
+        const at = source && source.uid != null ? this._slotOf(side, source, NO_SLOT) : NO_SLOT;
+        entries = entries.filter(e => sideOf(e) === side || !this._noTarget(sideOf(e), e.slot, e.card, source, side, at));
         if (!entries.length) return;
         if (entries.length === 1 && !optional) {
             cb(entries[0]);

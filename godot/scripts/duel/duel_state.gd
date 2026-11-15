@@ -484,7 +484,7 @@ func _equip_targets(side: String, c: Dictionary) -> Array:
 	var out: Array = []
 	for on in (foes_of(side) if str(c.get("equip_to", "ally")) == "enemy" else [side]):
 		for x in characters(on):
-			if not in_stasis(x.card) and (on == side or not _no_target(on, x.slot, x.card)):
+			if not in_stasis(x.card) and (on == side or not _no_target(on, x.slot, x.card, c, side)):
 				out.append({"side": on, "slot": x.slot, "card": x.card})
 	return out
 
@@ -635,7 +635,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "plunder": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
-		entries = entries.filter(func(x): return not _no_target(x.side, x.slot, x.card))
+		entries = entries.filter(func(x): return not _no_target(x.side, x.slot, x.card, c, side, slot))
 	return not entries.is_empty()
 
 
@@ -728,9 +728,19 @@ func _shrouded(side: String, slot: int, c) -> bool:
 	return c != null and not c.get("unshrouded", false) and not _passive(side, slot, c, "shroud").is_empty()
 
 
-## Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED.
-func _no_target(side: String, slot: int, c) -> bool:
-	return not _passive(side, slot, c, "untargetable").is_empty() or _shrouded(side, slot, c)
+## Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED
+## (by: the card whose effect it is, at by_side / by_slot: one that ignores SHROUD can choose it).
+func _no_target(side: String, slot: int, c, by = null, by_side := "", by_slot := NO_SLOT) -> bool:
+	if not _passive(side, slot, c, "untargetable").is_empty():
+		return true
+	return _shrouded(side, slot, c) and not (by != null and _ignores(by_side, by_slot, by, "shroud"))
+
+
+## An "immune" passive that names BRACE, TAUNT or SHROUD (kind): this card ignores it.
+func _ignores(side: String, slot: int, c, kind: String) -> bool:
+	if c == null or side == "":
+		return false
+	return not _passive(side, slot, c, "immune", func(im): return im.get("statuses") is Array and kind in im.statuses).is_empty()
 
 
 ## DEBT is paid: a card was played (it cost what it owed).
@@ -813,18 +823,20 @@ func attack_targets(side: String, foe := "", from := -100) -> Array:
 		foe = all_foes[0] if not all_foes.is_empty() else ""
 	if foe == "" or foe == side or not sides.has(foe) or _is_out(foe):
 		return []
-	# A character in STASIS or SHROUDED can't be attacked and doesn't block a direct attack
-	var foes := characters(foe).filter(func(e): return not in_stasis(e.card) and not _shrouded(foe, e.slot, e.card))
-	# TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE)
+	var att = card_at(side, from) if from in FRONT else null
+	# A character in STASIS or SHROUDED can't be attacked and doesn't block a direct attack (one that ignores SHROUD sees it)
+	var sees := _ignores(side, from, att, "shroud")
+	var foes := characters(foe).filter(func(e): return not in_stasis(e.card) and (sees or not _shrouded(foe, e.slot, e.card)))
+	# TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE),
+	# unless the attacker ignores TAUNT
 	var taunts := foes.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "taunt").is_empty())
-	if not taunts.is_empty():
+	if not taunts.is_empty() and not _ignores(side, from, att, "taunt"):
 		return taunts.map(func(e): return e.slot)
 	# Elusive characters can't be attacked while their owner has another character that can be
 	var open := foes.filter(func(e): return _passive(foe, e.slot, e.card, "elusive").is_empty())
 	var pool: Array = open if not open.is_empty() else foes
 	# A standing Guard must be attacked first
 	var guards := pool.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "guard").is_empty())
-	var att = card_at(side, from) if from in FRONT else null
 	var sneak: bool = att != null and not _passive(side, from, att, "infiltrate").is_empty()
 	if not guards.is_empty():
 		var g: Array = guards.map(func(e): return e.slot)
@@ -1622,7 +1634,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		return
 	# BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
 	var brace := _passive(foe, target, def, "brace")
-	if not brace.is_empty() and int(def.get("brace_turn", -1)) != turn:
+	if not brace.is_empty() and int(def.get("brace_turn", -1)) != turn and not _ignores(side, from, att, "brace"):
 		def.brace_turn = turn
 		var x := maxi(1, int(brace.get("amount", 1)))
 		att.mods.append({"atk": -x, "def": 0, "until_turn": turn})
@@ -2852,6 +2864,11 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return foes_of(side).any(func(f): return sides[f].morale > s.morale)
 		"morale_ahead":
 			return not foes_of(side).is_empty() and foes_of(side).all(func(f): return sides[f].morale < s.morale)
+	# "An enemy is SUPPRESSED" (foe_st_suppress): an enemy character with that status
+	var if_key := str(e.get("if", ""))
+	if if_key.begins_with("foe_st_"):
+		var st := if_key.substr(7)
+		return _enemy_chars(side).any(func(x): return statuses(x.card).has(st))
 	return true
 
 
@@ -3995,7 +4012,7 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
 	if target == "attacker" or target == "deployed":
-		entries = entries.filter(func(x): return x.side == side or not _no_target(x.side, x.slot, x.card))
+		entries = entries.filter(func(x): return x.side == side or not _no_target(x.side, x.slot, x.card, c, side, slot))
 	return entries
 
 
@@ -4487,8 +4504,9 @@ func _ask(side: String, key: String, prompt: String, card: Dictionary, options: 
 func _ask_target(side: String, key: String, prompt: String, source: Dictionary, entries: Array,
 		target_side: String, cb: Callable, optional := false) -> void:
 	# Your opponent's effects can't choose a card that can't be targeted
+	var at := _slot_of(side, source, NO_SLOT) if source.has("uid") else NO_SLOT
 	entries = entries.filter(func(e): return str(e.get("side", target_side)) == side \
-		or not _no_target(str(e.get("side", target_side)), e.slot, e.card))
+		or not _no_target(str(e.get("side", target_side)), e.slot, e.card, source, side, at))
 	if entries.is_empty():
 		return
 	if entries.size() == 1 and not optional:
