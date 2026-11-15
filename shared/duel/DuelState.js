@@ -1409,7 +1409,7 @@ export class DuelState {
         if (n <= 0 || this.winner !== '') return;
         const slot = this._slotOf(side, c, -1);
         if (slot < 0) return;
-        c.mods.push({ atk: -n, def: -n, until_turn: FOREVER });
+        c.mods.push({ atk: -n, def: -n, until_turn: FOREVER, wound: true });   // (wound: a promotion heals it)
         this._emit('status_tick', { side, slot, kind: 'bleed', amount: n, card: clone(c) });
     }
 
@@ -1893,8 +1893,8 @@ export class DuelState {
             s.field[slot] = promoted;
             if (this._attackCtx && this._attackCtx.att === old) this._attackCtx.att = promoted;   // promoted mid-attack: the attack goes on
             // The same fighter, stronger: its ATK/DEF changes (buffs and debuffs) and its Equips carry
-            // over; its statuses (STASIS, FREEZE, ...) don't
-            promoted.mods = (old.mods ?? []).map(m => ({ ...m }));
+            // over; its statuses (STASIS, FREEZE, ...) don't, nor what BLEED and POISON took (wounds: it heals)
+            promoted.mods = (old.mods ?? []).filter(m => !m.wound).map(m => ({ ...m }));
             for (const q of this._equipsOn(old)) q.card.equipped_to = promoted.uid;
             old.mods = [];
             old.downed = false;
@@ -2751,11 +2751,15 @@ export class DuelState {
                     this._effect(side, c, `${c.name}: TAX ${n}: your opponent gets ${n} less Authority next turn`, slot);
                 });
                 break;
-            case 'reshuffle': {   // up to N cards from your Gutter (the oldest; not tokens) shuffled back into your deck
-                const back = s.gutter.filter(x => !x.token).slice(0, n);
-                if (!back.length) break;
-                for (const x of back) {
-                    s.gutter.splice(s.gutter.indexOf(x), 1);
+            case 'reshuffle': {   // up to N cards from your Gutter (the oldest, or with choose the player picks; not tokens) shuffled back into your deck
+                const back = [];
+                const finish = () => {
+                    if (!back.length) return;
+                    this._effect(side, c, `${c.name}: ${back.length} card${back.length === 1 ? '' : 's'} from your Gutter shuffled back into your deck`, slot);
+                    this._emit('recycle', { side, count: back.length });
+                    this._shuffleDeck(side);
+                };
+                const reset = (x) => {
                     x.mods = [];
                     x.downed = false;
                     this._clearStatus(x);
@@ -2764,10 +2768,17 @@ export class DuelState {
                     x.has_attacked = false;
                     x.face_down = false;
                     s.deck.push(x);
+                    back.push(x);
+                };
+                if (e.choose) {   // one at a time (it can stop early: "up to")
+                    if (this._fxTake(side, c, e, s.gutter, `${c.name}: choose a card to shuffle back into your deck`, (x) => { reset(x); return true; }, finish)) return;
+                    break;
                 }
-                this._effect(side, c, `${c.name}: ${back.length} card${back.length === 1 ? '' : 's'} from your Gutter shuffled back into your deck`, slot);
-                this._emit('recycle', { side, count: back.length });
-                this._shuffleDeck(side);
+                for (const x of s.gutter.filter(x => !x.token).slice(0, n)) {
+                    s.gutter.splice(s.gutter.indexOf(x), 1);
+                    reset(x);
+                }
+                finish();
                 break;
             }
             case 'tribute_damage': {   // a Heavy: the ATK of the characters it sacrificed, as Morale damage
@@ -3050,7 +3061,7 @@ export class DuelState {
                 st.left = toInt(st.left) - 1;
                 if (toInt(st.left) <= 0) delete c[kind];
                 this._emit('status_tick', { side, slot: e.slot, kind, amount: amt, card: clone(c) });
-                if (kind === 'poison') c.mods.push({ atk: -amt, def: 0, until_turn: FOREVER });
+                if (kind === 'poison') c.mods.push({ atk: -amt, def: 0, until_turn: FOREVER, wound: true });
                 else {
                     const before = this.sides[side].morale;
                     this._damage(side, amt);
@@ -3341,7 +3352,7 @@ export class DuelState {
     _fxTake(side, c, e, pile, prompt, take, after = null, left = Math.max(1, toInt(e.amount ?? 1))) {
         const matches = [];
         for (let i = pile.length - 1; i >= 0; i--) {
-            if ((pile[i] !== c || this._takeSelf) && this._fxKindOk(pile[i], e) && !(pile[i].token && ['recover', 'plunder'].includes(String(e.do ?? '')))) matches.push(pile[i]);
+            if ((pile[i] !== c || this._takeSelf) && this._fxKindOk(pile[i], e) && !(pile[i].token && ['recover', 'plunder', 'reshuffle'].includes(String(e.do ?? '')))) matches.push(pile[i]);
         }
         if (!matches.length) {
             if (after && left < Math.max(1, toInt(e.amount ?? 1))) after();   // (found some before)

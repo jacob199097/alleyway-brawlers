@@ -49,6 +49,24 @@ assert.equal(st.sides.player.deck.length, 2);
 assert.ok(st.sides.player.deck.includes(g[0]) && st.sides.player.deck.includes(g[2]), 'the oldest two that are not tokens');
 assert.ok(st.takeEvents().some(e => e.type === 'recycle' && e.count === 2));
 
+// ...with choose: the player picks each one (never a token) and can stop early
+st = duel();
+c = put(st, 'player', 0, unit(st));
+const g2 = [unit(st, [], 1000, 1000, { name: 'Old' }), unit(st, [], 1, 1, { token: true, name: 'Token' }), unit(st, [], 1000, 1000, { name: 'Pick' }), unit(st, [], 1000, 1000, { name: 'Last' })];
+st.sides.player.gutter.push(...g2);
+st._doFx('player', 0, c, { do: 'reshuffle', amount: 2, choose: true });
+let ask = st._asks.shift();
+assert.equal(ask.key, 'fx_pick', 'it asks');
+assert.ok(!ask.options.some(o => o.card && o.card.token), 'no token offered');
+const pick = ask.options.find(o => o.card && o.card.name === 'Pick');
+st._runAnswer(() => ask.cb(pick.id));
+assert.deepEqual(st.sides.player.deck, [g2[2]], 'the chosen card went back');
+ask = st._asks.shift();
+assert.ok(ask && ask.options.some(o => o.id === 'skip'), 'and it asks for the second');
+st._runAnswer(() => ask.cb('skip'));
+assert.equal(st.sides.player.deck.length, 1, 'stopped early: one card');
+assert.ok(st.takeEvents().some(e => e.type === 'recycle' && e.count === 1));
+
 // neighbors: the allies in the lanes next to it; opposite: the enemy across (lane 1 faces lane 5)
 st = duel();
 c = put(st, 'player', 2, unit(st));

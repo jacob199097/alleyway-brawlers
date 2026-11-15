@@ -1627,7 +1627,7 @@ func _bleed(side: String, c: Dictionary) -> void:
 	var slot := _slot_of(side, c, -1)
 	if slot < 0:
 		return
-	c.mods.append({"atk": -n, "def": -n, "until_turn": FOREVER})
+	c.mods.append({"atk": -n, "def": -n, "until_turn": FOREVER, "wound": true})   # (wound: a promotion heals it)
 	_emit("status_tick", {"side": side, "slot": slot, "kind": "bleed", "amount": n, "card": c.duplicate(true)})
 
 
@@ -2131,8 +2131,8 @@ func _promote(side: String, slot: int, reason: String) -> void:
 		if not _attack_ctx.is_empty() and is_same(_attack_ctx.att, old):   # promoted mid-attack: the attack goes on
 			_attack_ctx.att = promoted
 		# The same fighter, stronger: its ATK/DEF changes (buffs and debuffs) and its Equips carry
-		# over; its statuses (STASIS, FREEZE, ...) don't
-		promoted.mods = old.get("mods", []).map(func(m): return m.duplicate())
+		# over; its statuses (STASIS, FREEZE, ...) don't, nor what BLEED and POISON took (wounds: it heals)
+		promoted.mods = old.get("mods", []).filter(func(m): return not m.get("wound", false)).map(func(m): return m.duplicate())
 		for q in _equips_on(old):
 			q.card.equipped_to = promoted.uid
 		old.mods = []
@@ -3175,22 +3175,34 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
 				sides[foe].tax = int(sides[foe].get("tax", 0)) + n
 				_effect(side, c, "%s: TAX %d: your opponent gets %d less Authority next turn" % [c.name, n, n], slot))
-		"reshuffle":   # up to N cards from your Gutter (the oldest; not tokens) shuffled back into your deck
-			var back: Array = s.gutter.filter(func(x): return not x.get("token", false)).slice(0, n)
-			if not back.is_empty():
-				for x in back:
-					s.gutter.erase(x)
-					x.mods = []
-					x.downed = false
-					_clear_status(x)
-					x.erase("fx_count")
-					x.erase("rise_turn")
-					x.has_attacked = false
-					x.face_down = false
-					s.deck.append(x)
+		"reshuffle":   # up to N cards from your Gutter (the oldest, or with choose the player picks; not tokens) shuffled back into your deck
+			var back: Array = []
+			var finish := func() -> void:
+				if back.is_empty():
+					return
 				_effect(side, c, "%s: %d card%s from your Gutter shuffled back into your deck" % [c.name, back.size(), "" if back.size() == 1 else "s"], slot)
 				_emit("recycle", {"side": side, "count": back.size()})
 				_shuffle_deck(side)
+			var reset := func(x: Dictionary) -> void:
+				x.mods = []
+				x.downed = false
+				_clear_status(x)
+				x.erase("fx_count")
+				x.erase("rise_turn")
+				x.has_attacked = false
+				x.face_down = false
+				s.deck.append(x)
+				back.append(x)
+			if e.get("choose", false):   # one at a time (it can stop early: "up to")
+				if _fx_take(side, c, e, s.gutter, "%s: choose a card to shuffle back into your deck" % c.name, func(x: Dictionary) -> bool:
+					reset.call(x)
+					return true, finish):
+					return
+			else:
+				for x in s.gutter.filter(func(y): return not y.get("token", false)).slice(0, n):
+					s.gutter.erase(x)
+					reset.call(x)
+				finish.call()
 		"tribute_damage":   # a Heavy: the ATK of the characters it sacrificed, as Morale damage
 			var dmg := int(c.get("tribute_atk", 0))
 			if dmg > 0:
@@ -3477,7 +3489,7 @@ func _status_ticks(side: String) -> void:
 				c.erase(kind)
 			_emit("status_tick", {"side": side, "slot": e.slot, "kind": kind, "amount": amt, "card": c.duplicate(true)})
 			if kind == "poison":
-				c.mods.append({"atk": -amt, "def": 0, "until_turn": FOREVER})
+				c.mods.append({"atk": -amt, "def": 0, "until_turn": FOREVER, "wound": true})
 			else:
 				var before := int(sides[side].morale)
 				_damage(side, amt)
@@ -3872,7 +3884,7 @@ func _fx_take(side: String, c: Dictionary, e: Dictionary, pile: Array, prompt: S
 	var matches: Array = []
 	for i in range(pile.size() - 1, -1, -1):
 		if (not is_same(pile[i], c) or _take_self) and _fx_kind_ok(pile[i], e) \
-				and not (pile[i].get("token", false) and str(e.get("do", "")) in ["recover", "plunder"]):
+				and not (pile[i].get("token", false) and str(e.get("do", "")) in ["recover", "plunder", "reshuffle"]):
 			matches.append(pile[i])
 	if matches.is_empty():
 		if after.is_valid() and left < amount:   # (found some before)

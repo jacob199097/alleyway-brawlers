@@ -212,6 +212,27 @@ assert.equal(evo.attack, 1000 + 700, 'ATK still +700');
 assert.equal(evo.defense, 400 - 100, 'DEF still -100');
 assert.ok(evo.poison === undefined, 'the poison is gone');
 
+// ...and it heals: what BLEED and POISON took doesn't carry over
+st = board([{ id: 'block_evo_lv1', subtype: 'striver', promotesTo: 'block_evo_lv2' }]);
+const bled = st.cardAt('player', 0);
+bled.mods = [{ atk: 700, def: 0, until_turn: 99 }];
+bled.bleed = 200;
+st._bleed('player', bled);
+st._bleed('player', bled);
+bled.poison = { amt: 100, left: 1 };
+st._statusTicks('player');
+st._recalc();
+assert.equal(bled.attack, 1000 + 700 - 400 - 100, 'bled and poisoned first');
+st._promote('player', 0, 'test');
+st._flushAsks();
+st._answer('player', 'atk');
+st._recalc();
+const healed = st.cardAt('player', 0);
+assert.equal(healed.mods.length, 1, 'only the buff carried over');
+assert.equal(healed.attack, 1000 + 700, 'ATK +700, no wounds');
+assert.equal(healed.defense, 400, 'DEF back to its own');
+assert.ok(healed.bleed === undefined, 'no longer bleeding');
+
 // Evolving isn't a deploy for other cards: an ally's "when you deploy" stays quiet, the new form's own "when deployed" runs
 CARD_CATALOG.block_evo2_lv1 = { ...CARD_CATALOG.block_grunt, id: 'block_evo2_lv1', name: 'Evo2', subtype: 'striver', promotesTo: 'block_evo2_lv2' };
 CARD_CATALOG.block_evo2_lv2 = { ...CARD_CATALOG.block_grunt, id: 'block_evo2_lv2', name: 'Evo2', subtype: 'striver', level: 2,
