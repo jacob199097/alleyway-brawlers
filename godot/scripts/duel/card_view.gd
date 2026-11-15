@@ -21,13 +21,15 @@ const STATUS_STYLE := {
 	"charm": [Color("ff6fb5"), "CHM", "CHARMED"], "undead": [Color("8dffb0"), "UND", "UNDEAD"],
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 	"guarded": [Color("a0d8ff"), "SAFE", "CAN'T BE ATTACKED"],
+	"taunt": [Color("ff7a7a"), "TNT", "TAUNTING"], "shroud": [Color("a29ec4"), "SHR", "SHROUDED"],
 }
 const Keywords := preload("res://scripts/keywords.gd")
 const StatusFx := preload("res://scripts/duel/status_fx.gd")
 static var _status_shader: Shader = preload("res://shaders/status.gdshader")
 ## The statuses drawn by shaders/status.gdshader: its name there, and how fast it comes on (frost creeps)
 const SHEET := {"burn": ["burn", 2.6], "poison": ["poison", 1.6], "bleed": ["bleed", 1.4], "freeze": ["frost", 1.2],
-	"shield": ["shield", 3.0], "blind": ["blind", 2.2]}
+	"shield": ["shield", 3.0], "blind": ["blind", 2.2], "corrode": ["corrode", 1.4], "confuse": ["confuse", 2.0],
+	"shroud": ["shroud", 1.2], "taunt": ["taunt", 2.0]}
 const SHEET_MARGIN := 22.0   # (how far past the card's edge flames and icicles reach)
 const SHEET_THIN := [1.0, 1.0, 0.8, 0.66, 0.56, 0.5]   # how strongly each shows, by how many are on at once
 ## Statuses that run out: where the card keeps the turn each lasts through
@@ -589,6 +591,8 @@ const STATUS_PARTICLES := {
 	"burn": [Color("ff7a3a"), Vector2(0, 30), Vector2(54, 50), 46.0, Vector2(0, -90), 14, 0.9, 3.2],
 	"poison": [Color("6ee26a"), Vector2(0, 86), Vector2(54, 3), 8.0, Vector2(0, 260), 6, 0.8, 3.6],
 	"bleed": [Color("e0284f"), Vector2(0, 86), Vector2(50, 3), 5.0, Vector2(0, 200), 4, 0.9, 3.0],
+	"corrode": [Color("b07a2a"), Vector2(0, 86), Vector2(52, 3), 6.0, Vector2(0, 170), 4, 1.0, 2.8],
+	"shroud": [Color(0.5, 0.48, 0.68, 0.7), Vector2(0, 30), Vector2(56, 70), 10.0, Vector2(0, -36), 8, 1.4, 4.2],
 }
 
 

@@ -1349,6 +1349,10 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		var wrong := _confused_targets(side, foe, from, target)
 		if not wrong.is_empty() and not _luck_gate(side, from, att, {"luck": "coin"}):
 			var w: Dictionary = wrong[mini(wrong.size() - 1, int(floor(_luck_next() * wrong.size())))]
+			var cev := {"side": side, "from": from, "target": w.slot, "card": att.duplicate(true)}   # (the game shows it reeling first)
+			if ffa or w.side == side:
+				cev.foe = w.side
+			_emit("confused", cev)
 			if w.side == side:
 				_friendly_fire(side, from, att, w.slot)
 				return true
@@ -1622,6 +1626,7 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		def.brace_turn = turn
 		var x := maxi(1, int(brace.get("amount", 1)))
 		att.mods.append({"atk": -x, "def": 0, "until_turn": turn})
+		_emit("brace", {"side": foe, "slot": target, "from_side": side, "from": from, "amount": x})
 		_effect(foe, def, "%s is BRACED: %s loses %d ATK this turn" % [def.name, att.name, x], target)
 	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
 	var bonus: int = ctx.bonus + _brawl_bonus(side, from, att, def)
@@ -1736,6 +1741,7 @@ func _reckless(ctx: Dictionary) -> void:
 	if x <= 0:
 		return
 	ctx.bonus += x
+	_emit("reckless", {"side": ctx.side, "slot": ctx.from, "amount": x})
 	_effect(ctx.side, ctx.att, "%s is RECKLESS: +%d ATK this brawl" % [ctx.att.name, x], ctx.from)
 
 
@@ -1756,6 +1762,7 @@ func _heist(side: String, slot: int, c, took: int) -> void:
 	if h.is_empty():
 		return
 	var n := maxi(1, int(h.get("amount", 1)))
+	_emit("heist", {"side": side, "slot": slot, "amount": n})
 	_effect(side, c, "%s: HEIST, draw %d" % [c.name, n], slot)
 	for i in n:
 		if winner != "":
@@ -2923,6 +2930,7 @@ func _run_echoes(side: String) -> void:
 				continue
 		if not _fx_cond(side, slot, x.fx, null):
 			continue
+		_emit("echo", {"side": side, "slot": slot, "card": card.duplicate(true)})
 		_effect(side, card, "%s: ECHO" % card.name, slot)
 		_do_fx(side, slot, card, x.fx, {})
 
@@ -3378,12 +3386,14 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				if fs.get("debt") is Dictionary and int(fs.debt.until) >= turn:
 					owed = int(fs.debt.n)
 				fs.debt = {"n": owed + n, "until": _owner_next_turn(foe)}
+				_emit("debt", {"side": foe, "amount": owed + n})
 				_effect(side, c, "%s: DEBT %d: your opponent's next card costs %d more" % [c.name, n, n], slot))
 		"rally":   # RALLY N: your other characters get +N ATK this turn
 			var crew := characters(side).filter(func(x): return not is_same(x.card, c))
 			if not crew.is_empty():
 				for x in crew:
 					x.card.mods.append({"atk": n, "def": 0, "until_turn": turn})
+				_emit("rally", {"side": side, "slot": slot, "slots": crew.map(func(x): return x.slot), "amount": n})
 				_recalc()
 				_effect(side, c, "%s RALLIES the crew: %d of your characters get +%d ATK this turn" % [c.name, crew.size(), n], slot)
 		"reshuffle":   # up to N cards from your Gutter (the oldest, or with choose the player picks; not tokens) shuffled back into your deck

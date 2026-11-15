@@ -182,9 +182,61 @@ func _run() -> void:
 					duel_screen._on_next()
 			_:
 				duel_screen._on_next()
+	await _keyword_fx()
 	print("UI smoke: summons %d, attacks %d, set Hustle activated %s (destroyed first %d times), turn %d, prompts answered %s" % [
 		summons, attacks, set_activated, set_broken, duel_screen.duel.turn, prompts])
 	get_tree().quit(0 if summons >= 1 and set_activated else 1)
+
+
+## The new keywords' moments (BRACE, RECKLESS, RALLY, HEIST, ECHO, DEBT, a CONFUSED attacker) played on the
+## screen, and their statuses' looks (CORRODE, CONFUSE, TAUNT, SHROUD) on a card: the screen gets through them.
+func _keyword_fx() -> void:
+	var d: DuelState = duel_screen.duel
+	while duel_screen._playing:
+		await get_tree().process_frame
+	if d.winner != "":
+		print("UI smoke: keyword effects skipped (the match is over)")
+		return
+	if duel_screen.field.player.keys().filter(func(s): return int(s) < 5).is_empty():   # (none of yours left: one comes in)
+		var lane: int = d._empty_lane("player")
+		var pile: Array = (d.sides.player.hand + d.sides.player.gutter + d.sides.player.deck).filter(func(x): return x.get("cardType") == "gang_member")
+		if lane >= 0 and not pile.is_empty():
+			d.sides.player.field[lane] = pile[0]
+			d._emit("summon", {"side": "player", "slot": lane, "card": pile[0].duplicate(true)})
+			duel_screen._queue.append_array(d.take_events())
+			duel_screen._pump()
+			while duel_screen._playing:
+				await get_tree().process_frame
+	var mine: Array = duel_screen.field.player.keys().filter(func(s): return int(s) < 5)
+	var theirs: Array = duel_screen.field.opponent.keys().filter(func(s): return int(s) < 5)
+	_check(not mine.is_empty(), "a card of yours on the field for the keyword effects")
+	if mine.is_empty():
+		return
+	var a: int = mine[0]
+	var t: int = theirs[0] if not theirs.is_empty() else a
+	var card: Dictionary = duel_screen.field.player[a].card
+	for ev in [["confused", {"side": "player", "from": a, "target": t, "card": card}],
+			["brace", {"side": "opponent", "slot": t, "from_side": "player", "from": a, "amount": 300}],
+			["reckless", {"side": "player", "slot": a, "amount": 500}],
+			["rally", {"side": "player", "slot": a, "slots": mine, "amount": 300}],
+			["heist", {"side": "player", "slot": a, "amount": 1}],
+			["echo", {"side": "player", "slot": a, "card": card}],
+			["echo", {"side": "player", "slot": -10, "card": card}],
+			["debt", {"side": "opponent", "amount": 2}]]:
+		d._emit(ev[0], ev[1])   # (as the rules send them)
+	duel_screen._queue.append_array(d.take_events())
+	duel_screen._pump()
+	var frames := 0
+	while duel_screen._playing and frames < 1200:
+		await get_tree().process_frame
+		frames += 1
+	_check(not duel_screen._playing, "the new keywords' effects play through (%d frames)" % frames)
+	var v: CardView = duel_screen.field.player[a]
+	v.statuses = v.statuses + ["corrode", "confuse", "taunt", "shroud"]
+	for i in 30:
+		await get_tree().process_frame
+	_check(is_instance_valid(v), "a card shows CORRODE, CONFUSE, TAUNT and SHROUD")
+	v.statuses = v.statuses.filter(func(k): return not k in ["corrode", "confuse", "taunt", "shroud"])
 
 
 func _try_summon() -> bool:

@@ -1,7 +1,8 @@
 extends Node
 ## Touch screens (the Android build; "--touch" tries it on a PC): fingers work the game the way the
 ## mouse does, so screens need no touch code of their own.
-##   Tap          click                       Drag              drag (cards, sliders, lists)
+##   Tap          click                       Drag              drag (cards, sliders)
+##   Drag along a list (up and down, or across one that scrolls across): scrolls it, from anywhere on it
 ##   Hold still   right-click (zoom in on a card; in a duel, on nothing: cancel)
 ##   Pinch        mouse wheel (zoom the turf map)
 ##   Back button  Esc (back, cancel, the duel's menu)
@@ -25,6 +26,10 @@ var _down_at := Vector2.ZERO
 var _held := 0.0
 var _fingers := {}            # index -> position, every finger on the screen
 var _pinch := 0.0             # the two fingers' distance at the last wheel notch (0: not pinching yet)
+var _list: ScrollContainer    # the list a finger is scrolling ("scroll"), or flinging on after it let go
+var _list_from := Vector2.ZERO   # its scroll (x, y) when the finger started
+var _fling := Vector2.ZERO    # how fast it was moving when the finger let go (its own pixels a second)
+var _last_us := 0
 
 
 func _ready() -> void:
@@ -52,6 +57,7 @@ func _input(e: InputEvent) -> void:
 			_fingers.erase(e.index)
 		_pinch = 0.0
 		if e.pressed and _fingers.size() == 1:
+			_fling = Vector2.ZERO   # (a finger on a list that's still gliding stops it)
 			_finger = e.index
 			_state = "wait"
 			_at = e.position
@@ -72,6 +78,9 @@ func _input(e: InputEvent) -> void:
 					_button(MOUSE_BUTTON_LEFT, false, at)
 				"drag":
 					_button(MOUSE_BUTTON_LEFT, false, e.position)
+				"scroll":   # it glides on a little, slowing down
+					if Time.get_ticks_usec() - _last_us > 80000:
+						_fling = Vector2.ZERO
 			_finger = -1
 			_state = ""
 	elif e is InputEventScreenDrag:
@@ -81,14 +90,34 @@ func _input(e: InputEvent) -> void:
 			_pinch_step()
 		elif e.index == _finger:
 			if _state == "wait" and e.position.distance_to(_down_at) > SLOP:
-				_state = "drag"
-				_button(MOUSE_BUTTON_LEFT, true, _down_at)
+				_list = _list_under(e.position - _down_at)
+				if _list:
+					_state = "scroll"
+					_list_from = Vector2(_list.scroll_horizontal, _list.scroll_vertical)
+					_fling = Vector2.ZERO
+					_last_us = Time.get_ticks_usec()
+				else:
+					_state = "drag"
+					_button(MOUSE_BUTTON_LEFT, true, _down_at)
 			if _state == "drag":
 				_move(e.position, MOUSE_BUTTON_MASK_LEFT)
+			elif _state == "scroll" and is_instance_valid(_list):
+				var was := Vector2(_list.scroll_horizontal, _list.scroll_vertical)
+				var moved := _local(_list, e.position - _down_at)
+				_list.scroll_horizontal = int(_list_from.x - moved.x)
+				_list.scroll_vertical = int(_list_from.y - moved.y)
+				var now := Time.get_ticks_usec()
+				var dt := maxf(0.001, (now - _last_us) / 1000000.0)
+				_fling = _fling.lerp((Vector2(_list.scroll_horizontal, _list.scroll_vertical) - was) / dt, 0.5)
+				_last_us = now
 			_at = e.position
 
 
 func _process(delta: float) -> void:
+	if _finger == -1 and _fling.length() > 30.0 and is_instance_valid(_list) and _list.is_visible_in_tree():
+		_list.scroll_horizontal += int(round(_fling.x * delta))
+		_list.scroll_vertical += int(round(_fling.y * delta))
+		_fling *= exp(-4.0 * delta)
 	if _state != "wait":
 		return
 	_held += delta
@@ -96,6 +125,27 @@ func _process(delta: float) -> void:
 		_state = "done"
 		_button(MOUSE_BUTTON_RIGHT, true, _at)
 		_button(MOUSE_BUTTON_RIGHT, false, _at)
+
+
+## The list a finger's drag scrolls: the one it went down on (from a card or a button in it too) that
+## scrolls the way it's moving: up and down, or across. Null: it's an ordinary drag (a card into the
+## deck builder's deck, a slider).
+func _list_under(move: Vector2) -> ScrollContainer:
+	var down := absf(move.y) >= absf(move.x)
+	var n: Node = get_viewport().gui_get_hovered_control()   # (the finger going down moved the pointer here)
+	while n is Control:
+		if n is ScrollContainer and n.is_visible_in_tree():
+			var bar: ScrollBar = n.get_v_scroll_bar() if down else n.get_h_scroll_bar()
+			var mode: int = n.vertical_scroll_mode if down else n.horizontal_scroll_mode
+			if mode != ScrollContainer.SCROLL_MODE_DISABLED and bar.max_value - bar.page > 1.0:
+				return n
+		n = n.get_parent()
+	return null
+
+
+## A finger's movement on the screen in a control's own pixels (it may be scaled).
+static func _local(c: Control, move: Vector2) -> Vector2:
+	return c.get_global_transform_with_canvas().affine_inverse().basis_xform(move)
 
 
 ## Two fingers moving apart zoom in (wheel up), together zoom out, at the point between them.

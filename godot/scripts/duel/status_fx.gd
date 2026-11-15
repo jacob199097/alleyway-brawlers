@@ -97,6 +97,15 @@ static func icon(L: CanvasItem, kind: String, c: Vector2, r: float, col: Color) 
 				L.draw_circle(c + Vector2(k * 0.3, -0.18) * r, r * 0.2, INK)
 			for k in [-0.14, 0.14]:
 				L.draw_line(c + Vector2(k, 0.5) * r, c + Vector2(k, 0.85) * r, INK, w * 0.6)
+		"taunt":   # a target: hit me
+			L.draw_arc(c, r * 0.86, 0.0, TAU, 24, col, w * 1.2, true)
+			L.draw_arc(c, r * 0.5, 0.0, TAU, 20, lite, w, true)
+			L.draw_circle(c, r * 0.18, col)
+		"shroud":   # a hood, two eyes in its dark
+			L.draw_colored_polygon(_pts(c, r, [[-0.82, 0.92], [-0.78, 0.05], [-0.52, -0.6], [0.0, -0.94], [0.52, -0.6], [0.78, 0.05], [0.82, 0.92]]), col)
+			L.draw_circle(c + Vector2(0, 0.2) * r, r * 0.44, INK)
+			for k in [-1.0, 1.0]:
+				L.draw_circle(c + Vector2(k * 0.16, 0.14) * r, r * 0.08, lite)
 		"resting":   # a Z
 			L.draw_polyline(_pts(c, r, [[-0.5, -0.65], [0.5, -0.65], [-0.5, 0.65], [0.5, 0.65]]), lite, w * 1.2, true)
 		"guarded":   # a padlock

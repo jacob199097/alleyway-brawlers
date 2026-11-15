@@ -4,8 +4,9 @@ render_mode blend_premul_alpha;
 // bigger than it, with each status's amount turned up from 0. BURN: flames along the edge nearest the
 // bottom of the screen; POISON: a green murk pooling there, bubbles rising through it; BLEED: blood running
 // down from the top; FREEZE: frost growing in from the edges, icicles under it; SHIELD: a film of gold
-// hexagons; BLIND: smoke across the eyes. "up" is the way to the top of the screen in the card's own frame
-// (a card lying sideways in DEF still burns upward).
+// hexagons; BLIND: smoke across the eyes; CORRODE: rust eating in from the edges; CONFUSE: stars circling
+// over its head; SHROUD: dark mist veiling it; TAUNT: a red glow pulsing out from its edge. "up" is the way
+// to the top of the screen in the card's own frame (a card lying sideways in DEF still burns upward).
 
 uniform vec2 size = vec2(164.0, 215.0);   // the sheet, in pixels
 uniform vec2 card = vec2(124.0, 175.0);   // the card in its middle
@@ -16,6 +17,10 @@ uniform float bleed = 0.0;
 uniform float frost = 0.0;
 uniform float shield = 0.0;
 uniform float blind = 0.0;
+uniform float corrode = 0.0;
+uniform float confuse = 0.0;
+uniform float shroud = 0.0;
+uniform float taunt = 0.0;
 uniform float calm = 0.0;    // Photosensitive mode: 1 = no flicker
 uniform float crowd = 0.0;   // several statuses at once (0.5 = two, 1 = three or more)
 uniform float seed = 0.0;
@@ -146,6 +151,68 @@ void fragment() {
 		a += sa * (1.0 - a);
 		float wisp = fbm(vec2(p.x * 0.07 + t * 0.5, p.y * 0.07 - t * 0.2) + 9.0);
 		rgb += vec3(0.5, 0.56, 0.75) * band * smoothstep(0.5, 0.8, wisp) * 0.35;
+	}
+
+	if (shroud > 0.001) {
+		// Dark mist over the card, drifting, ragged where it spills past the edge
+		float mn = fbm(vec2(s * 0.03 + t * 0.15 * flick, h * 0.035 - t * 0.08 * flick) + 31.0);
+		float mn2 = fbm(vec2(s * 0.07 - t * 0.25 * flick, h * 0.06 + t * 0.1 * flick) + 17.0);
+		float veil = (1.0 - smoothstep(-4.0 - mn * 10.0, 6.0 + mn2 * 8.0, sd)) * min(shroud, 1.0);
+		float ma = clamp(veil * (0.36 + 0.4 * mn), 0.0, 0.78);
+		rgb = rgb * (1.0 - ma) + vec3(0.06, 0.05, 0.1) * ma;
+		a += ma * (1.0 - a);
+		rgb += vec3(0.55, 0.52, 0.78) * veil * smoothstep(0.55, 0.85, mn2) * 0.22;
+		rgb += vec3(0.5, 0.45, 0.75) * rim * 0.2 * min(shroud, 1.0);
+	}
+
+	if (corrode > 0.001) {
+		// Patches of rust eating in from the edges (further the more it has taken), pitted, an acid
+		// sheen where they're spreading
+		float cn = fbm(p * 0.05 + 21.0);
+		float cn2 = fbm(p * 0.13 + 4.0);
+		float reach = min(corrode, 1.0) * (10.0 + 30.0 * cn) + max(corrode - 1.0, 0.0) * 40.0;
+		float depth = -sd + (cn2 - 0.5) * 12.0;   // (how far in, ragged)
+		float rust = (1.0 - smoothstep(reach * 0.55, reach, depth)) * smoothstep(0.38, 0.52, cn2 + 0.25 * (1.0 - smoothstep(0.0, reach, depth))) * inside;
+		float ra = clamp(rust * (0.5 + 0.3 * cn), 0.0, 0.8);
+		rgb = rgb * (1.0 - ra) + mix(vec3(0.3, 0.12, 0.04), vec3(0.72, 0.4, 0.12), smoothstep(0.3, 0.8, cn2)) * ra;
+		a += ra * (1.0 - a);
+		float pit = smoothstep(0.62, 0.7, fbm(p * 0.4 + 8.0)) * rust;   // (round pits, dark)
+		rgb *= 1.0 - pit * 0.55;
+		a += pit * 0.35 * (1.0 - a);
+		float front = smoothstep(0.38, 0.45, cn2) * (1.0 - smoothstep(0.45, 0.52, cn2)) * (1.0 - smoothstep(reach * 0.6, reach * 1.1, depth)) * inside * min(corrode, 1.0);
+		rgb += vec3(0.8, 0.9, 0.2) * front * (0.45 + 0.3 * sin(t * 3.0 + s * 0.15) * flick);
+		rgb += vec3(0.75, 0.55, 0.18) * rim * 0.3 * min(corrode, 1.0);
+	}
+
+	if (confuse > 0.001) {
+		// Stars circling over its head (the ones going round the back dimmer), the picture swimming a little
+		vec2 o = vec2(s, h - ext_u + 4.0);
+		float stars = 0.0;
+		float glow = 0.0;
+		for (int i = 0; i < 4; i++) {
+			float ang = t * mix(2.4, 0.6, calm) + float(i) * 1.5708;
+			float near = 0.55 + 0.45 * sin(ang);   // (the ones going round the back: smaller, dimmer)
+			vec2 d = (o - vec2(cos(ang) * ext_r * 0.66, sin(ang) * 8.0)) / (1.1 + 0.7 * near);
+			float st = max(0.0, 1.0 - abs(d.x * d.y) * 0.12 - length(d) * 0.14);
+			stars += st * st * near;
+			glow += exp(-length(d) * 0.18) * near;
+		}
+		stars *= min(confuse, 1.3);
+		glow *= min(confuse, 1.3);
+		rgb += vec3(1.0, 0.92, 0.6) * stars * 2.0 + vec3(1.0, 0.45, 0.85) * glow * 0.5;
+		a += clamp(stars * 0.6 + glow * 0.15, 0.0, 0.7) * (1.0 - a);
+		float swirl = 0.5 + 0.5 * sin((atan(p.y, p.x) + length(p) * 0.05 - t * mix(1.2, 0.3, calm)) * 3.0);
+		rgb += vec3(0.95, 0.45, 0.85) * swirl * inside * 0.12 * min(confuse, 1.0);
+		rgb += vec3(1.0, 0.55, 0.85) * rim * 0.4 * min(confuse, 1.0);
+	}
+
+	if (taunt > 0.001) {
+		// A red glow pulsing out from its edge: look here
+		float beat = 0.5 + 0.5 * sin(t * 4.0);
+		float out_ = max(sd, 0.0);
+		float ringd = mod(out_ - t * mix(18.0, 5.0, calm), 14.0);
+		float ring = exp(-pow((ringd - 7.0) / 2.0, 2.0)) * (1.0 - smoothstep(4.0, 20.0, out_)) * step(0.0, sd);
+		rgb += vec3(1.0, 0.25, 0.2) * (ring * 0.6 * flick + exp(-abs(sd) * 0.35) * (0.45 + 0.35 * beat * flick)) * min(taunt, 1.3);
 	}
 
 	if (burn > 0.001) {

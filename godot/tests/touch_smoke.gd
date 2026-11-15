@@ -1,7 +1,7 @@
 extends Node
 ## Touch controls (scripts/touch.gd) driven by fake fingers: a tap clicks, a held finger right-clicks
 ## without clicking, a finger dragged off a button doesn't click it, a pinch turns the mouse wheel,
-## the back button is Esc. Then in a duel: a hand card held shows the zoom, tapped opens its menu.
+## a finger dragged up a list scrolls it (even from a button in it), the back button is Esc. Then in a duel: a hand card held shows the zoom, tapped opens its menu.
 ##   godot --path godot res://tests/touch_smoke.tscn -- --touch
 ## As on a 20:9 phone, the frame in the middle of a wider screen (scripts/widescreen.gd):
 ##   godot --headless --path godot res://tests/touch_smoke.tscn -- --touch --mobile
@@ -138,6 +138,49 @@ func _gestures() -> void:
 	await _finger(0, Vector2(750, 200), false)
 	_check(wheels[0] >= 3 and wheels[1] == 0, "fingers pinched apart zoom in (wheel up %d, down %d)" % wheels)
 	_check(taps[0] == 2, "a pinch doesn't click")
+	# A list: dragged up from a button in it, it scrolls (the button isn't pressed); a slider in it, dragged across, slides
+	var list := ScrollContainer.new()
+	list.position = Vector2(1300, 100)
+	list.size = Vector2(400, 600)
+	list.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	layer.add_child(list)
+	var rows := VBoxContainer.new()
+	list.add_child(rows)
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(380, 60)
+	slider.max_value = 100
+	rows.add_child(slider)
+	var row_taps := [0]
+	for i in 30:
+		var r := Button.new()
+		r.custom_minimum_size = Vector2(380, 80)
+		r.text = "ROW %d" % i
+		r.pressed.connect(func(): row_taps[0] += 1)
+		rows.add_child(r)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var start := Vector2(1500, 500)
+	await _finger(0, start)
+	for i in 8:
+		await _finger(0, start - Vector2(0, 40.0 * (i + 1)), true, true)
+	await _finger(0, start - Vector2(0, 320), false)
+	_check(list.scroll_vertical >= 250, "a finger dragged up a list scrolls it (by %d)" % list.scroll_vertical)
+	_check(row_taps[0] == 0, "scrolling doesn't press the button it started on")
+	var glide := list.scroll_vertical
+	await _wait(0.3)
+	_check(list.scroll_vertical > glide, "let go while moving, it glides on a little")
+	list.scroll_vertical = 0
+	await _finger(0, Vector2(1300, 100))   # (anywhere: stops the glide)
+	await _finger(0, Vector2(1300, 100), false)
+	list.scroll_vertical = 0
+	await get_tree().process_frame
+	var on := Vector2(1320, 130)
+	await _finger(0, on)
+	for i in 6:
+		await _finger(0, on + Vector2(50.0 * (i + 1), 0), true, true)
+	await _finger(0, on + Vector2(300, 0), false)
+	_check(slider.value > 30 and list.scroll_vertical == 0, "a slider in a list, dragged across, slides (to %d) and the list stays put" % slider.value)
+	list.queue_free()
 	# Back button
 	var esc := [0]
 	var catcher := Control.new()

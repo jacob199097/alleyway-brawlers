@@ -2078,6 +2078,15 @@ func _refresh_guards() -> void:
 			var on: bool = c != null and not open.is_empty() and not duel.in_stasis(c) and not duel._passive(side, slot, c, "elusive").is_empty()
 			if on != v.statuses.has("guarded"):
 				v.statuses = v.statuses.filter(func(k): return k != "guarded") + (["guarded"] if on else [])
+			# TAUNT (standing) and SHROUD (until it attacks): shown as statuses, with their glow and mist
+			var taunting: bool = c != null and not c.get("downed", false) and not duel._passive(side, slot, c, "taunt").is_empty()
+			var hidden: bool = c != null and duel._shrouded(side, slot, c)
+			if taunting != v.statuses.has("taunt") or hidden != v.statuses.has("shroud"):
+				v.statuses = v.statuses.filter(func(k): return k != "taunt" and k != "shroud") + (["taunt"] if taunting else []) + (["shroud"] if hidden else [])
+			if v.get_meta("shrouded", false) and not hidden and c != null and int(v.card.get("uid", -1)) == int(c.get("uid", -2)):
+				_smoke_puff(v.position, 260.0, Color(0.35, 0.33, 0.5, 0.6))   # (it attacked: the mist blows off)
+				_float_text(v.position + Vector2(0, -120 if side == "player" else 120), "REVEALED", CardView.status_color("shroud"), 32)
+			v.set_meta("shrouded", hidden)
 
 
 func _after_events() -> void:
@@ -2255,6 +2264,20 @@ func _play(ev: Dictionary) -> void:
 			await _ev_luck(ev)
 		"miss":
 			await _ev_miss(ev)
+		"confused":
+			await _ev_confused(ev)
+		"brace":
+			await _ev_brace(ev)
+		"reckless":
+			await _ev_reckless(ev)
+		"rally":
+			await _ev_rally(ev)
+		"heist":
+			await _ev_heist(ev)
+		"echo":
+			await _ev_echo(ev)
+		"debt":
+			await _ev_debt(ev)
 		"leader_hit":
 			await _ev_leader_hit(ev)
 		"leader_heal":
@@ -2616,6 +2639,148 @@ func _ev_miss(ev: Dictionary) -> void:
 	v.z_index = 10
 	v.go_home(0.24)
 	await _wait(0.26)
+
+
+## CONFUSE, tails: the attacker reels, stars round its head, before it goes for the wrong target.
+func _ev_confused(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(int(ev.from))
+	if v == null:
+		return
+	var col: Color = CardView.status_color("confuse")
+	var head := v.home + Vector2(0, -80 if side == "player" else 80)
+	Sfx.play("whoosh", 0.75, -4.0)
+	v.flare("confuse", 2.6)
+	v.z_index = 430
+	for i in 3:
+		_ring(head, col, 0.45 + 0.25 * i)
+	_burst(head, col, 18, 200, 0.7, 0.0)
+	_float_text(v.home + Vector2(0, -140 if side == "player" else 140), "CONFUSED!", col, 42)
+	await v.move_to(v.home, 1.08, v.home_rot + 0.4, 0.12).finished
+	await v.move_to(v.home, 1.08, v.home_rot - 0.4, 0.16).finished
+	v.go_home(0.16)
+	await _wait(0.18)
+	v.z_index = 10
+
+
+## BRACE: the attacker runs into a wall: a clang, sparks back at it, and the ATK it loses.
+func _ev_brace(ev: Dictionary) -> void:
+	var d: CardView = field[ev.side].get(int(ev.slot))
+	var a: CardView = field.get(str(ev.get("from_side", "")), {}).get(int(ev.get("from", -1)))
+	var col: Color = Keywords.color("BRACE")
+	Sfx.play("slam", 1.25, -2.0)
+	Sfx.play("glass_smash", 1.9, -11.0)
+	if d:
+		var toward: Vector2 = (a.position - d.position).normalized() if a else Vector2.UP
+		d.flash()
+		_pulse_glow(d, col)
+		_ring(d.position, col, 1.2)
+		_sparks(d.position + toward * 70.0, toward, col, 18, 50.0)
+		_float_text(d.position + Vector2(0, -115 if ev.side == "player" else 115), "BRACED", col, 36)
+	if a:
+		a.kick((a.position - d.position) if d else Vector2.DOWN, 18.0)
+		a.set_meta("stat_quiet", _game_time + 1.5)   # (its lost ATK is shown here)
+		_float_text(a.position + Vector2(0, -115 if str(ev.from_side) == "player" else 115), "-%d ATK" % int(ev.amount), RED, 34)
+	shake(5)
+	await _wait(0.45)
+
+
+## RECKLESS: it throws everything at this one: a flare-up of red as it charges.
+func _ev_reckless(ev: Dictionary) -> void:
+	var v: CardView = field[ev.side].get(int(ev.slot))
+	if v == null:
+		return
+	var col: Color = Keywords.color("RECKLESS")
+	Sfx.play("fire_roar", 1.35, -6.0)
+	Sfx.play("hit", 0.8, -8.0)
+	_flame_burst(v.position + Vector2(0, 30), 230.0, Color(1.0, 0.85, 0.6), col, 0.4)
+	_burst(v.position, col, 22, 320, 0.6, -300.0)
+	_pulse_glow(v, col)
+	v.kick(Vector2(0, 1 if ev.side == "player" else -1), 10.0)
+	_float_text(v.position + Vector2(0, -120 if ev.side == "player" else 120), "RECKLESS +%d" % int(ev.amount), col, 36)
+	shake(4)
+	await _wait(0.4)
+
+
+## RALLY: a war cry from the card (or the Hustle) rippling out, and each ally lifting with it.
+func _ev_rally(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var col: Color = Keywords.color("RALLY")
+	var src_v: CardView = field[side].get(int(ev.slot)) if int(ev.slot) >= 0 else null
+	var src: Vector2 = src_v.position if src_v else Vector2(1080, DIVIDER_Y)
+	Sfx.play("promote", 0.9, -3.0)
+	Sfx.play("boom", 1.6, -12.0)
+	_ring(src, col, 1.4)
+	_ring(src, col.lightened(0.25), 2.2)
+	_float_text(src + Vector2(0, -130 if side == "player" else 130), "RALLY!", col, 44)
+	if src_v:
+		_pulse_glow(src_v, col)
+	await _wait(0.2)
+	for s in ev.get("slots", []):
+		var v: CardView = field[side].get(int(s))
+		if v == null:
+			continue
+		v.set_meta("stat_quiet", _game_time + 1.5)   # (the ATK it gets is shown here)
+		_light_column(v.position, col)
+		_burst(v.position, col, 14, 200, 0.6, -250.0)
+		_pulse_glow(v, col)
+		_float_text(v.position + Vector2(0, -105 if side == "player" else 105), "+%d ATK" % int(ev.amount), GOLD, 30)
+	await _wait(0.45)
+
+
+## HEIST: the takings stream from the card into its player's hand.
+func _ev_heist(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var v: CardView = field[side].get(int(ev.slot))
+	if v == null:
+		return
+	var col: Color = Keywords.color("HEIST")
+	Sfx.play("karat", 1.0, -2.0)
+	_burst(v.position, col, 20, 260, 0.7, 500.0)
+	_wisps(v.position, Vector2(HAND_CX, HAND_Y if side == "player" else OPP_HAND_Y), col, 10)
+	_pulse_glow(v, col)
+	_float_text(v.position + Vector2(0, -120 if side == "player" else 120), "HEIST", col, 38)
+	await _wait(0.45)
+
+
+## ECHO: a ghost of the card swells out of it and fades, twice over, as its effect happens again.
+func _ev_echo(ev: Dictionary) -> void:
+	var side: String = ev.side
+	var col: Color = Keywords.color("ECHO")
+	var v: CardView = field[side].get(int(ev.slot)) if int(ev.slot) >= 0 else null
+	var at: Vector2 = v.position if v else Vector2(1080, DIVIDER_Y)
+	Sfx.play("riser", 1.5, -6.0)
+	if v:
+		v.flash()
+		_pulse_glow(v, col)
+	for i in 2:
+		var g := _new_view(ev.card, side, true)
+		g.position = at
+		g.z_index = 440
+		g.modulate = Color(col.lightened(0.4), 0.55)
+		var start: Vector2 = (v.scale if v else Vector2.ONE * g.board_scale * 1.2)
+		g.scale = start
+		var t := g.create_tween().set_parallel()
+		t.tween_property(g, "scale", start * (1.45 + 0.3 * i), 0.55).set_delay(0.16 * i).set_ease(Tween.EASE_OUT)
+		t.tween_property(g, "modulate:a", 0.0, 0.55).set_delay(0.16 * i)
+		t.chain().tween_callback(g.queue_free)
+		_ring(at, col, 1.0 + 0.5 * i)
+	_float_text(at + Vector2(0, -130 if side == "player" else 130), "ECHO", col, 40)
+	await _wait(0.6)
+
+
+## DEBT: a stamp on the opponent's Authority: their next card costs more.
+func _ev_debt(ev: Dictionary) -> void:
+	var p: Dictionary = _panels.get(ev.side, {})
+	var col: Color = Keywords.color("DEBT")
+	Sfx.play("slam", 0.8, -3.0)
+	if p.has("root"):
+		var root: Control = p.root
+		var at: Vector2 = root.position + root.size / 2
+		_ring(at, col, 1.0)
+		_burst(at, col, 14, 220, 0.6, 300.0)
+		_float_text(at + Vector2(0, 40 if ev.side != "player" else -40), "DEBT +%d" % int(ev.amount), col, 36)
+	await _wait(0.4)
 
 
 func _ev_flip(ev: Dictionary) -> void:
@@ -5601,7 +5766,8 @@ func _status_shot(from: Vector2, to: Vector2, kind: String, col: Color) -> void:
 	# [how far it bows up off the straight line, seconds, head size, the trail's fall, the trail's spread]
 	var style: Array = {"burn": [110.0, 0.3, 2.6, -260.0, 70.0], "poison": [210.0, 0.36, 2.2, 520.0, 40.0],
 		"freeze": [0.0, 0.2, 1.8, 60.0, 16.0], "bleed": [30.0, 0.16, 1.6, 300.0, 20.0],
-		"blind": [170.0, 0.34, 2.0, 0.0, 30.0]}.get(kind, [90.0, 0.28, 2.2, 0.0, 50.0])
+		"blind": [170.0, 0.34, 2.0, 0.0, 30.0], "corrode": [190.0, 0.34, 2.2, 480.0, 36.0],
+		"confuse": [240.0, 0.4, 1.9, 0.0, 60.0]}.get(kind, [90.0, 0.28, 2.2, 0.0, 50.0])
 	var head := Sprite2D.new()
 	head.texture = _dot
 	head.material = _add_mat
@@ -7843,7 +8009,7 @@ func _live_statuses(v: CardView) -> Array:
 	return (["downed"] if v.downed else []) + v.statuses
 
 const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "confuse": "CONFUSE", "corrode": "CORRODE", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
+	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "confuse": "CONFUSE", "corrode": "CORRODE", "taunt": "TAUNT", "shroud": "SHROUD", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}

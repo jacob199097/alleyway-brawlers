@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.155",
+        "notes": [
+            "On phones, drag a finger up or down any list to scroll it, even when the drag starts on a card or a button in it, and let go mid-swipe to send it gliding. Dragging sideways still moves cards and sliders as before.",
+            "The new keywords look the part: CORRODE eats rust into a card's edges, CONFUSE spins stars round its head (and a confused attacker reels before it strikes), SHROUD veils a card in dark mist until it attacks, and TAUNT glows red. BRACE, RECKLESS, RALLY, HEIST, ECHO and DEBT each get their own moment on the board."
+        ]
+    },
+    {
         "version": "0.9.154",
         "notes": [
             "Ten new keywords for cards: BRACE (the first attacker each turn loses ATK), RECKLESS (more ATK when it attacks, then it goes Down), RALLY (your other characters get more ATK this turn), TAUNT (enemies have to attack it), HEIST (Pirates: draw when it costs your opponent Morale in a brawl), ECHO (a card's effect happens again next turn), SHROUD (can't be attacked or targeted until it attacks), CORRODE (loses DEF each turn), DEBT (your opponent's next card costs more) and CONFUSE (its attacks may hit the wrong target, even one of its own side). Hover one on a card to read it in full.",

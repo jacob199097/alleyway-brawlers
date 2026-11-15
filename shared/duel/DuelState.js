@@ -1173,6 +1173,9 @@ export class DuelState {
             const wrong = this._confusedTargets(side, foe, from, target);
             if (wrong.length && !this._luckGate(side, from, att, { luck: 'coin' })) {
                 const w = wrong[Math.min(wrong.length - 1, Math.floor(this._luck() * wrong.length))];
+                const cev = { side, from, target: w.slot, card: clone(att) };   // (the game shows it reeling first)
+                if (this.ffa || w.side === side) cev.foe = w.side;
+                this._emit('confused', cev);
                 if (w.side === side) {
                     this._friendlyFire(side, from, att, w.slot);
                     return true;
@@ -1394,6 +1397,7 @@ export class DuelState {
             def.brace_turn = this.turn;
             const x = Math.max(1, toInt(brace.amount ?? 1));
             att.mods.push({ atk: -x, def: 0, until_turn: this.turn });
+            this._emit('brace', { side: foe, slot: target, from_side: side, from, amount: x });
             this._effect(foe, def, `${def.name} is BRACED: ${att.name} loses ${x} ATK this turn`, target);
         }
         this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
@@ -1497,6 +1501,7 @@ export class DuelState {
         const x = Math.max(0, toInt(rk.amount ?? 0));
         if (x <= 0) return;
         ctx.bonus += x;
+        this._emit('reckless', { side: ctx.side, slot: ctx.from, amount: x });
         this._effect(ctx.side, ctx.att, `${ctx.att.name} is RECKLESS: +${x} ATK this brawl`, ctx.from);
     }
 
@@ -1513,6 +1518,7 @@ export class DuelState {
         const h = this._passive(side, slot, c, 'heist');
         if (!h) return;
         const n = Math.max(1, toInt(h.amount ?? 1));
+        this._emit('heist', { side, slot, amount: n });
         this._effect(side, c, `${c.name}: HEIST, draw ${n}`, slot);
         for (let i = 0; i < n && this.winner === ''; i++) this._draw(side);
     }
@@ -2489,6 +2495,7 @@ export class DuelState {
                 if (card.downed || this.inStasis(card) || toInt(card.silence_until ?? 0) >= this.turn) continue;
             }
             if (!this._fxCond(side, slot, x.fx, null)) continue;
+            this._emit('echo', { side, slot, card: clone(card) });
             this._effect(side, card, `${card.name}: ECHO`, slot);
             this._doFx(side, slot, card, x.fx, {});
         }
@@ -2917,6 +2924,7 @@ export class DuelState {
                     const fs = this.sides[foe];
                     const owed = fs.debt && toInt(fs.debt.until) >= this.turn ? toInt(fs.debt.n) : 0;
                     fs.debt = { n: owed + n, until: this._ownerNextTurn(foe) };
+                    this._emit('debt', { side: foe, amount: owed + n });
                     this._effect(side, c, `${c.name}: DEBT ${n}: your opponent's next card costs ${n} more`, slot);
                 });
                 break;
@@ -2924,6 +2932,7 @@ export class DuelState {
                 const crew = this.characters(side).filter(x => x.card !== c);
                 if (!crew.length) break;
                 for (const x of crew) x.card.mods.push({ atk: n, def: 0, until_turn: this.turn });
+                this._emit('rally', { side, slot, slots: crew.map(x => x.slot), amount: n });
                 this._recalc();
                 this._effect(side, c, `${c.name} RALLIES the crew: ${crew.length} of your characters get +${n} ATK this turn`, slot);
                 break;
