@@ -40,7 +40,7 @@ when it ships, or delete it if it's dropped.
   a page each with real cards that use it (`godot/scripts/ui/how_to_play.gd`).
 - [x] **Ranked seasons.** Season 0 runs until launch: rewards by the highest rank reached, a Legend prize
   card, every rank dropping two when a new season starts (`backend/economy/seasons.js`,
-  `godot/scripts/ui/seasons.gd`). The seasonal news emails are still open (under Accounts & email).
+  `godot/scripts/ui/seasons.gd`). The seasonal news emails went out with 0.9.153 (under Accounts & email).
 
 ## Accounts & email
 
@@ -51,7 +51,8 @@ when it ships, or delete it if it's dropped.
   - [x] Branded templates for account activation and password reset (`email()` in `backend/utils/mailer.js`:
     the website's alley banner `website/img/email-banner.jpg`, the game's colours, the contact address; no
     tracking; test `backend/utils/mailer.test.cjs`).
-  - [ ] Season / content-drop news emails: they need an opt-in and an unsubscribe link.
+  - [x] Season / new-card news emails (0.9.153): opt-in in Settings → Account, a signed one-click unsubscribe link and
+    headers, at most NEWS_DAILY_MAX a day (`backend/utils/news.js`, test `news.test.cjs`).
 - [x] **Privacy policy, terms and account deletion.** Done in 0.9.72: `/privacy`, `/terms` and
   `/delete-account` on the server (`backend/routes/legal.js`, contact address from `CONTACT_EMAIL` in
   `.env`); Settings → Account in the game links to them and deletes the account after the password

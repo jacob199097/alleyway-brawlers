@@ -110,6 +110,8 @@ if (signing) {
     env.GODOT_ANDROID_KEYSTORE_RELEASE_USER = signing.alias;
     env.GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD = signing.password;
 }
+// (no Gradle daemon: one left running keeps Godot's output open, and Godot waits for it forever)
+if (gradle) env.GRADLE_OPTS = `${env.GRADLE_OPTS || ''} -Dorg.gradle.daemon=false`.trim();
 execFileSync(godot, ['--headless', '--path', COPY, ...(gradle ? ['--install-android-build-template'] : []),
     debug ? '--export-debug' : '--export-release', 'Android', out], { stdio: 'inherit', env });
 if (!existsSync(out)) throw new Error('Godot did not write the APK (are the Android export templates, JDK and SDK set up? docs/ANDROID.md).');
@@ -206,13 +208,18 @@ function pushPlugin() {
     const zip = join(roaming, 'Godot', 'export_templates', tver, 'android_source.zip');
     const lib = join(ROOT, 'builds', 'android_template', 'libs', 'release', 'godot-lib.template_release.aar');
     mkdirSync(join(ROOT, 'builds', 'android_template'), { recursive: true });
-    execFileSync('tar', ['-xf', zip, '-C', join(ROOT, 'builds', 'android_template'), 'libs/release/godot-lib.template_release.aar']);
+    // (Windows' own tar reads zips; Git Bash's GNU tar, first on its PATH, doesn't and takes C: for a host)
+    const tar = process.platform === 'win32' ? join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'bsdtar';
+    execFileSync(tar, ['-xf', zip,'-C', join(ROOT, 'builds', 'android_template'), 'libs/release/godot-lib.template_release.aar']);
     const settings = readdirSync(join(roaming, 'Godot')).filter(n => /^editor_settings-.*\.tres$/.test(n)).sort().pop();
     const setting = (k) => (new RegExp(`^export/android/${k} = "([^"]*)"`, 'm').exec(readFileSync(join(roaming, 'Godot', settings), 'utf8')) || [])[1];
     writeFileSync(join(PUSH, 'local.properties'), `sdk.dir=${setting('android_sdk_path').replace(/\\/g, '/')}\n`);
     console.log('Building the notification plugin …');
+    // (without NoDefaultCurrentDirectoryInExePath, which Claude Code's shell sets: with it cmd won't run gradlew.bat from cwd)
+    const env = { ...process.env, JAVA_HOME: setting('java_sdk_path'), GODOT_LIB: lib };
+    delete env.NoDefaultCurrentDirectoryInExePath;
     execFileSync(process.platform === 'win32' ? 'cmd.exe' : './gradlew', [...(process.platform === 'win32' ? ['/c', 'gradlew.bat'] : []), 'assembleRelease', '--no-daemon'],
-        { cwd: PUSH, stdio: 'inherit', env: { ...process.env, JAVA_HOME: setting('java_sdk_path'), GODOT_LIB: lib } });
+        { cwd: PUSH, stdio: 'inherit', env });
     // Into the copy, switched on; and the Gradle build
     const addon = join(COPY, 'addons', 'alleyway_push');
     mkdirSync(join(addon, 'bin'), { recursive: true });

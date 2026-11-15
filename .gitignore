@@ -13,4 +13,5 @@ android/alleyway_push/build/
 android/alleyway_push/.gradle/
 android/alleyway_push/local.properties
 android/alleyway_push/src/main/res/values/firebase.xml
+android/alleyway_push/google-services.json
 firebase-service-account*.json

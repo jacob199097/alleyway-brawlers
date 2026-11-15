@@ -15,6 +15,8 @@
   Never move reward/currency/card logic into the client.
   Pre-launch, every player gets every clan's starter deck (`GIVE_ALL_STARTERS` in `backend/routes/onboarding.js`):
   turn it off for the launch wipe.
+  News emails (new seasons, new cards; opt-in, signed one-click unsubscribe, the provider's daily limit) are
+  `backend/utils/news.js`, queued by `season.mjs end --apply` and `sync_cards.mjs`.
   Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. The privacy
   policy and terms are pages on the server (`backend/routes/legal.js`): keep them true to what the server stores. Database changes go in a `db/migrate_*.sql`
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
@@ -49,6 +51,8 @@
   `backend/utils/push.js` (`FCM_SERVICE_ACCOUNT` in .env), game `godot/scripts/push.gd`, the APK's plugin `android/alleyway_push`
   (built in by build_android.mjs when its `google-services.json` is there); see "Phone notifications" in docs/ANDROID.md.
   A phone with the game minimized is away, not gone, in a match (`backend/socket/away.js`).
+  Battery: `Game.battery_saver()` / `Game.fps_target()` (phones: 30 or 60 fps, 10 when idle in the menus, no
+  frosted glass with the saver on); keep phone-only costs behind them.
 - The website (https://alleywaybrawlers.com, `website/README.md`): the game server sends it too. Addresses in `backend/routes/site.js`,
   pages in `backend/site/pages.js`, built from the game's own files (`backend/site/data.js`: cards, clans, keywords, How to Play,
   patch notes), so it names no clan and needs no upkeep for new cards. Styles, script and screenshots in `website/`

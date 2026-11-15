@@ -540,6 +540,13 @@ static func background(parent: Control, path := "menu_background.jpg", dim := 0.
 ## (shaders/glass.gdshader), so a screen's background scene stays part of the screen. Its border and
 ## corners stay; its own fill and drop shadow go (the glass is the fill).
 static func glass(p: Control, tint := Color(0.03, 0.03, 0.08, 0.58), blur := 9.0) -> Control:
+	if Game.battery_saver():   # (a phone saving battery: no blur, which reads the whole screen every frame; the glass's tint, nearly solid, as the fill)
+		var own := p.get_theme_stylebox("panel")
+		if own is Plate:
+			var solid: Plate = own.duplicate()
+			solid.bg_color = Color(tint.r, tint.g, tint.b, maxf(tint.a, 0.88))
+			p.add_theme_stylebox_override("panel", solid)
+		return p
 	var radius := 12.0
 	var sb := p.get_theme_stylebox("panel")
 	if sb is Plate:

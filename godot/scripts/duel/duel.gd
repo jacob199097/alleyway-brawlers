@@ -7967,14 +7967,23 @@ func _rival_leader_lines() -> Array:
 
 
 ## stars: a turf map gang's rating (1..5), along the bottom of its picture.
-## "NEBULA  ·  MASTERY 7": a player's mastery with their deck's clan, small, in its colour, on their plate
+## "NEBULA  ·  MASTERY 7": a player's mastery with their deck's clan, small, in its colour, on their plate,
+## after the clan's emblem
 func _clan_line(p: Panel, prof) -> void:
 	if not prof is Dictionary or not prof.get("clan") is String or prof.get("clan_level") == null:
 		return
 	var clan := CardDB.clan(str(prof.clan))
+	var em := TextureRect.new()
+	em.texture = UI.clan_emblem(str(prof.clan))
+	em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	em.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	em.size = Vector2(20, 20)
+	em.position = Vector2(92, 64)
+	em.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(em)
 	var l := _label(12, clan.get("color", GOLD), true)
 	l.text = "%s  ·  MASTERY %d" % [str(clan.get("name", prof.clan)).to_upper(), int(prof.clan_level)]
-	l.position = Vector2(92, 66)
+	l.position = Vector2(116, 66)
 	p.add_child(l)
 
 

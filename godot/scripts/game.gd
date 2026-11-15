@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS := {
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
 	"phone_notifications": true,    # Android: invites, the daily reward, results and updates (scripts/push.gd)
+	"battery_saver": true,          # phones: 30 fps and solid panels instead of frosted glass (else 60 fps)
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
 	"cb_colors": false,             # colour-blind colours: keywords by what they do, stat changes blue ▲ / orange ▼ (Keywords.color)
 	"text_size": 0,                 # 0 normal, 1 large, 2 larger: reading text and small print (UI.text_size)
@@ -171,6 +172,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# A phone left alone outside a match (no touch for IDLE_SECS) drops to IDLE_FPS: the menus barely move
+	if mobile() and Engine.max_fps != IDLE_FPS and Time.get_ticks_msec() - _touched_msec > IDLE_SECS * 1000 and not _in_match():
+		Engine.max_fps = IDLE_FPS
 	_fps.visible = settings.show_fps
 	if _fps.visible:
 		_fps.text = "%d FPS" % Engine.get_frames_per_second()
@@ -182,6 +186,8 @@ func go(screen: String) -> void:
 	if _going:
 		return
 	_going = true
+	_touched_msec = Time.get_ticks_msec()   # (a phone idling at IDLE_FPS: a match found while it waited opens smoothly)
+	Engine.max_fps = fps_target()
 	# A slanted panel sweeps across, the scene changes behind it, and it sweeps on off
 	var wipe: ShaderMaterial = _fade.material
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP   # no clicks while switching
@@ -432,9 +438,10 @@ func flash_level() -> float:
 
 
 ## How much moves in an arena (ArenaLife's level): Settings → Arena Effects, thinned further by
-## Screen Shake & Flashes.
+## Screen Shake & Flashes, and held at medium by a phone's Battery Saver.
 func arena_level() -> float:
-	return clampf(float(settings.get("arena_fx", 1.0)), 0.0, 1.0) * clampf(float(settings.get("screen_fx", 1.0)), 0.0, 1.0)
+	var level := clampf(float(settings.get("arena_fx", 1.0)), 0.0, 1.0) * clampf(float(settings.get("screen_fx", 1.0)), 0.0, 1.0)
+	return minf(level, GRAPHICS.medium.arena_fx) if battery_saver() else level
 
 
 ## The windowed size: the setting, or the biggest of SettingsPanel.RESOLUTIONS that fits the screen
@@ -463,11 +470,42 @@ func mobile() -> bool:
 var _mobile := -1
 
 
+## Phones: Battery Saver (on unless turned off in Settings → Gameplay).
+func battery_saver() -> bool:
+	return mobile() and bool(settings.get("battery_saver", true))
+
+
+## The frame rate cap: the player's on a computer; on a phone 30 with Battery Saver, else 60 (never the
+## screen's 90-120: a card game doesn't need it, and it's most of the battery)
+func fps_target() -> int:
+	if mobile():
+		return 30 if battery_saver() else 60
+	return int(settings.fps_cap)
+
+
+const IDLE_SECS := 30
+const IDLE_FPS := 10
+var _touched_msec := 0
+
+
+func _input(event: InputEvent) -> void:
+	if mobile() and (event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventKey):
+		_touched_msec = Time.get_ticks_msec()
+		if Engine.max_fps == IDLE_FPS:
+			Engine.max_fps = fps_target()
+
+
+func _in_match() -> bool:
+	var s := get_tree().current_scene
+	return s != null and s.scene_file_path == SCREENS["duel"]
+
+
 func apply_settings() -> void:
 	_set_bus("Music", settings.music_volume)
 	_set_bus("SFX", settings.sfx_volume)
 	_set_bus("Ambience", float(settings.get("ambience_volume", 0.8)))
-	Engine.max_fps = int(settings.fps_cap)
+	Engine.max_fps = fps_target()
+	_touched_msec = Time.get_ticks_msec()
 	if DisplayServer.get_name() == "headless" or mobile():
 		return   # (a phone's game is always full screen, at the phone's own refresh rate)
 	DisplayServer.window_set_vsync_mode(

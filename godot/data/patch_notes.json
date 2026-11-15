@@ -1,5 +1,17 @@
 [
     {
+        "version": "0.9.153",
+        "notes": [
+            "On a phone, minimizing the game no longer drops you from a match: you are away, not gone, and back in the match the moment you open the game again (closing the game still leaves).",
+            "Phone notifications (Android, with the new app download): a friend’s challenge or Turf Defense invite, the daily reward when you haven’t claimed it, season and turf rewards to claim, and new versions and cards. Turn them off in Settings → Gameplay, or each kind in your phone’s settings.",
+            "A Striver that promotes heals: what BLEED and POISON took from it is gone, while buffs (and debuffs from card effects) still carry over to its new level.",
+            "Cards that shuffle cards from your Gutter back into your deck can now let you choose which ones.",
+            "Battery Saver on phones (Settings → Gameplay, on to start with): the game runs at 30 frames a second instead of your screen's 90 or 120, panels are solid instead of frosted glass, and the arenas move a little less. Off, it runs at 60. Left alone in the menus, the game slows right down until you touch it again.",
+            "Your clan's emblem now shows next to your clan and mastery level on the player plates in a match.",
+            "News emails: turn them on in Settings → Account to hear about new seasons and new cards. Off unless you turn them on, and every email has a one-click unsubscribe link."
+        ]
+    },
+    {
         "version": "0.9.152",
         "notes": [
             "When a card destroys Hustles or Ambushes and there are more of them than it destroys, you choose which: they light up on the board, click the one to go.",

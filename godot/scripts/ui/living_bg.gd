@@ -74,7 +74,7 @@ func _rain() -> CPUParticles2D:
 	streak.height = 46
 	var p := CPUParticles2D.new()
 	p.texture = streak
-	p.amount = 140
+	p.amount = 70 if Game.mobile() else 140   # (a phone: half the rain, for the battery)
 	p.lifetime = 0.8
 	p.preprocess = 1.0
 	p.position = Vector2(1060, -60)
@@ -104,7 +104,7 @@ func _embers() -> CPUParticles2D:
 	dot.height = 16
 	var p := CPUParticles2D.new()
 	p.texture = dot
-	p.amount = 26
+	p.amount = 13 if Game.mobile() else 26
 	p.lifetime = 9.0
 	p.preprocess = 9.0
 	p.position = Vector2(960, 1110)

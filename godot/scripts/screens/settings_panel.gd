@@ -125,6 +125,8 @@ func _show(tab: String) -> void:
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
 			if Net.push.available():   # (an Android phone)
 				_cycle("Phone Notifications", [true, false], ["ON", "OFF"], "phone_notifications", false, func(on): Net.push.set_enabled(on))
+			if Game.mobile():   # 30 fps and solid panels (Game.battery_saver), else 60 fps
+				_cycle("Battery Saver", [true, false], ["ON (30 FPS)", "OFF (60 FPS)"], "battery_saver")
 			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind help, text size and photosensitive mode are on the Accessibility tab.", 20, UI.MUTED)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD
 			note.custom_minimum_size = Vector2(1000, 0)
@@ -302,6 +304,29 @@ func _account_tab() -> void:
 	links.add_child(UI.button("TERMS OF SERVICE", func(): OS.shell_open(Api.base_url() + "/terms"), Vector2(300, 52)))
 	if not signed_in:
 		return
+	if mail is String and mail != "":   # news emails (a new season, new cards): kept on the server (backend/utils/news.js), off unless turned on
+		var nrow := _row("News Emails")
+		var nbtn := Button.new()
+		nbtn.custom_minimum_size = Vector2(360, 52)
+		nbtn.text = "…"
+		nbtn.disabled = true
+		nrow.add_child(nbtn)
+		var nnote := UI.label("New seasons and new cards, to %s. Every email has an unsubscribe link." % mail, 20, UI.MUTED)
+		nnote.autowrap_mode = TextServer.AUTOWRAP_WORD
+		nnote.custom_minimum_size = Vector2(1000, 0)
+		_body.add_child(nnote)
+		var shown := func(r: Dictionary) -> void:
+			if not is_instance_valid(nbtn):
+				return
+			var ok: bool = r.ok and r.data is Dictionary
+			nbtn.disabled = not ok
+			nbtn.set_meta("on", ok and r.data.get("on", false))
+			nbtn.text = ("ON" if nbtn.get_meta("on") else "OFF") if ok else "CAN'T REACH THE SERVER"
+		nbtn.pressed.connect(func():
+			Sfx.play("click")
+			nbtn.disabled = true
+			shown.call(await Api.request("POST", "/api/news", {"on": not nbtn.get_meta("on", false)})))
+		(func(): shown.call(await Api.request("GET", "/api/news"))).call()   # (the rest of the tab doesn't wait for it)
 	var head := UI.label("DELETE ACCOUNT", 26, UI.RED, true)
 	_body.add_child(head)
 	var warn := UI.label("Deletes your account for good: your cards and packs, decks, Karat, Contraband and Dust, progress, achievements, friends, messages, mail and match recordings. Contraband you bought is lost and isn't refunded. This can't be undone.", 20, UI.MUTED)
