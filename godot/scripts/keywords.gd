@@ -40,6 +40,16 @@ const LIST := {
 	"EXILES": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
 	"COLLATERAL": [Color("ff9a5c"), "COLLATERAL: when it KOs (or Downs) a character in a brawl, the effect hits the characters in the lanes either side of that one."],
 	"DOUBLE": [Color("ff8f6b"), "DOUBLE OR NOTHING: you may bet on a coin flip. Heads, the effect happens twice; tails, not at all. Don't bet, and it happens once."],
+	"BRACE": [Color("9ec1e0"), "BRACE X: the first time each turn it's attacked, the attacker loses X ATK before the brawl (for the rest of the turn)."],
+	"RECKLESS": [Color("ff6347"), "RECKLESS X: when it attacks, it gets +X ATK for that brawl. After the brawl, it goes Down."],
+	"RALLY": [Color("ffb84d"), "RALLY X: your other characters get +X ATK this turn."],
+	"TAUNT": [Color("ff7a7a"), "TAUNT: while it's standing, your opponent's attacks have to go at it (or another TAUNT character): not at your other characters, and not at you directly, not even with INFILTRATE."],
+	"HEIST": [Color("f0c060"), "HEIST X (Pirates): when it makes your opponent lose Morale in a brawl (a direct attack, or beating a character), you draw X cards."],
+	"ECHO": [Color("8fd3ff"), "ECHO: the effect happens again at the start of your next turn (a character's only while it's still on the field)."],
+	"SHROUD": [Color("a29ec4"), "SHROUD: until it attacks, it can't be attacked and your opponent's effects can't choose it. It doesn't block direct attacks. Once it attacks, the SHROUD is gone."],
+	"CORRODE": [Color("c8bb52"), "CORRODE X: at the start of its owner's next 3 turns, it loses X DEF. The loss lasts until it leaves the field."],
+	"DEBT": [Color("e89a5c"), "DEBT X: the next card your opponent plays costs X more Authority (one they play before the end of their next turn)."],
+	"CONFUSE": [Color("ff9fd6"), "CONFUSE: until the end of its owner's next turn, each time it attacks a coin is flipped. Heads, it attacks as chosen. Tails, it attacks a random other target instead: another it could have attacked, or one of its own side's characters (its player loses the Morale as usual)."],
 }
 ## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
 ## PHRASE_ONLY ones are keywords only as the whole phrase ("Double its ATK" isn't DOUBLE OR NOTHING).
@@ -51,15 +61,16 @@ const STATUS_HELP := {
 	"RESTING": [Color("ffb35a"), "CAN'T ATTACK YET: it was deployed, promoted or Awakened this turn, so it can't attack until its owner's next turn."],
 	"GUARDED": [Color("a0d8ff"), "CAN'T BE ATTACKED: its owner has another character that can be, so attacks have to go there. It doesn't stop effects, and it's off while the card is Downed, SILENCED or face-down."],
 }
-const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN"}
+const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN", "RALLIES": "RALLY", "RALLIED": "RALLY", "ECHOES": "ECHO",
+	"CONFUSION": "CONFUSE"}
 ## Settings → Accessibility → Colour-Blind Colours: keywords coloured by what they do, in colours
 ## people with colour blindness can tell apart (Okabe-Ito, lightened for the dark screens). A keyword
 ## in none of these keeps its own colour.
 const CB_GROUPS := [
-	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL"]],   # damage and weakening
-	[Color("eb9cd0"), ["STUN", "BLIND", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED"]],   # holding back
-	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS"]],   # protection and recovery
-	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE"]],   # card rules
+	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL", "CORRODE", "DEBT"]],   # damage and weakening
+	[Color("eb9cd0"), ["STUN", "BLIND", "CONFUSE", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED", "TAUNT"]],   # holding back
+	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS", "BRACE", "SHROUD"]],   # protection and recovery
+	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE", "RECKLESS", "RALLY", "HEIST", "ECHO"]],   # card rules
 ]
 const CB_STATUS := {"DOWNED": Color("ffa630"), "RESTING": Color("f0e442"), "GUARDED": Color("6cc4ff")}
 

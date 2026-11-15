@@ -356,7 +356,7 @@ static func _target_score(att: Dictionary, df: Dictionary, level: String, back :
 static func _deploy_value(c: Dictionary) -> int:
 	var v: int = maxi(int(c.get("base_attack", 0)), int(c.get("base_defense", 0)) * 4 / 5)
 	var fx: Array = c.get("effects", []) if c.get("effects") is Array else []
-	if fx.any(func(e): return e is Dictionary and str(e.get("when", "")) == "passive" and str(e.get("do", "")) == "guard"):
+	if fx.any(func(e): return e is Dictionary and str(e.get("when", "")) == "passive" and str(e.get("do", "")) in ["guard", "taunt"]):
 		v += 300
 	if fx.any(func(e): return e is Dictionary and str(e.get("when", "")) == "deploy"):
 		v += 300

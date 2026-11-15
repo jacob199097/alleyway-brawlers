@@ -36,7 +36,7 @@ const NO_SLOT := -10             # effects of a card that isn't on the field (a 
 ## Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_spring_fx)
 const HAND_AMBUSHES := ["no_witnesses_ambush", "lion_ambush", "kings_test"]
 ## What an "immune" passive keeps off a card
-const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "blind", "suppress", "silence", "bounty", "charm"]
+const IMMUNE_TO := ["poison", "burn", "bleed", "shock", "freeze", "stasis", "stun", "blind", "suppress", "silence", "bounty", "charm", "corrode", "confuse"]
 const LEADER := -2               # attack target: the opponent's dormant leader
 
 var turn := 1
@@ -484,7 +484,7 @@ func _equip_targets(side: String, c: Dictionary) -> Array:
 	var out: Array = []
 	for on in (foes_of(side) if str(c.get("equip_to", "ally")) == "enemy" else [side]):
 		for x in characters(on):
-			if not in_stasis(x.card) and (on == side or _passive(on, x.slot, x.card, "untargetable").is_empty()):
+			if not in_stasis(x.card) and (on == side or not _no_target(on, x.slot, x.card)):
 				out.append({"side": on, "slot": x.slot, "card": x.card})
 	return out
 
@@ -609,8 +609,10 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 			return foes.any(func(x): return BACK.any(func(b): return x.field[b] != null and x.field[b].get("cardType") == "ambush"))
 		"barricade":
 			return true
-		"tax":
+		"tax", "debt":
 			return not foes.is_empty()
+		"rally":
+			return characters(side).any(func(x): return not is_same(x.card, c))
 		"reshuffle":
 			return s.gutter.any(func(x): return not x.get("token", false))
 		"tribute_damage":
@@ -633,7 +635,7 @@ func fx_can(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, def
 		"ready": "spent", "cleanse": "statused", "rewind": "changed", "promote_ally": "promotable", "charm": "charmable", "plunder": "charmable", "give_undead": "unrisen", "absorb": "absorbable", "shield": "unshielded"}.get(str(e.get("do", "")), "any")
 	var entries := _fx_targets(side, slot, c, e, vs, pool)
 	if str(e.get("target", "")) == "enemy":   # (one enemy is chosen: not one that can't be targeted)
-		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "untargetable").is_empty())
+		entries = entries.filter(func(x): return not _no_target(x.side, x.slot, x.card))
 	return not entries.is_empty()
 
 
@@ -675,6 +677,9 @@ func cost_of(side: String, c: Dictionary) -> int:
 				if str(e.get("clan", "")) != "" and c.get("clanTag") != str(e.get("clan", "")):
 					continue
 				up += maxi(1, int(e.get("amount", 1)))
+	var debt = s.get("debt")
+	if debt is Dictionary and int(debt.until) >= turn:   # DEBT: an opponent's card made your next one cost more
+		up += int(debt.n)
 	return maxi(0, int(c.get("authority", 0)) - off + up)
 
 
@@ -718,10 +723,25 @@ func _stays_up(side: String, slot: int, c) -> bool:
 	return not _passive(side, slot, c, "no_down").is_empty() and characters(side).size() > 1
 
 
+## SHROUD (a Card Forge passive): until it attacks, it can't be attacked or targeted by its opponents' effects.
+func _shrouded(side: String, slot: int, c) -> bool:
+	return c != null and not c.get("unshrouded", false) and not _passive(side, slot, c, "shroud").is_empty()
+
+
+## Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED.
+func _no_target(side: String, slot: int, c) -> bool:
+	return not _passive(side, slot, c, "untargetable").is_empty() or _shrouded(side, slot, c)
+
+
+## DEBT is paid: a card was played (it cost what it owed).
+func _pay_debt(side: String) -> void:
+	sides[side].erase("debt")
+
+
 ## Keyword statuses (Card Forge effects). Freeze and Stasis last through the owner's next turn.
 const FOREVER := 1000000        # until_turn for mods that last until the card leaves the field
 const STATUS_TICKS := 3         # Poison / Burn tick at the start of the owner's next 3 turns
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "silence_until", "suppress_until", "blind_until", "bounty"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "corrode", "freeze_until", "stasis_until", "silence_until", "suppress_until", "blind_until", "confuse_until", "bounty"]
 
 
 func in_stasis(c) -> bool:
@@ -735,7 +755,7 @@ func frozen(c) -> bool:
 ## The statuses on a character, for the field display (sent with the "stats" event).
 func statuses(c: Dictionary) -> Array:
 	var out: Array = []
-	for k in ["poison", "burn", "bleed"]:
+	for k in ["poison", "burn", "bleed", "corrode"]:
 		if c.has(k):
 			out.append(k)
 	if frozen(c):
@@ -746,6 +766,8 @@ func statuses(c: Dictionary) -> Array:
 		out.append("stun")
 	if int(c.get("blind_until", 0)) >= turn:
 		out.append("blind")
+	if int(c.get("confuse_until", 0)) >= turn:
+		out.append("confuse")
 	if int(c.get("suppress_until", 0)) >= turn:
 		out.append("suppress")
 	if c.get("shield", false):
@@ -791,8 +813,12 @@ func attack_targets(side: String, foe := "", from := -100) -> Array:
 		foe = all_foes[0] if not all_foes.is_empty() else ""
 	if foe == "" or foe == side or not sides.has(foe) or _is_out(foe):
 		return []
-	# A character in STASIS can't be attacked and doesn't block a direct attack
-	var foes := characters(foe).filter(func(e): return not in_stasis(e.card))
+	# A character in STASIS or SHROUDED can't be attacked and doesn't block a direct attack
+	var foes := characters(foe).filter(func(e): return not in_stasis(e.card) and not _shrouded(foe, e.slot, e.card))
+	# TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE)
+	var taunts := foes.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "taunt").is_empty())
+	if not taunts.is_empty():
+		return taunts.map(func(e): return e.slot)
 	# Elusive characters can't be attacked while their owner has another character that can be
 	var open := foes.filter(func(e): return _passive(foe, e.slot, e.card, "elusive").is_empty())
 	var pool: Array = open if not open.is_empty() else foes
@@ -1108,6 +1134,7 @@ func _summon(side: String, uid: int, slot: int, position: String, tribute = -1) 
 		return false
 	var c: Dictionary = sides[side].hand[i]
 	_spend(side, cost_of(side, c))
+	_pay_debt(side)
 	sides[side].hand.remove_at(i)
 	var tribute_atk := 0
 	for slot_ in tribute_list(tribute):   # sacrificed, or deployed over
@@ -1147,6 +1174,7 @@ func _set_ambush(side: String, uid: int, slot: int) -> bool:
 	# (a Hustle is paid for when it's activated; an Ambush now, out of its opponents' sight: hidden_spend)
 	if c.get("cardType") != "hustle":
 		_spend(side, cost_of(side, c), true)
+		_pay_debt(side)
 	sides[side].hand.remove_at(i)
 	c.face_down = true
 	c.set_turn = turn
@@ -1180,6 +1208,7 @@ func _hustle(side: String, uid: int) -> bool:
 	if c == null or not can_hustle(side, c):
 		return false
 	_spend(side, cost_of(side, c))
+	_pay_debt(side)
 	if i >= 0:
 		s.hand.remove_at(i)
 	else:
@@ -1303,6 +1332,8 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		return false
 	var att: Dictionary = card_at(side, from)
 	att.has_attacked = true
+	if _shrouded(side, from, att):
+		att.unshrouded = true   # (SHROUD: gone once it attacks)
 	# Attacks twice each turn: the first attack leaves it ready for one more
 	if not _passive(side, from, att, "double_attack").is_empty() and int(att.get("second_attack", -1)) != turn:
 		att.has_attacked = false
@@ -1313,8 +1344,20 @@ func _attack(side: String, from: int, target: int, foe := "") -> bool:
 		_emit("miss", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
 		_effect(side, att, "%s is BLIND: its attack misses" % att.name, from)
 		return true
+	# CONFUSE: a coin flip; on tails it attacks a random other target: another it could attack, or one of its own side
+	if int(att.get("confuse_until", 0)) >= turn:
+		var wrong := _confused_targets(side, foe, from, target)
+		if not wrong.is_empty() and not _luck_gate(side, from, att, {"luck": "coin"}):
+			var w: Dictionary = wrong[mini(wrong.size() - 1, int(floor(_luck_next() * wrong.size())))]
+			if w.side == side:
+				_friendly_fire(side, from, att, w.slot)
+				return true
+			target = w.slot
+			var name: String = "directly" if target == DIRECT else "the Dormant leader" if target == LEADER else str(card_at(foe, target).name)
+			_effect(side, att, "%s is CONFUSED: it attacks %s instead" % [att.name, name], from)
 	_emit("attack", _with_foe_key({"side": side, "from": from, "target": target, "card": att.duplicate(true)}, foe))
 	var ctx := {"side": side, "foe": foe, "from": from, "target": target, "att": att, "bonus": 0, "blind_flipped": blind}
+	_reckless(ctx)
 	_attack_ctx = ctx   # (an attacker that promotes mid-attack carries on as its new form: _promote)
 	if not _passive(side, from, att, "pierce").is_empty() or rules.get("pierce", false):
 		ctx.pierce = true
@@ -1529,15 +1572,19 @@ func _atk_resolve(ctx: Dictionary) -> void:
 	if target == DIRECT:
 		var dmg: int = maxi(0, att.attack + ctx.bonus)
 		_emit("clash", _with_foe_key({"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"}, foe))
+		var before := int(sides[foe].morale)
 		_damage(foe, dmg)
 		_lifesteal(side, from, att, dmg)
+		_heist(side, from, att, before - int(sides[foe].morale))
 		if winner == "" and card_at(side, from) == att:
 			_run_fx(side, from, att, "direct")
 		_bleed(side, att)
+		_reckless_down(ctx)
 		return
 	if target == LEADER:
 		_hit_leader(ctx)
 		_bleed(side, att)
+		_reckless_down(ctx)
 		return
 
 	var def: Dictionary = card_at(foe, target)
@@ -1569,6 +1616,13 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		return
 	if _atk_blind_miss(ctx):
 		return
+	# BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
+	var brace := _passive(foe, target, def, "brace")
+	if not brace.is_empty() and int(def.get("brace_turn", -1)) != turn:
+		def.brace_turn = turn
+		var x := maxi(1, int(brace.get("amount", 1)))
+		att.mods.append({"atk": -x, "def": 0, "until_turn": turn})
+		_effect(foe, def, "%s is BRACED: %s loses %d ATK this turn" % [def.name, att.name, x], target)
 	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
 	var bonus: int = ctx.bonus + _brawl_bonus(side, from, att, def)
 	if def.get("effectKey") == "bulwark":
@@ -1617,6 +1671,96 @@ func _atk_resolve(ctx: Dictionary) -> void:
 		_leader_fx(side, "dormant_down", def)
 	_bleed(side, att)
 	_bleed(foe, def)
+	_reckless_down(ctx)
+
+
+## CONFUSE: the targets it may hit instead of the one chosen: the others it could attack, and its own
+## side's other characters (not in STASIS). Same as _confusedTargets in DuelState.js.
+func _confused_targets(side: String, foe: String, from: int, target: int) -> Array:
+	var out: Array = []
+	for t in attack_targets(side, foe, from):
+		if t != target:
+			out.append({"side": foe, "slot": t})
+	for x in characters(side):
+		if x.slot != from and not in_stasis(x.card):
+			out.append({"side": side, "slot": x.slot})
+	return out
+
+
+## CONFUSED, it attacks one of its own side: a brawl between the two (no "when it attacks", defend or KO
+## effects, no Ambushes), and their player loses the Morale the losing card would.
+func _friendly_fire(side: String, from: int, att: Dictionary, slot: int) -> void:
+	var def: Dictionary = card_at(side, slot)
+	_emit("attack", {"side": side, "from": from, "target": slot, "foe": side, "card": att.duplicate(true), "confused": true})
+	_effect(side, att, "%s is CONFUSED: it attacks %s, on its own side" % [att.name, def.name], from)
+	var ctx := {"side": side, "foe": side, "from": from, "target": slot, "att": att, "bonus": 0}
+	_reckless(ctx)
+	var vs_def: bool = def.downed or def.position == "def"
+	var a_val: int = maxi(0, att.attack + ctx.bonus)
+	var d_val: int = def.defense if vs_def else def.attack
+	_emit("clash", {"side": side, "from": from, "target": slot, "att": a_val, "def": d_val, "vs": "DEF" if vs_def else "ATK", "foe": side})
+	if a_val > d_val:
+		if not vs_def:
+			_damage(side, a_val - d_val)
+		if is_same(card_at(side, slot), def):
+			_defeat(side, slot)
+	elif vs_def:
+		_emit("blocked", {"side": side, "slot": slot})
+		if a_val < d_val:
+			_damage(side, d_val - a_val)
+	elif a_val < d_val:
+		_damage(side, d_val - a_val)
+		if is_same(card_at(side, from), att):
+			_defeat(side, from)
+	else:
+		_emit("notice", {"text": "TIE — BOTH GO DOWN"})
+		if is_same(card_at(side, slot), def):
+			_defeat(side, slot)
+		if is_same(card_at(side, from), att):
+			_defeat(side, from)
+	if winner != "":
+		return
+	_bleed(side, att)
+	if is_same(card_at(side, slot), def):
+		_bleed(side, def)
+	_reckless_down(ctx)
+
+
+## RECKLESS X (a Card Forge passive): +X ATK when it attacks, for that brawl; after the brawl it goes Down.
+func _reckless(ctx: Dictionary) -> void:
+	var rk := _passive(ctx.side, ctx.from, ctx.att, "reckless")
+	if rk.is_empty():
+		return
+	ctx.reckless = true
+	var x := maxi(0, int(rk.get("amount", 0)))
+	if x <= 0:
+		return
+	ctx.bonus += x
+	_effect(ctx.side, ctx.att, "%s is RECKLESS: +%d ATK this brawl" % [ctx.att.name, x], ctx.from)
+
+
+func _reckless_down(ctx: Dictionary) -> void:
+	var att: Dictionary = ctx.att
+	if not ctx.get("reckless", false) or winner != "" or not is_same(card_at(ctx.side, ctx.from), att) or att.downed \
+			or _stays_up(ctx.side, ctx.from, att):
+		return
+	_effect(ctx.side, att, "%s is RECKLESS: it goes Down after the brawl" % att.name, ctx.from)
+	_go_down(ctx.side, ctx.from, att)
+
+
+## HEIST X (Pirates; a Card Forge passive): when it makes an opponent lose Morale in a brawl, its player draws X.
+func _heist(side: String, slot: int, c, took: int) -> void:
+	if took <= 0 or winner != "" or c == null or not is_same(card_at(side, slot), c):
+		return
+	var h := _passive(side, slot, c, "heist")
+	if h.is_empty():
+		return
+	var n := maxi(1, int(h.get("amount", 1)))
+	_effect(side, c, "%s: HEIST, draw %d" % [c.name, n], slot)
+	for i in n:
+		if winner != "":
+			break
+		_draw(side)
 
 
 ## BLEED: a bleeding character loses ATK and DEF after every brawl it is in.
@@ -1769,8 +1913,8 @@ func _hustles_this_turn(side: String) -> int:
 
 ## Whether a character has a status CLEANSE would take away.
 func _afflicted(c: Dictionary) -> bool:
-	return c.has("poison") or c.has("burn") or c.has("bleed") or c.has("bounty") or frozen(c) or in_stasis(c) \
-		or int(c.get("stun_until", 0)) >= turn or int(c.get("blind_until", 0)) >= turn \
+	return c.has("poison") or c.has("burn") or c.has("bleed") or c.has("corrode") or c.has("bounty") or frozen(c) or in_stasis(c) \
+		or int(c.get("stun_until", 0)) >= turn or int(c.get("blind_until", 0)) >= turn or int(c.get("confuse_until", 0)) >= turn \
 		or int(c.get("suppress_until", 0)) >= turn or int(c.get("silence_until", 0)) >= turn
 
 
@@ -1815,8 +1959,10 @@ func _battle_damage(side: String, slot: int, mine: Dictionary, amount: int, othe
 	if not _passive(side, slot, mine, "no_battle_damage").is_empty():
 		_effect(side, mine, "%s: no battle damage" % mine.name, slot)
 		return
+	var before := int(sides[side].morale)
 	_damage(side, amount)
 	_lifesteal(other_side, other_slot, other, amount)
+	_heist(other_side, other_slot, other, before - int(sides[side].morale))
 
 
 ## LIFESTEAL (Card Forge passive): the Morale a character takes from an opponent in a brawl, its owner gains.
@@ -2735,6 +2881,50 @@ func _run_fx(side: String, slot: int, c: Dictionary, when: String, def = null, v
 				_choose_fx(side, slot, c, opts, vs)
 			else:
 				_do_fx(side, slot, c, opts[0], vs)
+			if e.get("echo", false) and (when == "deploy" or when == "*"):
+				_echo_later(side, slot, c, e)
+
+
+## ECHO: a "when played" effect happens again at the start of its player's next turn (_run_echoes).
+func _echo_later(side: String, slot: int, c: Dictionary, e: Dictionary) -> void:
+	var s: Dictionary = sides[side]
+	var fx := e.duplicate(true)
+	fx.erase("echo")
+	var item := {"uid": c.uid, "fx": fx}
+	if not (slot in FRONT or slot in BACK):
+		item.card = c.duplicate(true)
+	if not s.has("echoes"):
+		s.echoes = []
+	s.echoes.append(item)
+
+
+## The ECHOES due at the start of side's turn: a card on the field only while it's still there (and its
+## effects work); a Hustle's from wherever it went. Same as _runEchoes in DuelState.js.
+func _run_echoes(side: String) -> void:
+	var s: Dictionary = sides[side]
+	var list: Array = s.get("echoes", [])
+	s.erase("echoes")
+	for x in list:
+		if winner != "":
+			return
+		var card = x.get("card")
+		var slot := NO_SLOT
+		if card == null:
+			var at := -1
+			for i in s.field.size():
+				if s.field[i] != null and s.field[i].uid == x.uid:
+					at = i
+					break
+			if at < 0:
+				continue
+			card = s.field[at]
+			slot = at
+			if card.downed or in_stasis(card) or int(card.get("silence_until", 0)) >= turn:
+				continue
+		if not _fx_cond(side, slot, x.fx, null):
+			continue
+		_effect(side, card, "%s: ECHO" % card.name, slot)
+		_do_fx(side, slot, card, x.fx, {})
 
 
 ## then: a follow-up effect that happens only if this one did something ("If you do, ...").
@@ -2920,9 +3110,15 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 		"cleanse":   # CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, BLIND, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
 			var fn := func(x: Dictionary) -> String:
 				var kept = x.card.get("undead_given", false)
+				var shown = x.card.get("unshrouded", false)
+				var braced = x.card.get("brace_turn")
 				_clear_status(x.card)
 				if kept:
 					x.card.undead_given = true
+				if shown:
+					x.card.unshrouded = true   # (a SHROUD that's gone stays gone)
+				if braced != null:
+					x.card.brace_turn = braced
 				x.card.erase("stun_until")
 				_emit("cleanse", {"side": x.side, "slot": x.slot, "card": x.card.duplicate(true)})
 				return "%s is cleansed" % x.card.name
@@ -3175,6 +3371,21 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
 				sides[foe].tax = int(sides[foe].get("tax", 0)) + n
 				_effect(side, c, "%s: TAX %d: your opponent gets %d less Authority next turn" % [c.name, n, n], slot))
+		"debt":   # DEBT N: the opponent's next card costs N more (one played before their next turn ends)
+			_with_foe(side, c, vs, func(_f): return true, func(foe: String):
+				var fs: Dictionary = sides[foe]
+				var owed := 0
+				if fs.get("debt") is Dictionary and int(fs.debt.until) >= turn:
+					owed = int(fs.debt.n)
+				fs.debt = {"n": owed + n, "until": _owner_next_turn(foe)}
+				_effect(side, c, "%s: DEBT %d: your opponent's next card costs %d more" % [c.name, n, n], slot))
+		"rally":   # RALLY N: your other characters get +N ATK this turn
+			var crew := characters(side).filter(func(x): return not is_same(x.card, c))
+			if not crew.is_empty():
+				for x in crew:
+					x.card.mods.append({"atk": n, "def": 0, "until_turn": turn})
+				_recalc()
+				_effect(side, c, "%s RALLIES the crew: %d of your characters get +%d ATK this turn" % [c.name, crew.size(), n], slot)
 		"reshuffle":   # up to N cards from your Gutter (the oldest, or with choose the player picks; not tokens) shuffled back into your deck
 			var back: Array = []
 			var finish := func() -> void:
@@ -3378,6 +3589,19 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 				return "%s is BURNING: its owner loses %d Morale each turn" % [x.card.name, n]
 			_fx_apply(side, slot, c, e, vs, "any", kind.to_upper(), fn,
 				"%s %s %%s" % [c.name, "poisons" if kind == "poison" else "burns"])
+		"corrode":   # CORRODE X: at the start of its owner's next 3 turns, it loses X DEF
+			var fn := func(x: Dictionary) -> String:
+				var cur: Dictionary = x.card.get("corrode", {})
+				x.card["corrode"] = {"amt": maxi(n, int(cur.get("amt", 0))), "left": STATUS_TICKS}
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "corrode", "card": x.card.duplicate(true)})
+				return "%s is CORRODED: -%d DEF each turn" % [x.card.name, n]
+			_fx_apply(side, slot, c, e, vs, "any", "CORRODE", fn, "%s corrodes %%s" % c.name)
+		"confuse":   # CONFUSE: until its owner's next turn ends, each of its attacks is a coin flip (tails: a wrong target)
+			var fn := func(x: Dictionary) -> String:
+				x.card.confuse_until = _owner_next_turn(x.side)
+				_emit("status", {"side": x.side, "slot": x.slot, "kind": "confuse", "card": x.card.duplicate(true)})
+				return "%s CONFUSES %s: its attacks may hit the wrong target" % [c.name, x.card.name]
+			_fx_apply(side, slot, c, e, vs, "any", "CONFUSE", fn, "%s confuses %%s" % c.name)
 		"stoke":   # STOKE (Arsonists): BURN that builds: on a character already burning it adds to the burn
 			var fn := func(x: Dictionary) -> String:
 				var burning: bool = x.card.has("burn")
@@ -3460,6 +3684,8 @@ func _clear_status(c: Dictionary) -> void:
 	for k in STATUS_KEYS:
 		c.erase(k)
 	c.erase("undead_given")
+	c.erase("unshrouded")
+	c.erase("brace_turn")
 
 
 ## Cards out of a side's Gutter and out of the game (Card Forge: exile_gutter).
@@ -3479,7 +3705,7 @@ func _exile_gutter(side: String, cards: Array) -> void:
 func _status_ticks(side: String) -> void:
 	for e in characters(side):
 		var c: Dictionary = e.card
-		for kind in ["poison", "burn"]:
+		for kind in ["poison", "burn", "corrode"]:
 			if winner != "" or not c.has(kind):
 				continue
 			var st: Dictionary = c[kind]
@@ -3490,6 +3716,8 @@ func _status_ticks(side: String) -> void:
 			_emit("status_tick", {"side": side, "slot": e.slot, "kind": kind, "amount": amt, "card": c.duplicate(true)})
 			if kind == "poison":
 				c.mods.append({"atk": -amt, "def": 0, "until_turn": FOREVER, "wound": true})
+			elif kind == "corrode":
+				c.mods.append({"atk": 0, "def": -amt, "until_turn": FOREVER, "wound": true})
 			else:
 				var before := int(sides[side].morale)
 				_damage(side, amt)
@@ -3756,7 +3984,7 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
 	if target == "attacker" or target == "deployed":
-		entries = entries.filter(func(x): return x.side == side or _passive(x.side, x.slot, x.card, "untargetable").is_empty())
+		entries = entries.filter(func(x): return x.side == side or not _no_target(x.side, x.slot, x.card))
 	return entries
 
 
@@ -3774,7 +4002,7 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 			if x.side == side:
 				return (100000 if c.downed else 0) + value   # shelter a Downed ally from the KO
 			return (100000 if standing_atk else 0) + value
-		"poison", "bleed":
+		"poison", "bleed", "corrode":
 			if c.has(str(e.do)):
 				return value - 50000
 			if c.downed:
@@ -3787,7 +4015,7 @@ func _target_value(side: String, e: Dictionary, x: Dictionary) -> int:
 			if c.has("burn"):
 				return 100000 + int(c.burn.get("amt", 0)) + int(c.get("defense", 0))
 			return (0 if c.downed else 10000) + int(c.get("defense", 0))
-		"freeze", "stun", "blind":
+		"freeze", "stun", "blind", "confuse":
 			var key := "%s_until" % str(e.do)
 			if int(c.get(key, 0)) >= turn:
 				return value - 50000
@@ -4131,6 +4359,7 @@ func _begin_turn() -> void:
 		_run_fx(active, e.slot, e.card, "turn_start")
 	_run_lasting(active, "turn_start")
 	_leader_fx(active, "dormant_turn_start")
+	_run_echoes(active)
 	# King's Test survivors may promote at the start of their owner's next turn
 	for e in characters(active):
 		if e.card.get("kings_test", false):
@@ -4248,7 +4477,7 @@ func _ask_target(side: String, key: String, prompt: String, source: Dictionary, 
 		target_side: String, cb: Callable, optional := false) -> void:
 	# Your opponent's effects can't choose a card that can't be targeted
 	entries = entries.filter(func(e): return str(e.get("side", target_side)) == side \
-		or _passive(str(e.get("side", target_side)), e.slot, e.card, "untargetable").is_empty())
+		or not _no_target(str(e.get("side", target_side)), e.slot, e.card))
 	if entries.is_empty():
 		return
 	if entries.size() == 1 and not optional:

@@ -58,6 +58,16 @@ static func icon(L: CanvasItem, kind: String, c: Vector2, r: float, col: Color) 
 			L.draw_circle(c, r * 0.3, lite)
 			L.draw_line(c + Vector2(-0.75, 0.8) * r, c + Vector2(0.75, -0.8) * r, INK, w * 2.4, true)
 			L.draw_line(c + Vector2(-0.75, 0.8) * r, c + Vector2(0.75, -0.8) * r, col, w, true)
+		"confuse":   # a spiral
+			var spiral := PackedVector2Array()
+			for i in 29:
+				var t := i / 28.0
+				spiral.append(c + Vector2.from_angle(t * TAU * 2.2) * r * (0.12 + 0.82 * t))
+			L.draw_polyline(spiral, lite, w * 1.1, true)
+		"corrode":   # a drop of acid eating into a bar
+			L.draw_rect(Rect2(c + Vector2(-0.85, 0.35) * r, Vector2(1.7, 0.5) * r), col.darkened(0.25))
+			L.draw_colored_polygon(_pts(c, r, [[-0.3, 0.35], [-0.12, 0.62], [0.1, 0.5], [0.3, 0.35]]), INK)
+			L.draw_colored_polygon(_pts(c, r, [[0.0, -0.95], [0.34, -0.38], [0.38, -0.12], [0.24, 0.12], [0.0, 0.2], [-0.24, 0.12], [-0.38, -0.12], [-0.34, -0.38]]), lite)
 		"silence":   # a speech bubble, crossed out
 			L.draw_colored_polygon(_pts(c, r, [[-0.85, -0.7], [0.85, -0.7], [0.85, 0.35], [-0.1, 0.35], [-0.55, 0.9], [-0.5, 0.35], [-0.85, 0.35]]), col)
 			L.draw_line(c + Vector2(-0.38, -0.5) * r, c + Vector2(0.38, 0.14) * r, INK, w, true)

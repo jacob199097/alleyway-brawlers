@@ -1,7 +1,7 @@
 extends Control
 ## Full-screen menu backdrop that never sits still: the art drifts and follows the mouse a
-## little (parallax), rain streaks across it, warm embers float up, and a vignette pulls the
-## eye to the middle. Built by UI.background().
+## little (parallax), rain streaks across it (outdoors), warm embers float up, and a vignette pulls
+## the eye to the middle. Built by UI.background().
 
 const PARALLAX := 22.0   # px the art shifts toward the mouse at the screen edge
 const OVERSCAN := 1.07   # art is drawn slightly larger so the drift never shows an edge
@@ -12,7 +12,7 @@ var _embers_p: CPUParticles2D
 var _t := 0.0
 
 
-func setup(texture: Texture2D, dim: float) -> Control:
+func setup(texture: Texture2D, dim: float, rain := true) -> Control:
 	size = Vector2(1920, 1080)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
@@ -30,8 +30,9 @@ func setup(texture: Texture2D, dim: float) -> Control:
 	veil.size = size
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(veil)
-	_rain_p = _rain()
-	add_child(_rain_p)
+	if rain:
+		_rain_p = _rain()
+		add_child(_rain_p)
 	_embers_p = _embers()
 	add_child(_embers_p)
 	add_child(_vignette())
@@ -45,8 +46,9 @@ func fill_frame(m: Vector2) -> void:
 	size = Vector2(1920, 1080) + m * 2
 	_art.size = size * OVERSCAN
 	_art.pivot_offset = _art.size / 2
-	_rain_p.position = Vector2(size.x / 2 + 100, -60)   # (rain falls across all of it, slanted)
-	_rain_p.emission_rect_extents.x = size.x / 2 + 340
+	if _rain_p:
+		_rain_p.position = Vector2(size.x / 2 + 100, -60)   # (rain falls across all of it, slanted)
+		_rain_p.emission_rect_extents.x = size.x / 2 + 340
 	_embers_p.position = Vector2(size.x / 2, size.y + 30)
 	_embers_p.emission_rect_extents.x = size.x / 2 + 20
 	for c in get_children():

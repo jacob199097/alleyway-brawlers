@@ -310,19 +310,28 @@ func _show_detail(c: Dictionary) -> void:
 	var tw := _hero.create_tween().set_parallel()
 	tw.tween_property(_hero, "modulate:a", 1.0, 0.14)
 	tw.tween_property(_hero, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_detail.add_child(UI.label(str(c.get("name", "?")), 34, Color.WHITE, true))
+	# The card is the same size for every card; what is said under it scrolls when it runs long
+	var below := ScrollContainer.new()
+	below.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	below.custom_minimum_size = Vector2(480, 270)
+	_detail.add_child(below)
+	var info := VBoxContainer.new()
+	info.add_theme_constant_override("separation", 10)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	below.add_child(info)
+	info.add_child(UI.label(str(c.get("name", "?")), 34, Color.WHITE, true))
 	var rarity := int(c.get("rarity", 1))
 	var kind := str(UI.TYPE_NAMES.get(c.get("cardType", ""), "CARD"))
 	var sub = c.get("subtype")
 	var line := "%s%s  ·  %s" % [kind, ("  ·  " + str(sub).to_upper()) if sub is String else "", str(UI.RARITY_LABEL.get(rarity, "")).to_upper()]
-	_detail.add_child(UI.label(line, 17, UI.rarity_color(rarity)))
-	var vet_box := UI.veteran_box(id, vet, false, 480)
+	info.add_child(UI.label(line, 17, UI.rarity_color(rarity)))
+	var vet_box := UI.veteran_box(id, vet, false, 460)   # (room for the scroll bar)
 	if vet_box:
-		_detail.add_child(vet_box)
+		info.add_child(vet_box)
 	if c.get("cardType") in ["gang_member", "leader"]:
 		var q: bool = CardDB.get_card(str(c.get("art_url", c.get("id", "")))).get("varStats", false)
 		var st := ("ATK ?   DEF ?" if q else "ATK %d   DEF %d" % [int(c.get("attack", 0)), int(c.get("defense", 0))])
-		_detail.add_child(UI.label("%s   ·   AUTHORITY %d" % [st, int(c.get("authority", 0))], 22, UI.GOLD, true))
+		info.add_child(UI.label("%s   ·   AUTHORITY %d" % [st, int(c.get("authority", 0))], 22, UI.GOLD, true))
 	# Keywords are coloured and explain themselves when hovered
 	var t := RichTextLabel.new()
 	t.bbcode_enabled = true
@@ -333,10 +342,10 @@ func _show_detail(c: Dictionary) -> void:
 	t.add_theme_font_size_override("bold_font_size", UI.text_size(18))
 	t.add_theme_color_override("default_color", Color(0.88, 0.88, 0.95))
 	t.text = Keywords.markup(str(c.get("effectText", "")))
-	t.custom_minimum_size = Vector2(480, 0)
+	t.custom_minimum_size = Vector2(460, 0)
 	t.meta_hover_started.connect(func(meta): t.tooltip_text = Keywords.LIST.get(str(meta), [null, ""])[1])
 	t.meta_hover_ended.connect(func(_meta): t.tooltip_text = "")
-	_detail.add_child(t)
+	info.add_child(t)
 	if not Game.offline:   # owned: a pip for each copy a deck can hold
 		var have := int(c.get("quantity", 0))
 		var cap := 1 if c.get("cardType") == "leader" else 3
@@ -344,34 +353,20 @@ func _show_detail(c: Dictionary) -> void:
 		for i in cap:
 			pips += "◆ " if i < have else "◇ "
 		var extra := "  +%d" % (have - cap) if have > cap else ""
-		_detail.add_child(UI.label("OWNED  %s%s" % [pips.strip_edges(), extra], 20, UI.BLUE if have > 0 else UI.MUTED, true))
-	_detail.add_child(_obtain(c))
-	_fit_detail(holder)
+		info.add_child(UI.label("OWNED  %s%s" % [pips.strip_edges(), extra], 20, UI.BLUE if have > 0 else UI.MUTED, true))
+	info.add_child(_obtain(c))
+	_fit_detail(below)
 
 
-## Long card text (or a big Text Size) can't run off the panel: the big card shrinks first (to about
-## half), then the whole column if that isn't enough.
-func _fit_detail(holder: Control) -> void:
+## The text under the card gets the rest of the panel's height (it scrolls when it runs long), so the
+## big card is always the same size.
+func _fit_detail(below: Control) -> void:
 	var id := _detail_id
-	await get_tree().process_frame   # (the text has its height now)
-	if id != _detail_id or not is_instance_valid(_hero):
+	await get_tree().process_frame   # (laid out: where the column starts in the panel is known)
+	if id != _detail_id or not is_instance_valid(below):
 		return
 	var room := 790.0 - 2.0 * _detail.position.y
-	var over := _detail.get_combined_minimum_size().y - room
-	if over > 0.0:
-		var h := maxf(240.0, 470.0 - over)
-		holder.custom_minimum_size.y = h
-		_hero.custom_minimum_size = Vector2(330, 467) * (h / 470.0)
-		_hero.size = _hero.custom_minimum_size
-		_hero.pivot_offset = _hero.size / 2
-		if _hero_mat:
-			_hero_mat.set_shader_parameter("quad_size", _hero.size)
-	for i in 2:   # (measured again once laid out: wrapped text settles its height over a frame or two)
-		await get_tree().process_frame
-		if id != _detail_id:
-			return
-		var tall := _detail.get_combined_minimum_size().y
-		_detail.scale = Vector2.ONE * minf(1.0, room / tall)
+	below.custom_minimum_size.y = maxf(120.0, room - 470.0 - 10.0)
 	_detail_panel.size = Vector2(520, 790)   # (the panel had grown with the text)
 
 

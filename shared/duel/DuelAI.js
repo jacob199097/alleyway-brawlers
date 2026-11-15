@@ -365,7 +365,7 @@ function keepValue(c) {
 function deployValue(c) {
     let v = Math.max(Math.trunc(Number(c.base_attack) || 0), Math.trunc((Number(c.base_defense) || 0) * 4 / 5));
     const fx = c.effects || [];
-    if (fx.some(e => String(e.when ?? '') === 'passive' && String(e.do ?? '') === 'guard')) v += 300;
+    if (fx.some(e => String(e.when ?? '') === 'passive' && ['guard', 'taunt'].includes(String(e.do ?? '')))) v += 300;
     if (fx.some(e => String(e.when ?? '') === 'deploy')) v += 300;
     return v;
 }

@@ -215,6 +215,14 @@ const FX_SAMPLES := [
 	[{"when": "activate", "do": "stoke", "target": "opposite_wide", "amount": 200, "once": true}, {"when": "foe_burned", "do": "buff", "target": "self", "atk": 300, "until": "forever", "total": 400}],
 	[{"when": "deploy", "do": "burn", "target": "enemies", "amount": 200}, {"when": "foe_burned", "do": "heal", "amount": 100}],
 	[{"when": "ko", "do": "stoke", "target": "collateral", "amount": 200}, {"when": "down", "do": "blind", "target": "collateral"}],
+	# BRACE, RECKLESS, RALLY, TAUNT, HEIST, ECHO, SHROUD, CORRODE, DEBT and CONFUSE (2026-11-15)
+	[{"when": "passive", "do": "brace", "amount": 400}, {"when": "deploy", "do": "corrode", "target": "enemies", "amount": 200}],
+	[{"when": "passive", "do": "reckless", "amount": 600}, {"when": "deploy", "do": "rally", "amount": 300}],
+	[{"when": "passive", "do": "taunt"}, {"when": "deploy", "do": "debt", "amount": 1}],
+	[{"when": "passive", "do": "heist", "amount": 1}, {"when": "deploy", "do": "confuse", "target": "enemy"}],
+	[{"when": "passive", "do": "shroud"}, {"when": "deploy", "do": "draw", "amount": 1, "echo": true}],
+	[{"when": "deploy", "do": "confuse", "target": "enemies"}, {"when": "deploy", "do": "buff", "target": "allies", "atk": 200, "echo": true}],
+	[{"when": "passive", "do": "shroud"}, {"when": "passive", "do": "taunt"}],
 ]
 
 
@@ -254,6 +262,9 @@ const FX_CARD_SAMPLES := [
 	[{"do": "plunder", "from": "field", "target": "enemy"}],
 	# BLINDS the attacker: that attack is a coin flip already
 	[{"do": "blind", "target": "attacker"}],
+	[{"do": "confuse", "target": "attacker"}, {"do": "corrode", "target": "enemy", "amount": 300}],
+	[{"do": "damage", "amount": 200, "echo": true}, {"do": "debt", "amount": 2}],
+	[{"do": "rally", "amount": 400}],
 ]
 
 

@@ -5456,8 +5456,8 @@ func _effect_origin(ev: Dictionary) -> Vector2:
 	return Vector2.INF
 
 
-const STATUS_KEYS := ["poison", "burn", "bleed", "freeze_until", "stasis_until", "stun_until", "blind_until",
-	"suppress_until", "silence_until"]
+const STATUS_KEYS := ["poison", "burn", "bleed", "corrode", "freeze_until", "stasis_until", "stun_until", "blind_until",
+	"confuse_until", "suppress_until", "silence_until"]
 
 ## What a status event says of the card's statuses (amounts, turns left) goes onto the view's card: the
 ## badges and the card panel read it there. (A copy: the view's card can be the rules' own.)
@@ -5535,6 +5535,17 @@ func _status_arrive(v: CardView, ev: Dictionary, col: Color, word: String, from:
 			_ring(at + Vector2(0, -30), Color.WHITE, 1.7)
 			_screen_flash(Color.WHITE, 0.14)
 			_smoke_puff(at + Vector2(0, -30), 230.0, Color(0.05, 0.05, 0.1, 0.85))
+		"corrode":   # an acid splash that eats into it, flaking off
+			Sfx.play("splash", 1.1, -4.0)
+			_burst(at + Vector2(0, -30), col, 28, 300, 0.8, 900.0)
+			_smoke_puff(at + Vector2(0, 30), 240.0, Color(0.45, 0.42, 0.12, 0.5))
+			_burst(at + Vector2(0, 60), col.darkened(0.3), 14, 120, 1.2, 500.0)
+		"confuse":   # its head spun round: a ring of sparks circling, and a wobble
+			Sfx.play("riser", 1.6, -9.0)
+			for i in 3:
+				_ring(at + Vector2(0, -60), col, 0.5 + i * 0.25)
+			_burst(at + Vector2(0, -60), col, 22, 220, 0.8, 0.0)
+			v.kick(Vector2(-1.0 if randf() < 0.5 else 1.0, 0.0), 12.0)
 		"stun":   # seeing stars
 			Sfx.play("slam", 1.4, -4.0)
 			v.kick(Vector2(-1.0 if randf() < 0.5 else 1.0, -0.6), 16.0)
@@ -5711,6 +5722,8 @@ func _ev_status_tick(ev: Dictionary) -> void:
 		text = "BURN -%d" % int(ev.amount)
 	elif kind == "bleed":
 		text = "-%d ATK/DEF" % int(ev.amount)
+	elif kind == "corrode":
+		text = "-%d DEF" % int(ev.amount)
 	_merge_status(v, ev.get("card", {}))
 	if kind != "bleed" and not ev.card.has(kind):
 		v.statuses = v.statuses.filter(func(k): return k != kind)
@@ -5735,6 +5748,11 @@ func _ev_status_tick(ev: Dictionary) -> void:
 		"bleed":
 			Sfx.play("down", 1.3, -6.0)
 			_burst(at, col, 24, 260, 0.7, 1000.0)
+		"corrode":   # it eats in further: a hiss and the flakes coming off
+			Sfx.play("splash", 1.4, -8.0)
+			_smoke_puff(at + Vector2(0, 30), 200.0, Color(0.45, 0.42, 0.12, 0.45))
+			_burst(at + Vector2(0, 50), col, 20, 160, 1.0, 600.0)
+			v.kick(Vector2(-0.3, 1), 4.0)
 		_:
 			Sfx.play("down", 1.3, -6.0)
 			_burst(at, col, 18, 200, 0.7, -150.0)
@@ -7825,7 +7843,7 @@ func _live_statuses(v: CardView) -> Array:
 	return (["downed"] if v.downed else []) + v.statuses
 
 const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
+	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "confuse": "CONFUSE", "corrode": "CORRODE", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}

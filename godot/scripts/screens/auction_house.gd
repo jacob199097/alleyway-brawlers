@@ -57,7 +57,6 @@ func _ready() -> void:
 	else:
 		UI.background(self, "bg_shop.jpg", 0.62)
 	Game.play_menu_music()
-	Game.sound.ambience("crowd")   # (a murmur in the room)
 	_dust()
 	_build_header()
 	UI.back_button(self, func(): Game.go("main_menu"))
@@ -89,10 +88,6 @@ func _ready() -> void:
 	_info = r.data
 	_set_karat(int(_info.get("karat", 0)), false)
 	_show("browse")
-
-
-func _exit_tree() -> void:
-	Game.sound.ambience("")
 
 
 func _process(delta: float) -> void:

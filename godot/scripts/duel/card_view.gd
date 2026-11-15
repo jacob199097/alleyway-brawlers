@@ -14,7 +14,8 @@ const STATUS_STYLE := {
 	"bleed": [Color("ff4a6e"), "BLD", "BLEEDING"], "shock": [Color("4fc3ff"), "SHK", "SHOCKED"],
 	"freeze": [Color("a6ecff"), "FRZ", "FROZEN"], "stasis": [Color("9a7bff"), "STS", "STASIS"],
 	"stun": [Color("ffa040"), "STN", "STUNNED"], "shield": [Color("ffd75a"), "SHD", "SHIELDED"],
-	"blind": [Color("9fb0d8"), "BLN", "BLINDED"],
+	"blind": [Color("9fb0d8"), "BLN", "BLINDED"], "confuse": [Color("ff9fd6"), "CNF", "CONFUSED"],
+	"corrode": [Color("c8bb52"), "COR", "CORRODED"],
 	"silence": [Color("b8b4cc"), "SIL", "SILENCED"], "suppress": [Color("b5e655"), "SUP", "SUPPRESSED"],
 	"equipped": [Color("ffc46b"), "EQP", "EQUIPPED"],
 	"charm": [Color("ff6fb5"), "CHM", "CHARMED"], "undead": [Color("8dffb0"), "UND", "UNDEAD"],
@@ -30,7 +31,7 @@ const SHEET := {"burn": ["burn", 2.6], "poison": ["poison", 1.6], "bleed": ["ble
 const SHEET_MARGIN := 22.0   # (how far past the card's edge flames and icicles reach)
 const SHEET_THIN := [1.0, 1.0, 0.8, 0.66, 0.56, 0.5]   # how strongly each shows, by how many are on at once
 ## Statuses that run out: where the card keeps the turn each lasts through
-const STATUS_UNTIL := {"freeze": "freeze_until", "stasis": "stasis_until", "stun": "stun_until", "blind": "blind_until",
+const STATUS_UNTIL := {"freeze": "freeze_until", "stasis": "stasis_until", "stun": "stun_until", "blind": "blind_until", "confuse": "confuse_until",
 	"suppress": "suppress_until", "silence": "silence_until"}
 ## The match's turn number (the duel screen keeps it current), to tell how long a status has left
 static var turn_now := 0

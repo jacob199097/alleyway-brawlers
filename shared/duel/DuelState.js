@@ -43,7 +43,7 @@ const DORMANT_GIFTS = ['pierce', 'immune', 'untargetable', 'undead', 'lifesteal'
 // Ambushes with hand-written rules; any other Ambush with effects is a Card Forge Ambush (_springFx)
 const HAND_AMBUSHES = ['no_witnesses_ambush', 'lion_ambush', 'kings_test'];
 // What an "immune" passive keeps off a card
-const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'blind', 'suppress', 'silence', 'bounty', 'charm'];
+const IMMUNE_TO = ['poison', 'burn', 'bleed', 'shock', 'freeze', 'stasis', 'stun', 'blind', 'suppress', 'silence', 'bounty', 'charm', 'corrode', 'confuse'];
 export const LEADER = -2;
 
 // ── Card data ──────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ const toInt = (v) => Math.trunc(Number(v ?? 0)) || 0;
 // Keyword statuses (Card Forge effects); same rules as duel_state.gd
 const FOREVER = 1000000;
 const STATUS_TICKS = 3;
-const STATUS_KEYS = ['poison', 'burn', 'bleed', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until', 'blind_until', 'bounty'];
+const STATUS_KEYS = ['poison', 'burn', 'bleed', 'corrode', 'freeze_until', 'stasis_until', 'silence_until', 'suppress_until', 'blind_until', 'confuse_until', 'bounty'];
 
 export function other(side) {
     return side === 'player' ? 'opponent' : 'player';
@@ -457,7 +457,7 @@ export class DuelState {
         const out = [];
         for (const on of String(c.equip_to ?? 'ally') === 'enemy' ? this.foesOf(side) : [side]) {
             for (const x of this.characters(on)) {
-                if (!this.inStasis(x.card) && (on === side || isEmpty(this._passive(on, x.slot, x.card, 'untargetable')))) out.push({ side: on, slot: x.slot, card: x.card });
+                if (!this.inStasis(x.card) && (on === side || !this._noTarget(on, x.slot, x.card))) out.push({ side: on, slot: x.slot, card: x.card });
             }
         }
         return out;
@@ -549,7 +549,8 @@ export class DuelState {
             case 'ramp': return s.authority_max < MAX_AUTHORITY;
             case 'jam': return foes.some(x => BACK.some(b => x.field[b] != null && x.field[b].cardType === 'ambush'));
             case 'barricade': return true;
-            case 'tax': return foes.length > 0;
+            case 'tax': case 'debt': return foes.length > 0;
+            case 'rally': return this.characters(side).some(x => x.card !== c);
             case 'reshuffle': return s.gutter.some(x => !x.token);
             case 'tribute_damage': return toInt(c.tribute_atk ?? 0) > 0;
             case 'attack_again': return this.cardAt(side, slot) === c && !!c.has_attacked && toInt(c.again_turn ?? 0) !== this.turn;
@@ -566,7 +567,7 @@ export class DuelState {
         const pool = { down: 'standing', stand: 'downed', force_def: 'attackers', force_atk: 'defenders', ready: 'spent', cleanse: 'statused', rewind: 'changed',
             promote_ally: 'promotable', charm: 'charmable', plunder: 'charmable', give_undead: 'unrisen', absorb: 'absorbable', shield: 'unshielded' }[String(e.do ?? '')] ?? 'any';
         let entries = this._fxTargets(side, slot, c, e, vs, pool);
-        if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => isEmpty(this._passive(x.side, x.slot, x.card, 'untargetable')));
+        if (String(e.target ?? '') === 'enemy') entries = entries.filter(x => !this._noTarget(x.side, x.slot, x.card));
         return entries.length > 0;
     }
 
@@ -599,6 +600,7 @@ export class DuelState {
             const fs = this.sides[foe];
             if (fs.leader_state === 'dormant' && fs.leader != null) more(-1, fs.leader, 'dormant');
         }
+        if (s.debt && toInt(s.debt.until) >= this.turn) up += toInt(s.debt.n);   // DEBT: an opponent's card made your next one cost more
         return Math.max(0, toInt(c.authority) - off + up);
     }
 
@@ -644,16 +646,33 @@ export class DuelState {
         return this._passive(side, slot, c, 'no_down') != null && this.characters(side).length > 1;
     }
 
+    /** SHROUD (a Card Forge passive): until it attacks, it can't be attacked or targeted by its opponents' effects. */
+    _shrouded(side, slot, c) {
+        return c != null && !c.unshrouded && this._passive(side, slot, c, 'shroud') != null;
+    }
+
+    /** Whether an opponent's effect can't choose this character: it "can't be targeted", or it's SHROUDED. */
+    _noTarget(side, slot, c) {
+        return !isEmpty(this._passive(side, slot, c, 'untargetable')) || this._shrouded(side, slot, c);
+    }
+
+    /** DEBT is paid: a card was played (it cost what it owed). */
+    _payDebt(side) {
+        const s = this.sides[side];
+        if (s.debt) delete s.debt;
+    }
+
     inStasis(c) { return c != null && toInt(c.stasis_until ?? 0) >= this.turn; }
 
     frozen(c) { return c != null && toInt(c.freeze_until ?? 0) >= this.turn; }
 
     statuses(c) {
-        const out = ['poison', 'burn', 'bleed'].filter(k => c[k] !== undefined);
+        const out = ['poison', 'burn', 'bleed', 'corrode'].filter(k => c[k] !== undefined);
         if (this.frozen(c)) out.push('freeze');
         if (this.inStasis(c)) out.push('stasis');
         if (toInt(c.stun_until ?? 0) >= this.turn) out.push('stun');
         if (toInt(c.blind_until ?? 0) >= this.turn) out.push('blind');
+        if (toInt(c.confuse_until ?? 0) >= this.turn) out.push('confuse');
         if (toInt(c.suppress_until ?? 0) >= this.turn) out.push('suppress');
         if (c.shield) out.push('shield');
         if (toInt(c.silence_until ?? 0) >= this.turn) out.push('silence');
@@ -687,7 +706,11 @@ export class DuelState {
     attackTargets(side, foe = null, from = null) {
         foe = foe ?? this.foesOf(side)[0];
         if (foe == null || foe === side || !this.sides[foe] || this.sides[foe].out) return [];
-        const foes = this.characters(foe).filter(e => !this.inStasis(e.card));
+        // (STASIS and SHROUD: it can't be attacked and doesn't block a direct attack)
+        const foes = this.characters(foe).filter(e => !this.inStasis(e.card) && !this._shrouded(foe, e.slot, e.card));
+        // TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE)
+        const taunts = foes.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'taunt'));
+        if (taunts.length) return taunts.map(e => e.slot);
         // Elusive characters can't be attacked while their owner has another character that can be
         const open = foes.filter(e => !this._passive(foe, e.slot, e.card, 'elusive'));
         const pool = open.length ? open : foes;
@@ -948,6 +971,7 @@ export class DuelState {
         if (i < 0 || !this.canSummon(side, this.sides[side].hand[i], slot, tribute)) return false;
         const c = this.sides[side].hand[i];
         this._spend(side, this.costOf(side, c));
+        this._payDebt(side);
         this.sides[side].hand.splice(i, 1);
         let tributeAtk = 0;
         for (const slot_ of DuelState.tributeList(tribute)) {   // sacrificed, or deployed over
@@ -981,7 +1005,10 @@ export class DuelState {
         if (i < 0 || !this.canSet(side, this.sides[side].hand[i], slot)) return false;
         const c = this.sides[side].hand[i];
         // (a Hustle is paid for when it's activated; an Ambush now, out of its opponents' sight: hidden_spend)
-        if (c.cardType !== 'hustle') this._spend(side, this.costOf(side, c), true);
+        if (c.cardType !== 'hustle') {
+            this._spend(side, this.costOf(side, c), true);
+            this._payDebt(side);
+        }
         this.sides[side].hand.splice(i, 1);
         c.face_down = true;
         c.set_turn = this.turn;
@@ -1008,6 +1035,7 @@ export class DuelState {
         const c = i >= 0 ? s.hand[i] : set >= 0 ? s.field[set] : null;
         if (c == null || !this.canHustle(side, c)) return false;
         this._spend(side, this.costOf(side, c));
+        this._payDebt(side);
         if (i >= 0) s.hand.splice(i, 1);
         else s.field[set] = null;
         if (DuelState.isLasting(c)) {
@@ -1127,6 +1155,7 @@ export class DuelState {
         if (!this.canAttackWith(side, from) || !this.attackTargets(side, foe, from).includes(target)) return false;
         const att = this.cardAt(side, from);
         att.has_attacked = true;
+        if (this._shrouded(side, from, att)) att.unshrouded = true;   // (SHROUD: gone once it attacks)
         // Attacks twice each turn: the first attack leaves it ready for one more
         if (this._passive(side, from, att, 'double_attack') && att.second_attack !== this.turn) {
             att.has_attacked = false;
@@ -1139,8 +1168,23 @@ export class DuelState {
             this._effect(side, att, `${att.name} is BLIND: its attack misses`, from);
             return true;
         }
+        // CONFUSE: a coin flip; on tails it attacks a random other target: another it could attack, or one of its own side
+        if (toInt(att.confuse_until ?? 0) >= this.turn) {
+            const wrong = this._confusedTargets(side, foe, from, target);
+            if (wrong.length && !this._luckGate(side, from, att, { luck: 'coin' })) {
+                const w = wrong[Math.min(wrong.length - 1, Math.floor(this._luck() * wrong.length))];
+                if (w.side === side) {
+                    this._friendlyFire(side, from, att, w.slot);
+                    return true;
+                }
+                target = w.slot;
+                const name = target === DIRECT ? 'directly' : target === LEADER ? 'the Dormant leader' : this.cardAt(foe, target).name;
+                this._effect(side, att, `${att.name} is CONFUSED: it attacks ${name} instead`, from);
+            }
+        }
         this._emit('attack', this.ffa ? { side, from, target, foe, card: clone(att) } : { side, from, target, card: clone(att) });
         const ctx = { side, foe, from, target, att, bonus: 0, blindFlipped: blind };
+        this._reckless(ctx);
         this._attackCtx = ctx;   // (an attacker that promotes mid-attack carries on as its new form: _promote)
         if (this._passive(side, from, att, 'pierce') || this.rules.pierce) ctx.pierce = true;
         const defNow = target >= 0 ? this.cardAt(foe, target) : null;
@@ -1305,15 +1349,19 @@ export class DuelState {
         if (target === DIRECT) {
             const dmg = Math.max(0, att.attack + ctx.bonus);
             this._emit('clash', this._withFoeKey({ side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' }, foe));
+            const before = this.sides[foe].morale;
             this._damage(foe, dmg);
             this._lifesteal(side, from, att, dmg);
+            this._heist(side, from, att, before - this.sides[foe].morale);
             if (this.winner === '' && this.cardAt(side, from) === att) this._runFx(side, from, att, 'direct');
             this._bleed(side, att);
+            this._recklessDown(ctx);
             return;
         }
         if (target === LEADER) {
             this._hitLeader(ctx);
             this._bleed(side, att);
+            this._recklessDown(ctx);
             return;
         }
         const def = this.cardAt(foe, target);
@@ -1340,6 +1388,14 @@ export class DuelState {
         // The defender's effects may have removed or stopped the attacker (or itself)
         if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
         if (this._atkBlindMiss(ctx)) return;
+        // BRACE X: the first time each turn it's attacked, the attacker loses X ATK (for the rest of the turn)
+        const brace = this._passive(foe, target, def, 'brace');
+        if (brace && toInt(def.brace_turn ?? -1) !== this.turn) {
+            def.brace_turn = this.turn;
+            const x = Math.max(1, toInt(brace.amount ?? 1));
+            att.mods.push({ atk: -x, def: 0, until_turn: this.turn });
+            this._effect(foe, def, `${def.name} is BRACED: ${att.name} loses ${x} ATK this turn`, target);
+        }
         this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
         let bonus = ctx.bonus + this._brawlBonus(side, from, att, def);
         if (def.effectKey === 'bulwark') {
@@ -1390,6 +1446,75 @@ export class DuelState {
         if (result === 'downed') this._leaderFx(side, 'dormant_down', def);
         this._bleed(side, att);
         this._bleed(foe, def);
+        this._recklessDown(ctx);
+    }
+
+    /** CONFUSE: the targets it may hit instead of the one chosen: the others it could attack, and its own
+     *  side's other characters (not in STASIS). Same as _confused_targets in duel_state.gd. */
+    _confusedTargets(side, foe, from, target) {
+        const out = this.attackTargets(side, foe, from).filter(t => t !== target).map(t => ({ side: foe, slot: t }));
+        for (const x of this.characters(side)) if (x.slot !== from && !this.inStasis(x.card)) out.push({ side, slot: x.slot });
+        return out;
+    }
+
+    /** CONFUSED, it attacks one of its own side: a brawl between the two (no "when it attacks", defend or KO
+     *  effects, no Ambushes), and their player loses the Morale the losing card would. */
+    _friendlyFire(side, from, att, slot) {
+        const def = this.cardAt(side, slot);
+        this._emit('attack', { side, from, target: slot, foe: side, card: clone(att), confused: true });
+        this._effect(side, att, `${att.name} is CONFUSED: it attacks ${def.name}, on its own side`, from);
+        const ctx = { side, foe: side, from, target: slot, att, bonus: 0 };
+        this._reckless(ctx);
+        const vsDef = def.downed || def.position === 'def';
+        const aVal = Math.max(0, att.attack + ctx.bonus);
+        const dVal = vsDef ? def.defense : def.attack;
+        this._emit('clash', { side, from, target: slot, att: aVal, def: dVal, vs: vsDef ? 'DEF' : 'ATK', foe: side });
+        if (aVal > dVal) {
+            if (!vsDef) this._damage(side, aVal - dVal);
+            if (this.cardAt(side, slot) === def) this._defeat(side, slot);
+        } else if (vsDef) {
+            this._emit('blocked', { side, slot });
+            if (aVal < dVal) this._damage(side, dVal - aVal);
+        } else if (aVal < dVal) {
+            this._damage(side, dVal - aVal);
+            if (this.cardAt(side, from) === att) this._defeat(side, from);
+        } else {
+            this._emit('notice', { text: 'TIE — BOTH GO DOWN' });
+            if (this.cardAt(side, slot) === def) this._defeat(side, slot);
+            if (this.cardAt(side, from) === att) this._defeat(side, from);
+        }
+        if (this.winner !== '') return;
+        this._bleed(side, att);
+        if (this.cardAt(side, slot) === def) this._bleed(side, def);
+        this._recklessDown(ctx);
+    }
+
+    /** RECKLESS X (a Card Forge passive): +X ATK when it attacks, for that brawl; after the brawl it goes Down. */
+    _reckless(ctx) {
+        const rk = this._passive(ctx.side, ctx.from, ctx.att, 'reckless');
+        if (!rk) return;
+        ctx.reckless = true;
+        const x = Math.max(0, toInt(rk.amount ?? 0));
+        if (x <= 0) return;
+        ctx.bonus += x;
+        this._effect(ctx.side, ctx.att, `${ctx.att.name} is RECKLESS: +${x} ATK this brawl`, ctx.from);
+    }
+
+    _recklessDown(ctx) {
+        const att = ctx.att;
+        if (!ctx.reckless || this.winner !== '' || this.cardAt(ctx.side, ctx.from) !== att || att.downed || this._staysUp(ctx.side, ctx.from, att)) return;
+        this._effect(ctx.side, att, `${att.name} is RECKLESS: it goes Down after the brawl`, ctx.from);
+        this._goDown(ctx.side, ctx.from, att);
+    }
+
+    /** HEIST X (Pirates; a Card Forge passive): when it makes an opponent lose Morale in a brawl, its player draws X. */
+    _heist(side, slot, c, took) {
+        if (took <= 0 || this.winner !== '' || c == null || this.cardAt(side, slot) !== c) return;
+        const h = this._passive(side, slot, c, 'heist');
+        if (!h) return;
+        const n = Math.max(1, toInt(h.amount ?? 1));
+        this._effect(side, c, `${c.name}: HEIST, draw ${n}`, slot);
+        for (let i = 0; i < n && this.winner === ''; i++) this._draw(side);
     }
 
     /** Battle damage: the Morale a side loses for its card losing a brawl (the other card's side may
@@ -1400,8 +1525,10 @@ export class DuelState {
             this._effect(side, mine, `${mine.name}: no battle damage`, slot);
             return;
         }
+        const before = this.sides[side].morale;
         this._damage(side, amount);
         this._lifesteal(otherSide, otherSlot, other, amount);
+        this._heist(otherSide, otherSlot, other, before - this.sides[side].morale);
     }
 
     _bleed(side, c) {
@@ -1538,9 +1665,9 @@ export class DuelState {
 
     /** Whether a character has a status CLEANSE would take away. */
     _afflicted(c) {
-        return c.poison !== undefined || c.burn !== undefined || c.bleed !== undefined || c.bounty !== undefined
+        return c.poison !== undefined || c.burn !== undefined || c.bleed !== undefined || c.corrode !== undefined || c.bounty !== undefined
             || this.frozen(c) || this.inStasis(c) || toInt(c.stun_until ?? 0) >= this.turn || toInt(c.blind_until ?? 0) >= this.turn
-            || toInt(c.suppress_until ?? 0) >= this.turn || toInt(c.silence_until ?? 0) >= this.turn;
+            || toInt(c.confuse_until ?? 0) >= this.turn || toInt(c.suppress_until ?? 0) >= this.turn || toInt(c.silence_until ?? 0) >= this.turn;
     }
 
     /** Put a character back on top of its owner's deck (a token just vanishes). */
@@ -2331,7 +2458,39 @@ export class DuelState {
                 if (toInt(e.times ?? 1) > 1 || toInt(e.total ?? 0) > 0) delete c.fx_count[`${when}${k}`];   // start counting again
                 if (opts.length > 1) this._chooseFx(side, slot, c, opts, vs);
                 else this._doFx(side, slot, c, opts[0], vs);
+                if (e.echo && (when === 'deploy' || when === '*')) this._echoLater(side, slot, c, e);
             }
+        }
+    }
+
+    /** ECHO: a "when played" effect happens again at the start of its player's next turn (_runEchoes). */
+    _echoLater(side, slot, c, e) {
+        const s = this.sides[side];
+        const fx = { ...e };
+        delete fx.echo;
+        const onField = FRONT.includes(slot) || BACK.includes(slot);
+        (s.echoes = s.echoes || []).push(onField ? { uid: c.uid, fx } : { uid: c.uid, fx, card: clone(c) });
+    }
+
+    /** The ECHOES due at the start of side's turn: a card on the field only while it's still there (and its
+     *  effects work); a Hustle's from wherever it went. Same as _run_echoes in duel_state.gd. */
+    _runEchoes(side) {
+        const s = this.sides[side];
+        const list = s.echoes || [];
+        delete s.echoes;
+        for (const x of list) {
+            if (this.winner !== '') return;
+            let card = x.card ?? null, slot = NO_SLOT;
+            if (card == null) {
+                const at = s.field.findIndex(f => f != null && f.uid === x.uid);
+                if (at < 0) continue;
+                card = s.field[at];
+                slot = at;
+                if (card.downed || this.inStasis(card) || toInt(card.silence_until ?? 0) >= this.turn) continue;
+            }
+            if (!this._fxCond(side, slot, x.fx, null)) continue;
+            this._effect(side, card, `${card.name}: ECHO`, slot);
+            this._doFx(side, slot, card, x.fx, {});
         }
     }
 
@@ -2492,9 +2651,11 @@ export class DuelState {
             }
             case 'cleanse':   // CLEANSE: its statuses are gone (STASIS, FREEZE, STUN, BLIND, SUPPRESS, SILENCE, POISON, BURN, BLEED, BOUNTY)
                 this._fxApply(side, slot, c, e, vs, 'statused', 'cleanse', (x) => {
-                    const kept = x.card.undead_given;
+                    const kept = x.card.undead_given, shown = x.card.unshrouded, braced = x.card.brace_turn;
                     this._clearStatus(x.card);
                     if (kept) x.card.undead_given = kept;
+                    if (shown) x.card.unshrouded = shown;   // (a SHROUD that's gone stays gone)
+                    if (braced != null) x.card.brace_turn = braced;
                     delete x.card.stun_until;
                     this._emit('cleanse', { side: x.side, slot: x.slot, card: clone(x.card) });
                     return `${x.card.name} is cleansed`;
@@ -2751,6 +2912,22 @@ export class DuelState {
                     this._effect(side, c, `${c.name}: TAX ${n}: your opponent gets ${n} less Authority next turn`, slot);
                 });
                 break;
+            case 'debt':   // DEBT N: the opponent's next card costs N more (one played before their next turn ends)
+                this._withFoe(side, c, vs, () => true, (foe) => {
+                    const fs = this.sides[foe];
+                    const owed = fs.debt && toInt(fs.debt.until) >= this.turn ? toInt(fs.debt.n) : 0;
+                    fs.debt = { n: owed + n, until: this._ownerNextTurn(foe) };
+                    this._effect(side, c, `${c.name}: DEBT ${n}: your opponent's next card costs ${n} more`, slot);
+                });
+                break;
+            case 'rally': {   // RALLY N: your other characters get +N ATK this turn
+                const crew = this.characters(side).filter(x => x.card !== c);
+                if (!crew.length) break;
+                for (const x of crew) x.card.mods.push({ atk: n, def: 0, until_turn: this.turn });
+                this._recalc();
+                this._effect(side, c, `${c.name} RALLIES the crew: ${crew.length} of your characters get +${n} ATK this turn`, slot);
+                break;
+            }
             case 'reshuffle': {   // up to N cards from your Gutter (the oldest, or with choose the player picks; not tokens) shuffled back into your deck
                 const back = [];
                 const finish = () => {
@@ -2952,6 +3129,21 @@ export class DuelState {
                 }, `${c.name} ${kind === 'poison' ? 'poisons' : 'burns'} %s`);
                 break;
             }
+            case 'corrode':   // CORRODE X: at the start of its owner's next 3 turns, it loses X DEF
+                this._fxApply(side, slot, c, e, vs, 'any', 'CORRODE', (x) => {
+                    const cur = x.card.corrode || {};
+                    x.card.corrode = { amt: Math.max(n, toInt(cur.amt ?? 0)), left: STATUS_TICKS };
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'corrode', card: clone(x.card) });
+                    return `${x.card.name} is CORRODED: -${n} DEF each turn`;
+                }, `${c.name} corrodes %s`);
+                break;
+            case 'confuse':   // CONFUSE: until its owner's next turn ends, each of its attacks is a coin flip (tails: a wrong target)
+                this._fxApply(side, slot, c, e, vs, 'any', 'CONFUSE', (x) => {
+                    x.card.confuse_until = this._ownerNextTurn(x.side);
+                    this._emit('status', { side: x.side, slot: x.slot, kind: 'confuse', card: clone(x.card) });
+                    return `${c.name} CONFUSES ${x.card.name}: its attacks may hit the wrong target`;
+                }, `${c.name} confuses %s`);
+                break;
             case 'stoke':   // STOKE (Arsonists): BURN that builds: on a character already burning it adds to the burn
                 this._fxApply(side, slot, c, e, vs, 'any', 'STOKE', (x) => {
                     const cur = x.card.burn;
@@ -3037,7 +3229,7 @@ export class DuelState {
         return this.turn + d;
     }
 
-    _clearStatus(c) { for (const k of STATUS_KEYS) delete c[k]; delete c.undead_given; }
+    _clearStatus(c) { for (const k of STATUS_KEYS) delete c[k]; delete c.undead_given; delete c.unshrouded; delete c.brace_turn; }
 
     /** Cards out of a side's Gutter and out of the game (Card Forge: exile_gutter). */
     _exileGutter(side, cards) {
@@ -3054,7 +3246,7 @@ export class DuelState {
     _statusTicks(side) {
         for (const e of this.characters(side)) {
             const c = e.card;
-            for (const kind of ['poison', 'burn']) {
+            for (const kind of ['poison', 'burn', 'corrode']) {
                 if (this.winner !== '' || c[kind] === undefined) continue;
                 const st = c[kind];
                 const amt = toInt(st.amt);
@@ -3062,6 +3254,7 @@ export class DuelState {
                 if (toInt(st.left) <= 0) delete c[kind];
                 this._emit('status_tick', { side, slot: e.slot, kind, amount: amt, card: clone(c) });
                 if (kind === 'poison') c.mods.push({ atk: -amt, def: 0, until_turn: FOREVER, wound: true });
+                else if (kind === 'corrode') c.mods.push({ atk: 0, def: -amt, until_turn: FOREVER, wound: true });
                 else {
                     const before = this.sides[side].morale;
                     this._damage(side, amt);
@@ -3282,7 +3475,7 @@ export class DuelState {
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(status);
         if (IMMUNE_TO.includes(status)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
-        if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._passive(x.side, x.slot, x.card, 'untargetable'));
+        if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._noTarget(x.side, x.slot, x.card));
         return entries;
     }
 
@@ -3298,7 +3491,7 @@ export class DuelState {
             case 'stasis':
                 if (x.side === side) return (c.downed ? 100000 : 0) + value;
                 return (standingAtk ? 100000 : 0) + value;
-            case 'poison': case 'bleed':
+            case 'poison': case 'bleed': case 'corrode':
                 if (c[e.do] !== undefined) return value - 50000;
                 if (c.downed) return value - 20000;
                 break;
@@ -3308,7 +3501,7 @@ export class DuelState {
             case 'stoke':   // the hottest fire first: it builds on what's there
                 if (c.burn !== undefined) return 100000 + toInt(c.burn.amt ?? 0) + toInt(c.defense ?? 0);
                 return (c.downed ? 0 : 10000) + toInt(c.defense ?? 0);
-            case 'freeze': case 'stun': case 'blind': {
+            case 'freeze': case 'stun': case 'blind': case 'confuse': {
                 const key = `${e.do}_until`;
                 if (toInt(c[key] ?? 0) >= this.turn) return value - 50000;
                 if (standingAtk) return 100000 + value;
@@ -3559,6 +3752,7 @@ export class DuelState {
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
         this._runLasting(this.active, 'turn_start');
         this._leaderFx(this.active, 'dormant_turn_start');
+        this._runEchoes(this.active);
         for (const e of this.characters(this.active)) {
             if (e.card.kings_test) {
                 delete e.card.kings_test;
@@ -3668,7 +3862,7 @@ export class DuelState {
     _askTarget(side, key, prompt, source, entries, targetSide, cb, optional = false) {
         const sideOf = (e) => e.side ?? targetSide;
         // Your opponent's effects can't choose a card that can't be targeted
-        entries = entries.filter(e => sideOf(e) === side || !this._passive(sideOf(e), e.slot, e.card, 'untargetable'));
+        entries = entries.filter(e => sideOf(e) === side || !this._noTarget(sideOf(e), e.slot, e.card));
         if (!entries.length) return;
         if (entries.length === 1 && !optional) {
             cb(entries[0]);

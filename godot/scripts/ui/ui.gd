@@ -522,7 +522,8 @@ static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> Texture
 	return r
 
 
-## Full-screen background art with a dark veil, brought to life (see living_bg.gd).
+## Full-screen background art with a dark veil, brought to life (see living_bg.gd). Rain only
+## outdoors: not over a screen's own room (bg_<screen>: the shop, the auction house, ...).
 static func background(parent: Control, path := "menu_background.jpg", dim := 0.55) -> void:
 	# A screen's own background once it has one (assets/bg_<screen>.jpg or .png, e.g. bg_shop.jpg), else the alley
 	var own: Texture2D = null
@@ -533,7 +534,8 @@ static func background(parent: Control, path := "menu_background.jpg", dim := 0.
 			own = tex("bg_%s.png" % screen)
 	if own:   # (its own scene stays in view: the panels over it are glass, see glass())
 		dim = minf(dim, 0.3)
-	parent.add_child(LivingBackground.new().setup(own if own else tex(path), dim))
+	var indoors: bool = own != null or path.begins_with("bg_")
+	parent.add_child(LivingBackground.new().setup(own if own else tex(path), dim, not indoors))
 
 
 ## Turns a panel into frosted glass: the art behind it shows through, blurred and tinted
