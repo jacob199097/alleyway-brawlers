@@ -2262,6 +2262,8 @@ export class DuelState {
                         df += toInt(a[1].def);
                     }
                 }
+                const ab = this.rules.arena_bonus;   // the arena's edge for a clan's characters (_arenaBoost)
+                if (ab && c.clanTag === String(ab.clan ?? '')) { atk += toInt(ab.atk); df += toInt(ab.def); }
                 for (const q of this._equipsOn(c)) {   // an Equip's buffs are its character's
                     for (const e of this._fx(q.card, 'passive')) {
                         if (String(e.do ?? '') === 'buff' && this._fxCond(q.side, q.slot, e, null)) {
@@ -2699,6 +2701,14 @@ export class DuelState {
         if (e.negate) this._negate(side, slot, c, vs);   // ("... and negate the attack": an Ambush)
     }
 
+    /** The arena's edge for a clan (rules.arena_bonus: the server sets it from godot/data/arenas.json in Casual,
+     *  CPU and Turf Defense matches; never in Ranked). {clan, boost: an effect such as "burn", amount}: that
+     *  clan's cards' effects of that kind are stronger by amount (this). {clan, atk, def}: its characters' stats (_recalc). */
+    _arenaBoost(c, e) {
+        const b = this.rules.arena_bonus;
+        return b && c && b.boost && String(e.do ?? '') === String(b.boost) && c.clanTag === String(b.clan ?? '') ? Math.max(0, toInt(b.amount)) : 0;
+    }
+
     /** A sprung Ambush stops the attack (vs.ctx: the attack; nothing outside one). */
     _negate(side, slot, c, vs) {
         if (!vs || !vs.ctx || vs.ctx.negated) return;
@@ -2725,6 +2735,8 @@ export class DuelState {
             if (this._perCount(side, slot, e) <= 0) return;
             e = this._scaled(side, slot, e);
         }
+        const boost = this._arenaBoost(c, e);
+        if (boost) e = { ...e, amount: toInt(e.amount ?? 1) + boost };
         const n = Math.max(1, toInt(e.amount ?? 1));
         switch (String(e.do ?? '')) {
             case 'buff': {

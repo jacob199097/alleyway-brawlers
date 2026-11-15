@@ -2577,6 +2577,10 @@ func _recalc() -> void:
 				if clan == "" or c.get("clanTag") == clan:
 					atk += int(a[1].get("atk", 0))
 					df += int(a[1].get("def", 0))
+			var ab = rules.get("arena_bonus")   # the arena's edge for a clan's characters (_arena_boost)
+			if ab is Dictionary and c.get("clanTag") == str(ab.get("clan", "")):
+				atk += int(ab.get("atk", 0))
+				df += int(ab.get("def", 0))
 			for q in _equips_on(c):   # an Equip's buffs are its character's
 				for e in _fx(q.card, "passive"):
 					if str(e.get("do", "")) == "buff" and _fx_cond(q.side, q.slot, e, null):
@@ -3167,6 +3171,17 @@ func _ask_double(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	_luck_wait = w
 
 
+## The arena's edge for a clan (rules.arena_bonus: the server sets it from data/arenas.json in Casual, CPU
+## and Turf Defense matches; never in Ranked). {clan, boost: an effect such as "burn", amount}: that clan's
+## cards' effects of that kind are stronger by amount (this). {clan, atk, def}: its characters' stats (_recalc).
+func _arena_boost(c: Dictionary, e: Dictionary) -> int:
+	var b = rules.get("arena_bonus")
+	if not (b is Dictionary) or c.is_empty() or str(b.get("boost", "")) == "" or str(e.get("do", "")) != str(b.boost) \
+			or c.get("clanTag") != str(b.get("clan", "")):
+		return 0
+	return maxi(0, int(b.get("amount", 0)))
+
+
 func _do_fx_run(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
 	_do_fx_then(side, slot, c, e, vs)
 	if e.get("negate", false):   # ("... and negate the attack": an Ambush)
@@ -3220,6 +3235,10 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 		if _per_count(side, slot, e) <= 0:
 			return
 		e = _scaled(side, slot, e)
+	var boost := _arena_boost(c, e)
+	if boost != 0:
+		e = e.duplicate()
+		e.amount = int(e.get("amount", 1)) + boost
 	var n: int = maxi(1, int(e.get("amount", 1)))
 	match str(e.get("do", "")):
 		"buff":

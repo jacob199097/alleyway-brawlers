@@ -93,14 +93,7 @@ function swapSides(v) {
     return v;
 }
 
-/** The 1v1 arenas (godot/data/arenas.json, the game's own list): a wanted one if it's real, else a random one. */
-const ARENAS = (() => {
-    try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../godot/data/arenas.json'), 'utf8')).map(a => String(a.id)); }
-    catch { return ['alley']; }
-})();
-function pickArena(want = null) {
-    return typeof want === 'string' && ARENAS.includes(want) ? want : ARENAS[Math.floor(Math.random() * ARENAS.length)];
-}
+const { pickArena, arenaBonus } = require('../utils/arenas');   // (the 1v1 arenas, and each one's edge for a clan)
 
 function redact(c) {
     return { uid: c.uid, face_down: true, position: c.position, downed: c.downed,
@@ -358,6 +351,9 @@ function createOnlineService(io, deps) {
     async function startMatch(a, b, mode, firstSeat = null, challenge = null, arena = null, rules = null, series = null) {
         const { DuelState } = await engine;
         rules = challenge ? challenge.rules : rules || {};
+        const where = pickArena(arena);
+        const edge = challenge ? null : arenaBonus(where, mode);   // (Ranked arenas are only scenery; a weekly challenge keeps its own rules)
+        if (edge) rules = { ...rules, arena_bonus: edge };
         const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const decks = { player: a.setup.deck, opponent: b.setup.deck };
@@ -376,7 +372,7 @@ function createOnlineService(io, deps) {
             e.contract = c ? contracts.tracker(c) : null;
         }
         const match = {
-            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena), series,
+            id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: where, series,
             seats: {
                 player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
                 opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
@@ -444,7 +440,7 @@ function createOnlineService(io, deps) {
     function sendStart(match, seat, resync) {
         const s = match.seats[seat];
         emitTo(s.playerId, 'mp:start', {
-            matchId: match.id, mode: match.mode, resync, arena: match.arena,
+            matchId: match.id, mode: match.mode, resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null,
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,

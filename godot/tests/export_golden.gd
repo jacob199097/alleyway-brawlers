@@ -327,6 +327,13 @@ const LEADER_SAMPLES := [
 
 
 ## Turf Defense (both players, then the boss; see shared/duel/turf.test.mjs)
+## Arena bonuses (data/arenas.json "bonus"), for the games played with one
+const ARENA_BONUSES := [
+	{"clan": "arsonists", "boost": "burn", "amount": 100},
+	{"clan": "pirates", "atk": 100, "def": 50},
+	{"clan": "wildcard", "boost": "damage", "amount": 100},
+	{"clan": "pirates", "boost": "draw", "amount": 1},
+]
 const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000}, "leader_influence": {"boss": 2.0},
 	"boss": {"seat": "boss", "name": "Test Boss", "draw": 2, "authority": 1, "phases": [
 		{"below": 6600, "label": "ENRAGED", "fx": [{"do": "buff", "target": "allies", "atk": 400, "until": "forever"}, {"do": "heal", "amount": 500}]},
@@ -386,6 +393,9 @@ func _init() -> void:
 		var rules: Dictionary = TWIST_RULES[(g / 5) % TWIST_RULES.size()] if g % 5 == 2 else {}
 		if seats.has("boss"):
 			rules = TURF_RULES.duplicate(true)
+		if g % 7 == 4:   # an arena's edge for a clan (data/arenas.json "bonus": every mode but Ranked)
+			rules = rules.duplicate(true)
+			rules.arena_bonus = ARENA_BONUSES[(g / 7) % ARENA_BONUSES.size()]
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1, rules)
 		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
 		var leader_fx := {}

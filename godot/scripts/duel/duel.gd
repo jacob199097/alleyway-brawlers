@@ -435,14 +435,20 @@ func _setup_online(start: Dictionary) -> void:
 		Game.alert()
 	if start.get("challenge") is Dictionary and not start.get("resync", false):   # this week's twist
 		_tip_panel("WEEKLY CHALLENGE  ·  %s" % str(start.challenge.get("name", "")).to_upper(), str(start.challenge.get("text", "")), RED)
+	# The arena's edge for a clan (backend/utils/arenas.js; every mode but Ranked): told at the start
+	var edge: String = _arena_bonus_text(start.arenaBonus) if start.get("arenaBonus") is Dictionary and not start.get("resync", false) else ""
 	if start.get("contract") is Dictionary:   # their contract (backend/economy/contracts.js): what it asks, in the corner while it lasts
 		_contract_tag(start.contract)
 		if not start.get("resync", false):
 			var ct: Dictionary = start.contract
 			var left := int(ct.get("matches_left", 1))
-			_tip_panel("CONTRACT  ·  %d KARAT" % int(ct.get("payout", 0)), "%s%s.\n%s" % [str(ct.get("text", "")),
+			_tip_panel("CONTRACT  ·  %d KARAT" % int(ct.get("payout", 0)), "%s%s.\n%s%s" % [str(ct.get("text", "")),
 				" (and win)" if ct.get("win", false) else "",
-				"Do it in this match to get paid." if left <= 1 else "Do it in this match or the next %d to get paid." % (left - 1)], GOLD)
+				"Do it in this match to get paid." if left <= 1 else "Do it in this match or the next %d to get paid." % (left - 1),
+				"\n\nARENA BONUS: %s" % edge if edge != "" else ""], GOLD)
+			edge = ""
+	if edge != "":
+		_tip_panel("ARENA BONUS", edge, CardDB.clan_color(str(_arena_bonus_clan(start.arenaBonus).hex), GOLD))
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	if int(start.get("opponentGone", 0)) > 0:   # (back in a match whose opponent has dropped)
@@ -2783,6 +2789,28 @@ func _ev_echo(ev: Dictionary) -> void:
 		_ring(at, col, 1.0 + 0.5 * i)
 	_float_text(at + Vector2(0, -130 if side == "player" else 130), "ECHO", col, 40)
 	await _wait(0.6)
+
+
+## The clan an arena bonus favours: {name, hex} (its name and colour from the cards; the tag if it has none yet).
+func _arena_bonus_clan(b: Dictionary) -> Dictionary:
+	var tag := str(b.get("clan", ""))
+	for id in CardDB.all():
+		var c: Dictionary = CardDB.all()[id]
+		if str(c.get("clanTag", "")) == tag and c.get("cardType") != "leader":
+			return {"name": str(c.get("clanName", tag.capitalize())), "hex": str(c.get("clanColor", ""))}
+	return {"name": tag.capitalize(), "hex": ""}
+
+
+## An arena bonus in words: "Arsonists cards' BURN effects are 100 stronger in this arena."
+func _arena_bonus_text(b: Dictionary) -> String:
+	var clan := str(_arena_bonus_clan(b).name)
+	if str(b.get("boost", "")) != "":
+		return "%s cards' %s effects are %d stronger in this arena." % [clan, str(b.boost).to_upper(), int(b.get("amount", 0))]
+	var stats: Array = []
+	for k in ["atk", "def"]:
+		if int(b.get(k, 0)) != 0:
+			stats.append("%+d %s" % [int(b[k]), k.to_upper()])
+	return "%s characters get %s in this arena." % [clan, " and ".join(stats)]
 
 
 ## A contract done (backend/economy/contracts.js): the server has paid it; a moment to celebrate.

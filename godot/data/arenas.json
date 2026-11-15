@@ -50,6 +50,7 @@
             {"kind": "smoke", "at": [1420, 250]}
         ]},
     {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.jpg",
+        "bonus": {"clan": "nebula", "boost": "shock", "amount": 100},
         "board": {"style": "neon", "color": "#b388ff"},
         "alive": {"rain": 0.0, "sheen": 0.08, "haze": 0.03, "neon": 0.5},
         "fx": [
@@ -80,6 +81,7 @@
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#6b5a4a", "density": 0.25, "frame": 1.0, "drift": [0.03, -0.012]}
         ]},
     {"id": "casino", "ambience": "crowd", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.jpg",
+        "bonus": {"clan": "wildcard", "boost": "damage", "amount": 100},
         "board": {"style": "felt", "color": "#d9a944"},
         "alive": {"rain": 0.0, "sheen": 0.05, "haze": 0.04, "neon": 0.3},
         "fx": [
@@ -94,6 +96,7 @@
             {"kind": "glow", "mode": "blink", "speed": 0.6, "r": 46, "strength": 0.3, "color": "#ffe6a8", "points": [[380, 40], [1160, 80], [632, 922], [1505, 625], [145, 150]]}
         ]},
     {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.jpg",
+        "bonus": {"clan": "underworld", "boost": "drain", "amount": 100},
         "board": {"style": "neon", "color": "#b06bff"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.1, "neon": 0.45},
         "fx": [
@@ -111,6 +114,7 @@
             {"kind": "scurry", "path": [[1350, 960], [900, 990], [560, 985]], "every": 36, "size": 1.1, "color": "#1a0f14"}
         ]},
     {"id": "base", "ambience": "", "stutter": false, "name": "Militia Outpost", "image": "arena_1v1_base.jpg",
+        "bonus": {"clan": "militia", "boost": "suppress", "amount": 100},
         "board": {"style": "paint", "tint": "#ffd23a"},
         "alive": {"rain": 0.12, "sheen": 0.12, "haze": 0.05, "neon": 0.35},
         "fx": [
@@ -178,6 +182,7 @@
             {"kind": "motes", "rect": [230, 140, 1080, 720], "amount": 14, "color": "#a6ffcf", "size": 0.06, "life": 6, "speed": 8, "rise": 6}
         ]},
     {"id": "docks", "ambience": "city_rain", "stutter": false, "name": "The Docks", "image": "arena_1v1_docks.jpg",
+        "bonus": {"clan": "pirates", "atk": 100},
         "board": {"style": "felt", "color": "#d9a35a"},
         "alive": {"rain": 0.28, "sheen": 0.16, "haze": 0.04, "neon": 0.2},
         "fx": [
@@ -289,6 +294,7 @@
             {"kind": "motes", "rect": [150, 100, 1250, 820], "amount": 8, "color": "#fff5c8", "size": 0.06, "life": 6, "speed": 6, "rise": 2}
         ]},
     {"id": "caldera", "ambience": "", "stutter": false, "name": "The Caldera", "image": "arena_1v1_caldera.jpg",
+        "bonus": {"clan": "arsonists", "boost": "burn", "amount": 100},
         "board": {"style": "paint", "tint": "#ff7a32"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.25},
         "fx": [

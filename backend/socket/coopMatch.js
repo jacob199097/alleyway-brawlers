@@ -35,6 +35,7 @@ const { randomUUID } = require('crypto');
 const { awayNotGone } = require('./away');
 const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 const { rename } = require('./ffaMatch');
+const { arenaBonus } = require('../utils/arenas');   // (the district's arena: its edge for a clan)
 
 const TURN_SECS   = 90;
 const AWAY_SECS   = 15;
@@ -273,7 +274,8 @@ function createCoopService(io, deps) {
         const seats = ['p1', 'p2', 'boss'];
         const pick = (k) => Object.fromEntries(seats.map(s => [s, entries[s].setup[k]]));
         const seed = 1 + Math.floor(Math.random() * 2147483646);
-        const state = new DuelState(pick('deck'), pick('hideout'), pick('leader'), 'p1', seed, turfRules(boss, lv));
+        const edge = arenaBonus(boss.arena, 'coop');   // (the district's arena: its edge for a clan, as in Casual)
+        const state = new DuelState(pick('deck'), pick('hideout'), pick('leader'), 'p1', seed, { ...turfRules(boss, lv), ...(edge ? { arena_bonus: edge } : {}) });
         const match = { id: randomUUID(), mode: 'coop', state, seats: {}, over: false, timer: null, startedAt: Date.now(),
             boss, lv, info: bossInfo(boss, lv) };
         for (const s of seats) {
@@ -312,7 +314,7 @@ function createCoopService(io, deps) {
     function sendStart(match, seat, resync) {
         emitTo(match.seats[seat].playerId, 'coop:start', {
             matchId: match.id, mode: 'coop', resync, boss: match.info, players: playersFor(match, seat), view: viewOf(match, seat),
-            arena: match.boss.arena,
+            arena: match.boss.arena, arenaBonus: match.state.rules.arena_bonus || null,
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || secs('turnSecs', TURN_SECS),
         });
     }

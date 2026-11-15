@@ -377,4 +377,26 @@ put(st, 'player', 3, unit(st, [{ when: 'passive', do: 'negate_fx', negates: 'any
 assert.ok(play(st, zap(), 0));
 assert.ok(!st.pending.key && st.sides.opponent.morale === 5700, 'your own NEGATE never stops your effects');
 
+// Arena bonuses (rules.arena_bonus: the server's, from godot/data/arenas.json; never in Ranked)
+const arenaDuel = (bonus) => {
+    const s2 = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1, { arena_bonus: bonus });
+    s2.turn = 4; s2.phase = 'deployment'; s2.active = 'player';
+    s2.sides.player.authority = 15;
+    return s2;
+};
+st = arenaDuel({ clan: 'test', boost: 'burn', amount: 100 });
+const torch = (clan) => { const c = unit(st, [{ when: 'deploy', do: 'burn', target: 'enemy', amount: 200 }], 1000, 1000, { clanTag: clan }); st.sides.player.hand.push(c); return c; };
+const foeA = put(st, 'opponent', 0, unit(st, [], 1000, 3000));
+assert.ok(play(st, torch('test'), 0));
+pendingAll(st);
+assert.equal(foeA.burn?.amt, 300, "the arena's clan: its BURN 200 is BURN 300 here");
+const foeB = put(st, 'opponent', 1, unit(st, [], 1000, 3000));
+delete foeA.burn;
+assert.ok(play(st, torch('elsewhere'), 1));
+pendingAll(st);
+assert.equal((foeA.burn?.amt ?? 0) + (foeB.burn?.amt ?? 0), 200, 'another clan: as written');
+st = arenaDuel({ clan: 'test', atk: 100, def: 50 });
+const home = put(st, 'player', 0, unit(st, [], 1000, 1000)), away = put(st, 'player', 1, unit(st, [], 1000, 1000, { clanTag: 'elsewhere' }));
+assert.ok(home.attack === 1100 && home.defense === 1050 && away.attack === 1000, "the arena's clan's characters: +100 ATK, +50 DEF");
+
 console.log('keywords: all passed');

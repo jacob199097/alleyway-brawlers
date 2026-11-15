@@ -40,6 +40,7 @@ const ARENAS = (() => {
     try { return [...JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../godot/data/arenas.json'), 'utf8')).map(a => String(a.id)), 'crossroads']; }
     catch { return ['crossroads']; }
 })();
+const { arenaBonus } = require('../utils/arenas');   // (an arena's edge for a clan, as in Casual)
 const TURN_SECS    = 90;
 const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;
@@ -196,9 +197,11 @@ function createFfaService(io, deps) {
         });
         const first = seats[Math.floor(Math.random() * seats.length)];
         const seed = 1 + Math.floor(Math.random() * 2147483646);
-        const state = new DuelState(decks, hideouts, leaders, first, seed);
+        const arena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
+        const edge = arenaBonus(arena, 'ffa');
+        const state = new DuelState(decks, hideouts, leaders, first, seed, edge ? { arena_bonus: edge } : {});
         const match = { id: randomUUID(), mode: 'ffa', state, seats: {}, over: false, timer: null, startedAt: Date.now(),
-            arena: ARENAS[Math.floor(Math.random() * ARENAS.length)],
+            arena,
             humans: entries.filter(e => !e.bot).length };
         seats.forEach((s, i) => {
             match.seats[s] = { ...entries[i], seat: s, connected: true, grace: null, idle: 0, kos: 0, promotes: 0, awakens: 0,
@@ -235,7 +238,7 @@ function createFfaService(io, deps) {
 
     function sendStart(match, seat, resync) {
         emitTo(match.seats[seat].playerId, 'ffa:start', {
-            matchId: match.id, mode: 'ffa', resync, arena: match.arena, players: playersFor(match, seat), view: viewOf(match, seat),
+            matchId: match.id, mode: 'ffa', resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null, players: playersFor(match, seat), view: viewOf(match, seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || secs('turnSecs', TURN_SECS),
         });
     }
