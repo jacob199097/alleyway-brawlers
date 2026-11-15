@@ -103,6 +103,7 @@ app.use('/api/auction', require('./routes/auction'));   // the auction house (ec
 app.use('/api/seasons', require('./routes/seasons'));   // ranked seasons and their rewards (economy/seasons.js)
 app.use('/api/push', require('./routes/push'));   // phone notifications (utils/push.js)
 app.use('/api/news', require('./routes/news').api);   // news emails on or off (utils/news.js)
+app.use('/api/contracts', require('./routes/contracts'));   // contracts in the shop (economy/contracts.js)
 app.use('/news', require('./routes/news').pages);   // a news email's unsubscribe link
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
@@ -160,6 +161,9 @@ const online = createOnlineService(io, {
         [row.id, row.mode, row.version, JSON.stringify(row.data)]),
     claimChallenge: (playerId, week) => require('./economy/challenge').claim(playerId, week),
     areFriends,
+    activeContract: (playerId) => require('./economy/contracts').activeFor(playerId),
+    completeContract: (playerId, id) => require('./economy/contracts').complete(playerId, id),
+    contractMatchPlayed: (playerId, id) => require('./economy/contracts').matchPlayed(playerId, id),
 });
 app.locals.online = online;   // routes/social.js: which friends are in a match
 

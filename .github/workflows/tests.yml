@@ -39,6 +39,8 @@ jobs:
         run: node backend/socket/coop.test.cjs
       - name: MARKED (reveal) shows only the viewer their opponents' hidden cards
         run: node backend/socket/reveal.test.cjs
+      - name: Contracts in matches (shown at the start, paid when done, a match used up when not, Easy CPU left alone)
+        run: node backend/socket/contracts.test.cjs
       - name: Neutral cards and one clan per deck
         run: node shared/clans.test.mjs
       - name: Card Forge passives do what their text says
@@ -103,6 +105,13 @@ jobs:
         run: node backend/utils/mailer.test.cjs
       - name: Ranked seasons (Ranked games and the season's best counted, ending a season, rewards claimed once)
         run: node backend/economy/seasons.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
+      - name: Contracts (the day's offers, bought once a day and one at a time, paid once, failed after 3 matches, each goal)
+        run: node backend/economy/contracts.test.cjs
         env:
           DB_HOST: localhost
           DB_PORT: 5432

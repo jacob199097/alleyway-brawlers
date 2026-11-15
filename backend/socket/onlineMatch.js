@@ -36,6 +36,7 @@
 
 const { randomUUID } = require('crypto');
 const { awayNotGone } = require('./away');
+const contracts = require('../economy/contracts');   // (judging them; the database parts come in through deps)
 
 const TURN_SECS        = 90;    // a player who doesn't act for this long is auto-played
 // Once auto-played, a player who still isn't acting gets AWAY_SECS per move, and loses after
@@ -236,6 +237,9 @@ function forSeat(v, seat) {
  * @param {(row) => Promise} [deps.recordStats]  a finished match for the balance dashboard (match_stats)
  * @param {(playerId, week) => Promise<object|null>} [deps.claimChallenge]  a won weekly challenge → its banner (first win only)
  * @param {(playerId) => boolean} [deps.isBusyElsewhere]  in a free-for-all lobby or match (socket/ffaMatch.js)
+ * @param {(playerId) => Promise<object|null>} [deps.activeContract]  the player's contract (economy/contracts.js activeFor)
+ * @param {(playerId, id) => Promise<object|null>} [deps.completeContract]  pays a contract done in the match → {payout, karat}
+ * @param {(playerId, id) => Promise<object|null>} [deps.contractMatchPlayed]  an eligible match ended without it → {status, matches_left}
  */
 function createOnlineService(io, deps) {
     const sockets = new Map();       // playerId → socket (latest connection)
@@ -361,10 +365,15 @@ function createOnlineService(io, deps) {
         const leaders = { player: a.setup.leader, opponent: b.setup.leader };
         const state = new DuelState(decks, hideouts, leaders, first, seed, rules);
         // Each player's veteran cards in this deck (economy/veterans.js): both players see their marks
+        // A contract (economy/contracts.js): followed through an eligible match (Casual, Ranked, CPU on Normal or harder)
+        const botLevel = [a, b].find(e => e.bot)?.level || null;
+        const counts = contracts.eligible(mode, botLevel, challenge);
         for (const e of [a, b]) {
             if (e.bot) continue;
             e.vets = await deps.veteranTiers?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
             e.vetXp = await deps.veteranXp?.(e.playerId, deckIds(e.setup))?.catch?.(() => ({})) ?? {};
+            const c = counts ? await deps.activeContract?.(e.playerId)?.catch?.(() => null) ?? null : null;
+            e.contract = c ? contracts.tracker(c) : null;
         }
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: pickArena(arena), series,
@@ -442,7 +451,14 @@ function createOnlineService(io, deps) {
             // their opponent dropped and has this long to come back (the waiting countdown)
             opponentGone: match.seats[other(seat)].connected ? 0 : Math.max(0, Math.ceil(((match.seats[other(seat)].goneUntil || 0) - Date.now()) / 1000)),
             challenge: match.challenge ? { name: match.challenge.name, text: match.challenge.text } : null,
+            contract: contractView(s),   // (theirs only)
         });
+    }
+
+    /** What a player sees of their contract in a match: its goal, payout, matches left and progress. */
+    function contractView(s) {
+        const t = s.contract;
+        return t ? { text: t.text, payout: t.payout, matches_left: t.matches_left, win: t.win, progress: contracts.progressText(t), done: t.done } : null;
     }
 
     function broadcast(match, events) {
@@ -457,17 +473,28 @@ function createOnlineService(io, deps) {
             if (ev.type === 'ko' && match.seats[other(ev.side)]) match.seats[other(ev.side)].kos += 1;
             if (ev.type === 'promote' && match.seats[ev.side]) match.seats[ev.side].promotes += 1;
             if (ev.type === 'awaken' && match.seats[ev.side]) match.seats[ev.side].awakens += 1;
+            for (const seat of ['player', 'opponent']) if (match.seats[seat].contract) contracts.track(match.seats[seat].contract, ev, seat);
+        }
+        const doneNow = {};   // seat → its contract, just done (a "contract" event in that player's update)
+        for (const seat of ['player', 'opponent']) {
+            const s = match.seats[seat], t = s.contract;
+            if (!t || !contracts.doneNow(t)) continue;
+            t.done = true;
+            doneNow[seat] = t;
+            Promise.resolve(deps.completeContract?.(s.playerId, t.id)).catch(err => console.error('[Online] Contract payout failed:', err.message));
         }
         match.lastEvents = events.length;
         const clock = match.state.winner ? 0 : armTimer(match);
         const away = !match.state.winner && match.seats[seatToAct(match.state)].idle > 0;
         for (const seat of ['player', 'opponent']) {
             const visible = events.map(ev => statsFilter(filterEvent(ev, seat), seat));
+            if (doneNow[seat]) visible.push({ type: 'contract', side: seat, status: 'done', text: doneNow[seat].text, payout: doneNow[seat].payout, counts: match.state._counts() });
             emitTo(match.seats[seat].playerId, 'mp:update', {
                 matchId: match.id,
                 events: forSeat(visible, seat),
                 view: forSeat(viewFor(match.state, seat), seat),
                 clock, away,
+                ...(match.seats[seat].contract ? { contract: contractView(match.seats[seat]) } : {}),
             });
         }
         if (match.spectators?.size) {
@@ -650,9 +677,30 @@ function createOnlineService(io, deps) {
                 if (won) unlocked[s.playerId].push(won);
             }
         }
+        // Contracts: a "win" goal done now (paid), or one match fewer (none left: it has failed)
+        const contractEnd = {};
+        for (const seat of ['player', 'opponent']) {
+            const s = match.seats[seat], t = s.contract;
+            if (!t) continue;
+            try {
+                if (!t.done && contracts.doneAtEnd(t, { won: winnerSeat === seat, morale: match.state.sides[seat].morale, turns: match.state.turn })) {
+                    t.done = true;
+                    await deps.completeContract?.(s.playerId, t.id);
+                    contractEnd[s.playerId] = { text: t.text, status: 'done', payout: t.payout, now: true };
+                } else if (t.done) {
+                    contractEnd[s.playerId] = { text: t.text, status: 'done', payout: t.payout };
+                } else {
+                    const r = await deps.contractMatchPlayed?.(s.playerId, t.id) ?? null;
+                    contractEnd[s.playerId] = { text: t.text, status: r?.status || 'active', matches_left: r?.matches_left ?? Math.max(0, t.matches_left - 1), price: t.price };
+                }
+            } catch (err) {
+                console.error('[Online] Contract failed to update:', err.message);
+            }
+        }
         for (const seat of ['player', 'opponent']) {
             const s = match.seats[seat];
             emitTo(s.playerId, 'mp:over', {
+                contract: contractEnd[s.playerId] || null,
                 matchId: match.id, reason,
                 result: !winnerSeat ? 'draw' : winnerSeat === seat ? 'win' : 'loss',
                 rewards: rewards[s.playerId] || null,

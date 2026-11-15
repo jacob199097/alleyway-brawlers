@@ -2,6 +2,8 @@ extends Screen
 ## Card packs: buy with Karat, Contraband or a free pack (the server rolls the cards), then the
 ## pack opening (scripts/ui/pack_opening.gd), where the player can open another without leaving it.
 ## Starter decks: every clan's, under its deck box (POST /api/shop/starter adds the cards and the deck).
+## Contracts: today's three (GET /api/contracts, backend/economy/contracts.js): pay Karat for a goal, do it in one
+## of the next few matches and it pays out more; one at a time.
 
 ## Known packs and their art. The server's list decides what's on sale: a new Card Forge clan
 ## shows up with its name, and art from assets/<id>_booster.png once that file exists.
@@ -30,6 +32,8 @@ var _tabs := {}
 var _pack_list: Array = []
 var _starter_list: Array = []
 var _starter_cost := {}
+var _contracts := {}             # GET /api/contracts: today's offers, the active one, seconds until new ones
+var _contract_info: Label
 ## The pack opening's synthesised sounds (sfx.gd), made ready while the shop is open
 const PACK_SOUNDS := ["tear", "charge", "burst", "shimmer", "reveal_rare", "reveal_epic", "new_card"]
 
@@ -82,9 +86,9 @@ func _ready() -> void:
 	_pack_list = packs
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 16)
-	tabs.position = Vector2(960 - 308, 990)   # (bottom centre: the back button is bottom left)
+	tabs.position = Vector2(960 - 466, 990)   # (bottom centre: the back button is bottom left)
 	add_child(tabs)
-	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"]]:
+	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"], ["contracts", "CONTRACTS"]]:
 		var tb := UI.button(t[1], _show.bind(t[0]), Vector2(300, 64), UI.GOLD)
 		tabs.add_child(tb)
 		_tabs[t[0]] = tb
@@ -110,8 +114,24 @@ func _show(tab: String) -> void:
 		_starter_list = r.data.get("starters", [])
 		if _tab != tab:
 			return
-	_title.text = "STARTER DECKS" if tab == "starters" else "CARD PACKS"
-	_fill(_starter_list if tab == "starters" else _pack_list, _starter if tab == "starters" else _pack)
+	if tab == "contracts":   # (fresh each time: what's been done or failed since)
+		var r := await Api.request("GET", "/api/contracts")
+		if not is_inside_tree():
+			return
+		if not r.ok or not r.data is Dictionary:
+			UI.toast(self, r.error if not r.ok else "Could not load the contracts.", UI.RED)
+			return
+		_contracts = r.data
+		Game.player.karat = int(r.data.get("karat", Game.player.get("karat", 0)))
+		_refresh_balance()
+		if _tab != tab:
+			return
+	_title.text = {"starters": "STARTER DECKS", "contracts": "CONTRACTS"}.get(tab, "CARD PACKS")
+	_contract_note(tab == "contracts")
+	if tab == "contracts":
+		_fill(_contracts.get("offers", []), _contract)
+	else:
+		_fill(_starter_list if tab == "starters" else _pack_list, _starter if tab == "starters" else _pack)
 
 
 ## The carousel: entries laid out by maker (one Control each), SHOWN at a time.
@@ -317,6 +337,94 @@ func _starter(d: Dictionary) -> Control:
 	row.add_child(UI.button("%d CB" % int(_starter_cost.get("contraband", 400)), _buy_starter.bind(d, "contraband"), Vector2(184, 60), UI.PURPLE))
 	holder.add_child(row)
 	return holder
+
+
+## One of today's contracts: what it asks, what it pays and costs, and TAKE IT (or what became of it today).
+func _contract(o: Dictionary) -> Control:
+	var holder := Control.new()
+	holder.size = Vector2(400, 700)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var active = _contracts.get("active")
+	var bought := str(o.get("bought", "")) if o.get("bought") is String else ""
+	var col: Color = UI.GREEN if bought == "done" else UI.RED if bought == "failed" else UI.GOLD
+	var paper := Panel.new()
+	paper.size = Vector2(400, 640)
+	paper.position = Vector2(0, 30)
+	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	paper.add_theme_stylebox_override("panel", UI.box(Color(0.05, 0.045, 0.07, 0.9), Color(col, 0.8 if bought == "active" else 0.4), 2, 12))
+	holder.add_child(paper)
+	var rows := [
+		[UI.label("📜", 64, col), 30, 90],
+		[UI.label("CONTRACT", 22, col, true), 130, 30],
+		[UI.label(str(o.get("text", "")), 30, Color.WHITE, true), 175, 150],
+		[UI.label("ONLY IN A MATCH YOU WIN" if o.get("win", false) else "WIN OR LOSE", 15, UI.MUTED, true), 330, 22],
+		[UI.label("PAYS %d KARAT" % int(o.get("payout", 0)), 34, UI.GOLD, true), 380, 44],
+		[UI.label("COSTS %d KARAT  ·  LASTS %d MATCHES" % [int(o.get("price", 0)), int(o.get("matches", 3))], 17, UI.MUTED), 430, 26],
+	]
+	for r in rows:
+		var l: Label = r[0]
+		l.size = Vector2(360, r[2])
+		l.position = Vector2(20, r[1])
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		paper.add_child(l)
+	var text := "TAKE IT  ·  %d KARAT" % int(o.get("price", 0))
+	if bought == "active":
+		var left := int(active.get("matches_left", 0)) if active is Dictionary else 0
+		text = "YOURS: %d MATCH%s LEFT" % [left, "" if left == 1 else "ES"]
+	elif bought == "done":
+		text = "DONE ✓  PAID"
+	elif bought == "failed":
+		text = "FAILED"
+	elif active is Dictionary:
+		text = "FINISH YOUR CONTRACT FIRST"
+	var b := UI.button(text, _buy_contract.bind(o), Vector2(360, 64), col)
+	b.position = Vector2(20, 548)
+	b.disabled = bought != "" or active is Dictionary
+	paper.add_child(b)
+	return holder
+
+
+func _buy_contract(o: Dictionary) -> void:
+	if _busy:
+		return
+	UI.dialog(self, "TAKE THIS CONTRACT?", "Pay %d Karat. %s%s in one of your next %d matches (Casual, Ranked, or the CPU on Normal or Hard) and it pays %d Karat. If you don't, the Karat is gone." % [
+		int(o.get("price", 0)), str(o.get("text", "")), " (and win)" if o.get("win", false) else "", int(o.get("matches", 3)), int(o.get("payout", 0))],
+		[["TAKE IT", func():
+			_busy = true
+			var r := await Api.request("POST", "/api/contracts/buy", {"index": int(o.get("index", 0))})
+			_busy = false
+			if not is_inside_tree():
+				return
+			if not r.ok:
+				UI.toast(self, r.error, UI.RED)
+				return
+			_contracts = r.data
+			Game.player.karat = int(r.data.get("karat", Game.player.get("karat", 0)))
+			_refresh_balance()
+			Sfx.play("karat")
+			if _tab == "contracts":
+				_contract_note(true)
+				_fill(_contracts.get("offers", []), _contract)
+			UI.toast(self, "Contract taken. It shows at the start of your next match.", UI.GREEN), UI.GOLD],
+		["CANCEL", func(): pass]])
+
+
+## Under the contracts: how they work, and when new ones arrive.
+func _contract_note(on: bool) -> void:
+	if _contract_info == null:
+		_contract_info = UI.label("", 18, UI.MUTED)
+		_contract_info.size = Vector2(1500, 64)
+		_contract_info.position = Vector2(210, 910)
+		_contract_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_contract_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		add_child(_contract_info)
+	_contract_info.visible = on
+	if not on:
+		return
+	var secs := int(_contracts.get("resetsIn", 0))
+	_contract_info.text = "Do it in one of your next matches (Casual, Ranked, or the CPU on Normal or Hard) and it pays out. Don't, and the Karat is gone. One at a time.\nNEW CONTRACTS IN %dH %02dM" % [secs / 3600, (secs % 3600) / 60]
 
 
 func _buy_starter(d: Dictionary, currency: String) -> void:

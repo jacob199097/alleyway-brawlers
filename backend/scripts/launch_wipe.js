@@ -41,6 +41,7 @@ const CLEARED = {
     territory_influence: 'turf map scores', territory_claims: 'turf map payouts',
     boss_clears: 'Turf Defense records',
     matches: 'matches in the history', solo_matches: 'CPU match records', match_replays: 'replays',
+    player_contracts: 'contracts',
 };
 const KEPT = ['players', 'friendships', 'messages', 'seasons', 'player_seasons', 'payment_grants', 'steam_orders',
     'player_avatar_gifts', 'match_stats', 'client_errors', 'site_counts', 'cards', 'level_thresholds',

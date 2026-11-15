@@ -435,6 +435,14 @@ func _setup_online(start: Dictionary) -> void:
 		Game.alert()
 	if start.get("challenge") is Dictionary and not start.get("resync", false):   # this week's twist
 		_tip_panel("WEEKLY CHALLENGE  ·  %s" % str(start.challenge.get("name", "")).to_upper(), str(start.challenge.get("text", "")), RED)
+	if start.get("contract") is Dictionary:   # their contract (backend/economy/contracts.js): what it asks, in the corner while it lasts
+		_contract_tag(start.contract)
+		if not start.get("resync", false):
+			var ct: Dictionary = start.contract
+			var left := int(ct.get("matches_left", 1))
+			_tip_panel("CONTRACT  ·  %d KARAT" % int(ct.get("payout", 0)), "%s%s.\n%s" % [str(ct.get("text", "")),
+				" (and win)" if ct.get("win", false) else "",
+				"Do it in this match to get paid." if left <= 1 else "Do it in this match or the next %d to get paid." % (left - 1)], GOLD)
 	Net.opened.connect(_on_net_opened)
 	Net.closed.connect(_on_net_closed)
 	if int(start.get("opponentGone", 0)) > 0:   # (back in a match whose opponent has dropped)
@@ -1055,6 +1063,8 @@ func _on_net_event(name: String, data) -> void:
 			_awaiting = false
 			_clock_left = float(data.get("clock", ONLINE_TURN_SECS))
 			_on_away(data.get("away", false))
+			if data.get("contract") is Dictionary:
+				_contract_tag(data.contract)
 			_queue.append_array(data.events)
 			_pump()
 		"mp:over":
@@ -2278,6 +2288,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_echo(ev)
 		"debt":
 			await _ev_debt(ev)
+		"contract":
+			await _ev_contract(ev)
 		"leader_hit":
 			await _ev_leader_hit(ev)
 		"leader_heal":
@@ -2767,6 +2779,54 @@ func _ev_echo(ev: Dictionary) -> void:
 		_ring(at, col, 1.0 + 0.5 * i)
 	_float_text(at + Vector2(0, -130 if side == "player" else 130), "ECHO", col, 40)
 	await _wait(0.6)
+
+
+## A contract done (backend/economy/contracts.js): the server has paid it; a moment to celebrate.
+func _ev_contract(ev: Dictionary) -> void:
+	if str(ev.get("status", "")) != "done":
+		return
+	var payout := int(ev.get("payout", 0))
+	Game.player.karat = int(Game.player.get("karat", 0)) + payout
+	Sfx.play("karat", 1.0, -1.0)
+	Sfx.play("promote", 1.2, -6.0)
+	_sweep_banner("CONTRACT COMPLETE  +%d KARAT" % payout, GOLD)
+	var mid := Vector2(1080, DIVIDER_Y)
+	_burst(mid, GOLD, 40, 520, 0.9, 400.0)
+	_ring(mid, GOLD, 2.4)
+	_float_text(mid + Vector2(0, 90), str(ev.get("text", "")), Color(1, 1, 1, 0.9), 26)
+	_contract_tag({"text": str(ev.get("text", "")), "payout": payout, "done": true})
+	await _wait(1.4)
+
+
+var _contract_box: PanelContainer = null
+
+
+## The contract in the corner while the match lasts: what it asks, its progress ("2 / 3"), DONE once it is.
+func _contract_tag(c: Dictionary) -> void:
+	if _contract_box == null or not is_instance_valid(_contract_box):
+		_contract_box = PanelContainer.new()
+		_contract_box.add_theme_stylebox_override("panel", _box(Color(0.03, 0.03, 0.08, 0.88), Color(GOLD, 0.6), 1, 8))
+		_contract_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		_contract_box.add_child(col)
+		var head := _label(14, GOLD, true)
+		head.name = "Head"
+		col.add_child(head)
+		var body := _label(15, Color.WHITE)
+		body.name = "Body"
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		body.custom_minimum_size = Vector2(236, 0)
+		col.add_child(body)
+		overlay.add_child(_contract_box)
+		_contract_box.position = Vector2(1662, 770)
+	var done: bool = c.get("done", false)
+	var progress := str(c.get("progress", ""))
+	var head: Label = _contract_box.find_child("Head", true, false)
+	var body: Label = _contract_box.find_child("Body", true, false)
+	head.text = "CONTRACT  ·  %s" % ("DONE ✓" if done else "%d KARAT" % int(c.get("payout", 0)))
+	head.add_theme_color_override("font_color", GREEN if done else GOLD)
+	body.text = str(c.get("text", "")) + ("" if done or progress == "" else "   %s" % progress)
 
 
 ## DEBT: a stamp on the opponent's Authority: their next card costs more.
@@ -6932,6 +6992,7 @@ func _finish_match(won: bool) -> void:
 		Game.match_result.mastery = _over.get("mastery")
 		Game.match_result.veterans = _over.get("veterans", [])   # cards that reached a new veteran tier
 		Game.match_result.turf = _over.get("turf")               # the turf map influence won
+		Game.match_result.contract = _over.get("contract")       # their contract: done, or how many matches it has left
 		Game.match_result.series = _over.get("series")           # a Casual or Ranked best of 3: the score so far
 		if _over.has("result"):
 			Game.match_result.result = _over.result

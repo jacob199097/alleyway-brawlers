@@ -66,6 +66,7 @@ func _ready() -> void:
 	var panels: Array[Control] = [_stats_strip(d, _won), _progress_panel(_won), side_panel]
 	_show_mastery(d.get("mastery"))
 	_show_turf(d.get("turf"))
+	_show_contract(d.get("contract"))
 	if d.get("tutorial", false):   # the tutorial's last class: how to get stronger (scripts/ui/card_school.gd)
 		get_tree().create_timer(3.2 + INTRO).timeout.connect(func():
 			if is_inside_tree():
@@ -1139,6 +1140,30 @@ func _show_turf(t) -> void:
 	_mastery_box.add_child(l)
 	l.modulate.a = 0.0
 	l.create_tween().tween_property(l, "modulate:a", 1.0, 0.4).set_delay(1.2 + INTRO)
+
+
+## The player's contract after the match (backend/economy/contracts.js): done (paid), how many matches it
+## has left, or failed (its Karat gone).
+func _show_contract(c) -> void:
+	if not (c is Dictionary):
+		return
+	var status := str(c.get("status", ""))
+	var text := "📜  CONTRACT COMPLETE: +%d KARAT" % int(c.get("payout", 0))
+	var col := UI.GREEN
+	if status == "failed":
+		text = "📜  CONTRACT FAILED: %s" % str(c.get("text", "")).to_upper()
+		col = UI.RED
+	elif status != "done":
+		var left := int(c.get("matches_left", 0))
+		text = "📜  CONTRACT: %d MATCH%s LEFT TO %s" % [left, "" if left == 1 else "ES", str(c.get("text", "")).to_upper()]
+		col = UI.GOLD
+	var l := UI.label(text, 18, col, true)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.custom_minimum_size = Vector2(560, 0)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mastery_box.add_child(l)
+	l.modulate.a = 0.0
+	l.create_tween().tween_property(l, "modulate:a", 1.0, 0.4).set_delay(1.4 + INTRO)
 
 
 ## A card that reached a new veteran tier this match: it pops in with its new marks and the tier's name.

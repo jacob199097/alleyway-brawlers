@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.157",
+        "notes": [
+            "Contracts, in the Shop: three a day, new ones every 24 hours. Pay some Karat for a goal (KO 3 enemy characters, win with 3000 Morale left...), do it in one of your next 3 matches (Casual, Ranked, or the CPU on Normal or Hard) and it pays out more. Don't, and the Karat is gone. One at a time; the match shows yours at the start and in the corner, and celebrates when it's done."
+        ]
+    },
+    {
         "version": "0.9.156",
         "notes": [
             "Cards can now strike back from the grave: \"When this card is KO'd (or Downed)\" effects can hit the character that beat it in the brawl.",
