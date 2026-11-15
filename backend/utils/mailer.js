@@ -40,8 +40,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
  *   button   { text, href, color }: the one thing to do
  *   note     small print under the button (how long the link lasts, what to do if it wasn't you)
  *   why      the footer's "you got this because ..."
+ *   unsubscribe  a news email's unsubscribe link (in the footer)
  */
-function email({ subject, preview, heading, lines, button, note, why }) {
+function email({ subject, preview, heading, lines, button, note, why, unsubscribe }) {
     const contact = process.env.CONTACT_EMAIL || '';
     const p = (t, style = '') => `<p style="margin:0 0 16px;font:16px/1.55 ${FONT};color:${C.text};${style}">${esc(t)}</p>`;
     const html = `<!doctype html>
@@ -70,13 +71,15 @@ ${note ? p(note, `font-size:14px;color:${C.dim};`) : ''}
 <tr><td style="padding:18px 32px 26px;border-top:1px solid ${C.line};">
 <p style="margin:0 0 6px;font:13px/1.5 ${FONT};color:${C.dim};"><a href="${SITE}/" style="color:${C.gold};text-decoration:none;font-weight:bold;">AlleyWay Brawlers</a> · Pick a clan. Build a deck. Take the city.</p>
 <p style="margin:0;font:12px/1.5 ${FONT};color:${C.dim};">${esc(why)}${contact ? ` Questions? <a href="mailto:${esc(contact)}" style="color:${C.cyan};">${esc(contact)}</a>` : ''}</p>
+${unsubscribe ? `<p style="margin:10px 0 0;font:12px/1.5 ${FONT};color:${C.dim};"><a href="${esc(unsubscribe)}" style="color:${C.cyan};">Unsubscribe</a> from news emails (one click, no sign-in).</p>` : ''}
 </td></tr>
 </table>
 </td></tr>
 </table>
 </body></html>`;
     const text = [heading, '', ...lines, '', `${button.text}: ${button.href}`, ...(note ? ['', note] : []),
-        '', '--', `AlleyWay Brawlers: ${SITE}`, why + (contact ? ` Questions? ${contact}` : '')].join('\n');
+        '', '--', `AlleyWay Brawlers: ${SITE}`, why + (contact ? ` Questions? ${contact}` : ''),
+        ...(unsubscribe ? ['', `Unsubscribe from news emails: ${unsubscribe}`] : [])].join('\n');
     return { subject, html, text };
 }
 
@@ -99,10 +102,20 @@ const emails = {
         note: 'This link works for 1 hour. If you didn\'t ask for it, ignore this email: your password stays as it is.',
         why: 'You got this email because a password reset was asked for on AlleyWay Brawlers with this address.',
     }),
+    // News (utils/news.js): only to players who turned on news emails, always with the unsubscribe link
+    news: ({ subject, heading, lines, button }, unsubscribe) => email({
+        subject,
+        preview: lines[0] || heading,
+        heading,
+        lines,
+        button: { ...button, color: C.red },
+        why: 'You got this email because you turned on news emails in the game (Settings, Account).',
+        unsubscribe,
+    }),
 };
 
-async function send(to, mail) {
-    await transporter.sendMail({ from: FROM, to, subject: mail.subject, html: mail.html, text: mail.text });
+async function send(to, mail, headers = undefined) {
+    await transporter.sendMail({ from: FROM, to, subject: mail.subject, html: mail.html, text: mail.text, headers });
 }
 
 async function sendVerificationEmail(email, token, baseUrl = DEFAULT_BASE_URL) {
@@ -113,4 +126,4 @@ async function sendPasswordResetEmail(email, token, baseUrl = DEFAULT_BASE_URL) 
     await send(email, emails.passwordReset(`${baseUrl}/api/auth/reset-password?token=${token}`));
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail, emails };
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, emails, send };

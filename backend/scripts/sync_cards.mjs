@@ -73,6 +73,9 @@ try {
         await pool.query('INSERT INTO push_outbox (title, body) VALUES ($1, $2)',
             ['New cards on the streets', `${names}. Open a pack and find them.`])
             .catch(() => {});   // (no push_outbox before the server has run its migrations)
+        // and for news emails (utils/news.js: one email for a few days of imports, to players who asked)
+        await (await import('../utils/news.js')).default.cards(fresh)
+            .catch(() => {});   // (no news_outbox before the server has run its migrations)
     }
 } finally {
     await pool.end();

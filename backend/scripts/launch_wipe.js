@@ -44,7 +44,7 @@ const CLEARED = {
 };
 const KEPT = ['players', 'friendships', 'messages', 'seasons', 'player_seasons', 'payment_grants', 'steam_orders',
     'player_avatar_gifts', 'match_stats', 'client_errors', 'site_counts', 'cards', 'level_thresholds',
-    'push_tokens', 'push_outbox', 'push_sent'];
+    'push_tokens', 'push_outbox', 'push_sent', 'news_outbox', 'news_sent'];
 
 /**
  * The wipe, inside the caller's transaction. → { lines: what it did, problems: why --apply must not go ahead }

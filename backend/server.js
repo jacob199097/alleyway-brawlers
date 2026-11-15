@@ -102,6 +102,8 @@ app.use('/api/veterans', require('./routes/veterans'));   // veteran cards (econ
 app.use('/api/auction', require('./routes/auction'));   // the auction house (economy/auction.js)
 app.use('/api/seasons', require('./routes/seasons'));   // ranked seasons and their rewards (economy/seasons.js)
 app.use('/api/push', require('./routes/push'));   // phone notifications (utils/push.js)
+app.use('/api/news', require('./routes/news').api);   // news emails on or off (utils/news.js)
+app.use('/news', require('./routes/news').pages);   // a news email's unsubscribe link
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
 
@@ -295,6 +297,7 @@ migrate(pool)
         // Pre-launch: everyone gets every clan's starter deck (routes/onboarding.js GIVE_ALL_STARTERS)
         onboardingRoutes.grantStartersToEveryone().catch(err => console.error('[Onboarding] starters:', err.message));
         require('./utils/push').start();   // phone notifications: reminders and news (FCM_SERVICE_ACCOUNT)
+        require('./utils/news').start();   // news emails: new seasons and cards, to players who asked (utils/news.js)
         // The auction house: finish auctions as their time runs out, and forget old ones once a day
         const auction = require('./economy/auction');
         setInterval(() => auction.settleDue().catch(err => console.error('[Auction] settle:', err.message)), 30 * 1000);

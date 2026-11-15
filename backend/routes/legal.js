@@ -109,7 +109,9 @@ phone number, contacts or location.</p>
  <li>To run the game: sign you in, save your progress, match you with other players, and run matches and rewards
   on our server.</li>
  <li>To email you about your account: activation and password resets. We will only send news or offers if you
-  have chosen to receive them.</li>
+  have chosen to receive them: news emails (a new season, new cards) are off unless you turn them on in the game
+  (Settings, Account). Every news email has an unsubscribe link that works in one click, and the setting turns them
+  off too. We keep whether you want them, and which news emails we have sent you.</li>
  <li>To fix bugs, balance cards, and stop cheating, abuse and attacks on the service.</li>
  <li>In the Steam version: to unlock the achievements you earn on your Steam account as well.</li>
  <li>On Android, if you allow notifications: to tell you about a friend's challenge or Turf Defense invite, your daily
@@ -131,7 +133,7 @@ person you send them to. Your email address and Steam ID aren't shown to other p
  <li><b>Valve (Steam)</b>, if you play the Steam version: to confirm your Steam sign-in, to take Steam Wallet
   payments (we send your Steam ID and the item and its price) and to unlock your achievements on Steam. Valve's
   privacy policy covers what Steam does with your information;</li>
- <li><b>our email provider</b>, to deliver activation and password-reset emails;</li>
+ <li><b>our email provider</b>, to deliver activation and password-reset emails, and news emails if you turned them on;</li>
  <li><b>Google (Firebase Cloud Messaging)</b>, if you allow notifications on Android: to deliver them, we send it your
   phone's notification token and the notification's text. Google's privacy policy covers what it does with them;</li>
  <li><b>DuckDNS</b>, which points our web address at our server (it doesn't receive your game data).</li>
@@ -303,3 +305,4 @@ router.get('/delete-account', (_req, res) => res.send(deletePage()));
 
 module.exports = router;
 module.exports.contact = contact;   // (the website's footer gives the same address: routes/site.js)
+module.exports.page = page;   // (the news unsubscribe page looks the same: routes/news.js)

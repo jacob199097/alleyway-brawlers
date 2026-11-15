@@ -33,6 +33,10 @@ try {
     console.log(`Every rank drops back, and ${r.next.name}${r.next.subtitle ? ` ("${r.next.subtitle}")` : ''} starts` +
         (r.next.ends_at ? `, planned to end ${r.next.ends_at.toISOString().slice(0, 10)}.` : ', with no end date.'));
     if (!apply) console.log('\nNothing changed. Add --apply to end the season.');
+    else {
+        await require('../utils/news').season(r);   // (the news email, to players who turned them on: utils/news.js)
+        console.log('A news email about it goes to the players who turned news emails on.');
+    }
 } catch (err) {
     console.error(err.message);
     process.exitCode = 1;
