@@ -231,6 +231,9 @@ const FX_SAMPLES := [
 	# COMBO: played right after another card of its clan this turn (combo_n 3: the third in a row)
 	[{"when": "combo", "do": "draw", "amount": 1}, {"when": "combo", "do": "damage", "amount": 300, "combo_n": 3}],
 	[{"when": "combo", "do": "buff", "target": "allies", "atk": 200}, {"when": "passive", "do": "buff", "target": "self", "atk": 100}],
+	# NEGATE: once a turn, an enemy card's effect may be stopped (its player is asked; the CPU negates)
+	[{"when": "passive", "do": "negate_fx"}, {"when": "deploy", "do": "damage", "amount": 200, "then": {"do": "draw", "amount": 1}}],
+	[{"when": "passive", "do": "negate_fx", "negates": "any"}, {"when": "turn_start", "do": "buff", "target": "self", "atk": 200, "until": "turn", "luck": "coin"}],
 ]
 
 

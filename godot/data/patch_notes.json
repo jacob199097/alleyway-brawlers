@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.161",
+        "notes": [
+            "NEGATE, a new ability for cards: once a turn, when an enemy card's effect is about to happen, you may stop it, and anything that follows from it. You're asked each time, so you can save it for the effect that matters most. Some NEGATE cards stop characters' effects, some Hustles and Ambushes, some anything."
+        ]
+    },
+    {
         "version": "0.9.160",
         "notes": [
             "LOADED DICE now asks first: when a flip or roll goes against you and your LOADED DICE is ready, you choose whether to use it on this one or keep it for a flip that matters more (still once a turn).",

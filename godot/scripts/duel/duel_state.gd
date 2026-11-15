@@ -64,8 +64,8 @@ const LUCK_TEST_SEED := 0x2545F491
 const M32 := 0xFFFFFFFF
 var _luck_t := 0
 var _luck_last := {}         # the last flip or roll: {won, value} (if_luck follows it)
-var _luck_wait := {}         # a DOUBLE OR NOTHING (or LOADED DICE question) not yet answered: {uid, ask} (its "If tails" waits for it)
-var _loaded_asks := 0        # LOADED DICE questions asked so far (a brawl waits for one asked on the way: _atk_then)
+var _luck_wait := {}         # a question an effect waits on (DOUBLE OR NOTHING, LOADED DICE, NEGATE): {uid, ask} (its "If tails" waits for it)
+var _held_asks := 0          # questions that hold an effect back (LOADED DICE, NEGATE) asked so far (a brawl waits for one asked on the way: _atk_then)
 var _roll := 1               # the last die's value ("for each pip")
 var _attack_ctx := {}        # the attack being resolved
 var rules := {}              # a challenge's twist (see _init)
@@ -1631,10 +1631,10 @@ func _atk_blind_miss(ctx: Dictionary, then: Callable) -> void:
 		_effect(ctx.side, ctx.att, "%s is BLIND: its attack misses" % ctx.att.name, ctx.from))
 
 
-## What comes next in a brawl: at once, or, if a LOADED DICE question came up on the way (more asked than
-## loaded before), once it's answered.
-func _atk_then(ctx: Dictionary, loaded: int, next: Callable) -> void:
-	if _loaded_asks > loaded:
+## What comes next in a brawl: at once, or, if a question that holds an effect back (LOADED DICE, NEGATE)
+## came up on the way (more asked than held before), once it's answered.
+func _atk_then(ctx: Dictionary, held: int, next: Callable) -> void:
+	if _held_asks > held:
 		(_new_asks if _in_answer else _asks).append({"kind": "then", "side": ctx.side, "cb": next})
 	else:
 		next.call()
@@ -1682,7 +1682,7 @@ func _atk_strike(ctx: Dictionary) -> void:
 			_run_fx(foe, x.slot, x.card, "ally_attacked", att, vs)
 	if card_at(side, from) == att:
 		_run_lasting(foe, "ally_attacked", att, vs)
-	var loaded := _loaded_asks
+	var held := _held_asks
 	var k := 0
 	for e in _fx(def, "defend"):
 		k += 1
@@ -1698,7 +1698,7 @@ func _atk_strike(ctx: Dictionary) -> void:
 				_effect(foe, def, "%s: %s this brawl" % [def.name, _stat_text(se)], target))
 		else:
 			_do_fx(foe, target, def, e, vs)
-	_atk_then(ctx, loaded, func() -> void:
+	_atk_then(ctx, held, func() -> void:
 		# The defender's effects may have removed or stopped the attacker (or itself)
 		if winner != "" or card_at(side, from) != att or att.downed or card_at(foe, target) != def:
 			return
@@ -1721,10 +1721,10 @@ func _atk_brawl(ctx: Dictionary, def: Dictionary) -> void:
 		_emit("brace", {"side": foe, "slot": target, "from_side": side, "from": from, "amount": x})
 		_effect(foe, def, "%s is BRACED: %s loses %d ATK this turn" % [def.name, att.name, x], target)
 	_recalc()   # (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
-	var loaded := _loaded_asks
+	var held := _held_asks
 	ctx.extra = 0
 	_brawl_bonus(ctx, def)
-	_atk_then(ctx, loaded, func(): _atk_clash(ctx, def))
+	_atk_then(ctx, held, func(): _atk_clash(ctx, def))
 
 
 func _atk_clash(ctx: Dictionary, def: Dictionary) -> void:
@@ -3057,7 +3057,8 @@ func _run_echoes(side: String) -> void:
 
 ## then: a follow-up effect that happens only if this one did something ("If you do, ...").
 ## Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP.
-func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> void:
+## follow: a follow-up (then) of an effect that has already happened: no NEGATE question of its own.
+func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, follow := false) -> void:
 	var w := _luck_wait
 	if not w.is_empty() and w.uid == c.get("uid") and str(e.get("if_luck", "")) != "":   # ("If tails, ..." waits for the bet it follows)
 		var ask: Dictionary = w.ask
@@ -3067,6 +3068,59 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}) -> 
 			if winner == "":
 				_do_fx(side, _slot_of(side, c, slot), c, e, vs)
 		return
+	if not follow and str(e.get("if_luck", "")) == "":   # NEGATE: an enemy may stop it (asked first: it waits)
+		var by := _negator(side, c)
+		if not by.is_empty():
+			_ask_negate(side, slot, c, e, vs, by)
+			return
+	_do_fx_go(side, slot, c, e, vs)
+
+
+## NEGATE (a passive): once a turn, when an enemy card's effect is about to happen, its player may stop
+## it (and what follows from it). negates: "character" (a character's effects; the default), "hustle"
+## (Hustles and Ambushes) or "any". The first other side's character that can, or {}. Same as _negator in DuelState.js.
+func _negator(side: String, c: Dictionary) -> Dictionary:
+	if winner != "" or c.is_empty():
+		return {}
+	var ct := str(c.get("cardType", ""))
+	var kind := "character" if ct == "gang_member" else "leader" if ct == "leader" else "hustle"
+	var fits := func(p: Dictionary) -> bool:
+		var n := str(p.get("negates", "character"))
+		return n == "any" or n == kind
+	for foe in foes_of(side):
+		var s = sides.get(foe)
+		if s == null or int(s.get("negate_turn", -1)) == turn:
+			continue
+		for x in characters(foe):
+			if not _passive(foe, x.slot, x.card, "negate_fx", fits).is_empty():
+				return {"side": foe, "slot": x.slot, "card": x.card}
+	return {}
+
+
+## NEGATE's question (the CPU negates): stop this effect, or let it happen and keep NEGATE for later.
+func _ask_negate(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, by: Dictionary) -> void:
+	var w := {"uid": c.get("uid")}   # ("If tails, ..." after it waits for the answer: _do_fx)
+	w.ask = _ask(by.side, "negate", "%s's effect is about to happen. NEGATE it with %s? (once a turn)" % [c.name, by.card.name], c,
+		[{"id": "negate", "label": "NEGATE IT"}, {"id": "allow", "label": "LET IT HAPPEN (SAVE IT)"}], func(choice: String) -> void:
+			if is_same(_luck_wait, w):
+				_luck_wait = {}
+			if winner != "":
+				return
+			var s: Dictionary = sides[by.side]
+			var at := _slot_of(by.side, by.card, NO_SLOT)
+			if choice != "negate" or int(s.get("negate_turn", -1)) == turn or at == NO_SLOT:
+				_do_fx_go(side, _slot_of(side, c, slot), c, e, vs)
+				return
+			s.negate_turn = turn
+			_luck_last = {}   # (it never happened: no "If heads" or "If tails" after it)
+			_emit("negated", {"side": by.side, "slot": at, "card": by.card.duplicate(true), "target_side": side, "target": _slot_of(side, c, slot), "target_card": c.duplicate(true)})
+			_effect(by.side, by.card, "%s NEGATES %s's effect" % [by.card.name, c.name], at))
+	_luck_wait = w
+	_held_asks += 1
+
+
+## The effect itself, once no NEGATE stopped it: DOUBLE OR NOTHING's question, a flip or roll, then it.
+func _do_fx_go(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
 	if str(e.get("luck", "")) == "double":
 		_ask_double(side, slot, c, e, vs)
 		return
@@ -3138,7 +3192,7 @@ func _do_fx_then(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	var queued := asks.size()
 	var next := func() -> void:
 		if winner == "":
-			_do_fx(side, _slot_of(side, c, slot), c, then, vs)
+			_do_fx(side, _slot_of(side, c, slot), c, then, vs, true)
 	_do_fx_one(side, slot, c, e, vs)
 	if _did > did:
 		next.call()
@@ -4849,7 +4903,7 @@ func _luck_gate(side: String, slot: int, c: Dictionary, e: Dictionary, then: Cal
 			_effect(side, by.card, "%s: LOADED DICE, %s again" % [by.card.name, "flip" if coin else "roll"], _slot_of(side, by.card, by.slot))
 			then.call(_luck_toss(side, slot, c, coin, need, kind == "double", true)))
 	_luck_wait = w
-	_loaded_asks += 1
+	_held_asks += 1
 
 
 ## One flip or roll for _luck_gate (with its luck event and its line in the log).

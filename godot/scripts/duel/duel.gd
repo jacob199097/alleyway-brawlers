@@ -2288,6 +2288,8 @@ func _play(ev: Dictionary) -> void:
 			await _ev_echo(ev)
 		"debt":
 			await _ev_debt(ev)
+		"negated":
+			await _ev_negated(ev)
 		"combo":
 			await _ev_combo(ev)
 		"contract":
@@ -2863,6 +2865,30 @@ func _ev_debt(ev: Dictionary) -> void:
 		_burst(at, col, 14, 220, 0.6, 300.0)
 		_float_text(at + Vector2(0, 40 if ev.side != "player" else -40), "DEBT +%d" % int(ev.amount), col, 36)
 	await _wait(0.4)
+
+
+## NEGATE: a cancelling bolt from the NEGATE card to the card whose effect it stopped (a Hustle: the
+## middle of the board), which flashes as the effect fizzles out.
+func _ev_negated(ev: Dictionary) -> void:
+	var col: Color = Keywords.color("NEGATE")
+	var by: CardView = field.get(str(ev.side), {}).get(int(ev.slot))
+	var t: CardView = field.get(str(ev.get("target_side", "")), {}).get(int(ev.get("target", -1)))
+	var to: Vector2 = t.position if t else Vector2(960, 540)
+	Sfx.play("glass_smash", 0.7, -6.0)
+	Sfx.play("slam", 1.4, -7.0)
+	if by:
+		_pulse_glow(by, col)
+		by.kick(to - by.position, 12.0)
+		_lightning(by.position, to, col)
+	await _wait(0.15)
+	if t:
+		t.flash()
+		_pulse_glow(t, col)
+	_ring(to, col, 1.3)
+	_burst(to, col, 20, 300, 0.6, 0.0)
+	_float_text(to + Vector2(0, -115 if str(ev.get("target_side", "")) == "player" else 115), "NEGATED", col, 40)
+	shake(4)
+	await _wait(0.5)
 
 
 func _ev_flip(ev: Dictionary) -> void:

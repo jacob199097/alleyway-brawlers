@@ -30,7 +30,7 @@ const LIST := {
 	"BRITTLE": [Color("e8dcc0"), "BRITTLE: when it would go Down (losing a brawl, or an effect), it's KO'd instead."],
 	"REMAINS": [Color("b9a98a"), "REMAINS: when this token is KO'd or sacrificed, it goes to the Gutter instead of vanishing."],
 	"MARKED": [Color("ff4d6d"), "MARKED: you can see your opponent's hand and face-down cards. Only you can: they stay hidden from everyone else."],
-	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you flip or roll again."],
+	"LOADED": [Color("f2c14e"), "LOADED DICE: once per turn, when one of your coin flips or die rolls fails, you may flip or roll again. You're asked each time, so you can save it for a flip that matters more."],
 	"PLUNDER": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
 	"PLUNDERS": [Color("e8b04a"), "PLUNDER (Pirates): take a card from your opponent for yourself: from their hand (at random, unless it says you choose), the top of their deck or their Gutter into your hand, or one of their characters onto your side of the field for good. A plundered card is shown to both players."],
 	"INFILTRATE": [Color("9fe870"), "INFILTRATE: it can attack your opponent directly, even while they have standing characters (and past a Guard)."],
@@ -50,6 +50,7 @@ const LIST := {
 	"CORRODE": [Color("c8bb52"), "CORRODE X: at the start of its owner's next 3 turns, it loses X DEF. The loss lasts until it leaves the field."],
 	"DEBT": [Color("e89a5c"), "DEBT X: the next card your opponent plays costs X more Authority (one they play before the end of their next turn)."],
 	"COMBO": [Color("ffd43b"), "COMBO: it happens only if the card you played just before this one, this turn, was of the same clan (a character from your hand or a Hustle; Neutral cards break a chain). COMBO ×3: the two before it were."],
+	"NEGATE": [Color("c3a6ff"), "NEGATE: stop an effect from happening. Once per turn, when an enemy card's effect is about to happen (a character's, unless the card says Hustles or any card), you may NEGATE it: it doesn't happen, nor anything that follows from it. You're asked each time, so you can save it for one that matters more. An Ambush that negates an attack stops the attack."],
 	"CONFUSE": [Color("ff9fd6"), "CONFUSE: until the end of its owner's next turn, each time it attacks a coin is flipped. Heads, it attacks as chosen. Tails, it attacks a random other target instead: another it could have attacked, or one of its own side's characters (its player loses the Morale as usual)."],
 }
 ## Keywords of more than one word: the words after the first, highlighted as part of the same keyword.
@@ -63,13 +64,13 @@ const STATUS_HELP := {
 	"GUARDED": [Color("a0d8ff"), "CAN'T BE ATTACKED: its owner has another character that can be, so attacks have to go there. It doesn't stop effects, and it's off while the card is Downed, SILENCED or face-down."],
 }
 const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN", "RALLIES": "RALLY", "RALLIED": "RALLY", "ECHOES": "ECHO",
-	"CONFUSION": "CONFUSE"}
+	"CONFUSION": "CONFUSE", "NEGATES": "NEGATE", "NEGATED": "NEGATE"}
 ## Settings → Accessibility → Colour-Blind Colours: keywords coloured by what they do, in colours
 ## people with colour blindness can tell apart (Okabe-Ito, lightened for the dark screens). A keyword
 ## in none of these keeps its own colour.
 const CB_GROUPS := [
 	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL", "CORRODE", "DEBT"]],   # damage and weakening
-	[Color("eb9cd0"), ["STUN", "BLIND", "CONFUSE", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED", "TAUNT"]],   # holding back
+	[Color("eb9cd0"), ["STUN", "BLIND", "CONFUSE", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED", "TAUNT", "NEGATE"]],   # holding back
 	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS", "BRACE", "SHROUD"]],   # protection and recovery
 	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE", "RECKLESS", "RALLY", "HEIST", "ECHO", "COMBO"]],   # card rules
 ]

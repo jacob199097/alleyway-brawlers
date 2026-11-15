@@ -161,7 +161,7 @@ export class DuelState {
         // match's seed (replays repeat), fixed for seed -1 (tests compare engines), else random
         this._luck = seededRandom(seed > 0 ? (seed ^ LUCK_SALT) >>> 0 : seed === -1 ? LUCK_TEST_SEED : Math.floor(Math.random() * 4294967296));
         this._luckLast = null;   // the last flip or roll: {won, value} (if_luck follows it)
-        this._luckWait = null;   // a DOUBLE OR NOTHING not yet decided: {uid, ask} (its "If tails" waits for it)
+        this._luckWait = null;   // a question an effect waits on (DOUBLE OR NOTHING, LOADED DICE, NEGATE): {uid, ask} (its "If tails" waits for it)
         this._roll = 1;          // the last die's value ("for each pip")
         this.turn = 1;
         this.active = first;
@@ -1398,10 +1398,10 @@ export class DuelState {
         });
     }
 
-    /** What comes next in a brawl: at once, or, if a LOADED DICE question came up on the way (more asked than
-     *  loaded before), once it's answered. */
-    _atkThen(ctx, loaded, next) {
-        if (toInt(this._loadedAsks ?? 0) > loaded) (this._inAnswer ? this._newAsks : this._asks).push({ kind: 'then', side: ctx.side, cb: next });
+    /** What comes next in a brawl: at once, or, if a question that holds an effect back (LOADED DICE, NEGATE)
+     *  came up on the way (more asked than held before), once it's answered. */
+    _atkThen(ctx, held, next) {
+        if (toInt(this._heldAsks ?? 0) > held) (this._inAnswer ? this._newAsks : this._asks).push({ kind: 'then', side: ctx.side, cb: next });
         else next();
     }
 
@@ -1441,7 +1441,7 @@ export class DuelState {
             if (x.slot !== target && this.winner === '' && this.cardAt(side, from) === att) this._runFx(foe, x.slot, x.card, 'ally_attacked', att, vs);
         }
         if (this.cardAt(side, from) === att) this._runLasting(foe, 'ally_attacked', att, vs);
-        const loaded = toInt(this._loadedAsks ?? 0);
+        const held = toInt(this._heldAsks ?? 0);
         for (const e of this._fx(def, 'defend')) {
             k += 1;
             if (this.winner !== '' || this.cardAt(foe, target) !== def || !this._fxCond(foe, target, e, att) || !this._fxCountFire(def, `defend${k}`, e) || !this._fxOnce(def, `defend${k}`, e)) continue;
@@ -1457,7 +1457,7 @@ export class DuelState {
                 this._doFx(foe, target, def, e, vs);
             }
         }
-        this._atkThen(ctx, loaded, () => {
+        this._atkThen(ctx, held, () => {
             // The defender's effects may have removed or stopped the attacker (or itself)
             if (this.winner !== '' || this.cardAt(side, from) !== att || att.downed || this.cardAt(foe, target) !== def) return;
             this._atkBlindMiss(ctx, () => this._atkBrawl(ctx, def));
@@ -1477,10 +1477,10 @@ export class DuelState {
             this._effect(foe, def, `${def.name} is BRACED: ${att.name} loses ${x} ATK this turn`, target);
         }
         this._recalc();   // (what they did to either card counts in this brawl, e.g. SUPPRESS on the attacker)
-        const loaded = toInt(this._loadedAsks ?? 0);
+        const held = toInt(this._heldAsks ?? 0);
         ctx.extra = 0;
         this._brawlBonus(ctx, def);
-        this._atkThen(ctx, loaded, () => this._atkClash(ctx, def));
+        this._atkThen(ctx, held, () => this._atkClash(ctx, def));
     }
 
     _atkClash(ctx, def) {
@@ -2599,13 +2599,62 @@ export class DuelState {
 
     /** then: a follow-up effect that happens only if this one did something ("If you do, ...").
      *  Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP. */
-    _doFx(side, slot, c, e, vs = {}) {
+    /** follow: a follow-up (then) of an effect that has already happened: no NEGATE question of its own. */
+    _doFx(side, slot, c, e, vs = {}, follow = false) {
         const w = this._luckWait;
         if (w && w.uid === c.uid && String(e.if_luck ?? '') !== '') {   // ("If tails, ..." waits for the bet it follows)
             const cb = w.ask.cb;
             w.ask.cb = (...answer) => { if (cb) cb(...answer); if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, e, vs); };
             return;
         }
+        if (!follow && String(e.if_luck ?? '') === '') {   // NEGATE: an enemy may stop it (asked first: it waits)
+            const by = this._negator(side, c);
+            if (by) { this._askNegate(side, slot, c, e, vs, by); return; }
+        }
+        this._doFxGo(side, slot, c, e, vs);
+    }
+
+    /** NEGATE (a passive): once a turn, when an enemy card's effect is about to happen, its player may stop
+     *  it (and what follows from it). negates: 'character' (a character's effects; the default), 'hustle'
+     *  (Hustles and Ambushes) or 'any'. → the first other side's character that can, or null. */
+    _negator(side, c) {
+        if (this.winner !== '' || c == null) return null;
+        const kind = c.cardType === 'gang_member' ? 'character' : c.cardType === 'leader' ? 'leader' : 'hustle';
+        const fits = (p) => { const n = String(p.negates ?? 'character'); return n === 'any' || n === kind; };
+        for (const foe of this.foesOf(side)) {
+            const s = this.sides[foe];
+            if (!s || toInt(s.negate_turn ?? -1) === this.turn) continue;
+            for (const x of this.characters(foe)) {
+                if (!isEmpty(this._passive(foe, x.slot, x.card, 'negate_fx', fits))) return { side: foe, slot: x.slot, card: x.card };
+            }
+        }
+        return null;
+    }
+
+    /** NEGATE's question (the CPU negates): stop this effect, or let it happen and keep NEGATE for later. */
+    _askNegate(side, slot, c, e, vs, by) {
+        const w = { uid: c.uid, ask: null };   // ("If tails, ..." after it waits for the answer: _doFx)
+        w.ask = this._ask(by.side, 'negate', `${c.name}'s effect is about to happen. NEGATE it with ${by.card.name}? (once a turn)`, c,
+            [{ id: 'negate', label: 'NEGATE IT' }, { id: 'allow', label: 'LET IT HAPPEN (SAVE IT)' }], (choice) => {
+                if (this._luckWait === w) this._luckWait = null;
+                if (this.winner !== '') return;
+                const s = this.sides[by.side];
+                const at = this._slotOf(by.side, by.card, NO_SLOT);
+                if (choice !== 'negate' || toInt(s.negate_turn ?? -1) === this.turn || at === NO_SLOT) {
+                    this._doFxGo(side, this._slotOf(side, c, slot), c, e, vs);
+                    return;
+                }
+                s.negate_turn = this.turn;
+                this._luckLast = null;   // (it never happened: no "If heads" or "If tails" after it)
+                this._emit('negated', { side: by.side, slot: at, card: clone(by.card), target_side: side, target: this._slotOf(side, c, slot), target_card: clone(c) });
+                this._effect(by.side, by.card, `${by.card.name} NEGATES ${c.name}'s effect`, at);
+            });
+        this._luckWait = w;
+        this._heldAsks = toInt(this._heldAsks ?? 0) + 1;
+    }
+
+    /** The effect itself, once no NEGATE stopped it: DOUBLE OR NOTHING's question, a flip or roll, then it. */
+    _doFxGo(side, slot, c, e, vs) {
         if (String(e.luck ?? '') === 'double') { this._askDouble(side, slot, c, e, vs); return; }
         const now = { yes: true };   // (answered later, after a LOADED DICE question: where the card is then)
         this._luckGate(side, slot, c, e, (won) => {
@@ -2661,7 +2710,7 @@ export class DuelState {
         const then = e.then && typeof e.then === 'object' ? e.then : null;
         if (then == null) { this._doFxOne(side, slot, c, e, vs); return; }
         const did = this._did, asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
-        const next = () => { if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, then, vs); };
+        const next = () => { if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, then, vs, true); };
         this._doFxOne(side, slot, c, e, vs);
         if (this._did > did) next();
         else if (asks.length > queued) {
@@ -4184,7 +4233,7 @@ export class DuelState {
                 then(toss(true));
             });
         this._luckWait = w;
-        this._loadedAsks = toInt(this._loadedAsks ?? 0) + 1;
+        this._heldAsks = toInt(this._heldAsks ?? 0) + 1;
     }
 
     /** publicText: what the other players see instead (text names a card they mustn't know). */

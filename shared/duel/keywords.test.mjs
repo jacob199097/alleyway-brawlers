@@ -331,4 +331,50 @@ assert.ok(play(st, trickCombo));
 answerAll(st);
 assert.equal(st.sides.opponent.morale, 6000 - 100 - 400, 'after another of its clan: its COMBO too');
 
+// NEGATE: once a turn, an enemy card's effect may be stopped; its player is asked first (so they can save it)
+st = duel();
+st.sides.player.authority = 15;
+put(st, 'opponent', 0, unit(st, [{ when: 'passive', do: 'negate_fx' }]));
+const zap = (more = {}) => inHand(st, [{ when: 'deploy', do: 'damage', amount: 300, ...more }]);
+const z1 = zap({ then: { do: 'draw', amount: 1 } }), z2 = zap(), z3 = zap();
+const pendingAll = (s2) => { while (s2.pending && s2.pending.kind === 'choose') s2._answer(s2.pending.side, s2.pending.options[0].id); answerAll(s2); };
+handBefore = st.sides.player.hand.length;
+assert.ok(play(st, z1, 0));
+let q = st.pending;
+assert.equal(q?.key, 'negate', 'an enemy effect: the NEGATE player is asked');
+assert.equal(q.side, 'opponent');
+assert.deepEqual(q.options.map(o => o.id), ['negate', 'allow'], 'the CPU negates');
+assert.equal(st.sides.opponent.morale, 6000, 'nothing happens before the answer');
+assert.ok(st._answer('opponent', 'allow'));
+assert.equal(st.sides.opponent.morale, 5700, 'let through: it happens');
+assert.equal(st.sides.player.hand.length, handBefore - 1 + 1, 'and its follow-up, with no question of its own');
+assert.ok(!st.pending.key && st._asks.length === 0);
+assert.ok(play(st, z2, 1));
+q = st.pending;
+assert.equal(q?.key, 'negate', 'kept: asked again next time');
+assert.ok(st._answer('opponent', 'negate'));
+assert.equal(st.sides.opponent.morale, 5700, 'negated: it does not happen');
+assert.ok(st.takeEvents().some(e => e.type === 'negated' && e.side === 'opponent' && e.target_side === 'player' && e.target === 1), 'the game is told');
+assert.ok(play(st, z3, 2));
+assert.ok(!st.pending.key && st._asks.length === 0, 'once a turn');
+assert.equal(st.sides.opponent.morale, 5400);
+// What it can stop: a character's effects (the default), Hustles and Ambushes ("hustle"), or any card's
+const hustleNegated = (negates) => {
+    const s2 = duel();
+    put(s2, 'opponent', 0, unit(s2, [{ when: 'passive', do: 'negate_fx', ...(negates ? { negates } : {}) }]));
+    const t = s2.makeCard({ id: `test_neg_h${uid++}`, name: 'Trick', cardType: 'hustle', clanTag: 'test', authority: 0, effects: [{ do: 'damage', amount: 100 }] });
+    s2.sides.player.hand.push(t);
+    assert.ok(s2.doAction('player', { kind: 'hustle', uid: t.uid }));
+    pendingAll(s2);
+    return s2.sides.opponent.morale === 6000;
+};
+assert.ok(!hustleNegated(''), "a character's NEGATE lets Hustles through");
+assert.ok(hustleNegated('hustle') && hustleNegated('any'), 'a Hustle NEGATE (or any) stops it');
+// Its own side's effects are never asked about
+st = duel();
+st.sides.player.authority = 15;
+put(st, 'player', 3, unit(st, [{ when: 'passive', do: 'negate_fx', negates: 'any' }]));
+assert.ok(play(st, zap(), 0));
+assert.ok(!st.pending.key && st.sides.opponent.morale === 5700, 'your own NEGATE never stops your effects');
+
 console.log('keywords: all passed');
