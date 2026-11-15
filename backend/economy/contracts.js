@@ -17,7 +17,9 @@
  *   tracker / track / doneNow / doneAtEnd   following a goal through a match's events
  */
 
-const { pool } = require('../db/pool');
+// (the database only on first use: socket/onlineMatch.js loads this file for judging, and its tests run without
+// the server's packages)
+const db = () => require('../db/pool').pool;
 const { MATCHES, OFFERS, CPU_LEVELS, MODES, GOALS } = require('./contract_settings');
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -60,7 +62,7 @@ const secsToMidnight = () => {
 
 const rowOut = (r) => r && GOALS[r.goal] ? { id: r.id, ...card(r.goal), price: r.price, payout: r.payout, matches_left: r.matches_left, status: r.status } : null;
 
-async function status(playerId, client = pool) {
+async function status(playerId, client = db()) {
     const day = today();
     const { rows: [p] } = await client.query('SELECT karat FROM players WHERE id = $1', [playerId]);
     if (!p) return null;
@@ -80,7 +82,7 @@ async function status(playerId, client = pool) {
 async function buy(playerId, index) {
     const offer = offers(today())[Number(index)];
     if (!offer) return { error: 'That contract is not on offer.', code: 400 };
-    const client = await pool.connect();
+    const client = await db().connect();
     try {
         await client.query('BEGIN');
         const { rows: [busy] } = await client.query(
@@ -116,14 +118,14 @@ async function buy(playerId, index) {
 }
 
 async function activeFor(playerId) {
-    const { rows: [r] } = await pool.query(
+    const { rows: [r] } = await db().query(
         `SELECT id, goal, price, payout, matches_left, status FROM player_contracts WHERE player_id = $1 AND status = 'active'`, [playerId]);
     return rowOut(r);
 }
 
 /** It's done: marked done and paid, once → { payout, karat } (null if it wasn't active any more). */
 async function complete(playerId, id) {
-    const client = await pool.connect();
+    const client = await db().connect();
     try {
         await client.query('BEGIN');
         const { rows: [c] } = await client.query(
@@ -146,7 +148,7 @@ async function complete(playerId, id) {
 
 /** An eligible match ended and the contract wasn't done: one match fewer; none left and it has failed. */
 async function matchPlayed(playerId, id) {
-    const { rows: [c] } = await pool.query(
+    const { rows: [c] } = await db().query(
         `UPDATE player_contracts SET matches_left = matches_left - 1,
                 status = CASE WHEN matches_left <= 1 THEN 'failed' ELSE status END,
                 ended_at = CASE WHEN matches_left <= 1 THEN NOW() ELSE ended_at END
