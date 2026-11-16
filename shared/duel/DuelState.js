@@ -1414,7 +1414,7 @@ export class DuelState {
         if (this.winner !== '') return;
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
-            const dmg = Math.max(0, att.attack + ctx.bonus);
+            const dmg = Math.max(0, att.attack + ctx.bonus + toInt(this.rules.arena_bonus?.direct));   // (an arena's: direct attacks hit harder)
             this._emit('clash', this._withFoeKey({ side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' }, foe));
             const before = this.sides[foe].morale;
             this._damage(foe, dmg);
@@ -2262,8 +2262,8 @@ export class DuelState {
                         df += toInt(a[1].def);
                     }
                 }
-                const ab = this.rules.arena_bonus;   // the arena's edge for a clan's characters (_arenaBoost)
-                if (ab && c.clanTag === String(ab.clan ?? '')) { atk += toInt(ab.atk); df += toInt(ab.def); }
+                const ab = this.rules.arena_bonus;   // the arena's: every character's stats (_arenaBoost)
+                if (ab) { atk += toInt(ab.atk); df += toInt(ab.def); }
                 for (const q of this._equipsOn(c)) {   // an Equip's buffs are its character's
                     for (const e of this._fx(q.card, 'passive')) {
                         if (String(e.do ?? '') === 'buff' && this._fxCond(q.side, q.slot, e, null)) {
@@ -2701,12 +2701,26 @@ export class DuelState {
         if (e.negate) this._negate(side, slot, c, vs);   // ("... and negate the attack": an Ambush)
     }
 
-    /** The arena's edge for a clan (rules.arena_bonus: the server sets it from godot/data/arenas.json in Casual,
-     *  CPU and Turf Defense matches; never in Ranked). {clan, boost: an effect such as "burn", amount}: that
-     *  clan's cards' effects of that kind are stronger by amount (this). {clan, atk, def}: its characters' stats (_recalc). */
+    /** The arena's effect, for every card and player alike (rules.arena_bonus: the server sets it from
+     *  godot/data/arenas.json in every mode but Ranked). Any of: boost (an effect kind or a list, e.g.
+     *  ["burn", "stoke"]) + amount: those effects are stronger by amount (this); atk / def: every character's
+     *  stats (_recalc); direct: direct attacks' damage (_atkStrike); authority / draw: extra each turn, and
+     *  morale: regained (or lost, below 0) at the start of each turn (_beginTurn, _arenaMorale). */
     _arenaBoost(c, e) {
         const b = this.rules.arena_bonus;
-        return b && c && b.boost && String(e.do ?? '') === String(b.boost) && c.clanTag === String(b.clan ?? '') ? Math.max(0, toInt(b.amount)) : 0;
+        const kinds = b ? (Array.isArray(b.boost) ? b.boost : [b.boost]).map(String) : [];
+        return c && kinds.includes(String(e.do ?? '')) ? Math.max(0, toInt(b.amount)) : 0;
+    }
+
+    /** The arena's Morale at the start of a player's turn (rules.arena_bonus.morale: regained, or lost below 0). */
+    _arenaMorale(side) {
+        const b = this.rules.arena_bonus, n = toInt(b?.morale);
+        const why = String(b?.title ?? '') || 'THE ARENA';
+        if (n > 0) this._heal(side, null, n, -1, why);
+        else if (n < 0) {
+            this._emit('notice', { side, text: `${why}: -${-n} MORALE` });
+            this._damage(side, -n);
+        }
     }
 
     /** A sprung Ambush stops the attack (vs.ctx: the attack; nothing outside one). */
@@ -3781,12 +3795,14 @@ export class DuelState {
         this._emit('shuffle', { side });
     }
 
-    _heal(side, c, n, slot) {
+    /** (why: no card, e.g. the arena's: a notice instead of a card's effect) */
+    _heal(side, c, n, slot, why = '') {
         const s = this.sides[side];
         const gain = Math.min(n, toInt(s.max_morale ?? START_MORALE) - s.morale);
         if (gain > 0) {
             s.morale += gain;
-            this._effect(side, c, `${c.name}: +${gain} Morale`, slot);
+            if (why !== '') this._emit('notice', { side, text: `${why}: +${gain} MORALE` });
+            else this._effect(side, c, `${c.name}: +${gain} Morale`, slot);
             this._emit('heal', { side, amount: gain, morale: s.morale });
             if (!this._healing) {   // ("when you gain Morale" can't set itself off again)
                 this._healing = true;
@@ -3883,7 +3899,11 @@ export class DuelState {
             s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY;
             this._authEv(this.active, SECOND_PLAYER_AUTHORITY);
         }
-        if (this.turn > 1) this._draw(this.active);
+        const arena = this.rules.arena_bonus || {};   // (the arena's: a card and Authority extra each turn)
+        if (this.turn > 1) {
+            this._draw(this.active);
+            for (let i = 0; i < toInt(arena.draw) && this.winner === ''; i++) this._draw(this.active);
+        }
         const boss = this.rules.boss;   // (Turf Defense: the boss draws and gets Authority extra)
         if (boss && boss.seat === this.active && this.winner === '') {
             for (let i = 0; i < toInt(boss.draw) && this.winner === ''; i++) this._draw(this.active);
@@ -3896,6 +3916,10 @@ export class DuelState {
         if (edge > 0 && this.winner === '') {
             s.authority += edge;
             this._authEv(this.active, edge);
+        }
+        if (toInt(arena.authority) > 0 && this.winner === '') {
+            s.authority += toInt(arena.authority);
+            this._authEv(this.active, toInt(arena.authority));
         }
         if (toInt(s.tax ?? 0) > 0) {   // TAX: this turn's Authority, less what an opponent's card took
             const t = Math.min(toInt(s.tax), s.authority);
@@ -3921,6 +3945,8 @@ export class DuelState {
             }
         }
         this._statusTicks(this.active);
+        if (this.winner !== '') return;
+        this._arenaMorale(this.active);
         if (this.winner !== '') return;
         for (const e of this.characters(this.active)) this._runFx(this.active, e.slot, e.card, 'turn_start');
         this._runLasting(this.active, 'turn_start');

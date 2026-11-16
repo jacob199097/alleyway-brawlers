@@ -130,7 +130,7 @@ const server = http.createServer(app).listen(0, async () => {
 
         // ── One address: a page asked for through the server's other names goes to SITE_URL ─────
         r = await get('/clans?x=1', { 'x-forwarded-host': 'play.alleywaybrawlers.com' });
-        assert.equal(r.status, 302);
+        assert.equal(r.status, 301, 'moved for good (search engines keep only the one address)');
         assert.equal(r.headers.get('location'), 'https://alleywaybrawlers.com/clans?x=1');
         assert.equal((await get('/clans', { 'x-forwarded-host': 'alleywaybrawlers.com' })).status, 200);
         assert.equal((await get('/api/ping', { 'x-forwarded-host': 'play.alleywaybrawlers.com' })).status, 200, 'the game\'s calls are never sent away');

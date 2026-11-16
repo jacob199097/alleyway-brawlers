@@ -671,6 +671,12 @@ func _open(d: Dictionary) -> void:
 	against.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	against.custom_minimum_size = Vector2(560, 0)
 	left.add_child(against)
+	var edge = ArenaRoulette.find(str(d.get("id", ""))).get("bonus")   # (the arena's effect: CPU matches have it)
+	if edge is Dictionary:
+		var fx := UI.label("ARENA  ·  %s: %s" % [str(edge.get("title", "")), ArenaRoulette.bonus_text(edge)], 17, UI.GOLD)
+		fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		fx.custom_minimum_size = Vector2(560, 0)
+		left.add_child(fx)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	right.custom_minimum_size = Vector2(660, 0)

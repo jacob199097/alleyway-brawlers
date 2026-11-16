@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.163",
+        "notes": [
+            "Every arena except the Back Alley and the Rooftop now has its own effect, the same for both sides (not one clan any more). The Pit: every character +100 ATK. Frozen Lake: every character +100 DEF. The Caldera: BURN and STOKE +100. The Observatory: SHOCK +100. The Junkyard: BLEED +100. The Lab: POISON and CORRODE +100. The Crypt: DRAIN +100. Militia Outpost: SUPPRESS +100. Glowshroom Grove: HEAL +100. The High-Roller Table: card effects that make a player lose Morale take 100 more. The Docks: PLUNDER takes 1 more card. Dust Bowl: direct attacks deal 100 more. The Clockwork Tower: +1 Authority each turn. The Shattered Realm: an extra card each turn. Koi Garden: regain 100 Morale at the start of your turn. The Graveyard: lose 100 Morale at the start of your turn.",
+            "The match tells you the arena's effect at the start, and the turf map shows each district's. Arena effects count in Casual, CPU, Free-for-All and Turf Defense matches. In Ranked the arenas are just scenery."
+        ]
+    },
+    {
         "version": "0.9.162",
         "notes": [
             "Arena bonuses: six arenas now favour a clan. The Caldera: Arsonists cards' BURN is 100 stronger. Militia Outpost: Militia's SUPPRESS +100. The High-Roller Table: Wildcard's damage +100. The Crypt: Underworld's DRAIN +100. The Observatory: Nebula's SHOCK +100. The Docks: Pirates characters get +100 ATK. The match tells you at the start.",

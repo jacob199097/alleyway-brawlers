@@ -93,7 +93,7 @@ function swapSides(v) {
     return v;
 }
 
-const { pickArena, arenaBonus } = require('../utils/arenas');   // (the 1v1 arenas, and each one's edge for a clan)
+const { pickArena, arenaBonus } = require('../utils/arenas');   // (the 1v1 arenas, and each one's effect)
 
 function redact(c) {
     return { uid: c.uid, face_down: true, position: c.position, downed: c.downed,

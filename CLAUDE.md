@@ -36,8 +36,9 @@
 - Ranked seasons: `backend/economy/seasons.js` (numbers in `season_settings.js`, each season's prize card (Kingpin and Legend) in
   `shared/seasons.js`), `godot/scripts/ui/seasons.gd`. Rewards go by the highest rank reached, claimed in the game; a new
   season drops every rank two. Season 0 runs until launch. End one with `node backend/scripts/season.mjs end --apply`.
-- Arena bonuses: an arena's `bonus` in `godot/data/arenas.json` (a clan's effect kind stronger, or its characters' ATK/DEF);
-  `backend/utils/arenas.js` puts it in a match's rules (`arena_bonus`, both engines) in every mode but Ranked.
+- Arena effects: an arena's `bonus` in `godot/data/arenas.json`, for both sides, on every arena but the Back Alley and Rooftop
+  (effect kinds stronger, ATK/DEF, direct attacks, Authority / a card / Morale each turn; `_arenaBoost` in both engines);
+  `backend/utils/arenas.js` puts it in a match's rules (`arena_bonus`) in every mode but Ranked.
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

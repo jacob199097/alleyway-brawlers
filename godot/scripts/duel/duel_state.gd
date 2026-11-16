@@ -1655,7 +1655,7 @@ func _atk_strike(ctx: Dictionary) -> void:
 	var att: Dictionary = ctx.att
 
 	if target == DIRECT:
-		var dmg: int = maxi(0, att.attack + ctx.bonus)
+		var dmg: int = maxi(0, att.attack + ctx.bonus + int(_arena().get("direct", 0)))   # (an arena's: direct attacks hit harder)
 		_emit("clash", _with_foe_key({"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"}, foe))
 		var before := int(sides[foe].morale)
 		_damage(foe, dmg)
@@ -2577,8 +2577,8 @@ func _recalc() -> void:
 				if clan == "" or c.get("clanTag") == clan:
 					atk += int(a[1].get("atk", 0))
 					df += int(a[1].get("def", 0))
-			var ab = rules.get("arena_bonus")   # the arena's edge for a clan's characters (_arena_boost)
-			if ab is Dictionary and c.get("clanTag") == str(ab.get("clan", "")):
+			var ab = rules.get("arena_bonus")   # the arena's: every character's stats (_arena_boost)
+			if ab is Dictionary:
 				atk += int(ab.get("atk", 0))
 				df += int(ab.get("def", 0))
 			for q in _equips_on(c):   # an Equip's buffs are its character's
@@ -3171,15 +3171,35 @@ func _ask_double(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	_luck_wait = w
 
 
-## The arena's edge for a clan (rules.arena_bonus: the server sets it from data/arenas.json in Casual, CPU
-## and Turf Defense matches; never in Ranked). {clan, boost: an effect such as "burn", amount}: that clan's
-## cards' effects of that kind are stronger by amount (this). {clan, atk, def}: its characters' stats (_recalc).
-func _arena_boost(c: Dictionary, e: Dictionary) -> int:
+## The arena's effect, for every card and player alike (rules.arena_bonus: the server sets it from
+## data/arenas.json in every mode but Ranked; {} without one). Any of: boost (an effect kind or a list, e.g.
+## ["burn", "stoke"]) + amount: those effects are stronger by amount (_arena_boost); atk / def: every
+## character's stats (_recalc); direct: direct attacks' damage (_atk_strike); authority / draw: extra each
+## turn, and morale: regained (or lost, below 0) at the start of each turn (_begin_turn, _arena_morale).
+func _arena() -> Dictionary:
 	var b = rules.get("arena_bonus")
-	if not (b is Dictionary) or c.is_empty() or str(b.get("boost", "")) == "" or str(e.get("do", "")) != str(b.boost) \
-			or c.get("clanTag") != str(b.get("clan", "")):
+	return b if b is Dictionary else {}
+
+
+func _arena_boost(c: Dictionary, e: Dictionary) -> int:
+	var b := _arena()
+	var kinds: Array = b.boost if b.get("boost") is Array else [b.get("boost", "")]
+	if c.is_empty() or not kinds.any(func(k): return str(k) == str(e.get("do", ""))):
 		return 0
 	return maxi(0, int(b.get("amount", 0)))
+
+
+## The arena's Morale at the start of a player's turn (rules.arena_bonus.morale: regained, or lost below 0).
+func _arena_morale(side: String) -> void:
+	var n := int(_arena().get("morale", 0))
+	var why := str(_arena().get("title", ""))
+	if why == "":
+		why = "THE ARENA"
+	if n > 0:
+		_heal(side, {}, n, -1, why)
+	elif n < 0:
+		_emit("notice", {"side": side, "text": "%s: -%d MORALE" % [why, -n]})
+		_damage(side, -n)
 
 
 func _do_fx_run(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
@@ -4391,12 +4411,16 @@ func _shuffle_deck(side: String) -> void:
 	_emit("shuffle", {"side": side})
 
 
-func _heal(side: String, c: Dictionary, n: int, slot: int) -> void:
+## (why: no card, e.g. the arena's: a notice instead of a card's effect)
+func _heal(side: String, c: Dictionary, n: int, slot: int, why := "") -> void:
 	var s: Dictionary = sides[side]
 	var gain: int = mini(n, int(s.get("max_morale", START_MORALE)) - s.morale)
 	if gain > 0:
 		s.morale += gain
-		_effect(side, c, "%s: +%d Morale" % [c.name, gain], slot)
+		if why != "":
+			_emit("notice", {"side": side, "text": "%s: +%d MORALE" % [why, gain]})
+		else:
+			_effect(side, c, "%s: +%d Morale" % [c.name, gain], slot)
 		_emit("heal", {"side": side, "amount": gain, "morale": s.morale})
 		if not _healing:   # ("when you gain Morale" can't set itself off again)
 			_healing = true
@@ -4525,8 +4549,13 @@ func _begin_turn() -> void:
 	if s.turns == 1 and active != first_seat and SECOND_PLAYER_AUTHORITY > 0 and not ffa:
 		s.authority = s.authority_max + SECOND_PLAYER_AUTHORITY
 		_auth_ev(active, SECOND_PLAYER_AUTHORITY)
+	var arena := _arena()   # (the arena's: a card and Authority extra each turn)
 	if turn > 1:
 		_draw(active)
+		for i in int(arena.get("draw", 0)):
+			if winner != "":
+				break
+			_draw(active)
 	var boss = rules.get("boss")   # (Turf Defense: the boss draws and gets Authority extra)
 	if boss is Dictionary and str(boss.get("seat", "")) == active and winner == "":
 		for i in int(boss.get("draw", 0)):
@@ -4540,6 +4569,9 @@ func _begin_turn() -> void:
 	if edge > 0 and winner == "":
 		s.authority += edge
 		_auth_ev(active, edge)
+	if int(arena.get("authority", 0)) > 0 and winner == "":
+		s.authority += int(arena.authority)
+		_auth_ev(active, int(arena.authority))
 	if int(s.get("tax", 0)) > 0:   # TAX: this turn's Authority, less what an opponent's card took
 		var t: int = mini(int(s.tax), s.authority)
 		s.tax = 0
@@ -4561,6 +4593,9 @@ func _begin_turn() -> void:
 		else:
 			e.card.down_turns = 1
 	_status_ticks(active)
+	if winner != "":
+		return
+	_arena_morale(active)
 	if winner != "":
 		return
 	for e in characters(active):

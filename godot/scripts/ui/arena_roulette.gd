@@ -42,6 +42,42 @@ static func find(id: String) -> Dictionary:
 	return {}
 
 
+## An arena's effect in words (its data/arenas.json "bonus", the server's rules.arena_bonus): a sentence for
+## each thing it changes, e.g. "Every BURN and STOKE effect is 100 stronger." ("" without one).
+static func bonus_text(b: Dictionary) -> String:
+	var out: Array = []
+	var kinds: Array = b.boost if b.get("boost") is Array else ([b.boost] if str(b.get("boost", "")) != "" else [])
+	var n := int(b.get("amount", 0))
+	var named: Array = []
+	for k in kinds:
+		match str(k):
+			"damage":   # (a card's "loses 600 Morale")
+				out.append("Every card effect that makes a player lose Morale takes %d more (not BURN or DRAIN)." % n)
+			"plunder":
+				out.append("Every PLUNDER from a hand or deck takes %d more card%s." % [n, "" if n == 1 else "s"])
+			_:
+				named.append(str(k).to_upper())
+	if not named.is_empty():
+		var list: String = ", ".join(named.slice(0, -1)) + " and " + str(named[-1]) if named.size() > 1 else str(named[0])
+		out.push_front("Every %s effect is %d stronger." % [list, n])
+	var stats: Array = []
+	for k in ["atk", "def"]:
+		if int(b.get(k, 0)) != 0:
+			stats.append("%+d %s" % [int(b[k]), k.to_upper()])
+	if not stats.is_empty():
+		out.append("Every character gets %s." % " and ".join(stats))
+	if int(b.get("direct", 0)) > 0:
+		out.append("Direct attacks deal %d more Morale damage." % int(b.direct))
+	if int(b.get("authority", 0)) > 0:
+		out.append("Every player gets %d extra Authority each turn." % int(b.authority))
+	if int(b.get("draw", 0)) > 0:
+		out.append("Every player draws %d extra card%s each turn." % [int(b.draw), "" if int(b.draw) == 1 else "s"])
+	var m := int(b.get("morale", 0))
+	if m != 0:
+		out.append("Every player %s %d Morale at the start of their turn." % ["regains" if m > 0 else "loses", absi(m)])
+	return " ".join(out)
+
+
 static func random_id() -> String:
 	var list := arenas()
 	return str(list.pick_random().id) if not list.is_empty() else ""

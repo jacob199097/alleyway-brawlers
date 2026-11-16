@@ -328,11 +328,13 @@ const LEADER_SAMPLES := [
 
 ## Turf Defense (both players, then the boss; see shared/duel/turf.test.mjs)
 ## Arena bonuses (data/arenas.json "bonus"), for the games played with one
-const ARENA_BONUSES := [
-	{"clan": "arsonists", "boost": "burn", "amount": 100},
-	{"clan": "pirates", "atk": 100, "def": 50},
-	{"clan": "wildcard", "boost": "damage", "amount": 100},
-	{"clan": "pirates", "boost": "draw", "amount": 1},
+const ARENA_BONUSES := [   # (data/arenas.json's kinds of effect, for both sides)
+	{"title": "LAVA HEAT", "boost": ["burn", "stoke"], "amount": 100},
+	{"title": "T", "atk": 100, "def": 50},
+	{"title": "HIGH STAKES", "boost": ["damage", "drain", "heal"], "amount": 100},
+	{"title": "OPEN GROUND", "direct": 300, "authority": 1},
+	{"title": "SPLIT REFLECTIONS", "draw": 1, "morale": -200},
+	{"title": "STILL WATERS", "morale": 150, "boost": ["plunder", "suppress", "shock"], "amount": 1},
 ]
 const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000}, "leader_influence": {"boss": 2.0},
 	"boss": {"seat": "boss", "name": "Test Boss", "draw": 2, "authority": 1, "phases": [

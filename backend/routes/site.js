@@ -109,10 +109,11 @@ function send(res, html, status = 200) {
 
 /** A page: `build(ctx, req)` gives its HTML, or null when there is no such page. */
 const page = (build) => async (req, res, next) => {
-    // (one address: a visit through the server's other names goes to SITE_URL)
+    // (one address: a visit through the server's other names goes to SITE_URL, for good: 301, so search
+    // engines keep only that one)
     const host = hostOf(req);
     if (SITE_URL && req.get('x-forwarded-host') && host !== SITE_HOST && !LOCAL.test(host)) {
-        return res.redirect(302, SITE_URL + req.originalUrl);
+        return res.redirect(301, SITE_URL + req.originalUrl);
     }
     try {
         const ctx = await context(req);

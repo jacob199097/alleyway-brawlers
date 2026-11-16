@@ -40,7 +40,7 @@ const ARENAS = (() => {
     try { return [...JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../godot/data/arenas.json'), 'utf8')).map(a => String(a.id)), 'crossroads']; }
     catch { return ['crossroads']; }
 })();
-const { arenaBonus } = require('../utils/arenas');   // (an arena's edge for a clan, as in Casual)
+const { arenaBonus } = require('../utils/arenas');   // (an arena's effect, as in Casual)
 const TURN_SECS    = 90;
 const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;

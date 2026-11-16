@@ -377,26 +377,61 @@ put(st, 'player', 3, unit(st, [{ when: 'passive', do: 'negate_fx', negates: 'any
 assert.ok(play(st, zap(), 0));
 assert.ok(!st.pending.key && st.sides.opponent.morale === 5700, 'your own NEGATE never stops your effects');
 
-// Arena bonuses (rules.arena_bonus: the server's, from godot/data/arenas.json; never in Ranked)
-const arenaDuel = (bonus) => {
-    const s2 = new DuelState({ player: [], opponent: [] }, {}, {}, 'player', -1, { arena_bonus: bonus });
-    s2.turn = 4; s2.phase = 'deployment'; s2.active = 'player';
+// Arena effects (rules.arena_bonus: the server's, from godot/data/arenas.json; never in Ranked), for every
+// card and player alike
+const arenaDuel = (bonus, phase = 'deployment') => {
+    const s2 = duel(phase);
+    s2.rules = { ...s2.rules, arena_bonus: bonus };
     s2.sides.player.authority = 15;
     return s2;
 };
-st = arenaDuel({ clan: 'test', boost: 'burn', amount: 100 });
-const torch = (clan) => { const c = unit(st, [{ when: 'deploy', do: 'burn', target: 'enemy', amount: 200 }], 1000, 1000, { clanTag: clan }); st.sides.player.hand.push(c); return c; };
+st = arenaDuel({ title: 'LAVA HEAT', boost: ['burn', 'stoke'], amount: 100 });
+const torch = (clan, kind = 'burn') => { const c = unit(st, [{ when: 'deploy', do: kind, target: 'enemy', amount: 200 }], 1000, 1000, { clanTag: clan }); st.sides.player.hand.push(c); return c; };
 const foeA = put(st, 'opponent', 0, unit(st, [], 1000, 3000));
 assert.ok(play(st, torch('test'), 0));
 pendingAll(st);
-assert.equal(foeA.burn?.amt, 300, "the arena's clan: its BURN 200 is BURN 300 here");
-const foeB = put(st, 'opponent', 1, unit(st, [], 1000, 3000));
+assert.equal(foeA.burn?.amt, 300, 'BURN 200 is BURN 300 here');
 delete foeA.burn;
 assert.ok(play(st, torch('elsewhere'), 1));
 pendingAll(st);
-assert.equal((foeA.burn?.amt ?? 0) + (foeB.burn?.amt ?? 0), 200, 'another clan: as written');
-st = arenaDuel({ clan: 'test', atk: 100, def: 50 });
-const home = put(st, 'player', 0, unit(st, [], 1000, 1000)), away = put(st, 'player', 1, unit(st, [], 1000, 1000, { clanTag: 'elsewhere' }));
-assert.ok(home.attack === 1100 && home.defense === 1050 && away.attack === 1000, "the arena's clan's characters: +100 ATK, +50 DEF");
+assert.equal(foeA.burn?.amt, 300, "any clan's");
+assert.ok(play(st, torch('elsewhere', 'stoke'), 2));
+pendingAll(st);
+assert.equal(foeA.burn?.amt, 600, 'and STOKE 200 adds 300');
+assert.ok(play(st, torch('test', 'shock'), 3));
+pendingAll(st);
+assert.equal(foeA.defense, 2800, 'an effect it names only: SHOCK 200 as written');
+st = arenaDuel({ title: 'T', atk: 100, def: 50 });
+const home = put(st, 'player', 0, unit(st, [], 1000, 1000)), away = put(st, 'opponent', 1, unit(st, [], 1000, 1000, { clanTag: 'elsewhere' }));
+assert.ok(home.attack === 1100 && home.defense === 1050 && away.attack === 1100 && away.defense === 1050, 'every character, both sides: +100 ATK, +50 DEF');
+st = arenaDuel({ title: 'OPEN GROUND', direct: 100 }, 'brawl');
+put(st, 'player', 0, unit(st, [], 1000, 1000));
+let was = st.sides.opponent.morale;
+assert.ok(attack(st, 0, DIRECT));
+assert.equal(was - st.sides.opponent.morale, 1100, 'a direct attack: 100 more');
+// Each turn: Authority and a card extra, Morale regained (or lost)
+const turnOf = (bonus) => {
+    const s2 = arenaDuel(bonus);
+    s2.active = 'opponent';
+    s2.turn = 5;
+    s2.sides.opponent.turns = 3;
+    s2.sides.opponent.authority_max = 3;
+    s2.sides.opponent.morale -= 500;
+    const before = { hand: s2.sides.opponent.hand.length, morale: s2.sides.opponent.morale };
+    s2._beginTurn();
+    pendingAll(s2);
+    const o = s2.sides.opponent;
+    return { auth: o.authority, cards: o.hand.length - before.hand, morale: o.morale - before.morale };
+};
+const plain = turnOf({ title: 'T', atk: 0 });
+assert.deepEqual([plain.auth, plain.cards, plain.morale], [4, 1, 0], 'no arena: the usual turn');
+assert.equal(turnOf({ title: 'OVERCLOCKED', authority: 1 }).auth, 5, '+1 Authority each turn');
+assert.equal(turnOf({ title: 'SPLIT', draw: 1 }).cards, 2, 'a card extra each turn');
+assert.equal(turnOf({ title: 'STILL WATERS', morale: 100 }).morale, 100, 'Morale regained at the start of the turn');
+assert.equal(turnOf({ title: 'RESTLESS DEAD', morale: -100 }).morale, -100, 'or lost');
+st = arenaDuel({ title: 'STILL WATERS', morale: 100 });
+st.active = 'opponent';
+st._beginTurn();
+assert.equal(st.sides.opponent.morale, st.sides.opponent.max_morale ?? 8000, 'never above the most it can be');
 
 console.log('keywords: all passed');
