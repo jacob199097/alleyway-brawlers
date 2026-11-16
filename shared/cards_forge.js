@@ -9783,11 +9783,13 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_011",
         "code": "PIRA-011",
         "flavourText": "Knock first? I'm the knock.",
-        "effectText": "When this card KOs a character: PROMOTE this card.",
+        "effectText": "When this card KOs a character: If your opponent has 4 or more cards in hand, PROMOTE this card.",
         "effects": [
             {
                 "when": "ko",
-                "do": "promote"
+                "do": "promote",
+                "if": "foe_hand_ge",
+                "n": 4
             }
         ],
         "clanName": "Pirates",
@@ -10624,7 +10626,7 @@ export const FORGE_CARDS = {
     },
     "card_pira_037": {
         "id": "card_pira_037",
-        "name": "Mad Jack, the Powder Keg",
+        "name": "Mad Jack",
         "clan": "pirates",
         "cardType": "gang_member",
         "authority": 3,
@@ -10981,14 +10983,14 @@ export const FORGE_CARDS = {
         "art_url": "card_pira_041",
         "code": "PIRA-041",
         "flavourText": "The sea keeps the count, and never pays it back.",
-        "effectText": "At the end of your opponent's turn: If your opponent controls 4 or more characters, EXILE one enemy character.",
+        "effectText": "At the end of your opponent's turn: If your opponent has 3 or more cards in hand, EXILE one enemy character.",
         "effects": [
             {
                 "when": "foe_turn_end",
                 "do": "exile",
                 "target": "enemy",
-                "if": "enemies_ge",
-                "n": 4
+                "if": "foe_hand_ge",
+                "n": 3
             }
         ],
         "clanName": "Pirates",
@@ -11174,6 +11176,241 @@ export const FORGE_CARDS = {
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
         "ambushClan": "pirates",
+        "forge": "forge2"
+    },
+    "card_pira_047": {
+        "id": "card_pira_047",
+        "name": "Dreadmaw",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 2,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_047",
+        "code": "PIRA-047",
+        "flavourText": "Come closer, my lantern's the last light you'll ever see.",
+        "effectText": "When this card is KO'd: KO the character that KO'd it.",
+        "effects": [
+            {
+                "when": "self_ko",
+                "do": "ko",
+                "target": "attacker"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 1000,
+        "defense": 0,
+        "level": 1,
+        "subtype": "brawler",
+        "promotesTo": null,
+        "forge": "forge2"
+    },
+    "card_pira_048": {
+        "id": "card_pira_048",
+        "name": "Powder Keg Panic",
+        "clan": "pirates",
+        "cardType": "ambush",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 3,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_048",
+        "code": "PIRA-048",
+        "flavourText": "Go on, take one more step. I dare you.",
+        "effectText": "When an enemy attacks one of your PIRATES characters: KO the attacker and negate the attack. If you do, PLUNDER the top 2 cards of your opponent's deck (into your hand).",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "ko",
+                "target": "attacker",
+                "negate": true
+            },
+            {
+                "when": "defend",
+                "do": "plunder",
+                "from": "deck",
+                "amount": 2,
+                "if_done": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "ambushClan": "pirates",
+        "forge": "forge2"
+    },
+    "card_pira_049": {
+        "id": "card_pira_049",
+        "name": "Kraken's Wrath",
+        "clan": "pirates",
+        "cardType": "ambush",
+        "authority": 4,
+        "tributeCost": 0,
+        "rarity": 4,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_049",
+        "code": "PIRA-049",
+        "flavourText": "Ye thought the sea was on your side? Well, she's got other plans for ya!",
+        "effectText": "When an enemy attacks one of your PIRATES characters: Return the attacker to its owner's hand and negate the attack. If you do, DOWN the characters next to it (COLLATERAL).",
+        "effects": [
+            {
+                "when": "defend",
+                "do": "bounce",
+                "target": "attacker",
+                "negate": true
+            },
+            {
+                "when": "defend",
+                "do": "down",
+                "target": "collateral",
+                "if_done": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "ambushClan": "pirates",
+        "forge": "forge2"
+    },
+    "card_pira_050": {
+        "id": "card_pira_050",
+        "name": "Dragged to the Depths",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 2,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_050",
+        "code": "PIRA-050",
+        "flavourText": "Another fool for the deep! The sea'll feast well tonight, lads!",
+        "effectText": "If your opponent controls 3 or more characters, put one enemy character on top of its owner's deck.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "topdeck",
+                "target": "enemy",
+                "if": "enemies_ge",
+                "n": 3
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_051": {
+        "id": "card_pira_051",
+        "name": "Broadside Barrage",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 3,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_051",
+        "code": "PIRA-051",
+        "flavourText": "ALL CANNONS, FIRE! Let's send these scurvy dogs straight to the bottom!",
+        "effectText": "COMBO: DOWN all enemy characters in ATK position.",
+        "effects": [
+            {
+                "when": "combo",
+                "do": "down",
+                "target": "enemies",
+                "only": "atk"
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "subtype": "continuous",
+        "forge": "forge2"
+    },
+    "card_pira_052": {
+        "id": "card_pira_052",
+        "name": "X Marks The Spot",
+        "clan": "pirates",
+        "cardType": "hustle",
+        "authority": 1,
+        "tributeCost": 0,
+        "rarity": 1,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_052",
+        "code": "PIRA-052",
+        "flavourText": "",
+        "effectText": "Search your deck for a PIRATES Hustle and add it to your hand.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "search",
+                "clan": "pirates",
+                "kind": "hustle",
+                "amount": 1,
+                "choose": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "forge": "forge2"
+    },
+    "card_pira_053": {
+        "id": "card_pira_053",
+        "name": "The Phantom Armada",
+        "clan": "pirates",
+        "cardType": "gang_member",
+        "authority": 8,
+        "tributeCost": 2,
+        "rarity": 4,
+        "clanTag": "pirates",
+        "effectKey": "",
+        "art_url": "card_pira_053",
+        "code": "PIRA-053",
+        "flavourText": "Ye can sink our ships, but ye can't kill a crew that's already dead!",
+        "effectText": "When deployed: Put a character of your choice from your opponent's Gutter onto your side of the field in DEF position.\nWhen deployed: Give your other PIRATES characters UNDEAD.\nYour opponent must attack this card first if it is standing.\nACTIVATE (once per turn, discard 1 card): DEBT 2. If you do, draw 1 card.",
+        "effects": [
+            {
+                "when": "deploy",
+                "do": "revive",
+                "from": "foe",
+                "position": "def",
+                "amount": 1,
+                "choose": true
+            },
+            {
+                "when": "deploy",
+                "do": "give_undead",
+                "target": "allies",
+                "clan": "pirates"
+            },
+            {
+                "when": "passive",
+                "do": "guard"
+            },
+            {
+                "when": "activate",
+                "do": "debt",
+                "cost": "discard",
+                "amount": 2,
+                "cost_n": 1
+            },
+            {
+                "when": "activate",
+                "do": "draw",
+                "amount": 1,
+                "if_done": true
+            }
+        ],
+        "clanName": "Pirates",
+        "clanColor": "#2ec4b6",
+        "attack": 3000,
+        "defense": 4000,
+        "level": 1,
+        "subtype": "heavy",
+        "promotesTo": null,
         "forge": "forge2"
     }
 };
