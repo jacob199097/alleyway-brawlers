@@ -522,7 +522,7 @@ func _tile(d: Dictionary, at: Vector2) -> void:
 		_open(d))
 	b.mouse_entered.connect(func(): Sfx.play("hover", 1.2, -14.0))
 	add_child(b)
-	var img := UI.texture_rect(UI.tex(str(d.get("image", ""))), TILE - Vector2(8, 8), true)
+	var img := UI.texture_rect(ArenaRoulette.thumb(str(d.get("image", ""))), TILE - Vector2(8, 8), true)   # (its small copy)
 	img.position = Vector2(4, 4)
 	img.modulate = Color(0.62, 0.62, 0.68) if holder != "" else Color(0.42, 0.42, 0.48)
 	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -662,7 +662,7 @@ func _open(d: Dictionary) -> void:
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 14)
 	row.add_child(left)
-	var img := UI.texture_rect(UI.tex(str(d.get("image", ""))), Vector2(560, 373), true)
+	var img := UI.texture_rect(ArenaRoulette.thumb(str(d.get("image", ""))), Vector2(560, 373), true)
 	left.add_child(img)
 	var fight := UI.button("⚔  FIGHT HERE  (VS CPU)", _fight.bind(d), Vector2(560, 70), UI.RED)
 	left.add_child(fight)
@@ -804,7 +804,7 @@ func _fight(d: Dictionary) -> void:
 		UI.dialog(self, "CAN'T START DUEL", deck.error, buttons, UI.RED)
 		return
 	_spin = UI.spinner(self, Vector2(960, 1000), "STARTING MATCH…")
-	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784), true)   # (no spin: it's the district picked)
+	_arena = ArenaRoulette.spin(self, str(d.get("id", "")), Vector2(1460, 784), true, false, true)   # (no spin: it's the district picked)
 	var why := await Game.request_cpu_match(false, "", false, str(d.get("id", "")), true)   # (the gang's stars decide how it plays)
 	if why != "":
 		on_online_error(why)

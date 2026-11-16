@@ -353,7 +353,7 @@ func _start(mode: String) -> void:
 	_starting = true
 	_spin = UI.spinner(self, Vector2(960, 980), "STARTING MATCH…")
 	var arena := ArenaRoulette.random_id()
-	_arena = ArenaRoulette.spin(self, arena, Vector2(1460, 784))
+	_arena = ArenaRoulette.spin(self, arena, Vector2(1460, 784), false, false, mode != "challenge")   # (the weekly challenge keeps its own rules)
 	var why := await Game.request_cpu_match(false, difficulty, mode == "challenge", arena)
 	if why != "":
 		on_online_error(why)

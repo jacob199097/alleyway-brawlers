@@ -93,5 +93,7 @@ func _draw() -> void:
 
 ## A leaning four-sided piece between two x on the middle line, from y0 to y1, a colour at each corner.
 func _strip(xa: float, xb: float, y0: float, y1: float, tl: Color, tr: Color, bl: Color, br: Color) -> void:
+	if absf(xb - xa) < 0.5 or absf(y1 - y0) < 0.5:   # (nothing to draw: a flat piece can't be filled, e.g. the gleam at an end)
+		return
 	draw_polygon(PackedVector2Array([Vector2(_lean(xa, y0), y0), Vector2(_lean(xb, y0), y0), Vector2(_lean(xb, y1), y1), Vector2(_lean(xa, y1), y1)]),
 		PackedColorArray([tl, tr, br, bl]))

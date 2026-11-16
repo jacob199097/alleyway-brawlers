@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.164",
+        "notes": [
+            "The arena roulette no longer stutters the first time it spins after starting the game: it shows small copies of the arenas, loaded in the background. The turf map's districts use them too.",
+            "When the roulette lands, it shows the arena's effect above it (in every mode that has arena effects; not in Ranked or the weekly challenge).",
+            "Arenas react to the fight: on big hits and KOs their lights flare, water and leaves shudder, dust and embers swirl, and crowds go off with camera flashes. Settings → Screen Shake & Flashes turns it down (off in Photosensitive mode).",
+            "The game keeps fewer full-size arena pictures in memory after a match.",
+            "Fixed a drawing error on the banners that cross the table."
+        ]
+    },
+    {
         "version": "0.9.163",
         "notes": [
             "Every arena except the Back Alley and the Rooftop now has its own effect, the same for both sides (not one clan any more). The Pit: every character +100 ATK. Frozen Lake: every character +100 DEF. The Caldera: BURN and STOKE +100. The Observatory: SHOCK +100. The Junkyard: BLEED +100. The Lab: POISON and CORRODE +100. The Crypt: DRAIN +100. Militia Outpost: SUPPRESS +100. Glowshroom Grove: HEAL +100. The High-Roller Table: card effects that make a player lose Morale take 100 more. The Docks: PLUNDER takes 1 more card. Dust Bowl: direct attacks deal 100 more. The Clockwork Tower: +1 Authority each turn. The Shattered Realm: an extra card each turn. Koi Garden: regain 100 Morale at the start of your turn. The Graveyard: lose 100 Morale at the start of your turn.",

@@ -24,6 +24,15 @@ foreach ($f in Get-ChildItem (Join-Path $src '*.jpg')) {
         [IO.File]::WriteAllText($imp, "[remap]`n`nimporter=`"texture`"`ntype=`"CompressedTexture2D`"`n`n[params]`n`ncompress/mode=1`ncompress/lossy_quality=0.9`nmipmaps/generate=true`n")
     }
 }
+# The arenas' small copies (tools/make_arena_thumbs.gd: the roulette and the turf map), imported the same way
+New-Item -ItemType Directory -Force (Join-Path $dst 'arena_thumbs') | Out-Null
+foreach ($f in Get-ChildItem (Join-Path $src 'arena_thumbs\*.jpg')) {
+    Copy-Item $f.FullName (Join-Path $dst 'arena_thumbs') -Force
+    $imp = Join-Path $dst ('arena_thumbs\' + $f.Name + '.import')
+    if (-not (Test-Path $imp)) {
+        [IO.File]::WriteAllText($imp, "[remap]`n`nimporter=`"texture`"`ntype=`"CompressedTexture2D`"`n`n[params]`n`ncompress/mode=1`ncompress/lossy_quality=0.9`nmipmaps/generate=true`n")
+    }
+}
 # Everything at the top level except the unused frame art and the menu video (Godot can't play mp4)
 Get-ChildItem $src -File | Where-Object { $_.Extension -in '.png', '.mp3' -and $_.Name -ne 'Cropped_Frame.png' } |
     Copy-Item -Destination $dst -Force

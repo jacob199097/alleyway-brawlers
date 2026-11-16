@@ -75,7 +75,7 @@ func on_online_start(data) -> void:
 	if arena is String and arena != "" and not data.get("resync", false):
 		_ready_btn.disabled = true
 		_status.text = "THE FIGHT IS ON"
-		var r := preload("res://scripts/ui/arena_roulette.gd").spin(self, arena, Vector2(1440, 640), false, true)
+		var r := preload("res://scripts/ui/arena_roulette.gd").spin(self, arena, Vector2(1440, 640), false, true, true)
 		await r.landed
 		await get_tree().create_timer(0.6).timeout
 		if not is_inside_tree():

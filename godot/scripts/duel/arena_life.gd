@@ -20,6 +20,8 @@ extends Node2D
 ##   koi            fish swimming under the water, wandering, their tails swishing
 ##   ripples        rings spreading on water: where a spout pours in, and now and then anywhere in "rect"
 ## Settings → Arena Effects and Screen Shake & Flashes thin the particles out (Game.arena_level).
+## react(power): a big moment in the fight (duel.gd's shake): the lights flare, water and leaves shudder and
+## the particles swirl faster, then everything settles back.
 
 const GLOW := preload("res://shaders/arena_glow.gdshader")
 const FOG := preload("res://shaders/arena_fog.gdshader")
@@ -35,6 +37,10 @@ var _k := 1.0
 var _tint := Color.WHITE
 var _level := 1.0
 var _add: CanvasItemMaterial
+var _lights: Array = []     # [ShaderMaterial, its strength]: the glows, flames and beams (react)
+var _warps: Array = []      # [ShaderMaterial, its amp]: water, heat, sway, glitter (react)
+var _emitters: Array = []   # every particle emitter (react)
+var _react: Tween
 
 static var _textures := {}
 
@@ -143,6 +149,7 @@ func _glow(e: Dictionary, mode: String) -> void:
 		m.set_shader_parameter("core", float(e.get("core", 0.35 if mode == "flame" else 0.0)))
 		var rr: float = r * float(p[2]) if p.size() > 2 else r   # ([x, y, size] for one bigger or smaller)
 		_rect_node(Rect2(_pt(p) - Vector2.ONE * rr, Vector2.ONE * rr * 2.0), m)
+		_lights.append([m, float(m.get_shader_parameter("strength"))])
 
 
 func _beam(e: Dictionary) -> void:
@@ -157,6 +164,7 @@ func _beam(e: Dictionary) -> void:
 	m.set_shader_parameter("width", deg_to_rad(float(e.get("width", 13))))
 	m.set_shader_parameter("seed", randf() * 10.0)
 	_rect_node(Rect2(_pt(e.at) - Vector2.ONE * len, Vector2.ONE * len * 2.0), m)
+	_lights.append([m, float(m.get_shader_parameter("strength"))])
 
 
 func _lightning(e: Dictionary) -> void:
@@ -222,6 +230,7 @@ func _warp(e: Dictionary) -> void:
 	m.set_shader_parameter("feather", float(e.get("feather", 24.0)))
 	m.set_shader_parameter("seed", randf() * 10.0)
 	_rect_node(_rect(reg), m)
+	_warps.append([m, float(m.get_shader_parameter("amp"))])
 
 
 # ── Particles ───────────────────────────────────────────────────────────────
@@ -293,7 +302,27 @@ func _particles(area: Rect2, amount: int, tex: Texture2D) -> CPUParticles2D:
 	p.emission_rect_extents = area.size / 2
 	p.amount = maxi(1, roundi(amount * clampf(_level, 0.25, 1.0)))
 	add_child(p)
+	_emitters.append(p)
 	return p
+
+
+## A big moment in the fight (power 0..1, from duel.gd's shake): the lights flare up, water ripples and
+## leaves sway harder, the particles swirl faster, and it all settles back over a second or so.
+func react(power: float) -> void:
+	if power <= 0.0 or not is_inside_tree():
+		return
+	if _react and _react.is_valid():
+		_react.kill()
+	_react = create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	for l in _lights:
+		var m: ShaderMaterial = l[0]
+		_react.tween_method(func(v: float): m.set_shader_parameter("strength", v), l[1] * (1.0 + 1.6 * power), l[1], 1.0)
+	for w in _warps:
+		var m: ShaderMaterial = w[0]
+		_react.tween_method(func(v: float): m.set_shader_parameter("amp", v), w[1] * (1.0 + 2.5 * power), w[1], 1.4)
+	for p in _emitters:
+		if is_instance_valid(p):
+			_react.tween_property(p, "speed_scale", 1.0, 1.2).from(1.0 + 2.0 * power)
 
 
 func _fade(col: Color, peak: float) -> Gradient:

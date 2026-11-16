@@ -440,6 +440,10 @@ static func tex(path: String) -> Texture2D:
 			sharp.set_size_override(Vector2i(BACKDROP_W, roundi(BACKDROP_W * float(img.get_height()) / img.get_width())))
 			t = sharp
 	_tex[path] = t
+	if path.begins_with("res://assets/arena_1v1"):   # (a match's arena, ~40 MB each: only the last two stay kept)
+		var kept: Array = _tex.keys().filter(func(k: String) -> bool: return k.begins_with("res://assets/arena_1v1"))
+		for k in kept.slice(0, maxi(0, kept.size() - 2)):
+			_tex.erase(k)
 	return t
 
 

@@ -200,6 +200,13 @@ var _foes: Array = ["opponent"]              # everyone else (FFA: foe1, foe2, f
 var _boards := {}          # FFA: side -> {c: centre, s: card scale, p: spacing scale, rows, plate}
 var _paint := {}           # the slots painted on the mat (front, back, pile), when there's a mat
 var _neon := {}            # the mat whose neon stutters now and then: {mat: ShaderMaterial, zones: [{zone, at}]}
+# The arena reacting to big moments (_arena_react): its ArenaLife, the crowd's camera-flash spots, drifting
+# dust and embers, light pools
+var _life: ArenaLife = null
+var _crowd: Array = []
+var _drifts: Array = []
+var _pools: Array = []
+var _react_at := -10000
 var _tense := false        # the music has turned tense (someone is close to losing)
 var _music_clan := ""      # the clan whose music plays (_music)
 var _turf_phase := 0       # Turf Defense: the boss's phase (its music turns to battle from the second)
@@ -1486,6 +1493,7 @@ func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
 	var life := ArenaLife.new().setup(tex, $BackLayer/Background.modulate, Game.arena_level(), Vector2(1920, 1080) + m * 2)
 	life.position = -m
 	$BackLayer.add_child(life)
+	_life = life
 	var ts := tex.get_size()
 	var k := maxf((1920.0 + m.x * 2) / ts.x, (1080.0 + m.y * 2) / ts.y)
 	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
@@ -1552,6 +1560,7 @@ func _fx_pool(at: Vector2, radius: float, col: Color, flicker: bool) -> void:
 	s.material = _add_mat
 	s.modulate = Color(col, 0.2)
 	$BackLayer.add_child(s)
+	_pools.append(s)
 	var t := s.create_tween().set_loops()
 	var dur := randf_range(2.2, 3.4)
 	t.tween_property(s, "modulate:a", 0.32, dur).set_trans(Tween.TRANS_SINE)
@@ -1602,6 +1611,7 @@ func _fx_drift(area: Rect2, col: Color, embers: bool) -> void:
 	p.color_ramp = ramp
 	p.material = _add_mat
 	$BackLayer.add_child(p)
+	_drifts.append(p)
 
 
 ## Stars twinkling under a glass floor.
@@ -1656,6 +1666,7 @@ func _fx_shooting(area: Rect2) -> void:
 func _fx_flashes(points: Array) -> void:
 	if points.is_empty():
 		return
+	_crowd.append(points)
 	while is_inside_tree():
 		await get_tree().create_timer(randf_range(0.5, 2.2)).timeout
 		if not is_inside_tree():
@@ -7200,6 +7211,45 @@ func _to_gutter(v: CardView, side: String) -> void:
 
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount * _fx_level())
+	if amount >= 10.0:   # (a big moment: the arena feels it too)
+		_arena_react(clampf(amount / 24.0, 0.4, 1.0) * _fx_level())
+
+
+## A big moment in the fight (a big hit, a KO): the arena's lights flare, its water and leaves shudder,
+## dust and embers swirl, and a crowd (the Pit, the casino) goes off with camera flashes. At most every
+## half second; Settings → Screen Shake & Flashes turns it down (off in Photosensitive mode).
+func _arena_react(power: float) -> void:
+	if power <= 0.0 or Time.get_ticks_msec() - _react_at < 500:
+		return
+	_react_at = Time.get_ticks_msec()
+	if _life and is_instance_valid(_life):
+		_life.react(power)
+	for p in _drifts:
+		if is_instance_valid(p):
+			p.create_tween().tween_property(p, "speed_scale", 1.0, 1.2).from(1.0 + 2.5 * power).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	for s in _pools:
+		if is_instance_valid(s):
+			s.create_tween().tween_property(s, "self_modulate", Color.WHITE, 0.9).from(Color(1.0 + 1.5 * power, 1.0 + 1.5 * power, 1.0 + 1.5 * power)).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	for points in _crowd:
+		_crowd_flashes(points, roundi(3 + 6 * power))
+
+
+## The crowd's cameras all going off at once (n flashes over half a second or so).
+func _crowd_flashes(points: Array, n: int) -> void:
+	for i in n:
+		if not is_inside_tree():
+			return
+		var f := Sprite2D.new()
+		f.texture = _soft_dot()
+		f.position = points.pick_random() + Vector2(randf_range(-40, 40), randf_range(-24, 24))
+		f.scale = Vector2.ONE * randf_range(0.8, 1.4)
+		f.material = _add_mat
+		f.modulate = Color(1, 1, 1, 0.85 * _fx_level())
+		$BackLayer.add_child(f)
+		var t := f.create_tween()
+		t.tween_property(f, "modulate:a", 0.0, 0.18)
+		t.tween_callback(f.queue_free)
+		await get_tree().create_timer(randf_range(0.03, 0.09)).timeout
 
 
 ## Settings → Screen Shake & Flashes: 1 full, 0.5 reduced, 0 off (0 in Photosensitive mode).

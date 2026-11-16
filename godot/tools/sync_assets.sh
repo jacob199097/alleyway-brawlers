@@ -29,4 +29,12 @@ for f in "$src"/*.jpg; do
     imp="$dst/$(basename "$f").import"
     [ -e "$imp" ] || printf '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=1\ncompress/lossy_quality=0.9\nmipmaps/generate=true\n' > "$imp"
 done
+# The arenas' small copies (tools/make_arena_thumbs.gd: the roulette and the turf map), imported the same way
+mkdir -p "$dst/arena_thumbs"
+for f in "$src"/arena_thumbs/*.jpg; do
+    [ -e "$f" ] || continue
+    cp "$f" "$dst/arena_thumbs/"
+    imp="$dst/arena_thumbs/$(basename "$f").import"
+    [ -e "$imp" ] || printf '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=1\ncompress/lossy_quality=0.9\nmipmaps/generate=true\n' > "$imp"
+done
 echo "Assets synced to $dst"

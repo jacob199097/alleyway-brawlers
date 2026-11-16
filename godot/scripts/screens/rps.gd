@@ -65,7 +65,7 @@ func _on_rps_event(name: String, d: Dictionary) -> void:
 				_rival = str(opp.get("username", "RIVAL")).to_upper()
 			_deadline = Time.get_ticks_msec() + int(d.get("secs", 15)) * 1000
 			if _arena == null and d.get("arena") is String:   # (both players are in: the server's arena lands)
-				_arena = ArenaRoulette.spin(self, str(d.arena), ARENA_AT)
+				_arena = ArenaRoulette.spin(self, str(d.arena), ARENA_AT, false, false, not str(d.get("mode", "")).contains("ranked"))   # (Ranked: scenery only)
 			_choose()
 		"mp:rps_result":
 			if str(d.get("rpsId", "")) == _rps_id:
