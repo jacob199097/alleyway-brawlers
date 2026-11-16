@@ -86,9 +86,9 @@ func _ready() -> void:
 	_pack_list = packs
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 16)
-	tabs.position = Vector2(960 - 466, 990)   # (bottom centre: the back button is bottom left)
+	tabs.position = Vector2(960 - 624, 990)   # (bottom centre: the back button is bottom left)
 	add_child(tabs)
-	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"], ["contracts", "CONTRACTS"]]:
+	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"], ["contracts", "CONTRACTS"], ["animated", "ANIMATED"]]:
 		var tb := UI.button(t[1], _show.bind(t[0]), Vector2(300, 64), UI.GOLD)
 		tabs.add_child(tb)
 		_tabs[t[0]] = tb
@@ -126,10 +126,21 @@ func _show(tab: String) -> void:
 		_refresh_balance()
 		if _tab != tab:
 			return
-	_title.text = {"starters": "STARTER DECKS", "contracts": "CONTRACTS"}.get(tab, "CARD PACKS")
+	if tab == "animated":   # (fresh: what's been bought or crafted since)
+		await Game.load_animated()
+		if not is_inside_tree() or _tab != tab:
+			return
+	_title.text = {"starters": "STARTER DECKS", "contracts": "CONTRACTS", "animated": "ANIMATED CARDS"}.get(tab, "CARD PACKS")
 	_contract_note(tab == "contracts")
 	if tab == "contracts":
 		_fill(_contracts.get("offers", []), _contract)
+	elif tab == "animated":
+		var offers: Array = Game.animated_offers.duplicate()
+		offers.sort_custom(func(a, b): return int(a.get("owned", false)) < int(b.get("owned", false)) if a.get("owned", false) != b.get("owned", false) \
+			else (int(a.rarity) > int(b.rarity) if int(a.rarity) != int(b.rarity) else str(CardDB.get_card(str(a.id)).get("name", "")) < str(CardDB.get_card(str(b.id)).get("name", ""))))
+		_fill(offers, _animated_offer)
+		if offers.is_empty():
+			UI.toast(self, "No animated cards yet.", UI.MUTED)
 	else:
 		_fill(_starter_list if tab == "starters" else _pack_list, _starter if tab == "starters" else _pack)
 
@@ -337,6 +348,82 @@ func _starter(d: Dictionary) -> Control:
 	row.add_child(UI.button("%d CB" % int(_starter_cost.get("contraband", 400)), _buy_starter.bind(d, "contraband"), Vector2(184, 60), UI.PURPLE))
 	holder.add_child(row)
 	return holder
+
+
+## A card's animated version (backend/economy/animated.js): the card moving, its name, and BUY for Contraband
+## (it comes with a copy of the card if you have none), or OWNED.
+func _animated_offer(o: Dictionary) -> Control:
+	var holder := Control.new()
+	holder.size = Vector2(400, 790)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var id := str(o.get("id", ""))
+	var c := CardDB.get_card(id)
+	var owned: bool = o.get("owned", false)
+	var art := UI.texture_rect(CardDB.art(id), Vector2(340, 482))
+	art.position = Vector2(30, 30)
+	art.pivot_offset = art.size / 2
+	art.material = UI.card_material(art.size, int(o.get("rarity", 1)), c)   # (always moving here: it's what's for sale)
+	art.mouse_filter = Control.MOUSE_FILTER_STOP
+	art.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+			var zc := c.duplicate()
+			zc.anim = true
+			UI.card_zoom(self, zc))
+	art.mouse_entered.connect(func():
+		Sfx.play("hover", 0.9, -8.0)
+		art.create_tween().tween_property(art, "scale", Vector2.ONE * 1.04, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+	art.mouse_exited.connect(func(): art.create_tween().tween_property(art, "scale", Vector2.ONE, 0.14))
+	holder.add_child(art)
+	var col := UI.rarity_color(o.get("rarity"))
+	var name := UI.label(str(c.get("name", id)).to_upper(), 26, col, true)
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.custom_minimum_size = Vector2(400, 0)
+	name.size = Vector2(400, 36)
+	name.position = Vector2(0, 530)
+	holder.add_child(name)
+	var sub := UI.label("✦ ANIMATED  ·  %s" % str(UI.RARITY_LABEL.get(int(o.get("rarity", 1)), "")).to_upper(), 16, UI.MUTED, true)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.size = Vector2(400, 24)
+	sub.position = Vector2(0, 574)
+	holder.add_child(sub)
+	var note := UI.label("or craft it in the Card Library for %d Dust" % int(o.get("dust", 0)), 15, Color(1, 1, 1, 0.6))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.size = Vector2(400, 22)
+	note.position = Vector2(0, 604)
+	holder.add_child(note)
+	var b := UI.button("OWNED  ✓" if owned else "BUY  ·  %d CB" % int(o.get("contraband", 0)), _buy_animated.bind(o), Vector2(340, 64), UI.GREEN if owned else UI.PURPLE)
+	b.position = Vector2(30, 650)
+	b.disabled = owned
+	holder.add_child(b)
+	return holder
+
+
+func _buy_animated(o: Dictionary) -> void:
+	if _busy:
+		return
+	var id := str(o.get("id", ""))
+	var name := str(CardDB.get_card(id).get("name", id))
+	UI.dialog(self, "BUY THE ANIMATED VERSION?", "Buy the animated %s for %d Contraband? Every copy of it moves, in your collection and in your matches (your opponents see it too). If you don't have the card yet, a copy comes with it." % [
+		name, int(o.get("contraband", 0))],
+		[["BUY IT", func():
+			_busy = true
+			var r := await Api.request("POST", "/api/animated/buy", {"card": id})
+			_busy = false
+			if not is_inside_tree():
+				return
+			if not r.ok:
+				UI.toast(self, r.error, UI.RED)
+				return
+			Game.player.contraband = int(r.data.get("contraband", Game.player.get("contraband", 0)))
+			Game.animated[id] = true
+			_refresh_balance()
+			Sfx.play("karat")
+			UI.toast(self, "The animated %s is yours." % name + (" A copy of the card came with it." if r.data.get("gaveCard", false) else ""), UI.GREEN)
+			if _tab == "animated":
+				_show("animated"), UI.PURPLE],
+		["CANCEL", func(): pass]], UI.PURPLE)
+
 
 
 ## One of today's contracts: what it asks, what it pays and costs, and TAKE IT (or what became of it today).

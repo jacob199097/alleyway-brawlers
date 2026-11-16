@@ -88,6 +88,7 @@ func _ready() -> void:
 		var spin := UI.spinner(self, Vector2(690, 580))
 		var r := await Api.request("GET", "/api/profile/inventory")
 		await Game.load_veterans()   # (each card's veteran marks)
+		await Game.load_animated()   # (which cards move: owned animated versions)
 		spin.queue_free()
 		if r.ok:
 			for row in r.data:
@@ -339,6 +340,13 @@ func _show_detail(c: Dictionary) -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	below.add_child(info)
 	info.add_child(UI.label(str(c.get("name", "?")), 34, Color.WHITE, true))
+	if CardDB.get_card(id).get("artFx") is Dictionary:   # (the card above moves: a preview, unless it's theirs)
+		var mine: bool = Game.animated.has(id)
+		var cap := UI.label("✦ ANIMATED  ·  YOURS" if mine else "✦ ANIMATED VERSION  ·  PREVIEW", 18, UI.GOLD if mine else UI.PURPLE, true)
+		cap.tooltip_text = "Every copy of this card moves, in your collection and in your matches." if mine \
+			else "Craft it below for Dust, or buy it in the Shop (ANIMATED) for Contraband: every copy of this card moves, in your collection and in your matches."
+		cap.mouse_filter = Control.MOUSE_FILTER_PASS
+		info.add_child(cap)
 	var rarity := int(c.get("rarity", 1))
 	var kind := str(UI.TYPE_NAMES.get(c.get("cardType", ""), "CARD"))
 	var sub = c.get("subtype")
@@ -597,12 +605,56 @@ func _render_bar() -> void:
 			make.disabled = have >= cap or int(_craft.get("dust", 0)) < int(v.get("craft", 0))
 			make.tooltip_text = "You have all a deck can use." if have >= cap else ("Not enough Dust." if make.disabled else "Make a copy from Dust.")
 			_bar.add_child(make)
+		var offer := _anim_offer(str(_pick.get("id", "")))
+		if not offer.is_empty():   # its animated version: crafted here for Dust (or bought in the Shop)
+			if offer.get("owned", false):
+				var done := UI.label("✦ ANIMATED", 20, UI.GOLD, true)
+				done.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				_bar.add_child(done)
+			else:
+				var cost := int(offer.get("dust", 0))
+				var anim := UI.button("✦ ANIMATED  −%d" % cost, _make_animated, Vector2(260, 56), UI.GOLD)
+				anim.disabled = have <= 0 or int(_craft.get("dust", 0)) < cost
+				anim.tooltip_text = "Craft or find the card first." if have <= 0 else ("Not enough Dust." if anim.disabled \
+					else "Every copy of this card moves, in your collection and in your matches. Or buy it in the Shop for Contraband.")
+				_bar.add_child(anim)
 	var extras := int(_craft.get("extras", 0))
 	var all := UI.button("SCRAP EXTRAS  +%d" % int(_craft.get("extrasDust", 0)), _scrap_extras, Vector2(290, 56), UI.PURPLE)
 	all.disabled = extras <= 0
 	all.tooltip_text = "Scrap every copy beyond what a deck can hold (3 of a card, 1 leader): %d card%s." % [extras, "" if extras == 1 else "s"] \
 		if extras > 0 else "No extra copies: you have 3 or fewer of every card."
 	_bar.add_child(all)
+
+
+## The card's animated version, if it has one (Game.animated_offers): {id, rarity, dust, contraband, owned}, else {}.
+func _anim_offer(id: String) -> Dictionary:
+	for o in Game.animated_offers:
+		if o is Dictionary and str(o.get("id", "")) == id:
+			o.owned = Game.animated.has(id)
+			return o
+	return {}
+
+
+func _make_animated() -> void:
+	var c := _pick
+	var offer := _anim_offer(str(c.get("id", "")))
+	UI.dialog(self, "CRAFT THE ANIMATED VERSION?", "Craft the animated %s for %d Dust? Every copy of it moves, in your collection and in your matches (your opponents see it too). It's yours for good." % [
+		str(c.get("name", "?")), int(offer.get("dust", 0))], [
+		["CRAFT IT", func():
+			var r := await Api.request("POST", "/api/animated/craft", {"card": str(c.id)})
+			if not r.ok:
+				UI.toast(self, r.error, UI.RED)
+				return
+			Game.animated[str(c.id)] = true
+			_craft.dust = int(r.data.get("dust", 0))
+			_render()
+			_render_bar()
+			_detail_id = "-"
+			_show_detail(c)
+			var tile = _tiles.get(str(c.id))
+			await _reveal(c, tile)
+			Sfx.play("promote", 1.1), UI.GOLD],
+		["NOT NOW", func(): pass]], UI.GOLD)
 
 
 func _select(c: Dictionary) -> void:

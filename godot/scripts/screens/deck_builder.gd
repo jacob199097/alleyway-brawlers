@@ -58,6 +58,7 @@ func _ready() -> void:
 	var inv := await Api.request("GET", "/api/profile/inventory")
 	var decks := await Api.request("GET", "/api/deck")
 	await Game.load_veterans()   # (each card's veteran marks)
+	await Game.load_animated()   # (which cards move: owned animated versions)
 	spin.queue_free()
 	if not inv.ok or not decks.ok:
 		UI.toast(self, inv.error if not inv.ok else decks.error, UI.RED)

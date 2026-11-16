@@ -22,6 +22,8 @@
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
 - Animated card art: a card's `artFx` ({kind: water|heat|sway|drift, amp, speed, mask, key, tol, sparks, spark}, the Forge's "Art animation"
   section) drives `card.gdshader`'s `art_anim` uniforms through `UI.art_anim_fx` (every card material goes through `UI.rarity_fx`).
+  Only owned animated versions move (`backend/economy/animated.js`: crafted for Dust, bought for Contraband; `Game.anim_card`,
+  the match profiles' `anim`); the Card Library's big card always previews it.
 - New cards come from the Card Forge (or Card Forge 2, more art storage, numbers from 501): `node tools/import_forge.mjs <zip>`, then on the server
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data
   (`shared/clans.js`): no code names a clan, except Neutral (`NEUTRAL`: cards for any deck, no clan of their own;

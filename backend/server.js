@@ -104,6 +104,7 @@ app.use('/api/seasons', require('./routes/seasons'));   // ranked seasons and th
 app.use('/api/push', require('./routes/push'));   // phone notifications (utils/push.js)
 app.use('/api/news', require('./routes/news').api);   // news emails on or off (utils/news.js)
 app.use('/api/contracts', require('./routes/contracts'));   // contracts in the shop (economy/contracts.js)
+app.use('/api/animated', require('./routes/animated'));   // animated cards: crafted for Dust, bought for Contraband (economy/animated.js)
 app.use('/news', require('./routes/news').pages);   // a news email's unsubscribe link
 app.use('/', require('./routes/legal'));   // /privacy, /terms, /delete-account
 app.use('/', site.router);   // the website: /, /clans, /cards, /how-to-play, /news (site/pages.js)
@@ -145,6 +146,7 @@ const online = createOnlineService(io, {
     masteryLevel: (playerId, clan) => require('./economy/mastery').level(playerId, clan),   // (a player's plate: their deck's clan mastery)
     resolveCpuMatch,
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    animatedCards: (playerId, ids) => require('./economy/animated').owned(playerId, ids),
     veteranXp: (playerId, ids) => veterans.xpByCard(playerId, ids),
     recordVeterans: veterans.record,
     recordInfluence: territory.record,
@@ -188,6 +190,7 @@ coop = createCoopService(io, {
     loadClears:  (playerId) => turf.clearsOf(pool, playerId),
     resolveTurf: turf.resolve,
     veteranTiers: (playerId, ids) => veterans.tiers(playerId, ids),
+    animatedCards: (playerId, ids) => require('./economy/animated').owned(playerId, ids),
     veteranXp: (playerId, ids) => veterans.xpByCard(playerId, ids),
     recordVeterans: veterans.record,
     recordInfluence: territory.record,

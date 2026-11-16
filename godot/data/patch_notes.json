@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.169",
+        "notes": [
+            "Animated cards are now yours to own: craft a card's animated version in the Card Library for Dust (4 times the card's own craft cost), or buy it in the Shop's new ANIMATED tab for Contraband (it comes with a copy of the card if you don't have one). Every copy of that card then moves, in your collection and in your matches, and your opponents see it too.",
+            "The Card Library's big card always plays a card's animation, so you can see it before you get it.",
+            "Water and drifting animations are much easier to see: light now dances on moving water and swells through fog and starlight (The Phantom Armada, Herald of the Horizon)."
+        ]
+    },
+    {
         "version": "0.9.168",
         "notes": [
             "Card Library: a search box. Type a name, an effect or keyword (\"burn\", \"plunder\"), a clan or a card number (\"PIRA-053\"); several words narrow it down. The Deck Builder search now finds the same things (it only matched names before).",

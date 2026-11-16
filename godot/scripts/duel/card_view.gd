@@ -85,6 +85,12 @@ var side := "player"
 ## card's tier: its frame (UI.veteran_fx)
 var vets: Dictionary = {}
 var veteran := 0
+## Its owner's animated cards (card id → true, the match's profiles' anim; set before setup) and whether this
+## one moves (its art animation, UI.art_anim_fx). anim_uids: every card on the table that moves, by uid
+## (the duel's detail panel asks).
+var anims: Dictionary = {}
+var animated := false
+static var anim_uids := {}
 var face_up := false
 var downed := false: set = set_downed
 var show_badge := false: set = set_show_badge
@@ -213,6 +219,9 @@ func set_card(c: Dictionary) -> void:
 	card = c
 	uid = int(c.get("uid", uid))
 	veteran = int(vets.get(str(c.get("id", "")), 0)) if not c.get("token", false) else 0
+	animated = not c.get("token", false) and anims.has(str(c.get("id", "")))
+	if uid >= 0:
+		anim_uids[uid] = animated
 	var tex: Texture2D = null
 	if not c.is_empty():
 		tex = CardDB.art_for(c)   # (a token picks one of its artworks)
@@ -237,7 +246,7 @@ func set_face(up: bool) -> void:
 	_front.visible = shown and _front.texture != null
 	_back.visible = not shown
 	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
-	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0), card if shown else {})
+	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0), card if shown and animated else {})
 	UI.veteran_fx(_mat, veteran if up else 0)
 	if _fallback:
 		_fallback.visible = shown and _front.texture == null

@@ -6115,10 +6115,10 @@
   "promotesTo": null,
   "artFx": {
    "kind": "drift",
-   "amp": 1,
-   "speed": 0.8,
-   "sparks": 0.5,
-   "spark": "#cfe6ff"
+   "amp": 2,
+   "speed": 1,
+   "sparks": 0.8,
+   "spark": "#d8c8ff"
   }
  },
  "card_unde_043": {
@@ -11437,12 +11437,12 @@
   "forge": "forge2",
   "artFx": {
    "kind": "water",
-   "amp": 1.4,
-   "speed": 1,
+   "amp": 2,
+   "speed": 1.1,
    "mask": "colour",
    "key": "#2ad4c8",
-   "tol": 0.35,
-   "sparks": 0.6,
+   "tol": 0.45,
+   "sparks": 0.7,
    "spark": "#bffff4"
   }
  }

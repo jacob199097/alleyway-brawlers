@@ -13,6 +13,7 @@ var _quest_box: Control
 func _ready() -> void:
 	UI.background(self, "menu_background.jpg", 0.35)
 	UI.prefetch("arena_rooftop.jpg")   # (PLAY's screen, fight_mode.gd: its backdrop loads in the background)
+	Game.load_animated()   # (which of the player's cards move: packs, the library, the deck builder)
 	Game.play_menu_music()
 	if not Game.offline and not await Game.refresh_player():
 		Game.sign_out()

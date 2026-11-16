@@ -780,7 +780,7 @@ func _show_face(k: Dictionary) -> void:
 	for style in CardDB.BACK_STYLES.values():   # (every clan back's animation off: the front is showing)
 		mat.set_shader_parameter(style, 0.0)
 	mat.set_shader_parameter("galaxy_glow", 0.0)
-	UI.rarity_fx(mat, k.rarity, randf(), k.c)
+	UI.rarity_fx(mat, k.rarity, randf(), Game.anim_card(k.c))
 	if k.motes:
 		k.motes.emitting = false
 

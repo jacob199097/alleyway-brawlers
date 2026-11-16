@@ -25,7 +25,8 @@ const WATCHDOG_SECS := 420.0
 
 
 func _watchdog() -> void:
-	await get_tree().create_timer(WATCHDOG_SECS, true, false, true).timeout
+	var tree := Engine.get_main_loop() as SceneTree
+	await tree.create_timer(WATCHDOG_SECS, true, false, true).timeout
 	var d = duel_screen.get("duel") if is_instance_valid(duel_screen) else null
 	if d == null:
 		push_error("UI smoke stuck: no duel after %d s" % WATCHDOG_SECS)
@@ -34,7 +35,7 @@ func _watchdog() -> void:
 			WATCHDOG_SECS, d.turn, d.active, d.phase, d.winner, JSON.stringify(d.pending).left(400),
 			str(duel_screen.get("_mode")), str(duel_screen.get("_playing")), (duel_screen.get("_queue") as Array).size() if duel_screen.get("_queue") is Array else -1])
 	print("UI smoke: summons %d, attacks %d, prompts %s (stopped by the watchdog)" % [summons, attacks, prompts])
-	get_tree().quit(1)
+	tree.quit(1)
 
 
 ## Raise a prompt for the player and answer it through the on-screen buttons.
@@ -203,17 +204,20 @@ func _run() -> void:
 				duel_screen._on_next()
 	await _keyword_fx()
 	print("UI smoke: summons %d, attacks %d, set Hustle activated %s (destroyed first %d times), turn %d, prompts answered %s" % [
-		summons, attacks, set_activated, set_broken, duel_screen.duel.turn, prompts])
-	get_tree().quit(0 if summons >= 1 and set_activated else 1)
+		summons, attacks, set_activated, set_broken, duel_screen.duel.turn if is_instance_valid(duel_screen) else -1, prompts])
+	# (the main loop, not get_tree(): a match that ends while this waits takes the game to the post-match
+	# screen, which frees this scene, and get_tree() is then null: the process would never quit)
+	(Engine.get_main_loop() as SceneTree).quit(0 if summons >= 1 and set_activated else 1)
 
 
 ## The new keywords' moments (BRACE, RECKLESS, RALLY, HEIST, ECHO, DEBT, a CONFUSED attacker) played on the
 ## screen, and their statuses' looks (CORRODE, CONFUSE, TAUNT, SHROUD) on a card: the screen gets through them.
 func _keyword_fx() -> void:
 	var d: DuelState = duel_screen.duel
-	while duel_screen._playing:
-		await get_tree().process_frame
-	if d.winner != "":
+	var tree := Engine.get_main_loop() as SceneTree
+	while is_instance_valid(duel_screen) and duel_screen._playing and d.winner == "":
+		await tree.process_frame
+	if d.winner != "" or not is_inside_tree():
 		print("UI smoke: keyword effects skipped (the match is over)")
 		return
 	if duel_screen.field.player.keys().filter(func(s): return int(s) < 5).is_empty():   # (none of yours left: one comes in)

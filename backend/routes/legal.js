@@ -64,7 +64,7 @@ Questions: ${contactLink()}.</p>
   your Steam ID, the number that identifies your Steam account, so we can sign you in. Steam confirms the sign-in to
   us; we never get your Steam password. The first time you sign in with Steam, we read your Steam display name once
   to suggest a username. A Steam account doesn't need an email address or password with us.</li>
- <li><b>Your game:</b> your cards and packs, decks, Karat, Contraband and Dust, level and XP, rank, wins and losses,
+ <li><b>Your game:</b> your cards (and which you own animated) and packs, decks, Karat, Contraband and Dust, level and XP, rank, wins and losses,
   achievements, quests, daily rewards, the contracts you buy (and whether you completed them), clan mastery, your chosen clan, title, profile picture and card back, and
   when you last played. For each card you have played: how many matches you played it in and how many of those you
   won (its card XP and veteran frame). On the turf map: the influence you won for a clan in each district each week, and the
@@ -121,7 +121,7 @@ phone number, contacts or location.</p>
 
 <h2>What other players can see</h2>
 <p>Your username, profile picture, title, level, rank and win record (on the leaderboard and your profile), the
-cards you play in a match with their veteran frames and card XP, replays of matches you played against them, and your username on the cards you sell in the auction house (bidders'
+cards you play in a match with their veteran frames, card XP and animated art, replays of matches you played against them, and your username on the cards you sell in the auction house (bidders'
 names aren't shown). On the turf
 map, the player who won the most influence in a district for the clan holding it is shown by username. Direct messages are seen only by the
 person you send them to. Your email address and Steam ID aren't shown to other players.</p>

@@ -86,6 +86,10 @@ var xp_seen := -1           # total XP the menu's bar last showed (-1: not yet):
 ## [{tier, xp, name}]. A card's frame: UI.veteran_fx; its card XP: UI.veteran_box.
 var veterans := {}
 var veteran_tiers: Array = []
+## Animated cards (GET /api/animated, backend/economy/animated.js): the ones the player owns (card id → true)
+## and every card that has an animated version, with its prices: [{id, rarity, dust, contraband, owned}]
+var animated := {}
+var animated_offers: Array = []
 
 ## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
 var sound: Node
@@ -576,6 +580,26 @@ func load_veterans() -> void:
 	if r.ok and r.data is Dictionary:
 		veterans = r.data.get("cards", {}) if r.data.get("cards") is Dictionary else {}
 		veteran_tiers = r.data.get("tiers", []) if r.data.get("tiers") is Array else []
+
+
+func load_animated() -> void:
+	if offline or Api.token == "":
+		return
+	var r := await Api.request("GET", "/api/animated")
+	if r.ok and r.data is Dictionary and r.data.get("cards") is Array:
+		animated_offers = r.data.cards
+		animated = {}
+		for o in animated_offers:
+			if o is Dictionary and o.get("owned", false):
+				animated[str(o.get("id", ""))] = true
+
+
+## The card to animate (UI.card_material / rarity_fx's card): c if its art plays, else {}. A card dict may
+## say so itself ("anim": a duel's card, its owner's); otherwise the player's own animated cards decide.
+func anim_card(c: Dictionary) -> Dictionary:
+	if c.has("anim"):
+		return c if c.anim else {}
+	return c if animated.has(str(c.get("art_url", c.get("id", "")))) else {}
 
 
 ## A card's veteran tier for this player (0: none).

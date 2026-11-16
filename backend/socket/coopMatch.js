@@ -116,7 +116,7 @@ function createCoopService(io, deps) {
     function profileOf(e) {
         const p = e.profile || {};
         return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title || null,
-            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {}, vet_xp: e.vetXp || {} };
+            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {}, vet_xp: e.vetXp || {}, anim: e.anim || [] };
     }
 
     // ── Quick match ──
@@ -270,6 +270,7 @@ function createCoopService(io, deps) {
             const ids = [...(e.setup?.deck || []), ...(e.setup?.hideout || [])].map(c => c?.id).concat(e.setup?.leader).filter(x => typeof x === 'string');
             e.vets = await deps.veteranTiers?.(e.playerId, ids)?.catch?.(() => ({})) ?? {};
             e.vetXp = await deps.veteranXp?.(e.playerId, ids)?.catch?.(() => ({})) ?? {};
+            e.anim = await deps.animatedCards?.(e.playerId, ids)?.catch?.(() => []) ?? [];
         }
         const seats = ['p1', 'p2', 'boss'];
         const pick = (k) => Object.fromEntries(seats.map(s => [s, entries[s].setup[k]]));

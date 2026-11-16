@@ -212,7 +212,7 @@ void fragment() {
 			int kind = int(art_anim + 0.5);
 			vec2 off = vec2(0.0);
 			if (kind == 1) {   // water: two drifting noise fields, like light through ripples
-				off = (vec2(vnoise(p * 14.0 + vec2(t * 0.35, t * 0.1)), vnoise(p * 14.0 + vec2(3.7, -t * 0.3))) - 0.5) * 0.014;
+				off = (vec2(vnoise(p * 12.0 + vec2(t * 0.4, t * 0.12)), vnoise(p * 12.0 + vec2(3.7, -t * 0.35))) - 0.5) * 0.026;
 			} else if (kind == 2) {   // heat: a fine horizontal shimmer rising through the picture
 				float h = vnoise(p * 9.0 + vec2(0.0, -t * 0.9));
 				off = vec2(sin(p.y * 70.0 + t * 3.0 + h * 6.0) * (0.3 + 0.7 * h) * 0.006, h * 0.002);
@@ -220,7 +220,7 @@ void fragment() {
 				float g = 0.5 + 0.5 * vnoise(p * 4.0 + vec2(t * 0.2, 0.0));
 				off = vec2(sin(t * 1.2 + p.y * 6.0) * g * 0.009, cos(t * 0.9 + p.x * 5.0) * g * 0.003);
 			} else {   // drift: the scene breathes, as if fog or starlight moved through it
-				off = (vec2(vnoise(p * 4.0 + vec2(t * 0.22, 0.0)), vnoise(p * 4.0 + vec2(5.1, t * 0.18))) - 0.5) * 0.012;
+				off = (vec2(vnoise(p * 4.0 + vec2(t * 0.25, 0.0)), vnoise(p * 4.0 + vec2(5.1, t * 0.2))) - 0.5) * 0.024;
 			}
 			off *= art_amp * in_art;
 			float m = 1.0;
@@ -229,6 +229,16 @@ void fragment() {
 			// Sample inside the art window only: the frame never bleeds into the moving picture
 			vec2 suv = clamp(uv + off * m, art_rect.xy + 0.002, art_rect.zw - 0.002);
 			col = mix(col, texture(TEXTURE, suv + 0.5), in_art);
+			// Light that moves with it, so the motion reads even at a glance: caustics dancing on water,
+			// a slow swell of light drifting through fog and starlight
+			float la = min(art_amp, 2.0) * m * in_art;
+			if (kind == 1) {
+				float ca = 1.0 - abs(vnoise(p * 18.0 + vec2(t * 0.5, t * 0.2)) - vnoise(p * 18.0 + vec2(-t * 0.4, 2.3 + t * 0.3)));
+				col.rgb += col.rgb * pow(ca, 7.0) * 0.55 * la;
+			} else if (kind == 4) {
+				float sw = vnoise(p * 2.2 + vec2(t * 0.18, -t * 0.07));
+				col.rgb *= 1.0 + (sw - 0.45) * 0.4 * la;
+			}
 			if (art_sparks > 0.0 && calm < 0.5) {   // glints twinkling over the moving parts
 				float dens = 0.95 - art_sparks * 0.35;
 				for (int L = 0; L < 2; L++) {

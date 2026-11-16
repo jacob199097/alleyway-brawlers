@@ -37,7 +37,7 @@ const CLEARED = {
     player_daily_quests: 'daily quests', player_quest_claims: 'quest claims',
     player_counters: 'achievement counters', player_achievements: 'achievements',
     clan_mastery: 'clan mastery records', weekly_challenge_wins: 'weekly challenge wins',
-    card_veterans: 'veteran card records',
+    card_veterans: 'veteran card records', animated_cards: 'animated cards',
     territory_influence: 'turf map scores', territory_claims: 'turf map payouts',
     boss_clears: 'Turf Defense records',
     matches: 'matches in the history', solo_matches: 'CPU match records', match_replays: 'replays',

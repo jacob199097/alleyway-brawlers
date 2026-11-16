@@ -1105,7 +1105,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	var art := texture_rect(card_art(c) if card_art(c) else CardDB.back(), Vector2(520, 736))
 	art.position = Vector2(400, 172)
 	var rarity_ := int(c.get("rarity", 1)) if c.get("rarity") != null else 1
-	var mat := card_material(art.size, rarity_, c)
+	var mat := card_material(art.size, rarity_, Game.anim_card(c))
 	art.material = mat
 	veil.add_child(art)
 	# The big card tilts toward the mouse and catches the light

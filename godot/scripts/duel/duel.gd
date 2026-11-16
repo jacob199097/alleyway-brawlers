@@ -152,6 +152,7 @@ var _spectating := false  # watching a friend's match live (mp:spectate): their 
 var _names := {}          # side -> name, for a spectator's texts
 var _chosen_back := {"player": "", "opponent": ""}   # side -> card back the player chose ("" = their clan's)
 var _vets := {}   # side -> that player's veteran cards {card id: tier} (the match's profiles): their marks
+var _anims := {}   # side -> that player's animated cards {card id: true} (the match's profiles' anim): they move
 var _vet_xp := {}   # side -> that player's card XP {card id: xp} (the profiles' vet_xp; none from an older server)
 var _replay_next := 0     # next update to play
 var _replay_wait := 0.0
@@ -219,6 +220,7 @@ var _turf: TurfShow = null # its cutscenes, plate and intel (scripts/duel/turf_s
 
 func _ready() -> void:
 	randomize()
+	CardView.anim_uids.clear()   # (a new table: whose cards move is this match's)
 	if "--autoplay" in OS.get_cmdline_user_args():
 		ai_sides = ["player", "opponent"]
 	_font = UI.font()
@@ -298,6 +300,11 @@ func _ready() -> void:
 		var pv = profs[side].get("vets") if profs[side] is Dictionary else null
 		if pv is Dictionary:
 			_vets[side] = pv
+		var pa = profs[side].get("anim") if profs[side] is Dictionary else null
+		if pa is Array:
+			_anims[side] = {}
+			for id in pa:
+				_anims[side][str(id)] = true
 		var px = profs[side].get("vet_xp") if profs[side] is Dictionary else null
 		if px is Dictionary:
 			_vet_xp[side] = px
@@ -7142,6 +7149,7 @@ func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	cards_layer.add_child(v)
 	v.board_scale = _sc(side)
 	v.vets = _vets.get(side, {})
+	v.anims = _anims.get(side, {})
 	v.setup(c, side, up)
 	v.scale = Vector2.ONE * v.board_scale   # (starts at its board's size: FFA opponents' are smaller)
 	v.set_back(_back_for(side), CardDB.back_style(_back_clan(side)))
@@ -8257,7 +8265,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	var back: Texture2D = _back_for(str(c.back_side)) if c.has("back_side") else CardDB.back()
 	_ui.detail_art.texture = tex if tex else back
 	var dm: ShaderMaterial = _ui.detail_art.material
-	UI.rarity_fx(dm, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex else {})
+	UI.rarity_fx(dm, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex and CardView.anim_uids.get(int(c.get("uid", -1)), false) else {})
 	# A clan back moves here too, like on the field (the Nebula galaxy turns, the Militia radar sweeps)
 	_detail_spin = CardDB.back_style(_back_clan(str(c.back_side))) if not tex and c.has("back_side") else ""
 	for style in CardDB.BACK_STYLES.values():
@@ -8305,7 +8313,7 @@ func _show_idle() -> void:
 	var side: String = _last_played.side
 	var tex := CardDB.art_for(c)
 	_ui.detail_art.texture = tex if tex else _back_for(side)
-	UI.rarity_fx(_ui.detail_art.material, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex else {})
+	UI.rarity_fx(_ui.detail_art.material, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex and CardView.anim_uids.get(int(c.get("uid", -1)), false) else {})
 	_detail_spin = ""
 	for style in CardDB.BACK_STYLES.values():
 		_ui.detail_art.material.set_shader_parameter(style, 0.0)
@@ -9369,6 +9377,7 @@ func _zoom_hovered() -> bool:
 	var zc: Dictionary = (base if not base.is_empty() else v.card).duplicate()
 	zc.live_status = _live_statuses(v)   # (the zoom explains its statuses too: DOWNED, STASIS, ...)
 	zc.veteran = v.veteran   # (its owner's frame, not yours)
+	zc.anim = v.animated   # (and its owner's animated version)
 	if _vet_xp.has(v.side) and not v.card.get("token", false):
 		zc.vet_xp = int(_vet_xp[v.side].get(str(v.card.get("id", "")), 0))   # (and its owner's card XP)
 	zc.mine = v.side == "player" and _replay.is_empty() and not _spectating   # (yours: the zoom shows its card XP)
