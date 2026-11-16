@@ -15,7 +15,26 @@ var set_broken := 0         # times the CPU destroyed it first (its deck can bre
 func _ready() -> void:
 	duel_screen = load("res://scenes/duel.tscn").instantiate()
 	add_child(duel_screen)
+	_watchdog()
 	_run()
+
+
+## A test that waits on a state that never comes would hang until CI's timeout with nothing to go on: after
+## WATCHDOG_SECS (real time) it prints where the duel is stuck and fails.
+const WATCHDOG_SECS := 420.0
+
+
+func _watchdog() -> void:
+	await get_tree().create_timer(WATCHDOG_SECS, true, false, true).timeout
+	var d = duel_screen.get("duel") if is_instance_valid(duel_screen) else null
+	if d == null:
+		push_error("UI smoke stuck: no duel after %d s" % WATCHDOG_SECS)
+	else:
+		push_error("UI smoke stuck after %d s: turn %d, active %s, phase %s, winner '%s', pending %s, screen mode %s, playing %s, queue %d" % [
+			WATCHDOG_SECS, d.turn, d.active, d.phase, d.winner, JSON.stringify(d.pending).left(400),
+			str(duel_screen.get("_mode")), str(duel_screen.get("_playing")), (duel_screen.get("_queue") as Array).size() if duel_screen.get("_queue") is Array else -1])
+	print("UI smoke: summons %d, attacks %d, prompts %s (stopped by the watchdog)" % [summons, attacks, prompts])
+	get_tree().quit(1)
 
 
 ## Raise a prompt for the player and answer it through the on-screen buttons.
