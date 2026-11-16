@@ -1200,12 +1200,13 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_005",
         "code": "MILI-005",
         "flavourText": "I Forgot that we put that there",
-        "effectText": "When an enemy attacks one of your MILITIA characters: DOWN the attacker and negate the attack.",
+        "effectText": "When an enemy attacks one of your MILITIA characters: SUPPRESS the attacker for 500 and negate the attack.",
         "effects": [
             {
                 "when": "defend",
-                "do": "down",
+                "do": "suppress",
                 "target": "attacker",
+                "amount": 500,
                 "negate": true
             }
         ],
@@ -3433,14 +3434,13 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_022",
         "code": "WILD-022",
         "flavourText": "Seven's my lucky number. So is every other one.",
-        "effectText": "When this card attacks: Roll a die: it gains +100 ATK for each pip rolled for this Brawl.\nAfter this card KOs 2 characters: PROMOTE this card.",
+        "effectText": "When this card attacks: Roll a die: your opponent loses 100 Morale for each pip rolled.\nAfter this card KOs 2 characters: PROMOTE this card.",
         "effects": [
             {
                 "when": "attack",
-                "do": "buff",
-                "target": "self",
+                "do": "damage",
                 "per": "roll",
-                "atk": 100
+                "amount": 100
             },
             {
                 "when": "ko",
@@ -3469,14 +3469,13 @@ export const FORGE_CARDS = {
         "art_url": "card_wild_023",
         "code": "WILD-023",
         "flavourText": "Seven's my lucky number. So is every other one.",
-        "effectText": "When this card attacks: Roll a die: it gains +200 ATK for each pip rolled for this Brawl.\nThis card has LOADED DICE.\nWhen this card KOs a character: Your opponent loses 300 Morale. DOUBLE OR NOTHING.",
+        "effectText": "When this card attacks: Roll a die: your opponent loses 150 Morale for each pip rolled.\nThis card has LOADED DICE.\nWhen this card KOs a character: Your opponent loses 300 Morale. DOUBLE OR NOTHING.",
         "effects": [
             {
                 "when": "attack",
-                "do": "buff",
-                "target": "self",
+                "do": "damage",
                 "per": "roll",
-                "atk": 200
+                "amount": 150
             },
             {
                 "when": "passive",
@@ -4568,11 +4567,13 @@ export const FORGE_CARDS = {
         "art_url": "card_nebu_050",
         "code": "NEBU-050",
         "flavourText": "Pain is just an unoptimized data packet. I deleted it long ago.",
-        "effectText": "When this card Downs a character: PROMOTE this card.",
+        "effectText": "When this card Downs a character: If your opponent controls 3 or more characters, PROMOTE this card.",
         "effects": [
             {
                 "when": "down",
-                "do": "promote"
+                "do": "promote",
+                "if": "enemies_ge",
+                "n": 3
             }
         ],
         "clanName": "Nebula",
@@ -6283,11 +6284,12 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_045",
         "code": "MILI-045",
         "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
-        "effectText": "When this card KOs a character: PROMOTE this card.",
+        "effectText": "When this card KOs a character in DEF position: PROMOTE this card.",
         "effects": [
             {
                 "when": "ko",
-                "do": "promote"
+                "do": "promote",
+                "if": "vs_def"
             }
         ],
         "clanName": "Militia",
@@ -6311,11 +6313,11 @@ export const FORGE_CARDS = {
         "art_url": "card_mili_046",
         "code": "MILI-046",
         "flavourText": "They gave me a gun. Then a bigger gun. Then they disassembled a tank to fit for me.",
-        "effectText": "Your opponent must attack this card first if it is standing.\nAfter this card KOs 2 characters: PROMOTE this card.",
+        "effectText": "When this card attacks: It has PIERCE for this attack.\nAfter this card KOs 2 characters: PROMOTE this card.",
         "effects": [
             {
-                "when": "passive",
-                "do": "guard"
+                "when": "attack",
+                "do": "pierce"
             },
             {
                 "when": "ko",
@@ -7505,11 +7507,11 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_006",
         "code": "ARSO-006",
         "flavourText": "Fill her up? Sure. With what, though?",
-        "effectText": "When this card attacks: Give one enemy character BURN 300.\nAfter this card attacks 2 times: PROMOTE this card.",
+        "effectText": "When this card attacks: Give one enemy character STOKE 300.\nAfter this card attacks 2 times: PROMOTE this card.",
         "effects": [
             {
                 "when": "attack",
-                "do": "burn",
+                "do": "stoke",
                 "target": "enemy",
                 "amount": 300
             },
@@ -7720,13 +7722,14 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_012",
         "code": "ARSO-012",
         "flavourText": "Hands up. Mine are on fire.",
-        "effectText": "When this card attacks: Give one enemy character BURN 300.\nAfter this card KOs 2 characters: PROMOTE this card.",
+        "effectText": "When this card attacks a BURNING character: This card gains +600 ATK for this Brawl.\nAfter this card KOs 2 characters: PROMOTE this card.",
         "effects": [
             {
                 "when": "attack",
-                "do": "burn",
-                "target": "enemy",
-                "amount": 300
+                "do": "buff",
+                "target": "self",
+                "if": "vs_burning",
+                "atk": 600
             },
             {
                 "when": "ko",
