@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.165",
+        "notes": [
+            "Faster screens and matches: the big background pictures no longer go to the graphics card twice (and get read back in between) the first time they show, and they keep their smaller copies for drawing scaled down, so they look smoother too.",
+            "Matches open faster: the arena's neon signs are worked out ahead of time instead of the whole picture being scanned at the start of every match.",
+            "Pictures load in the background before you need them: the match's arena while the roulette spins, the battle-mode screen's while you're on the main menu, and each Turf Defense arena as you look through the bosses.",
+            "A new condition for cards: \"your opponent has N or more cards in hand\"."
+        ]
+    },
+    {
         "version": "0.9.164",
         "notes": [
             "The arena roulette no longer stutters the first time it spins after starting the game: it shows small copies of the arenas, loaded in the background. The turf map's districts use them too.",

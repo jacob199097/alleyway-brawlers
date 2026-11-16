@@ -39,7 +39,8 @@
 - Arena effects: an arena's `bonus` in `godot/data/arenas.json`, for both sides, on every arena but the Back Alley and Rooftop
   (effect kinds stronger, ATK/DEF, direct attacks, Authority / a card / Morale each turn; `_arenaBoost` in both engines);
   `backend/utils/arenas.js` puts it in a match's rules (`arena_bonus`) in every mode but Ranked. A new arena picture also needs
-  its small copy (`assets/arena_thumbs`, for the roulette and turf map): `godot/tools/make_arena_thumbs.gd`, then sync_assets.
+  its small copy (`assets/arena_thumbs`, for the roulette and turf map) and its neon spots (`godot/data/neon_zones.json`):
+  `godot/tools/make_arena_thumbs.gd`, then sync_assets. Backdrops (.jpg) are placed by `UI.tex_size` (1536 wide), not their real size.
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

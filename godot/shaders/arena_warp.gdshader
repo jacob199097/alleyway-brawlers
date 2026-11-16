@@ -4,7 +4,7 @@ shader_type canvas_item;
 // heat shimmering up off sand, cloth and leaves swaying from where they hang, or ice and snow
 // glittering in the light. Its edges fade into the picture underneath.
 
-uniform sampler2D picture : filter_linear, repeat_disable;
+uniform sampler2D picture : filter_linear_mipmap, repeat_disable;
 uniform vec2 tex_size = vec2(1536.0, 1024.0);
 uniform vec4 region = vec4(0.0, 0.0, 100.0, 100.0);   // x, y, w, h in the picture's pixels
 uniform vec4 tint : source_color = vec4(1.0);          // the background's own modulate

@@ -25,6 +25,7 @@ var _rematch_note: Label
 var _rematch_done := false   # asked, declined or expired: nothing more to tell the server
 var _won := false
 var _backdrop: ShaderMaterial
+var _blur_k := 1.0   # texels per picture pixel: a 4K arena is blurred as far as the snapshot (UI.tex_size)
 var _fx: ShaderMaterial      # full-screen shockwave, colour split, impact frame, red pulse (shaders/post.gdshader)
 var _shake := 0.0
 var _dot: Texture2D          # soft round particle
@@ -164,6 +165,7 @@ func _build_backdrop(snap) -> void:
 		var arena_id := str(start.get("arena", "")) if start is Dictionary and start.get("arena") is String else str(Game.duel_setup.get("arena", ""))
 		var arena: Dictionary = preload("res://scripts/ui/arena_roulette.gd").find(arena_id)
 		tex = UI.tex(str(arena.get("image", "arena_1v1.jpg")))
+	_blur_k = tex.get_size().x / maxf(1.0, UI.tex_size(tex).x)
 	var bg := UI.texture_rect(tex, Vector2(2000, 1125), true)
 	bg.position = Vector2(-40, -22)
 	bg.pivot_offset = bg.size / 2
@@ -201,7 +203,7 @@ func _overlay(tex: Texture2D) -> TextureRect:
 ## Blur and drain the backdrop as the result lands.
 func _grade(saturation: float, brightness: float) -> void:
 	var t := create_tween().set_parallel()
-	t.tween_method(func(v): _backdrop.set_shader_parameter("blur", v), 0.0, 4.0, 0.5).set_ease(Tween.EASE_OUT)
+	t.tween_method(func(v): _backdrop.set_shader_parameter("blur", v), 0.0, 4.0 * _blur_k, 0.5).set_ease(Tween.EASE_OUT)
 	t.tween_method(func(v): _backdrop.set_shader_parameter("saturation", v), 1.0, saturation, 0.7)
 	t.tween_method(func(v): _backdrop.set_shader_parameter("brightness", v), 0.55, brightness, 0.7)
 

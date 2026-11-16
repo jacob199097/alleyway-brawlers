@@ -21,6 +21,7 @@ func _ready() -> void:
 	back_to = "main_menu"
 	UI.background(self, "arena_rooftop.jpg" if UI.tex("arena_rooftop.jpg") else "menu_background.jpg", 0.4 if UI.tex("arena_rooftop.jpg") else 0.62)
 	Game.sound.ambience("rooftop")   # (the rooftop over the city)
+	UI.prefetch("arena_lobby.jpg")   # (the next screens': matchmaking, rock-paper-scissors, the FFA lobby)
 	UI.title(self, "SELECT BATTLE MODE")
 	if Game.player.get("first_win_ready", false) and not Game.offline:
 		var chip := UI.label("★  FIRST WIN OF THE DAY: +%d XP BONUS WAITING  ★" % int(Game.player.get("first_win_xp", 75)), 22, UI.GOLD, true)

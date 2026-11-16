@@ -235,6 +235,8 @@ assert.ok(!ambushOffered('militia'), 'not offered for another clan');
     const b = board([{}, { downed: true }], [{}]);
     b.sides.opponent.hand = [b.makeCard('test_grunt')];
     assert.ok(b._fxCond('player', 0, { if: 'foe_hand_le', n: 1 }, null) && !b._fxCond('player', 0, { if: 'foe_hand_le', n: 0 }, null));
+    assert.ok(b._fxCond('player', 0, { if: 'foe_hand_ge', n: b.sides.opponent.hand.length }, null)
+        && !b._fxCond('player', 0, { if: 'foe_hand_ge', n: b.sides.opponent.hand.length + 1 }, null), "opponent's hand has N+ cards");
     assert.ok(!b._fxCond('player', 0, { if: 'foe_ambush' }, null));
     b.sides.opponent.field[7] = b.makeCard({ id: 'test_grunt', cardType: 'ambush' });
     assert.ok(b._fxCond('player', 0, { if: 'foe_ambush' }, null), 'opponent has a face-down card');

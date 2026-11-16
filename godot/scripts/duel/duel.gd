@@ -247,11 +247,11 @@ func _ready() -> void:
 		$BackLayer/Background.texture = UI.tex(bg)
 		if not _paint.is_empty():
 			$BackLayer/Background.modulate = Color(0.85, 0.85, 0.92)
-			$BackLayer/Background.material = _alive($BackLayer/Background.texture.get_size())
-			_neon = {"mat": $BackLayer/Background.material, "zones": _find_neon($BackLayer/Background.texture, _cover_point.bind($BackLayer/Background.texture.get_size()))}
+			var ts := UI.tex_size($BackLayer/Background.texture)   # (its picture pixels, 1536 wide)
+			$BackLayer/Background.material = _alive(ts)
+			if arena.get("stutter", true) != false:   # (an arena with no neon signs to stutter has none to find)
+				_neon = {"mat": $BackLayer/Background.material, "zones": _find_neon($BackLayer/Background.texture, _cover_point.bind(ts))}
 			if not arena.is_empty():   # the arena's own slots and life
-				if arena.get("stutter", true) == false:   # (no neon signs to stutter)
-					_neon = {}
 				for k in arena.get("alive", {}):
 					$BackLayer/Background.material.set_shader_parameter(k, float(arena.alive[k]))
 				_style_board(arena.get("board", {}))
@@ -264,7 +264,7 @@ func _ready() -> void:
 		if crossroads and ResourceLoader.exists("res://assets/arena_ffa.jpg"):   # the crossroads, covering the screen
 			var mat := TextureRect.new()
 			mat.texture = UI.tex("arena_ffa.jpg")
-			var px := mat.texture.get_size()
+			var px := UI.tex_size(mat.texture)
 			# Scaled so it covers the screen with its manhole at FFA_MID
 			var k := maxf(maxf(FFA_MID.x / FFA_MANHOLE.x, (1920.0 - FFA_MID.x) / (px.x - FFA_MANHOLE.x)),
 				maxf(FFA_MID.y / FFA_MANHOLE.y, (1080.0 - FFA_MID.y) / (px.y - FFA_MANHOLE.y)))
@@ -1494,7 +1494,7 @@ func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
 	life.position = -m
 	$BackLayer.add_child(life)
 	_life = life
-	var ts := tex.get_size()
+	var ts := UI.tex_size(tex)
 	var k := maxf((1920.0 + m.x * 2) / ts.x, (1080.0 + m.y * 2) / ts.y)
 	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
 	var to_rect := func(r) -> Rect2:
@@ -1737,7 +1737,7 @@ func _fx_spin(tex: Texture2D, centre: Vector2, radius: float, speed: float, at: 
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/spin_disc.gdshader")
 	m.set_shader_parameter("picture", tex)
-	m.set_shader_parameter("tex_size", tex.get_size())
+	m.set_shader_parameter("tex_size", UI.tex_size(tex))
 	m.set_shader_parameter("centre", centre)
 	m.set_shader_parameter("radius", radius)
 	m.set_shader_parameter("tint", $BackLayer/Background.modulate)
@@ -1788,19 +1788,47 @@ static func _cover_point(p: Vector2, tex_size: Vector2) -> Vector2:
 	return p * k - (tex_size * k - screen) / 2.0 - m
 
 
-## The mat's neon: the 160 px patches of the image with lit tubes in them (bright, saturated
-## pixels), and where each is on the screen; only ones between the side panels.
+## The mat's neon: the 160 px patches of the picture (in its picture pixels) with lit tubes in them, and
+## where each is on the screen; only ones between the side panels. Worked out ahead from the pictures
+## (data/neon_zones.json, tools/make_arena_thumbs.gd), so a match never reads its 4K picture back.
 func _find_neon(tex: Texture2D, to_screen: Callable) -> Array:
-	var img := tex.get_image() if tex else null
+	if tex == null:
+		return []
+	var zone := 160
+	var cells = _neon_zones().get(tex.resource_path.get_file())
+	if not cells is Array:   # (a picture the tool hasn't seen: look at the picture itself)
+		cells = _neon_cells(tex, zone)
+	var out: Array = []
+	for c in cells:
+		var at: Vector2 = to_screen.call(Vector2(float(c[0]) * zone + zone / 2.0, float(c[1]) * zone + zone / 2.0))
+		if at.x > 420.0 and at.x < 1650.0 and at.y > -40.0 and at.y < 1120.0:
+			out.append({"zone": Vector2(int(c[0]), int(c[1])), "at": at})
+	return out
+
+
+static var _neon_known = null
+
+
+## data/neon_zones.json: {picture file: [[x, y], ...]} ({} without it).
+static func _neon_zones() -> Dictionary:
+	if _neon_known == null:
+		var f := FileAccess.open("res://data/neon_zones.json", FileAccess.READ)
+		var d = JSON.parse_string(f.get_as_text()) if f else null
+		_neon_known = d if d is Dictionary else {}
+	return _neon_known
+
+
+## The neon patches found in the picture itself (bright, saturated pixels): [[x, y], ...].
+func _neon_cells(tex: Texture2D, zone: int) -> Array:
+	var img := tex.get_image()
 	if img == null or img.is_empty():
 		return []   # (headless)
 	if img.is_compressed():
 		img.decompress()
-	var ts := Vector2i(tex.get_size())
-	if img.get_size() != ts:   # (a backdrop sharper than the pixels it's drawn in: UI.tex)
+	var ts := Vector2i(UI.tex_size(tex))
+	if img.get_size() != ts:   # (a backdrop sharper than its picture pixels)
 		img.resize(ts.x, ts.y, Image.INTERPOLATE_BILINEAR)
 	var out: Array = []
-	var zone := 160
 	for zy in range(0, img.get_height(), zone):
 		for zx in range(0, img.get_width(), zone):
 			var lit := 0
@@ -1811,11 +1839,8 @@ func _find_neon(tex: Texture2D, to_screen: Callable) -> Array:
 					n += 1
 					if c.v > 0.55 and c.s > 0.45:
 						lit += 1
-			if n == 0 or float(lit) / n < 0.05:
-				continue
-			var at: Vector2 = to_screen.call(Vector2(zx + zone / 2.0, zy + zone / 2.0))
-			if at.x > 420.0 and at.x < 1650.0 and at.y > -40.0 and at.y < 1120.0:
-				out.append({"zone": Vector2(zx / zone, zy / zone), "at": at})
+			if n > 0 and float(lit) / n >= 0.05:
+				out.append([zx / zone, zy / zone])
 	return out
 
 

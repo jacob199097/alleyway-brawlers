@@ -2937,6 +2937,8 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return s.leader_state == "awake"
 		"foe_hand_le":
 			return foes_of(side).any(func(f): return sides[f].hand.size() <= n)
+		"foe_hand_ge":
+			return foes_of(side).any(func(f): return sides[f].hand.size() >= n)
 		"foe_ambush":
 			return foes_of(side).any(func(f): return BACK.any(func(b): return sides[f].field[b] != null))
 		"authority_ge":

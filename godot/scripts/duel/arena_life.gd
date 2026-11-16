@@ -47,7 +47,7 @@ static var _textures := {}
 
 func setup(tex: Texture2D, tint: Color, level: float, view := Vector2(1920, 1080)) -> ArenaLife:
 	_tex = tex
-	_ts = tex.get_size()
+	_ts = UI.tex_size(tex)   # (its picture pixels: the fx are given in those)
 	_view = view
 	_k = maxf(_view.x / _ts.x, _view.y / _ts.y)
 	_tint = tint

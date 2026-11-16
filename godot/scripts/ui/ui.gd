@@ -425,26 +425,48 @@ static func panel(accent := Color(1, 1, 1, 0.12), bg := INK) -> PanelContainer:
 	return p
 
 
-## A texture from res://assets, or null if it isn't synced yet. A .jpg backdrop keeps all its detail
-## but reports its original size (BACKDROP_W wide).
+## A texture from res://assets, or null if it isn't synced yet. A .jpg backdrop is drawn with all its
+## detail (4K, with its mipmaps), and placed by its picture pixels: tex_size.
 static func tex(path: String) -> Texture2D:
 	if not path.begins_with("res://"):
 		path = "res://assets/%s" % path
 	if _tex.has(path):
 		return _tex[path]
-	var t: Texture2D = load(path) if ResourceLoader.exists(path) else null
-	if t != null and path.ends_with(".jpg"):
-		var img := t.get_image()
-		if img != null and not img.is_empty():   # (headless: no image, the texture as it is)
-			var sharp := ImageTexture.create_from_image(img)
-			sharp.set_size_override(Vector2i(BACKDROP_W, roundi(BACKDROP_W * float(img.get_height()) / img.get_width())))
-			t = sharp
+	var t: Texture2D = null
+	if ResourceLoader.load_threaded_get_status(path) != ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		t = ResourceLoader.load_threaded_get(path)   # (prefetched: ready, or nearly)
+	if t == null and ResourceLoader.exists(path):
+		t = load(path)
 	_tex[path] = t
 	if path.begins_with("res://assets/arena_1v1"):   # (a match's arena, ~40 MB each: only the last two stay kept)
 		var kept: Array = _tex.keys().filter(func(k: String) -> bool: return k.begins_with("res://assets/arena_1v1"))
 		for k in kept.slice(0, maxi(0, kept.size() - 2)):
 			_tex.erase(k)
 	return t
+
+
+## Starts loading a picture in the background (ResourceLoader's threads) that a screen is about to need:
+## decoding a 4K backdrop takes a tenth of a second or more, so tex() then finds it ready. Only one not
+## loaded yet.
+static func prefetch(path: String) -> void:
+	if not path.begins_with("res://"):
+		path = "res://assets/%s" % path
+	if _tex.has(path) or ResourceLoader.has_cached(path) or not ResourceLoader.exists(path) \
+			or ResourceLoader.load_threaded_get_status(path) != ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		return
+	ResourceLoader.load_threaded_request(path)
+
+
+## A texture's size for placing things on it. A .jpg backdrop's is in its picture pixels, BACKDROP_W wide
+## whatever its real size (an arena's fx, slots and neon, the turf map's districts are given in those);
+## anything else, its own size.
+static func tex_size(t: Texture2D) -> Vector2:
+	if t == null:
+		return Vector2.ZERO
+	var s := t.get_size()
+	if t.resource_path.ends_with(".jpg") and s.x > 0.0:
+		return Vector2(BACKDROP_W, roundf(BACKDROP_W * s.y / s.x))
+	return s
 
 
 ## The 3D card shader (shaders/card.gdshader) set up for a TextureRect of this size.

@@ -173,6 +173,7 @@ func _run() -> void:
 	var final := find(_final)
 	if final.is_empty():
 		final = list[0]
+	UI.prefetch(str(final.get("image", "")))   # (the match's floor, full size, ready for the duel)
 	if not instant:   # every picture starts loading now, in the background
 		for a in list + [final]:
 			var path := thumb_path(str(a.get("image", "")))

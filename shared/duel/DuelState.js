@@ -2519,6 +2519,7 @@ export class DuelState {
             case 'leader_dormant': return s.leader_state === 'dormant';
             case 'leader_awake': return s.leader_state === 'awake';
             case 'foe_hand_le': return this.foesOf(side).some(f => this.sides[f].hand.length <= n);
+            case 'foe_hand_ge': return this.foesOf(side).some(f => this.sides[f].hand.length >= n);
             case 'foe_ambush': return this.foesOf(side).some(f => BACK.some(b => this.sides[f].field[b] != null));
             case 'authority_ge': return s.authority_max >= n;
             case 'ally_downed': return this.characters(side).some(x => x.slot !== slot && x.card.downed && ofIfClan([x.card], e).length > 0);

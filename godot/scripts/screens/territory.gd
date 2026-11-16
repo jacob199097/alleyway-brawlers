@@ -133,12 +133,12 @@ var _pins: Array[Control] = []  # the markers' holders, counter-scaled to keep t
 ## away), the picture in _world, alive, and shade at the top and bottom so the title and panels read.
 func _city_backdrop() -> void:
 	var tex := UI.tex(str(_city.image))
-	var ts := tex.get_size()
-	var small := tex.get_image()
-	if small.is_compressed():   # (an exported game's textures are VRAM-compressed)
+	var ts := UI.tex_size(tex)   # (its picture pixels: the districts' anchors and fx are in those)
+	var small := ArenaRoulette.thumb(str(_city.image)).get_image()   # (its small copy: the blur needs little)
+	if small and small.is_compressed():   # (an exported game's textures are VRAM-compressed)
 		small.decompress()
 	var blur := TextureRect.new()
-	if not small.is_compressed():
+	if small and not small.is_empty() and not small.is_compressed():
 		small.clear_mipmaps()
 		small.resize(int(ts.x / 24), int(ts.y / 24), Image.INTERPOLATE_BILINEAR)
 		blur.texture = ImageTexture.create_from_image(small)
@@ -157,6 +157,7 @@ func _city_backdrop() -> void:
 	add_child(_world)
 	var bg := TextureRect.new()
 	bg.texture = tex
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # (drawn at ts, its picture pixels, whatever its real size)
 	bg.size = ts
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_world.add_child(bg)

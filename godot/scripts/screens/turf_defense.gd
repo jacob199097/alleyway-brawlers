@@ -18,6 +18,7 @@ var _entries: Array = []       # the boss list: [{root, id}]
 var _detail: Control
 var _bg: Array = []            # two background layers, crossfaded when the boss changes
 var _bg_front := 0
+var _arena_want := ""   # the arena picture _show_arena is fading in (the latest boss picked)
 var _queue: Control            # the "looking for a partner" overlay while queued
 var _queue_since := 0.0
 var _queue_clock: Label
@@ -284,10 +285,26 @@ func _show_arena(id: String) -> void:
 	var path := "res://assets/" + str(arena.get("image", "arena_1v1.jpg"))
 	if not ResourceLoader.exists(path):
 		return
+	# It loads in the background (a 4K picture: a tenth of a second or more), then fades in; a boss picked
+	# meanwhile wins
+	_arena_want = path
+	var tex: Texture2D = null
+	if ResourceLoader.has_cached(path):
+		tex = load(path)
+	else:
+		if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			ResourceLoader.load_threaded_request(path)
+		while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
+		tex = ResourceLoader.load_threaded_get(path)
+	if _arena_want != path or tex == null or not is_inside_tree():
+		return
 	_bg_front = 1 - _bg_front
 	var front: TextureRect = _bg[_bg_front]
 	var back: TextureRect = _bg[1 - _bg_front]
-	front.texture = load(path)
+	front.texture = tex
 	move_child(front, 1)
 	var t := create_tween().set_parallel()
 	t.tween_property(front, "modulate:a", 1.0, 0.6)
