@@ -299,7 +299,7 @@ func _show_detail(c: Dictionary) -> void:
 	_hero = UI.texture_rect(UI.card_art(c), Vector2(330, 467))
 	_hero.pivot_offset = _hero.size / 2
 	if _hero.texture:
-		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)))
+		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)), c)
 		_hero.material = _hero_mat
 	holder.add_child(_hero)
 	var vet := Game.veteran_tier(id)
@@ -738,7 +738,7 @@ func _reveal(c: Dictionary, tile) -> void:
 	var art := UI.texture_rect(UI.card_art(c), size)
 	art.position = centre - size / 2
 	art.pivot_offset = size / 2
-	var mat := UI.card_material(size, rarity)
+	var mat := UI.card_material(size, rarity, c)
 	art.material = mat
 	veil.add_child(art)
 	art.scale = Vector2.ONE * 0.2

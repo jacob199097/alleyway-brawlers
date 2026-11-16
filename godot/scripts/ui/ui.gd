@@ -513,12 +513,13 @@ static func active_deck_plate(parent: Control, at: Vector2) -> void:
 	col.add_child(label(("%d cards" % int(d.get("card_count", 0))) + ("   ·   %d W / %d L" % [int(d.get("wins", 0)), games - int(d.get("wins", 0))] if games > 0 else ""), 18, MUTED))
 
 
-static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
+## card: the card shown (its own animated art, art_anim_fx); {} for a back or a card without one.
+static func card_material(size: Vector2, rarity := 1, card := {}) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/card.gdshader")
 	m.set_shader_parameter("quad_size", size)
 	m.set_shader_parameter("roulette_tex", ROULETTE_TEX)   # (the Wildcard back's turning wheel)
-	rarity_fx(m, rarity, randf())
+	rarity_fx(m, rarity, randf(), card)
 	return m
 
 
@@ -527,7 +528,8 @@ static func card_material(size: Vector2, rarity := 1) -> ShaderMaterial:
 ## holographic foil; Legendary's art moves more (shifting colours, drifting scene, rising sparks) and
 ## twinkles. seed (0..1) keeps cards out of step with each other.
 ## Settings → Animated Card Art off (Low graphics) keeps the art still and drops the sparkles.
-static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
+## card: the card (its artFx, set in the Forge: its own animated art, art_anim_fx); {} or a card without one: none.
+static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0, card := {}) -> void:
 	var motion: bool = Game.settings.get("card_motion", true) and not Game.photosafe()
 	m.set_shader_parameter("calm", 1.0 if Game.photosafe() else 0.0)   # (no glints or twinkles)
 	m.set_shader_parameter("foil", 1.0 if rarity >= 4 else 0.0)
@@ -535,6 +537,38 @@ static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0) -> void:
 	m.set_shader_parameter("art_fx", 0.0 if rarity < 4 or not motion else 1.0 if rarity == 4 else 2.0)
 	m.set_shader_parameter("sparkle", 1.0 if rarity >= 5 and motion else 0.0)
 	m.set_shader_parameter("shine_seed", seed)
+	art_anim_fx(m, card if motion else {})
+
+
+const ART_ANIM_KINDS := {"water": 1.0, "heat": 2.0, "sway": 3.0, "drift": 4.0}
+const ART_ANIM_MASKS := {"all": 0.0, "glow": 1.0, "colour": 2.0}
+
+
+## A card's own animated art (card.artFx from the Forge: {kind, amp, speed, mask, key, tol, sparks, spark}):
+## the shader's art_anim uniforms. A card dict with no artFx (a collection row, a deck entry) is looked up
+## in CardDB by its id. {} turns it off.
+static func art_anim_fx(m: ShaderMaterial, card: Dictionary) -> void:
+	var fx = card.get("artFx")
+	if not (fx is Dictionary) and not card.is_empty():
+		for k in ["art_url", "cardId", "id"]:
+			if card.has(k):
+				fx = CardDB.get_card(str(card[k])).get("artFx")
+				if fx is Dictionary:
+					break
+	if not (fx is Dictionary) or not ART_ANIM_KINDS.has(str(fx.get("kind", ""))):
+		m.set_shader_parameter("art_anim", 0.0)
+		return
+	var amp := clampf(float(fx.get("amp", 1.0)), 0.1, 3.0)
+	if Game.battery_saver():
+		amp *= 0.6
+	m.set_shader_parameter("art_anim", ART_ANIM_KINDS[str(fx.kind)])
+	m.set_shader_parameter("art_amp", amp)
+	m.set_shader_parameter("art_speed", clampf(float(fx.get("speed", 1.0)), 0.1, 3.0))
+	m.set_shader_parameter("art_mask", ART_ANIM_MASKS.get(str(fx.get("mask", "all")), 0.0))
+	m.set_shader_parameter("art_key", Color.html(str(fx.get("key", "#000000"))) if Color.html_is_valid(str(fx.get("key", ""))) else Color.BLACK)
+	m.set_shader_parameter("art_tol", clampf(float(fx.get("tol", 0.25)), 0.02, 1.0))
+	m.set_shader_parameter("art_sparks", clampf(float(fx.get("sparks", 0.0)), 0.0, 1.0))
+	m.set_shader_parameter("art_spark", Color.html(str(fx.get("spark", "#fff2cc"))) if Color.html_is_valid(str(fx.get("spark", ""))) else Color(1, 0.95, 0.8))
 
 
 static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> TextureRect:
@@ -1058,7 +1092,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	var art := texture_rect(card_art(c) if card_art(c) else CardDB.back(), Vector2(520, 736))
 	art.position = Vector2(400, 172)
 	var rarity_ := int(c.get("rarity", 1)) if c.get("rarity") != null else 1
-	var mat := card_material(art.size, rarity_)
+	var mat := card_material(art.size, rarity_, c)
 	art.material = mat
 	veil.add_child(art)
 	# The big card tilts toward the mouse and catches the light

@@ -237,7 +237,7 @@ func set_face(up: bool) -> void:
 	_front.visible = shown and _front.texture != null
 	_back.visible = not shown
 	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
-	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0))
+	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0), card if shown else {})
 	UI.veteran_fx(_mat, veteran if up else 0)
 	if _fallback:
 		_fallback.visible = shown and _front.texture == null

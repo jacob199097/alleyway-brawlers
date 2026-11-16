@@ -8257,7 +8257,7 @@ func _show_detail(c: Dictionary, live_stats := [], live_status := []) -> void:
 	var back: Texture2D = _back_for(str(c.back_side)) if c.has("back_side") else CardDB.back()
 	_ui.detail_art.texture = tex if tex else back
 	var dm: ShaderMaterial = _ui.detail_art.material
-	UI.rarity_fx(dm, int(c.get("rarity", 1)) if tex else 1, 0.37)
+	UI.rarity_fx(dm, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex else {})
 	# A clan back moves here too, like on the field (the Nebula galaxy turns, the Militia radar sweeps)
 	_detail_spin = CardDB.back_style(_back_clan(str(c.back_side))) if not tex and c.has("back_side") else ""
 	for style in CardDB.BACK_STYLES.values():
@@ -8305,7 +8305,7 @@ func _show_idle() -> void:
 	var side: String = _last_played.side
 	var tex := CardDB.art_for(c)
 	_ui.detail_art.texture = tex if tex else _back_for(side)
-	UI.rarity_fx(_ui.detail_art.material, int(c.get("rarity", 1)) if tex else 1, 0.37)
+	UI.rarity_fx(_ui.detail_art.material, int(c.get("rarity", 1)) if tex else 1, 0.37, c if tex else {})
 	_detail_spin = ""
 	for style in CardDB.BACK_STYLES.values():
 		_ui.detail_art.material.set_shader_parameter(style, 0.0)

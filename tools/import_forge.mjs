@@ -133,6 +133,8 @@ for (const [key, raw] of Object.entries(exported)) {
         // Its artworks: <id>.png and <id>_v2.png ... (each token in a match shows one)
         if (int(raw.artVariants) > 1) c.artVariants = Math.min(12, int(raw.artVariants));
     }
+    // Its own animated art (the Forge's "Art animation": card.gdshader art_anim, UI.art_anim_fx)
+    if (raw.artFx && typeof raw.artFx === 'object' && ART_ANIM_KINDS.includes(String(raw.artFx.kind))) c.artFx = cleanArtFx(raw.artFx);
     if (FORGE) c.forge = FORGE;
     cards[id] = c;
 }
@@ -190,6 +192,17 @@ console.log(`\nNext: commit and push, then on the server:\n  git pull && node ba
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function int(v) { return Math.trunc(Number(v ?? 0)) || 0; }
+
+const ART_ANIM_KINDS = ['water', 'heat', 'sway', 'drift'];
+const HEX = /^#[0-9a-f]{6}$/i;
+const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.round(Math.min(hi, Math.max(lo, n)) * 100) / 100 : d; };
+function cleanArtFx(a) {
+    const out = { kind: String(a.kind), amp: num(a.amp, 0.1, 3, 1), speed: num(a.speed, 0.1, 3, 1) };
+    if (a.mask === 'glow') out.mask = 'glow';
+    else if (a.mask === 'colour' && HEX.test(String(a.key || ''))) { out.mask = 'colour'; out.key = String(a.key).toLowerCase(); out.tol = num(a.tol, 0.02, 1, 0.25); }
+    if (num(a.sparks, 0, 1, 0) > 0) { out.sparks = num(a.sparks, 0, 1, 0); if (HEX.test(String(a.spark || ''))) out.spark = String(a.spark).toLowerCase(); }
+    return out;
+}
 
 function cleanEffect(e) {
     const out = {};

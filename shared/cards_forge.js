@@ -6117,7 +6117,14 @@ export const FORGE_CARDS = {
         "defense": 3000,
         "level": 1,
         "subtype": "heavy",
-        "promotesTo": null
+        "promotesTo": null,
+        "artFx": {
+            "kind": "drift",
+            "amp": 1,
+            "speed": 0.8,
+            "sparks": 0.5,
+            "spark": "#cfe6ff"
+        }
     },
     "card_unde_043": {
         "id": "card_unde_043",
@@ -8210,7 +8217,15 @@ export const FORGE_CARDS = {
         "defense": 3000,
         "level": 1,
         "subtype": "heavy",
-        "promotesTo": null
+        "promotesTo": null,
+        "artFx": {
+            "kind": "heat",
+            "amp": 1.3,
+            "speed": 1,
+            "mask": "glow",
+            "sparks": 0.3,
+            "spark": "#ffb347"
+        }
     },
     "card_arso_027": {
         "id": "card_arso_027",
@@ -10817,7 +10832,13 @@ export const FORGE_CARDS = {
         "defense": 800,
         "level": 1,
         "subtype": "brawler",
-        "promotesTo": null
+        "promotesTo": null,
+        "artFx": {
+            "kind": "heat",
+            "amp": 1.2,
+            "speed": 1.2,
+            "mask": "glow"
+        }
     },
     "card_arso_035": {
         "id": "card_arso_035",
@@ -11273,7 +11294,14 @@ export const FORGE_CARDS = {
         "clanName": "Pirates",
         "clanColor": "#2ec4b6",
         "ambushClan": "pirates",
-        "forge": "forge2"
+        "forge": "forge2",
+        "artFx": {
+            "kind": "sway",
+            "amp": 1.2,
+            "speed": 0.9,
+            "sparks": 0.4,
+            "spark": "#d8fffb"
+        }
     },
     "card_pira_050": {
         "id": "card_pira_050",
@@ -11411,6 +11439,16 @@ export const FORGE_CARDS = {
         "level": 1,
         "subtype": "heavy",
         "promotesTo": null,
-        "forge": "forge2"
+        "forge": "forge2",
+        "artFx": {
+            "kind": "water",
+            "amp": 1.4,
+            "speed": 1,
+            "mask": "colour",
+            "key": "#2ad4c8",
+            "tol": 0.35,
+            "sparks": 0.6,
+            "spark": "#bffff4"
+        }
     }
 };

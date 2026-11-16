@@ -24,6 +24,19 @@ uniform float veteran = 0.0;      // a veteran card's tier (UI.veteran_fx): its 
 // window, centred uv), so the frame and text stay still.
 uniform float art_fx = 0.0;
 uniform vec4 art_rect = vec4(-0.455, -0.374, 0.455, 0.07);
+// art_anim: the card's own animated art, chosen per card in the Forge (card.artFx, UI.rarity_fx): the picture
+// moves inside art_rect. 1 water (rippling), 2 heat (shimmer), 3 sway (cloth, leaves, smoke), 4 drift (fog,
+// stars, a slow breath through the scene). art_amp: how far it moves; art_speed: how fast. What moves:
+// art_mask 0 all of it, 1 its glowing parts (glowness), 2 pixels near art_key (within art_tol).
+// art_sparks: glints twinkling over the moving parts (0 none .. 1 many), in art_spark's colour.
+uniform float art_anim = 0.0;
+uniform float art_amp = 1.0;
+uniform float art_speed = 1.0;
+uniform float art_mask = 0.0;
+uniform vec4 art_key : source_color = vec4(0.0, 0.0, 0.0, 1.0);
+uniform float art_tol = 0.25;
+uniform float art_sparks = 0.0;
+uniform vec4 art_spark : source_color = vec4(1.0, 0.95, 0.8, 1.0);
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
 uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
@@ -180,6 +193,47 @@ void fragment() {
 					vec2 f = fract(q) - 0.5 - vec2((hash21(cell + 5.0) - 0.5) * 0.6 + 0.12 * sin(t + r * 30.0), 0.0);
 					float mote = smoothstep(0.11, 0.0, length(f)) * step(0.72, r) * (0.55 + 0.45 * sin(t * 3.0 + r * 40.0));
 					col.rgb += mix(vec3(1.0, 0.85, 0.6), hc + 0.3, 0.5) * mote * 1.1 * in_art;
+				}
+			}
+		}
+	}
+	if (art_anim > 0.5) {
+		float in_art = smoothstep(art_rect.x, art_rect.x + 0.012, uv.x) * (1.0 - smoothstep(art_rect.z - 0.012, art_rect.z, uv.x))
+				* smoothstep(art_rect.y, art_rect.y + 0.01, uv.y) * (1.0 - smoothstep(art_rect.w - 0.01, art_rect.w, uv.y));
+		if (in_art > 0.0) {
+			float t = (TIME + shine_seed * 20.0) * art_speed;
+			vec2 p = vec2(uv.x, uv.y * aspect);   // card widths, centred
+			int kind = int(art_anim + 0.5);
+			vec2 off = vec2(0.0);
+			if (kind == 1) {   // water: two drifting noise fields, like light through ripples
+				off = (vec2(vnoise(p * 14.0 + vec2(t * 0.35, t * 0.1)), vnoise(p * 14.0 + vec2(3.7, -t * 0.3))) - 0.5) * 0.014;
+			} else if (kind == 2) {   // heat: a fine horizontal shimmer rising through the picture
+				float h = vnoise(p * 9.0 + vec2(0.0, -t * 0.9));
+				off = vec2(sin(p.y * 70.0 + t * 3.0 + h * 6.0) * (0.3 + 0.7 * h) * 0.006, h * 0.002);
+			} else if (kind == 3) {   // sway: a slow side-to-side wave, like wind through cloth or leaves
+				float g = 0.5 + 0.5 * vnoise(p * 4.0 + vec2(t * 0.2, 0.0));
+				off = vec2(sin(t * 1.2 + p.y * 6.0) * g * 0.009, cos(t * 0.9 + p.x * 5.0) * g * 0.003);
+			} else {   // drift: the scene breathes, as if fog or starlight moved through it
+				off = (vec2(vnoise(p * 4.0 + vec2(t * 0.22, 0.0)), vnoise(p * 4.0 + vec2(5.1, t * 0.18))) - 0.5) * 0.012;
+			}
+			off *= art_amp * in_art;
+			float m = 1.0;
+			if (art_mask > 1.5) m = 1.0 - smoothstep(art_tol * 0.5, art_tol, distance(col.rgb, art_key.rgb));
+			else if (art_mask > 0.5) m = glowness(col.rgb);
+			// Sample inside the art window only: the frame never bleeds into the moving picture
+			vec2 suv = clamp(uv + off * m, art_rect.xy + 0.002, art_rect.zw - 0.002);
+			col = mix(col, texture(TEXTURE, suv + 0.5), in_art);
+			if (art_sparks > 0.0 && calm < 0.5) {   // glints twinkling over the moving parts
+				float dens = 0.95 - art_sparks * 0.35;
+				for (int L = 0; L < 2; L++) {
+					float fl = float(L);
+					vec2 q = p * (11.0 + fl * 6.0) + vec2(fl * 2.3, 0.0);
+					vec2 cell = floor(q);
+					float r = hash21(cell + fl * 23.0);
+					vec2 f = fract(q) - 0.5 - (vec2(hash21(cell + 7.0), hash21(cell + 11.0)) - 0.5) * 0.6;
+					float tw = 0.5 + 0.5 * sin(t * (1.6 + fl * 0.7) + r * 40.0);
+					float glint = smoothstep(0.09, 0.0, length(f)) * step(dens, r) * tw * tw;
+					col.rgb += art_spark.rgb * glint * m * in_art * 0.9;
 				}
 			}
 		}

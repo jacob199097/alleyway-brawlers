@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.167",
+        "notes": [
+            "Animated card art: a card's picture can now move inside its frame. Water ripples, heat shimmers, cloth and leaves sway, fog and starlight drift, with sparkles over the moving parts. Each card's animation is set in the Card Forge, so more cards get theirs over time. The first five: The Furnace, Madame Wildfire, Herald of the Horizon, The Phantom Armada and Kraken's Wrath.",
+            "It follows Settings → Animated Card Art (off on Low graphics) and is gentler with Battery Saver on."
+        ]
+    },
+    {
         "version": "0.9.166",
         "notes": [
             "COLLATERAL now works after \"If you do\" on any card, Hustles and Ambushes too: it hits the characters either side of the one the effect before it hit (e.g. \"KO the attacker and negate the attack. If you do, DOWN the characters next to it\").",

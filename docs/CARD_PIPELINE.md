@@ -22,6 +22,12 @@ Striver level above it), this card's scene and the clan's palette (Settings: the
 ## 1. Export from the Forge
 Press **Export all**. You get `alleyway-cards.zip` with `card_catalog.json` and `cards/<game id>.png`.
 
+### Art animation
+
+A card's "Art animation" section in the Forge (motion, strength, speed, what moves, sparkles) exports as `artFx`;
+`tools/import_forge.mjs` whitelists it (`cleanArtFx`) and the game's card shader plays it inside the art window
+(`card.gdshader` `art_anim`, set by `UI.art_anim_fx`). It needs no new build: the game downloads the changed cards.json.
+
 ## 2. Import on the PC
 ```
 node tools/import_forge.mjs path/to/alleyway-cards.zip
