@@ -194,8 +194,8 @@ func _build_list() -> void:
 		root.add_child(pic)
 		var name_l := UI.label(str(b.get("name", "")).to_upper(), 24, Color.WHITE, true)
 		name_l.position = Vector2(180, 16)
-		name_l.size = Vector2(326, 60)
 		name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_l.size = Vector2(326, 60)
 		root.add_child(name_l)
 		var title := UI.label(str(b.get("title", "")), 16, col.lightened(0.2))
 		title.position = Vector2(182, 78)
@@ -373,8 +373,8 @@ func _build_detail(animate: bool) -> void:
 	if not intro.is_empty():
 		var quote := UI.label("“%s”" % str(intro[0]), 19, Color(0.88, 0.86, 0.95))
 		quote.position = Vector2(x + 2, 122)
-		quote.size = Vector2(w, 30)
 		quote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		quote.size = Vector2(w, 30)
 		root.add_child(quote)
 	# The levels
 	var tabs := HBoxContainer.new()

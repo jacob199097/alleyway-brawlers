@@ -221,11 +221,11 @@ func set_card(c: Dictionary) -> void:
 	if tex == null and not c.is_empty():
 		if _fallback == null:
 			_fallback = Label.new()
+			_fallback.autowrap_mode = TextServer.AUTOWRAP_WORD
 			_fallback.size = SIZE - Vector2(12, 12)
 			_fallback.position = -_fallback.size / 2
 			_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			_fallback.autowrap_mode = TextServer.AUTOWRAP_WORD
 			_body.add_child(_fallback)
 		_fallback.text = str(c.get("name", "?"))
 	set_face(face_up)

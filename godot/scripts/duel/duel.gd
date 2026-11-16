@@ -8353,12 +8353,12 @@ func _clan_line(p: Panel, prof) -> void:
 	em.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	em.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	em.size = Vector2(20, 20)
-	em.position = Vector2(92, 64)
+	em.position = Vector2(92, 71)   # (clear of the level line above it)
 	em.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(em)
 	var l := _label(12, clan.get("color", GOLD), true)
 	l.text = "%s  ·  MASTERY %d" % [str(clan.get("name", prof.clan)).to_upper(), int(prof.clan_level)]
-	l.position = Vector2(116, 66)
+	l.position = Vector2(116, 73)
 	p.add_child(l)
 
 

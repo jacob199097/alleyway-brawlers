@@ -65,6 +65,23 @@ static func get_card(id: String) -> Dictionary:
 	return all().get(id, {})
 
 
+## A search box's match (Card Library, Deck Builder): every word of the query is somewhere in the card's
+## name, effect text (so keywords: "burn", "plunder"), clan, kind or card number ("PIRA-053").
+## c: a card, or a collection row (name, art_url, effect_text, card_type).
+static func search_hit(c: Dictionary, query: String) -> bool:
+	var q := query.strip_edges().to_lower()
+	if q == "":
+		return true
+	var full := get_card(str(c.get("art_url", c.get("id", ""))))
+	var hay := " ".join([c.get("name", ""), full.get("name", ""), full.get("effectText", c.get("effect_text", "")),
+		full.get("clanName", ""), full.get("clan", c.get("clan_tag", "")), full.get("subtype", c.get("subtype", "")),
+		full.get("cardType", c.get("card_type", "")), full.get("code", "")]).to_lower().replace("_", " ")
+	for w in q.split(" ", false):
+		if not w in hay:
+			return false
+	return true
+
+
 ## The form a card promotes into: promotesTo, or the next `_lvN` card (Hunter).
 static func next_form(id: String) -> String:
 	var card := get_card(id)

@@ -102,7 +102,8 @@ func _build_header() -> void:
 	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 	var search := LineEdit.new()
-	search.placeholder_text = "Search…"
+	search.placeholder_text = "Search names, effects, keywords…"
+	search.clear_button_enabled = true
 	search.custom_minimum_size = Vector2(150, 52)
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.text_changed.connect(func(t):
@@ -205,7 +206,7 @@ func _build_collection() -> void:
 	_grid.columns = COLS
 	_grid.add_theme_constant_override("h_separation", 10)
 	_grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(_grid)
+	scroll.add_child(UI.headroom(_grid))   # (room above the top row for a Striver's stars)
 	# Drop a deck or Hideout row here to remove it
 	p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.get("source") in ["deck", "hideout"],
 		func(_at, d): _remove_hideout(d.cardId) if d.source == "hideout" else _remove(d.cardId))
@@ -858,8 +859,7 @@ func _matches(item: Dictionary) -> bool:
 		if not Keywords.full_name(_keyword) in text.to_upper():
 			return false
 	if _filter_text != "":
-		var hay := "%s %s %s" % [item.get("name", ""), item.get("subtype", ""), item.get("card_type", "")]
-		return _filter_text in hay.to_lower()
+		return CardDB.search_hit(item, _filter_text)
 	return true
 
 

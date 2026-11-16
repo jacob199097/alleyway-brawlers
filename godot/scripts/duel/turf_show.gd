@@ -79,8 +79,8 @@ func intro(players: Dictionary) -> void:
 	var name_l: Label = d._label(96, Color.WHITE, true)
 	name_l.text = boss_name()
 	name_l.position = Vector2(130, 290)
-	name_l.size = Vector2(960, 120)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.size = Vector2(960, 120)
 	name_l.label_settings.outline_color = Color(color, 0.9)
 	name_l.label_settings.outline_size = 14
 	name_l.pivot_offset = Vector2(0, 60)
@@ -169,8 +169,8 @@ func phase(ev: Dictionary) -> void:
 	var big: Label = d._label(104, Color.WHITE, true)
 	big.text = label
 	big.position = Vector2(790, 370)
-	big.size = Vector2(1060, 130)
 	big.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	big.size = Vector2(1060, 130)
 	big.label_settings.outline_color = Color(color, 0.95)
 	big.label_settings.outline_size = 16
 	big.pivot_offset = Vector2(0, 60)
@@ -481,8 +481,8 @@ func _typed(root: Control, text: String, at: Vector2, width: float, hold: float)
 	var l: Label = d._label(38, Color.WHITE, true)
 	l.text = "“%s”" % text
 	l.position = at + Vector2(0, 26)
-	l.size = Vector2(width, 0)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size = Vector2(width, 0)
 	l.visible_ratio = 0.0
 	root.add_child(l)
 	_skip = false

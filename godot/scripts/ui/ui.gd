@@ -699,6 +699,19 @@ static func rule(color: Color, width: float, at: Callable) -> Control:
 	return r
 
 
+## A grid of card tiles inside a scroll, with a little room above its top row: a Striver's stars sit on its
+## tile's top edge, and the scroll would cut them off.
+static func headroom(grid: Control, top := 14) -> MarginContainer:
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_top", top)
+	m.add_theme_constant_override("margin_left", 0)
+	m.add_theme_constant_override("margin_right", 0)
+	m.add_theme_constant_override("margin_bottom", 6)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(grid)
+	return m
+
+
 static func back_button(parent: Control, on_press: Callable, text := "←  BACK") -> Button:
 	var b := button(text, on_press, Vector2(200, 56))
 	b.position = Vector2(32, 1080 - 56 - 28)

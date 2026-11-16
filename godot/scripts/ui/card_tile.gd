@@ -90,9 +90,9 @@ func _ready() -> void:
 	set_process(false)
 	if art_tex == null:
 		_name = UI.label(str(card.get("name", "?")), 18, Color.WHITE, true)
+		_name.autowrap_mode = TextServer.AUTOWRAP_WORD
 		_name.size = size - Vector2(16, 16)
 		_name.position = Vector2(8, 8)
-		_name.autowrap_mode = TextServer.AUTOWRAP_WORD
 		_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		add_child(_name)

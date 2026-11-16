@@ -363,11 +363,13 @@ func _contract(o: Dictionary) -> Control:
 	]
 	for r in rows:
 		var l: Label = r[0]
-		l.size = Vector2(360, r[2])
-		l.position = Vector2(20, r[1])
+		# (wrap first, then the width: a Label sized before it wraps grows to fit its text on one line)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(360, 0)
+		l.size = Vector2(360, r[2])
+		l.position = Vector2(20, r[1])
 		paper.add_child(l)
 	var text := "TAKE IT  ·  %d KARAT" % int(o.get("price", 0))
 	if bought == "active":
@@ -415,10 +417,10 @@ func _buy_contract(o: Dictionary) -> void:
 func _contract_note(on: bool) -> void:
 	if _contract_info == null:
 		_contract_info = UI.label("", 18, UI.MUTED)
+		_contract_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_contract_info.size = Vector2(1500, 64)
 		_contract_info.position = Vector2(210, 910)
 		_contract_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_contract_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		add_child(_contract_info)
 	_contract_info.visible = on
 	if not on:

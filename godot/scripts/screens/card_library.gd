@@ -32,6 +32,8 @@ var _hero_mat: ShaderMaterial
 var _hero_tilt := Vector2.ZERO
 var _detail_id := "-"           # the card the side panel shows ("" = the collection)
 var _detail_panel: Control
+var _query := ""                # the search box's words (CardDB.search_hit)
+var _search_timer: SceneTreeTimer
 
 
 func _ready() -> void:
@@ -43,6 +45,21 @@ func _ready() -> void:
 	_total = UI.label("", 22, UI.MUTED)
 	_total.position = Vector2(1500, 46)
 	add_child(_total)
+	# Search: names, effect text (keywords), clan, kind, card number; the grid follows as you type
+	var search := LineEdit.new()
+	search.placeholder_text = "Search names, effects, keywords…"
+	search.clear_button_enabled = true
+	search.position = Vector2(24, 34)
+	search.size = Vector2(480, 56)
+	search.add_theme_font_size_override("font_size", 22)
+	search.text_changed.connect(func(t: String):
+		_query = t
+		var timer := get_tree().create_timer(0.2)   # (once typing pauses: not a re-render per key)
+		_search_timer = timer
+		timer.timeout.connect(func():
+			if _search_timer == timer and is_inside_tree():
+				_render()))
+	add_child(search)
 	_build_filters()
 	var p := UI.glass(UI.panel(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0.45)), Color(0.02, 0.02, 0.06, 0.38), 6.0)
 	p.position = Vector2(20, 190)
@@ -55,7 +72,7 @@ func _ready() -> void:
 	_grid.columns = 8
 	_grid.add_theme_constant_override("h_separation", 10)
 	_grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(_grid)
+	scroll.add_child(UI.headroom(_grid))   # (room above the top row for a Striver's stars)
 	var dp := UI.glass(UI.panel(UI.BLUE))
 	dp.position = Vector2(1380, 190)
 	dp.size = Vector2(520, 790)
@@ -245,6 +262,8 @@ func _render() -> void:
 			continue
 		if not _sub_matches(c):
 			continue
+		if _query != "" and not CardDB.search_hit(c, _query):
+			continue
 		var tile := CardTile.make(c, TILE)
 		tile.veteran = Game.veteran_tier(str(c.get("id", "")))
 		var qty := int(c.get("quantity", 0))
@@ -264,7 +283,7 @@ func _render() -> void:
 		shown += 1
 	_total.text = "%d card%s" % [shown, "" if shown == 1 else "s"]
 	if shown == 0:
-		var l := UI.label("No cards match these filters", 28, UI.MUTED, true)
+		var l := UI.label("No cards match \"%s\"" % _query.strip_edges() if _query.strip_edges() != "" else "No cards match these filters", 28, UI.MUTED, true)
 		_grid.add_child(l)
 	CardTile.cascade(_grid.get_children())
 
