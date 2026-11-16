@@ -38,7 +38,7 @@ const LIST := {
 	"UNDEAD": [Color("c9e8b0"), "UNDEAD: the first time it's KO'd, it rises from the Gutter at the end of the turn, in DEF position with half its ATK and DEF."],
 	"EXILE": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
 	"EXILES": [Color("d0a6ff"), "EXILE: removed from the game for good. It doesn't go to the Gutter, no KO effects happen, and nothing can bring it back."],
-	"COLLATERAL": [Color("ff9a5c"), "COLLATERAL: when it KOs (or Downs) a character in a brawl, the effect hits the characters in the lanes either side of that one."],
+	"COLLATERAL": [Color("ff9a5c"), "COLLATERAL: when it KOs (or Downs) a character in a brawl, the effect hits the characters in the lanes either side of that one. After \"If you do\", it hits the characters either side of the one the effect before it hit."],
 	"DOUBLE": [Color("ff8f6b"), "DOUBLE OR NOTHING: you may bet on a coin flip. Heads, the effect happens twice; tails, not at all. Don't bet, and it happens once."],
 	"BRACE": [Color("9ec1e0"), "BRACE X: the first time each turn it's attacked, the attacker loses X ATK before the brawl (for the rest of the turn)."],
 	"RECKLESS": [Color("ff6347"), "RECKLESS X: when it attacks, it gets +X ATK for that brawl. After the brawl, it goes Down."],

@@ -2735,7 +2735,9 @@ export class DuelState {
         const then = e.then && typeof e.then === 'object' ? e.then : null;
         if (then == null) { this._doFxOne(side, slot, c, e, vs); return; }
         const did = this._did, asks = this._inAnswer ? this._newAsks : this._asks, queued = asks.length;
-        const next = () => { if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, then, vs, true); };
+        // (COLLATERAL in the "If you do": the characters next to the one this effect hit, _fxApply's vs.hit)
+        const next = () => { if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, then, vs && vs.hit ? { ...vs, victim: vs.hit } : vs, true); };
+        if (vs) delete vs.hit;
         this._doFxOne(side, slot, c, e, vs);
         if (this._did > did) next();
         else if (asks.length > queued) {
@@ -3461,6 +3463,10 @@ export class DuelState {
     }
 
     _fxApply(side, slot, c, e, vs, poolKind, what, fn, allText) {
+        if (vs && typeof vs === 'object') {   // (the character it hits: an "If you do" COLLATERAL after it hits the ones next to it)
+            const apply = fn;
+            fn = (x) => { vs.hit = { side: x.side, slot: x.slot }; return apply(x); };
+        }
         const target = String(e.target ?? 'self');
         const entries = this._fxTargets(side, slot, c, e, vs, poolKind);
         if ((target === 'ally' || target === 'enemy') && this._equippedEntry(c)) {   // an Equip: its own character, no choice
@@ -3642,7 +3648,7 @@ export class DuelState {
                     }
                 }
                 break;
-            case 'collateral':   // COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
+            case 'collateral':   // COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed (or, after "If you do", the one the effect above hit)
                 if (vs && vs.victim && FRONT.includes(vs.victim.slot) && vs.victim.side !== side) {
                     const v = vs.victim;
                     entries = this._fxPool(v.side, e, -99).filter(x => Math.abs(x.slot - v.slot) === 1).map(x => ({ side: v.side, slot: x.slot, card: x.card }));

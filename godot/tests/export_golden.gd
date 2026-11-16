@@ -153,6 +153,7 @@ const FX_SAMPLES := [
 	[{"when": "deploy", "do": "silence", "target": "enemy"}, {"when": "turn_start", "do": "ramp", "amount": 1, "if": "authority_ge", "n": 3, "once": true}],
 	[{"when": "passive", "do": "elusive"}, {"when": "deploy", "do": "break_ambush", "if": "foe_ambush"}],
 	[{"when": "turn_start", "do": "influence", "amount": 500}, {"when": "deploy", "do": "discard", "amount": 1, "if": "foe_hand_le", "n": 3}, {"when": "attack", "do": "discard", "amount": 1, "if": "foe_hand_ge", "n": 4}],
+	[{"when": "deploy", "do": "down", "target": "enemy"}, {"when": "deploy", "do": "buff", "target": "collateral", "atk": -300, "until": "forever", "if_done": true}],
 	[{"when": "turn_end", "do": "stand", "target": "allies", "if": "ally_downed"}, {"when": "defend", "do": "silence", "target": "attacker", "until": "next_turn"}],
 	[{"when": "ally_deployed", "do": "buff", "target": "allies", "atk": 200, "clan": "", "when_clan": "nebula"}, {"when": "passive", "do": "buff", "target": "self", "atk": 300, "if": "allies", "n": 2, "if_clan": "nebula", "clan": ""}],
 	[{"when": "ko", "do": "buff", "target": "self", "atk": 300, "until": "forever"}, {"when": "ally_ko", "do": "buff", "target": "self", "atk": 400, "def": 200, "until": "forever"}],

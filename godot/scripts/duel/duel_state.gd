@@ -3227,9 +3227,11 @@ func _do_fx_then(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 	var did := _did
 	var asks: Array = _new_asks if _in_answer else _asks
 	var queued := asks.size()
+	# (COLLATERAL in the "If you do": the characters next to the one this effect hit, _fx_apply's vs.hit)
 	var next := func() -> void:
 		if winner == "":
-			_do_fx(side, _slot_of(side, c, slot), c, then, vs, true)
+			_do_fx(side, _slot_of(side, c, slot), c, then, vs.merged({"victim": vs.hit}, true) if vs.has("hit") else vs, true)
+	vs.erase("hit")
 	_do_fx_one(side, slot, c, e, vs)
 	if _did > did:
 		next.call()
@@ -3427,9 +3429,8 @@ func _do_fx_one(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {})
 			_effect(side, c, "%s: +%d max Authority" % [c.name, d], slot)
 			_auth_ev(side, d)
 		"silence":
-			var until_turn: int = FOREVER if str(e.get("until", "turn")) == "forever" else turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
-			var fn := func(x: Dictionary) -> String:
-				x.card.silence_until = until_turn
+			var fn := func(x: Dictionary) -> String:   # (its turns from when it lands: a target chosen after the turn changed counts from then)
+				x.card.silence_until = FOREVER if str(e.get("until", "turn")) == "forever" else turn + (_round_span() if str(e.get("until", "turn")) == "next_turn" else 0)
 				_recalc()
 				return "%s silences %s: its effects stop" % [c.name, x.card.name]
 			_fx_apply(side, slot, c, e, vs, "any", "silence", fn, "%s silences %%s" % c.name)
@@ -4026,6 +4027,10 @@ func _fx_pick(side: String, slot: int, c: Dictionary, target: String, what: Stri
 
 func _fx_apply(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary, pool_kind: String,
 		what: String, fn: Callable, all_text: String) -> void:
+	var apply := fn   # (the character it hits: an "If you do" COLLATERAL after it hits the ones next to it)
+	fn = func(x: Dictionary):
+		vs["hit"] = {"side": x.side, "slot": x.slot}
+		return apply.call(x)
 	var target := str(e.get("target", "self"))
 	var entries := _fx_targets(side, slot, c, e, vs, pool_kind)
 	if (target == "ally" or target == "enemy") and not _equipped_entry(c).is_empty():   # an Equip: its own character, no choice
@@ -4190,7 +4195,7 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 				if slot in FRONT and is_same(card_at(side, slot), c):
 					for foe in foes_of(side):
 						entries.append_array(_fx_pool(foe, e, -99).filter(func(x): return absi(x.slot - (4 - slot)) <= 1).map(func(x): return {"side": foe, "slot": x.slot, "card": x.card}))
-			"collateral":   # COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed
+			"collateral":   # COLLATERAL: the characters in the lanes either side of the one it just KO'd or Downed (or, after "If you do", the one the effect above hit)
 				if vs.get("victim") is Dictionary and int(vs.victim.slot) in FRONT and vs.victim.side != side:
 					var vside: String = vs.victim.side
 					var vslot: int = int(vs.victim.slot)

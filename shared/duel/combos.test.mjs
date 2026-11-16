@@ -299,6 +299,33 @@ assert.equal(friend.attack, 1200, '"when another of your characters is Downed" h
     assert.equal(r2.attack, 700, 'and its right one');
 }
 
+// COLLATERAL after "If you do": the characters next to the one the effect above hit (a Hustle's, an Ambush's)
+{
+    const st = duel();
+    const h = unit(st);
+    const l = put(st, 'opponent', 1, unit(st)), mid = put(st, 'opponent', 2, unit(st, [], 3000, 1000));
+    const r = put(st, 'opponent', 3, unit(st)), far = put(st, 'opponent', 4, unit(st));
+    st._doFx('player', -10, h, { do: 'ko', target: 'enemy', then: { do: 'down', target: 'collateral' } });
+    answerAll(st);
+    assert.equal(st.cardAt('opponent', 2), null, "the one it picked (the strongest) is KO'd");
+    assert.ok(l.downed && r.downed && !far.downed, 'then the ones either side of it are Downed, and only those');
+    // An Ambush: KO the attacker, and if it does, Down the attacker's neighbours
+    const st2 = duel();
+    st2.turn = 5; st2.phase = 'brawl'; st2.active = 'player';
+    const a1 = put(st2, 'player', 1, unit(st2)), a2 = put(st2, 'player', 2, unit(st2)), a3 = put(st2, 'player', 3, unit(st2));
+    put(st2, 'opponent', 0, unit(st2));
+    const trap = st2.makeCard({ id: 'test_kraken', name: 'Kraken', cardType: 'ambush', clanTag: 'test',
+        effects: [{ when: 'defend', do: 'ko', target: 'attacker', negate: true }, { when: 'defend', do: 'down', target: 'collateral', if_done: true }] });
+    trap.face_down = true;
+    st2.sides.opponent.field[5] = trap;
+    st2._recalc(); st2.takeEvents();
+    st2.doAction('player', { kind: 'attack', from: 2, target: 0 });
+    assert.equal(st2.pending.key, 'ambush');
+    st2.doAction('opponent', { kind: 'choose', option: '5' });
+    assert.equal(st2.cardAt('player', 2), null, "the attacker is KO'd");
+    assert.ok(a1.downed && a3.downed, 'and the characters either side of it are Downed');
+}
+
 // Target "opposite_wide": the enemies in the lane across from it and the lanes either side of that one
 {
     const st = duel();

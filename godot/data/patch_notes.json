@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.166",
+        "notes": [
+            "COLLATERAL now works after \"If you do\" on any card, Hustles and Ambushes too: it hits the characters either side of the one the effect before it hit (e.g. \"KO the attacker and negate the attack. If you do, DOWN the characters next to it\").",
+            "Fixed: in offline matches, a SILENCE whose target was chosen just after the turn changed wore off at once."
+        ]
+    },
+    {
         "version": "0.9.165",
         "notes": [
             "Faster screens and matches: the big background pictures no longer go to the graphics card twice (and get read back in between) the first time they show, and they keep their smaller copies for drawing scaled down, so they look smoother too.",
