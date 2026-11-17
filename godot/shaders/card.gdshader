@@ -80,6 +80,7 @@ uniform vec4 scene_light : source_color = vec4(0.0);
 uniform vec2 scene_dir = vec2(0.0, -1.0);
 uniform vec4 burst_light : source_color = vec4(0.0);
 uniform vec2 burst_dir = vec2(0.0);
+uniform float parallax = 0.0;   // 0..1: the art sits a little behind its window, shifting against the frame as the card tilts
 uniform float smoulder = 0.0;   // 0..1: a Downed card's edges charred, with embers creeping along them (CardView)
 
 varying vec2 s;
@@ -159,6 +160,18 @@ void fragment() {
 	float lam = abs(den) < 1e-5 ? -1.0 : dot(n, c) / den;
 	vec3 x = transpose(r) * (lam * rd - c);
 	vec2 uv = x.xy / vec2(1.0, aspect);
+	if (parallax > 0.0) {
+		// Parallax: inside the art window the picture is zoomed in a touch and slides against the tilt, easing to
+		// nothing at the window's edge, so the art reads as behind the frame (everything after follows the art)
+		vec2 lo = art_rect.xy, hi = art_rect.zw;
+		float edge = min(min(uv.x - lo.x, hi.x - uv.x), min(uv.y - lo.y, hi.y - uv.y));
+		if (edge > 0.0) {
+			float k = smoothstep(0.0, 0.05, edge) * parallax;
+			vec2 mid = (lo + hi) * 0.5;
+			vec2 slide = clamp(vec2(-y_rot, x_rot) / 24.0, vec2(-1.0), vec2(1.0)) * vec2(0.018, 0.012);
+			uv = mix(uv, mid + (uv - mid) * 0.955 + slide, k);
+		}
+	}
 	float inside = step(0.0, lam) * step(max(abs(uv.x), abs(uv.y)), 0.5);
 	vec4 col = texture(TEXTURE, uv + 0.5);
 	if (art_fx > 0.0) {

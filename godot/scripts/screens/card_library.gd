@@ -319,7 +319,7 @@ func _show_detail(c: Dictionary) -> void:
 	_hero = UI.texture_rect(UI.card_art(c), Vector2(330, 467))
 	_hero.pivot_offset = _hero.size / 2
 	if _hero.texture:
-		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)), c)
+		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)), c, true)
 		_hero.material = _hero_mat
 	holder.add_child(_hero)
 	var vet := Game.veteran_tier(id)

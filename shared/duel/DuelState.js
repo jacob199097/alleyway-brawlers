@@ -1414,7 +1414,7 @@ export class DuelState {
         if (this.winner !== '') return;
         const { side, foe, from, target, att } = ctx;
         if (target === DIRECT) {
-            const dmg = Math.max(0, att.attack + ctx.bonus + toInt(this.rules.arena_bonus?.direct));   // (an arena's: direct attacks hit harder)
+            const dmg = Math.max(0, att.attack + ctx.bonus + toInt(this.rules.arena_bonus?.direct) + toInt(this._weather()?.direct));   // (an arena's and the weather's: direct attacks hit harder, or softer)
             this._emit('clash', this._withFoeKey({ side, from, target: DIRECT, att: dmg, def: 0, vs: 'DIRECT' }, foe));
             const before = this.sides[foe].morale;
             this._damage(foe, dmg);
@@ -2264,6 +2264,8 @@ export class DuelState {
                 }
                 const ab = this.rules.arena_bonus;   // the arena's: every character's stats (_arenaBoost)
                 if (ab) { atk += toInt(ab.atk); df += toInt(ab.def); }
+                const wb = this._weather();   // and the weather's, while it lasts
+                if (wb) { atk += toInt(wb.atk); df += toInt(wb.def); }
                 for (const q of this._equipsOn(c)) {   // an Equip's buffs are its character's
                     for (const e of this._fx(q.card, 'passive')) {
                         if (String(e.do ?? '') === 'buff' && this._fxCond(q.side, q.slot, e, null)) {
@@ -2708,9 +2710,22 @@ export class DuelState {
      *  stats (_recalc); direct: direct attacks' damage (_atkStrike); authority / draw: extra each turn, and
      *  morale: regained (or lost, below 0) at the start of each turn (_beginTurn, _arenaMorale). */
     _arenaBoost(c, e) {
-        const b = this.rules.arena_bonus;
-        const kinds = b ? (Array.isArray(b.boost) ? b.boost : [b.boost]).map(String) : [];
-        return c && kinds.includes(String(e.do ?? '')) ? Math.max(0, toInt(b.amount)) : 0;
+        let n = 0;
+        for (const b of [this.rules.arena_bonus, this._weather()]) {   // (the weather's adds to the arena's)
+            const kinds = b ? (Array.isArray(b.boost) ? b.boost : [b.boost]).map(String) : [];
+            if (c && kinds.includes(String(e.do ?? ''))) n += Math.max(0, toInt(b.amount));
+        }
+        return n;
+    }
+
+    /** This turn's weather (rules.weather: the server's fronts, [{from, until, kind, bonus}], backend/utils/weather.js):
+     *  the front over this turn, its effect for every card and player alike while it lasts (an arena effect's kinds:
+     *  boost + amount, atk / def, direct), or null (clear skies, or weather that's only scenery: no bonus). */
+    _weather() {
+        const w = this.rules.weather;
+        if (!Array.isArray(w)) return null;
+        const f = w.find(x => x && typeof x === 'object' && this.turn >= toInt(x.from) && this.turn < toInt(x.until));
+        return f && f.bonus && typeof f.bonus === 'object' ? f.bonus : null;
     }
 
     /** The arena's Morale at the start of a player's turn (rules.arena_bonus.morale: regained, or lost below 0). */

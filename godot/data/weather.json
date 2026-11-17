@@ -1,0 +1,9 @@
+{
+    "_about": "Mid-match weather (backend/utils/weather.js plans it; duel.gd WEATHER draws it). Each kind's effect while it lasts, for every card and player alike, in every mode but Ranked and weekly challenges (there it's only scenery). Same kinds of effect as an arena's bonus: boost (effect kinds) + amount, atk, def, direct.",
+    "storm": {"title": "STORM", "boost": ["shock"], "amount": 100},
+    "snow": {"title": "SNOWFALL", "def": 100},
+    "fog": {"title": "FOG", "atk": -100},
+    "ash": {"title": "ASHFALL", "boost": ["burn"], "amount": 100},
+    "sandstorm": {"title": "SANDSTORM", "direct": -100},
+    "wind": {"title": "GALE", "atk": 100}
+}

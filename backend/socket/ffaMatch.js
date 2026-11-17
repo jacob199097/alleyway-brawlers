@@ -41,6 +41,7 @@ const ARENAS = (() => {
     catch { return ['crossroads']; }
 })();
 const { arenaBonus } = require('../utils/arenas');   // (an arena's effect, as in Casual)
+const { weatherPlan } = require('../utils/weather');   // (and its weather)
 const TURN_SECS    = 90;
 const AWAY_SECS    = 15;
 const AFK_FORFEIT  = 8;
@@ -199,7 +200,7 @@ function createFfaService(io, deps) {
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const arena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
         const edge = arenaBonus(arena, 'ffa');
-        const state = new DuelState(decks, hideouts, leaders, first, seed, edge ? { arena_bonus: edge } : {});
+        const state = new DuelState(decks, hideouts, leaders, first, seed, { ...(edge ? { arena_bonus: edge } : {}), weather: weatherPlan(arena, 'ffa') });
         const match = { id: randomUUID(), mode: 'ffa', state, seats: {}, over: false, timer: null, startedAt: Date.now(),
             arena,
             humans: entries.filter(e => !e.bot).length };
@@ -238,7 +239,7 @@ function createFfaService(io, deps) {
 
     function sendStart(match, seat, resync) {
         emitTo(match.seats[seat].playerId, 'ffa:start', {
-            matchId: match.id, mode: 'ffa', resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null, players: playersFor(match, seat), view: viewOf(match, seat),
+            matchId: match.id, mode: 'ffa', resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null, weather: match.state.rules.weather || [], players: playersFor(match, seat), view: viewOf(match, seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || secs('turnSecs', TURN_SECS),
         });
     }

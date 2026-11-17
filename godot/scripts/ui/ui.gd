@@ -531,10 +531,13 @@ static func active_deck_plate(parent: Control, at: Vector2) -> void:
 
 
 ## card: the card shown (its own animated art, art_anim_fx); {} for a back or a card without one.
-static func card_material(size: Vector2, rarity := 1, card := {}) -> ShaderMaterial:
+## face: a card's face (its art sits behind the frame's window and shifts as it tilts: card.gdshader parallax); a back
+## or a pack: none.
+static func card_material(size: Vector2, rarity := 1, card := {}, face := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/card.gdshader")
 	m.set_shader_parameter("quad_size", size)
+	m.set_shader_parameter("parallax", 1.0 if face else 0.0)
 	m.set_shader_parameter("roulette_tex", ROULETTE_TEX)   # (the Wildcard back's turning wheel)
 	rarity_fx(m, rarity, randf(), card)
 	return m
@@ -1158,7 +1161,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	var art := texture_rect(card_art(c) if card_art(c) else CardDB.back(), Vector2(520, 736))
 	art.position = Vector2(400, 172)
 	var rarity_ := int(c.get("rarity", 1)) if c.get("rarity") != null else 1
-	var mat := card_material(art.size, rarity_, Game.anim_card(c))
+	var mat := card_material(art.size, rarity_, Game.anim_card(c), not c.is_empty())
 	art.material = mat
 	veil.add_child(art)
 	# The big card tilts toward the mouse and catches the light

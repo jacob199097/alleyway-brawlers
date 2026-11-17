@@ -84,7 +84,7 @@ func _ready() -> void:
 	_art.position = Vector2(4, 4)
 	add_child(_art)
 	if art_tex:
-		_mat = UI.card_material(_art.size, int(card.get("rarity", 1)), Game.anim_card(card))
+		_mat = UI.card_material(_art.size, int(card.get("rarity", 1)), Game.anim_card(card), true)
 		UI.veteran_fx(_mat, veteran)
 		_art.material = _mat
 	set_process(false)

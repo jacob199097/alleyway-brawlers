@@ -228,4 +228,7 @@ func _pick_avatar() -> void:
 	var skip_box := CenterContainer.new()
 	skip_box.add_child(UI.button("SKIP FOR NOW", func(): _avatar_done.emit(), Vector2(300, 56)))
 	col.add_child(skip_box)
+	UI.pop_open(p, veil)   # (the same open and close as every panel)
 	await _avatar_done
+	UI.pop_close(veil)
+	UI.pop_close(p, p)

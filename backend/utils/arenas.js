@@ -33,4 +33,4 @@ function arenaBonus(id, mode) {
     return b && typeof b === 'object' && EFFECTS.some(k => b[k] !== undefined) ? JSON.parse(JSON.stringify(b)) : null;
 }
 
-module.exports = { ARENAS, EFFECTS, pickArena, arenaBonus };
+module.exports = { ARENAS, EFFECTS, RANKED_MODES, pickArena, arenaBonus };

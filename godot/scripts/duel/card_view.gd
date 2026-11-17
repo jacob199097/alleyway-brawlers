@@ -254,6 +254,7 @@ func set_face(up: bool) -> void:
 	# Rare and up shimmer face-up (staggered by the card's uid so they don't all glint together)
 	UI.rarity_fx(_mat, int(card.get("rarity", 1)) if shown else 1, fposmod(float(uid) * 0.618, 1.0), card if shown and animated else {})
 	UI.veteran_fx(_mat, veteran if up else 0)
+	_mat.set_shader_parameter("parallax", 1.0 if shown else 0.0)   # (the art behind its window; a back has none)
 	if _fallback:
 		_fallback.visible = shown and _front.texture == null
 	queue_redraw()

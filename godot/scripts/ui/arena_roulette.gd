@@ -86,6 +86,8 @@ static func bonus_text(b: Dictionary) -> String:
 		out.append("Every character gets %s." % " and ".join(stats))
 	if int(b.get("direct", 0)) > 0:
 		out.append("Direct attacks deal %d more Morale damage." % int(b.direct))
+	elif int(b.get("direct", 0)) < 0:
+		out.append("Direct attacks deal %d less Morale damage." % -int(b.direct))
 	if int(b.get("authority", 0)) > 0:
 		out.append("Every player gets %d extra Authority each turn." % int(b.authority))
 	if int(b.get("draw", 0)) > 0:

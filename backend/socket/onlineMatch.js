@@ -94,6 +94,7 @@ function swapSides(v) {
 }
 
 const { pickArena, arenaBonus } = require('../utils/arenas');   // (the 1v1 arenas, and each one's effect)
+const { weatherPlan } = require('../utils/weather');   // (the weather that rolls in mid-match)
 
 function redact(c) {
     return { uid: c.uid, face_down: true, position: c.position, downed: c.downed,
@@ -355,6 +356,7 @@ function createOnlineService(io, deps) {
         const where = pickArena(arena);
         const edge = challenge ? null : arenaBonus(where, mode);   // (Ranked arenas are only scenery; a weekly challenge keeps its own rules)
         if (edge) rules = { ...rules, arena_bonus: edge };
+        rules = { ...rules, weather: weatherPlan(where, mode, !!challenge) };
         const first = firstSeat || (Math.random() < 0.5 ? 'player' : 'opponent');
         const seed = 1 + Math.floor(Math.random() * 2147483646);
         const decks = { player: a.setup.deck, opponent: b.setup.deck };
@@ -443,7 +445,7 @@ function createOnlineService(io, deps) {
     function sendStart(match, seat, resync) {
         const s = match.seats[seat];
         emitTo(s.playerId, 'mp:start', {
-            matchId: match.id, mode: match.mode, resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null,
+            matchId: match.id, mode: match.mode, resync, arena: match.arena, arenaBonus: match.state.rules.arena_bonus || null, weather: match.state.rules.weather || [],
             you: profileOf(s), opponent: profileOf(match.seats[other(seat)]),
             view: forSeat(viewFor(match.state, seat), seat),
             clock: Math.max(0, Math.round(((match.clockEnds || Date.now()) - Date.now()) / 1000)) || TURN_SECS,

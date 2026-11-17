@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.175",
+        "notes": [
+            "Weather now changes the fight while it lasts, for both sides: a storm makes SHOCK effects 100 stronger, ash makes BURN 100 stronger, snow gives every character +100 DEF, fog -100 ATK, a gale +100 ATK, and a sandstorm takes 100 off direct attacks. What it does shows when it rolls in (and in the log). In Ranked and weekly challenges the weather is only scenery.",
+            "Big moments leave their mark on the board: blasts scorch it, heavy hits crack it, and a KO'd card leaves a stain of its colour. The marks fade over four turns.",
+            "Card art sits behind its frame: as a card tilts, the picture shifts a little inside its window.",
+            "The profile picture choice, the daily reward and Turf Defense's partner search now open and close like every other panel."
+        ]
+    },
+    {
         "version": "0.9.174",
         "notes": [
             "The announcer and the bosses' voices are gone: matches and Turf Defense are back to music and sound effects only (the bosses' lines still show on screen)."

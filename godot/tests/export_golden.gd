@@ -337,6 +337,13 @@ const ARENA_BONUSES := [   # (data/arenas.json's kinds of effect, for both sides
 	{"title": "SPLIT REFLECTIONS", "draw": 1, "morale": -200},
 	{"title": "STILL WATERS", "morale": 150, "boost": ["plunder", "suppress", "shock"], "amount": 1},
 ]
+const WEATHER_FRONTS := [   # (rules.weather: fronts over turn ranges, each with an arena-effect-shaped bonus or none)
+	[{"from": 2, "until": 6, "kind": "storm", "bonus": {"title": "STORM", "boost": ["shock", "burn", "damage"], "amount": 100, "atk": 100, "def": -50}},
+		{"from": 9, "until": 13, "kind": "fog", "bonus": {"title": "FOG", "atk": -100, "direct": -200}}],
+	[{"from": 1, "until": 4, "kind": "snow", "bonus": {"title": "SNOWFALL", "def": 200}},
+		{"from": 5, "until": 8, "kind": "wind"},
+		{"from": 8, "until": 30, "kind": "sandstorm", "bonus": {"title": "SANDSTORM", "direct": 300, "boost": ["heal", "drain"], "amount": 150}}],
+]
 const TURF_RULES := {"order": ["p1", "p2", "boss"], "teams": {"p1": "crew", "p2": "crew", "boss": "boss"}, "morale": {"boss": 10000}, "leader_influence": {"boss": 2.0},
 	"boss": {"seat": "boss", "name": "Test Boss", "draw": 2, "authority": 1, "phases": [
 		{"below": 6600, "label": "ENRAGED", "fx": [{"do": "buff", "target": "allies", "atk": 400, "until": "forever"}, {"do": "heal", "amount": 500}]},
@@ -399,6 +406,9 @@ func _init() -> void:
 		if g % 7 == 4:   # an arena's edge for a clan (data/arenas.json "bonus": every mode but Ranked)
 			rules = rules.duplicate(true)
 			rules.arena_bonus = ARENA_BONUSES[(g / 7) % ARENA_BONUSES.size()]
+		if g % 9 == 6:   # weather fronts with effects (backend/utils/weather.js): a turn range each, one only scenery
+			rules = rules.duplicate(true)
+			rules.weather = WEATHER_FRONTS[(g / 9) % WEATHER_FRONTS.size()]
 		var d := DuelState.new(setup.decks, setup.hideouts, setup.leaders, first, -1, rules)
 		# Every fourth game the leaders are Card Forge leaders (Dormant / Awaken effects)
 		var leader_fx := {}

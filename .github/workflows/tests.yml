@@ -97,6 +97,8 @@ jobs:
         run: node backend/utils/origins.test.cjs
       - name: Arena bonuses (not in Ranked)
         run: node backend/utils/arenas.test.cjs
+      - name: Mid-match weather (effects, not in Ranked)
+        run: node backend/utils/weather.test.cjs
       - name: Phone notifications (the message to FCM, the signed sign-in to Google, dead tokens, which reminders are due when)
         run: node backend/utils/push.test.cjs
       - name: News emails (only to players who asked, the signed unsubscribe link and one-click headers, the daily limit)

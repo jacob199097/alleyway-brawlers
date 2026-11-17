@@ -910,7 +910,7 @@ func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, 
 	rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.4)
 	var big := UI.texture_rect(UI.card_art(card) if UI.card_art(card) else CardDB.back(), Vector2(400, 566))
 	big.position = Vector2(960, 470) - big.size / 2.0
-	big.material = UI.card_material(big.size, rarity, Game.anim_card(card) if mine else {})
+	big.material = UI.card_material(big.size, rarity, Game.anim_card(card) if mine else {}, true)
 	big.pivot_offset = big.size / 2.0
 	big.scale = Vector2.ONE * 0.6
 	big.modulate.a = 0.0

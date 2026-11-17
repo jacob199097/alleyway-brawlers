@@ -1655,7 +1655,7 @@ func _atk_strike(ctx: Dictionary) -> void:
 	var att: Dictionary = ctx.att
 
 	if target == DIRECT:
-		var dmg: int = maxi(0, att.attack + ctx.bonus + int(_arena().get("direct", 0)))   # (an arena's: direct attacks hit harder)
+		var dmg: int = maxi(0, att.attack + ctx.bonus + int(_arena().get("direct", 0)) + int(_weather().get("direct", 0)))   # (an arena's and the weather's: direct attacks hit harder, or softer)
 		_emit("clash", _with_foe_key({"side": side, "from": from, "target": DIRECT, "att": dmg, "def": 0, "vs": "DIRECT"}, foe))
 		var before := int(sides[foe].morale)
 		_damage(foe, dmg)
@@ -2581,6 +2581,9 @@ func _recalc() -> void:
 			if ab is Dictionary:
 				atk += int(ab.get("atk", 0))
 				df += int(ab.get("def", 0))
+			var wb := _weather()   # and the weather's, while it lasts
+			atk += int(wb.get("atk", 0))
+			df += int(wb.get("def", 0))
 			for q in _equips_on(c):   # an Equip's buffs are its character's
 				for e in _fx(q.card, "passive"):
 					if str(e.get("do", "")) == "buff" and _fx_cond(q.side, q.slot, e, null):
@@ -3184,11 +3187,27 @@ func _arena() -> Dictionary:
 
 
 func _arena_boost(c: Dictionary, e: Dictionary) -> int:
-	var b := _arena()
-	var kinds: Array = b.boost if b.get("boost") is Array else [b.get("boost", "")]
-	if c.is_empty() or not kinds.any(func(k): return str(k) == str(e.get("do", ""))):
+	if c.is_empty():
 		return 0
-	return maxi(0, int(b.get("amount", 0)))
+	var n := 0
+	for b in [_arena(), _weather()]:   # (the weather's adds to the arena's)
+		var kinds: Array = b.boost if b.get("boost") is Array else [b.get("boost", "")]
+		if kinds.any(func(k): return str(k) == str(e.get("do", ""))):
+			n += maxi(0, int(b.get("amount", 0)))
+	return n
+
+
+## This turn's weather (rules.weather: the server's fronts, [{from, until, kind, bonus}], backend/utils/weather.js):
+## the front over this turn, its effect for every card and player alike while it lasts (an arena effect's kinds:
+## boost + amount, atk / def, direct), or {} (clear skies, or weather that's only scenery: no bonus).
+func _weather() -> Dictionary:
+	var w = rules.get("weather")
+	if not (w is Array):
+		return {}
+	for f in w:
+		if f is Dictionary and turn >= int(f.get("from", 0)) and turn < int(f.get("until", 0)):
+			return f.bonus if f.get("bonus") is Dictionary else {}
+	return {}
 
 
 ## The arena's Morale at the start of a player's turn (rules.arena_bonus.morale: regained, or lost below 0).

@@ -658,15 +658,11 @@ func _show_queue(since: float) -> void:
 		_hide_queue(), Vector2(300, 64), UI.RED)
 	cancel.position = Vector2(810, 890)
 	root.add_child(cancel)
-	root.modulate.a = 0.0
-	root.create_tween().tween_property(root, "modulate:a", 1.0, 0.25)
+	UI.pop_open(face, root)   # (the same open and close as every panel: the boss's face grows in)
 
 
 func _hide_queue() -> void:
 	_queue_sent = {}
 	if _queue and is_instance_valid(_queue):
-		var q := _queue
-		var t := q.create_tween()
-		t.tween_property(q, "modulate:a", 0.0, 0.2)
-		t.tween_callback(q.queue_free)
+		UI.pop_close(_queue)
 	_queue = null

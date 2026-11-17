@@ -211,7 +211,11 @@ var _cam_rest := Vector2(960, 540)   # where the camera rests between moves: lea
 var _intro_on := false     # the opening face-off is playing: the match's first events wait for it
 var _intro_skip := false
 var _arena_info := {}      # this match's arena (data/arenas.json), for the opening
-var _weather_plan: Array = []   # [[from turn, until turn, kind], ...]: this match's weather (_plan_weather)
+var _weather_plan: Array = []   # [[from turn, until turn, kind, bonus], ...]: this match's weather (_plan_weather)
+var _start_weather = null  # online: the server's weather plan (rules.weather), from the match's start
+var _scars: Node2D         # the marks big hits leave on the board (_scar): over the mat, under the cards
+const SCAR_TURNS := 4      # how many turns a mark takes to fade away
+const SCAR_MAX := 24
 var _weather_planned := false
 var _dealt := {}           # side -> cards dealt into its opening hand so far (_ev_draw: each a step higher)
 var _pride := {}           # side -> its player's showcase (game card ids: backend/economy/showcase.js), for the opening
@@ -414,6 +418,11 @@ func _ready() -> void:
 	_arrow.z_index = 60
 	fx.add_child(_arrow)
 
+	_scars = Node2D.new()
+	_scars.name = "Scars"
+	add_child(_scars)
+	move_child(_scars, cards_layer.get_index())   # (drawn after the mat, before the cards)
+
 	_dim_rect = ColorRect.new()
 	_dim_rect.color = Color(0, 0, 0, 0)
 	_dim_rect.position = Vector2(-100, -100)
@@ -441,6 +450,7 @@ func _ready() -> void:
 			setup.hideouts.player = chosen.get("hideout", [])
 			setup.leaders.player = chosen.get("leader", "")
 		duel = DuelState.new(setup.decks, setup.hideouts, setup.leaders, str(chosen.get("first", "player")))
+		_plan_weather()   # (offline: its weather goes in the rules before the first turn)
 		_start_match_session(chosen.get("ranked", false))
 	_make_leader_views()
 	counts = duel._counts()
@@ -777,6 +787,8 @@ func _setup_online(start: Dictionary) -> void:
 		_names.boss = str(_boss.get("short", _boss.get("name", "The boss")))
 	ai_sides = []
 	_match_id = str(start.get("matchId", ""))
+	if start.get("weather") is Array:   # (the server's weather plan: rules.weather)
+		_start_weather = start.weather
 	duel = DuelState.new({"player": [], "opponent": []}, {}, {}, "player", -1)
 	duel.load_view(start.get("view", {}))
 	if not start.get("resync", false):
@@ -2806,6 +2818,7 @@ func _ev_turn(ev: Dictionary) -> void:
 	Sfx.play("turn_yours" if mine else "turn_theirs")
 	_cam_turn(str(ev.side))
 	_weather_turn(int(ev.turn), false)
+	_age_scars(int(ev.turn))
 	_heat_music()
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
@@ -3761,6 +3774,8 @@ func _shards(at: Vector2, dir: Vector2, amount: int, palette: Array = []) -> voi
 ## A round burst of spectral flame, blooming and dying away.
 func _flame_burst(at: Vector2, size: float, core: Color, outer: Color, secs := 0.45) -> void:
 	_light_burst(at, outer.lerp(core, 0.3), clampf(size / 260.0, 0.3, 1.3))
+	if size >= 240.0:   # (a big blast scorches the board)
+		_scar(at, "scorch", size * 0.55, outer)
 	if Game.photosafe():   # (Photosensitive mode: no bright core, and it comes and goes slower)
 		outer = outer.darkened(0.35)
 		core = outer.lerp(core, 0.2)
@@ -6038,6 +6053,7 @@ func _ev_ko(ev: Dictionary) -> void:
 	if v == null:
 		return
 	Game.buzz(80, 1.0)   # (a KO: the longest buzz)
+	_scar(v.position, "splat", 170.0, _clan_color(v.card))   # (it leaves a stain of its colour where it fell)
 	v.show_badge = false
 	v.z_index = 440
 	if ev.card.get("token", false):   # a token doesn't go to the Gutter: it dissolves
@@ -7659,6 +7675,8 @@ func shake(amount: float) -> void:
 		Game.buzz(roundi(clampf(amount * 2.0, 18.0, 60.0)), clampf(amount / 26.0, 0.3, 1.0))
 	if amount >= 16.0:
 		_hit_layers(amount)
+		if _strike_at != Vector2.INF and _game_time - _strike_time < 0.4:   # (a big hit that just landed cracks the board)
+			_scar(_strike_at, "crack", 90.0 + amount * 5.0, Color.WHITE)
 	if amount >= 10.0:   # (a big moment: the arena feels it too)
 		_arena_react(clampf(amount / 24.0, 0.4, 1.0) * _fx_level())
 
@@ -7831,22 +7849,44 @@ func _arena_light(arena: Dictionary) -> void:
 	CardView.scene_from = Vector2(float(f[0]), float(f[1])).normalized() if f is Array and f.size() == 2 else Vector2.UP
 
 
-## This match's weather: now and then a front from the arena's list rolls in for 3-5 turns, then clears. Online it
-## comes from the match's id, so both players see the same sky; offline it's random. Not in the tutorial.
+## This match's weather: now and then a front from the arena's list rolls in for 3-5 turns, then clears, each with
+## its effect on the rules (data/weather.json; both engines apply rules.weather: DuelState._weather). Online the
+## server plans it (backend/utils/weather.js), so both players get the same sky; offline it's planned here and put
+## in the rules before the match starts. Not in the tutorial.
 func _plan_weather() -> void:
 	_weather_planned = true
-	var kinds: Array = _arena_info.get("weather", []) if _arena_info.get("weather") is Array else []
-	if kinds.is_empty() or _tutorial:
+	var given = _start_weather if _start_weather is Array else (duel.rules.get("weather") if duel != null and duel.rules.get("weather") is Array else null)
+	if given is Array:
+		for f in given:
+			if f is Dictionary:
+				_weather_plan.append([int(f.get("from", 0)), int(f.get("until", 0)), str(f.get("kind", "")), f.get("bonus") if f.get("bonus") is Dictionary else {}])
 		return
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(_match_id) if _online and _match_id != "" else randi()
-	var t := rng.randi_range(3, 6)
+	var kinds: Array = _arena_info.get("weather", []) if _arena_info.get("weather") is Array else []
+	if kinds.is_empty() or _tutorial or _online:
+		return
+	var fx := _weather_fx()
+	var fronts: Array = []
+	var t := randi_range(3, 6)
 	while t < 60:
-		if rng.randf() < 0.8:
-			var lasts := rng.randi_range(3, 5)
-			_weather_plan.append([t, t + lasts, str(kinds[rng.randi() % kinds.size()])])
+		if randf() < 0.8:
+			var lasts := randi_range(3, 5)
+			var kind := str(kinds[randi() % kinds.size()])
+			var front := {"from": t, "until": t + lasts, "kind": kind}
+			if fx.get(kind) is Dictionary:
+				front.bonus = fx[kind].duplicate(true)
+			fronts.append(front)
+			_weather_plan.append([t, t + lasts, kind, front.get("bonus", {})])
 			t += lasts
-		t += rng.randi_range(3, 6)
+		t += randi_range(3, 6)
+	if duel != null:
+		duel.rules["weather"] = fronts   # (the rules here play it out: offline the engine is this one)
+
+
+## Each weather's effect on the rules (data/weather.json; the server reads the same file).
+static func _weather_fx() -> Dictionary:
+	var f := FileAccess.open("res://data/weather.json", FileAccess.READ)
+	var d = JSON.parse_string(f.get_as_text()) if f else null
+	return d if d is Dictionary else {}
 
 
 ## A new turn (or a resync, instant): the weather it should have comes in, or the weather that's over clears.
@@ -7854,9 +7894,11 @@ func _weather_turn(turn: int, instant: bool) -> void:
 	if not _weather_planned:
 		_plan_weather()
 	var want := ""
+	var bonus := {}
 	for f in _weather_plan:
 		if turn >= int(f[0]) and turn < int(f[1]):
 			want = str(f[2])
+			bonus = f[3] if f.size() > 3 and f[3] is Dictionary else {}
 	if want == _weather_now:
 		return
 	var was := _weather_now
@@ -7864,10 +7906,12 @@ func _weather_turn(turn: int, instant: bool) -> void:
 	if was != "":
 		_weather_out(was, instant and want == "")
 	if want != "":
-		_weather_in(want, instant)
+		_weather_in(want, instant, bonus)
 
 
-func _weather_in(kind: String, instant: bool) -> void:
+func _weather_in(kind: String, instant: bool, bonus := {}) -> void:
+	if not bonus.is_empty():   # (what it does to the rules: in the log, and under its line)
+		_log("%s: %s" % [str(bonus.get("title", kind)).to_upper(), ArenaRoulette.bonus_text(bonus)], "")
 	var w: Dictionary = WEATHER.get(kind, {})
 	if w.is_empty() or _life == null or Game.arena_level() <= 0.0:   # (Settings → Arena Effects off: a clear sky)
 		return
@@ -7886,7 +7930,7 @@ func _weather_in(kind: String, instant: bool) -> void:
 	if w.has("ambience"):
 		Game.sound.ambience(str(w.ambience), secs)
 	if not instant:
-		_weather_tag(str(w.come))
+		_weather_tag(str(w.come), ArenaRoulette.bonus_text(bonus) if not bonus.is_empty() else "")
 		if kind == "storm":
 			Sfx.play("boom", 0.38, -10.0)   # (thunder, far off)
 
@@ -7930,20 +7974,31 @@ func _weather_look(w: Dictionary, secs: float) -> void:
 	t.tween_method(func(c: Color): CardView.scene_light = c, CardView.scene_light, want, secs)
 
 
-## What the weather's doing, said quietly under the top of the screen.
-func _weather_tag(text: String) -> void:
+## What the weather's doing, said quietly under the top of the screen, with what it does to the rules under it.
+func _weather_tag(text: String, effect := "") -> void:
+	var col := VBoxContainer.new()
+	col.size = Vector2(1000, 0)
+	col.position = Vector2(1080 - 500, 100)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 2)
 	var l := _label(26, Color(0.82, 0.88, 1.0), true)
 	l.text = text
-	l.size = Vector2(900, 36)
-	l.position = Vector2(1080 - 450, 104)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.modulate.a = 0.0
-	overlay.add_child(l)
-	var t := l.create_tween()
-	t.tween_property(l, "modulate:a", 1.0, 0.6)
-	t.tween_interval(2.6)
-	t.tween_property(l, "modulate:a", 0.0, 0.8)
-	t.tween_callback(l.queue_free)
+	col.add_child(l)
+	if effect != "":
+		var e := _label(20, GOLD, true)
+		e.text = effect
+		e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		e.custom_minimum_size = Vector2(1000, 0)
+		col.add_child(e)
+	col.modulate.a = 0.0
+	overlay.add_child(col)
+	var t := col.create_tween()
+	t.tween_property(col, "modulate:a", 1.0, 0.6)
+	t.tween_interval(3.4 if effect != "" else 2.6)
+	t.tween_property(col, "modulate:a", 0.0, 0.8)
+	t.tween_callback(col.queue_free)
 
 
 ## Layered hits: under a big hit's own sound (hit, slam, boom), a low thump you feel at once and debris pattering
@@ -7983,6 +8038,108 @@ func _heat_music() -> void:
 	Game.sound.heat(heat)
 	Game.sound.layer("drone", clampf((heat - 0.4) / 0.45, 0.0, 1.0) * 0.85)
 	Game.sound.layer("pulse", 0.7 if low <= 0.25 else 0.0)
+
+
+## A mark a big moment leaves on the board, fading over SCAR_TURNS turns (_age_scars), so by the end the mat shows
+## how hard the fight was: "scorch" (a blast: a burnt blot with embers dying in it), "crack" (a heavy hit: the mat
+## fractured, branching from where it landed), "splat" (a KO: a glowing stain of the fallen card's colour).
+## Only how the board looks. Settings → Arena Effects off: none.
+func _scar(at: Vector2, kind: String, size: float, col: Color) -> void:
+	if _scars == null or Game.arena_level() <= 0.0:
+		return
+	for s in _scars.get_children():   # (one mark per spot: a new one there replaces it)
+		if s.position.distance_to(at) < size * 0.25 and str(s.get_meta("kind")) == kind:
+			s.queue_free()
+	if _scars.get_child_count() >= SCAR_MAX:
+		_scars.get_child(0).queue_free()
+	var n := Node2D.new()
+	n.position = at
+	n.rotation = randf() * TAU
+	n.set_meta("kind", kind)
+	n.set_meta("born", CardView.turn_now)
+	_scars.add_child(n)
+	match kind:
+		"scorch":
+			var blot := Sprite2D.new()
+			blot.texture = _soft_dot()
+			blot.modulate = Color(0.04, 0.02, 0.01, 0.62)
+			blot.scale = Vector2(1.0, randf_range(0.75, 0.95)) * size / 64.0
+			n.add_child(blot)
+			var rim := Sprite2D.new()   # (the hot edge, cooling over a few seconds)
+			rim.texture = _soft_dot()
+			rim.material = _add_mat
+			rim.modulate = Color(col.lerp(Color(1.0, 0.5, 0.1), 0.5), 0.5)
+			rim.scale = blot.scale * 0.55
+			n.add_child(rim)
+			rim.create_tween().tween_property(rim, "modulate:a", 0.08, 6.0).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+			for i in 7:   # embers
+				var e := Sprite2D.new()
+				e.texture = _soft_dot()
+				e.material = _add_mat
+				e.modulate = Color(1.0, randf_range(0.4, 0.7), 0.15, 0.9)
+				e.scale = Vector2.ONE * randf_range(0.08, 0.16)
+				e.position = Vector2.from_angle(randf() * TAU) * randf_range(0.15, 0.45) * size
+				n.add_child(e)
+				var et := e.create_tween().set_loops(roundi(randf_range(4, 9)))
+				et.tween_property(e, "modulate:a", 0.25, randf_range(0.3, 0.7))
+				et.tween_property(e, "modulate:a", 0.9, randf_range(0.3, 0.7))
+				et.finished.connect(e.queue_free)
+		"crack":
+			var lines: Array = []   # [points, width]
+			for i in randi_range(4, 6):
+				var dir := Vector2.from_angle(TAU * i / 5.0 + randf_range(-0.4, 0.4))
+				var p := Vector2.ZERO
+				var pts := PackedVector2Array([p])
+				var reach := size * randf_range(0.5, 1.0)
+				var steps := 5
+				for k in steps:
+					p += dir.rotated(randf_range(-0.5, 0.5)) * reach / steps
+					pts.append(p)
+					if k == 2 and randf() < 0.6:   # a fork
+						var q := p
+						var fork := PackedVector2Array([q])
+						for j in 3:
+							q += dir.rotated(randf_range(0.5, 1.1) * (1 if randf() < 0.5 else -1)) * reach / steps * 0.8
+							fork.append(q)
+						lines.append([fork, 1.2])
+				lines.append([pts, 2.0])
+			n.draw.connect(func():
+				n.draw_circle(Vector2.ZERO, size * 0.12, Color(0, 0, 0, 0.35))
+				for l in lines:
+					n.draw_polyline(l[0], Color(0, 0, 0, 0.55), float(l[1]) + 2.5, true)
+				for l in lines:
+					n.draw_polyline(l[0], Color(0.85, 0.9, 1.0, 0.32), float(l[1]), true))
+		"splat":
+			var glow := Sprite2D.new()
+			glow.texture = _soft_dot()
+			glow.material = _add_mat
+			glow.modulate = Color(col, 0.5)
+			glow.scale = Vector2.ONE * size / 64.0
+			n.add_child(glow)
+			for i in 9:   # the stain and its drops
+				var d := Sprite2D.new()
+				d.texture = _soft_dot()
+				d.modulate = Color(col.darkened(0.45), 0.7)
+				var big := i == 0
+				d.scale = Vector2.ONE * (size * 0.5 if big else randf_range(10.0, 26.0)) / 64.0 * (1.0 if big else 1.6)
+				d.position = Vector2.ZERO if big else Vector2.from_angle(randf() * TAU) * randf_range(0.3, 0.65) * size
+				n.add_child(d)
+	n.modulate.a = 0.0
+	n.create_tween().tween_property(n, "modulate:a", 1.0, 0.15)
+
+
+## A new turn: every mark fades a step, and goes once SCAR_TURNS turns have passed.
+func _age_scars(turn: int) -> void:
+	if _scars == null:
+		return
+	for s in _scars.get_children():
+		var left := 1.0 - float(turn - int(s.get_meta("born", turn))) / SCAR_TURNS
+		if left <= 0.0:
+			var t := s.create_tween()
+			t.tween_property(s, "modulate:a", 0.0, 0.6)
+			t.tween_callback(s.queue_free)
+		else:
+			s.create_tween().tween_property(s, "modulate:a", left, 0.6)
 
 
 ## Lightning (the arena's or a storm's): the cards catch the flash from the sky, and the thunder follows.

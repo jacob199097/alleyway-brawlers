@@ -47,8 +47,11 @@
   `godot/tools/make_arena_thumbs.gd`, then sync_assets. Backdrops (.jpg) are placed by `UI.tex_size` (1536 wide), not their real size.
   An arena's `light` (colour, where it comes from, strength) lights every card (`CardView.scene_light`, card.gdshader's
   `scene_light`; big effects flash theirs via `_light_burst`). Matches open with a leader face-off (`duel.gd _match_intro`,
-  the first events wait on `_intro_on`; `-- --no-intro` skips it). Mid-match weather (looks and sound only): an arena's
-  `weather` list, the kinds in `duel.gd WEATHER`, planned from the match id (`_plan_weather`, both players alike).
+  the first events wait on `_intro_on`; `-- --no-intro` skips it). Mid-match weather: an arena's `weather` list; the
+  server plans the fronts into the rules (`backend/utils/weather.js` → `rules.weather`), each with its effect from
+  `godot/data/weather.json` (arena-effect kinds; none in Ranked or challenges), applied by both engines (`_weather`);
+  `duel.gd WEATHER` draws them. Big moments leave marks on the board for a few turns (`duel.gd _scar`); card faces
+  sit behind their frame's window (card.gdshader `parallax`, `UI.card_material(..., face)`).
 - UI conventions: panels open/close with `UI.pop_open` / `UI.pop_close`; text sizes snap to `UI.TYPE_SCALE` (two faces:
   Barlow Condensed display, Barlow body, `UI.font_of`); phone haptics via `Game.buzz` (Android, vibrate permission since 0.9.172).
 - Profile showcase (3 cards a player picks, on their profile and under their leader in the VS screen): `backend/economy/showcase.js`

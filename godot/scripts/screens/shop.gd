@@ -362,7 +362,7 @@ func _animated_offer(o: Dictionary) -> Control:
 	var art := UI.texture_rect(CardDB.art(id), Vector2(340, 482))
 	art.position = Vector2(30, 30)
 	art.pivot_offset = art.size / 2
-	art.material = UI.card_material(art.size, int(o.get("rarity", 1)), c)   # (always moving here: it's what's for sale)
+	art.material = UI.card_material(art.size, int(o.get("rarity", 1)), c, true)   # (always moving here: it's what's for sale)
 	art.mouse_filter = Control.MOUSE_FILTER_STOP
 	art.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:

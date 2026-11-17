@@ -64,11 +64,10 @@ func _daily_popup(s: Dictionary) -> Control:
 	var day := int(s.get("day", 1))
 	var rewards: Array = s.get("rewards", [])
 	var veil := ColorRect.new()
-	veil.color = Color(0, 0, 0, 0.0)
+	veil.color = Color(0, 0, 0, 0.62)
 	veil.size = Vector2(1920, 1080)
 	veil.z_index = 40
 	add_child(veil)
-	veil.create_tween().tween_property(veil, "color:a", 0.62, 0.25)
 	var panel := UI.glass(UI.panel(UI.STEEL, Color(0.05, 0.05, 0.1, 0.9)), Color(0.04, 0.03, 0.08, 0.7))
 	panel.position = Vector2(300, 250)
 	panel.custom_minimum_size = Vector2(1320, 0)
@@ -103,22 +102,14 @@ func _daily_popup(s: Dictionary) -> Control:
 			return
 		if not r.ok:
 			UI.toast(self, r.error, UI.RED)
-			veil.queue_free()
+			UI.pop_close(veil, panel)
 			return
 		await _daily_paid(r.data, tiles[day - 1] if day <= tiles.size() else null)
 		if not is_instance_valid(veil):
 			return
-		var out := veil.create_tween()
-		out.tween_interval(0.9)
-		out.tween_property(veil, "modulate:a", 0.0, 0.3)
-		out.tween_callback(veil.queue_free))
-	# Rises in
-	panel.modulate.a = 0.0
-	var to := panel.position
-	panel.position.y += 60
-	var t := panel.create_tween().set_parallel()
-	t.tween_property(panel, "modulate:a", 1.0, 0.3)
-	t.tween_property(panel, "position", to, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		await get_tree().create_timer(0.9).timeout
+		UI.pop_close(veil, panel))
+	UI.pop_open(panel, veil)   # (the same open and close as every panel)
 	Sfx.play("promote", 1.3, -8.0)
 	return veil
 
