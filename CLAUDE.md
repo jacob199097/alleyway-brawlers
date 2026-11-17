@@ -47,7 +47,10 @@
   `godot/tools/make_arena_thumbs.gd`, then sync_assets. Backdrops (.jpg) are placed by `UI.tex_size` (1536 wide), not their real size.
   An arena's `light` (colour, where it comes from, strength) lights every card (`CardView.scene_light`, card.gdshader's
   `scene_light`; big effects flash theirs via `_light_burst`). Matches open with a leader face-off (`duel.gd _match_intro`,
-  the first events wait on `_intro_on`; `-- --no-intro` skips it).
+  the first events wait on `_intro_on`; `-- --no-intro` skips it). Mid-match weather (looks and sound only): an arena's
+  `weather` list, the kinds in `duel.gd WEATHER`, planned from the match id (`_plan_weather`, both players alike).
+- UI conventions: panels open/close with `UI.pop_open` / `UI.pop_close`; text sizes snap to `UI.TYPE_SCALE` (two faces:
+  Barlow Condensed display, Barlow body, `UI.font_of`); phone haptics via `Game.buzz` (Android, vibrate permission since 0.9.172).
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

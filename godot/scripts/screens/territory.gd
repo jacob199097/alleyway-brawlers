@@ -716,6 +716,8 @@ func _open(d: Dictionary) -> void:
 	right.add_child(UI.label("Last week: %s" % (("held by " + _clan_name(last)) if last != "" else "the locals kept it"), 18, UI.MUTED))
 	var close := UI.button("CLOSE", _close, Vector2(200, 56))
 	right.add_child(close)
+	veil.set_meta("panel", p)
+	UI.pop_open(p, veil)
 
 
 ## A district's gang rating this week, 1..5 (the server's, in its "locals").
@@ -739,7 +741,7 @@ func _stars_row(n: int, font_size: int) -> HBoxContainer:
 
 func _close() -> void:
 	if _detail and is_instance_valid(_detail):
-		_detail.queue_free()
+		UI.pop_close(_detail, _detail.get_meta("panel", null))
 	_detail = null
 
 

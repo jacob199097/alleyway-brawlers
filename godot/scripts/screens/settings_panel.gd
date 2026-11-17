@@ -25,6 +25,7 @@ var allow_logout := true
 var _tab := "audio"
 var _body: VBoxContainer
 var _tabs := {}
+var _panel: Control
 
 
 static func open(parent: Node, logout := true) -> SettingsPanel:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	p.position = Vector2(360, 115)
 	p.custom_minimum_size = Vector2(1200, 850)
 	add_child(p)
+	_panel = p
 	var pad := MarginContainer.new()   # (the rows keep clear of the panel's edge)
 	for side in ["left", "right"]:
 		pad.add_theme_constant_override("margin_" + side, 30)
@@ -81,6 +83,7 @@ func _ready() -> void:
 			Game.sign_out()
 			Game.go("login"), Vector2(260, 60), UI.RED))
 	_show("audio")
+	UI.pop_open(p, veil)
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -90,7 +93,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func close() -> void:
-	queue_free()
+	UI.pop_close(self, _panel)
 
 
 func _show(tab: String) -> void:
@@ -125,6 +128,8 @@ func _show(tab: String) -> void:
 			_cycle("Rival Emotes", [true, false], ["SHOW", "HIDE"], "rival_emotes")
 			if Net.push.available():   # (an Android phone)
 				_cycle("Phone Notifications", [true, false], ["ON", "OFF"], "phone_notifications", false, func(on): Net.push.set_enabled(on))
+			if OS.has_feature("android"):   # (a buzz on big hits and KOs: Game.buzz)
+				_cycle("Vibration", [true, false], ["ON", "OFF"], "haptics")
 			if Game.mobile():   # 30 fps and solid panels (Game.battery_saver), else 60 fps
 				_cycle("Battery Saver", [true, false], ["ON (30 FPS)", "OFF (60 FPS)"], "battery_saver")
 			var note := UI.label("Turn alerts flash the game in the taskbar, with a sound, when it's your move and the game isn't in front. Colour-blind help, text size and photosensitive mode are on the Accessibility tab.", 20, UI.MUTED)

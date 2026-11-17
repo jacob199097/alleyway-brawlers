@@ -64,6 +64,7 @@ var _tabs := {}
 var _grid: GridContainer    # KEYWORDS / CARD TERMS: a button per page
 var _back: Button           # from a page back to its grid
 var _tab := ""
+var _panel: Control
 
 
 func _ready() -> void:
@@ -78,6 +79,7 @@ func _ready() -> void:
 	p.position = Vector2(260, 110)
 	p.custom_minimum_size = Vector2(1400, 860)
 	add_child(p)
+	_panel = p
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	p.add_child(col)
@@ -124,16 +126,17 @@ func _ready() -> void:
 	_cards = HBoxContainer.new()
 	_cards.add_theme_constant_override("separation", 28)
 	body.add_child(_cards)
-	var close := UI.button("CLOSE", queue_free, Vector2(240, 56), UI.GOLD)
+	var close := UI.button("CLOSE", func(): UI.pop_close(self, _panel), Vector2(240, 56), UI.GOLD)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(close)
 	_show(names[0])
+	UI.pop_open(p, veil)
 
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
-		queue_free()
+		UI.pop_close(self, _panel)
 
 
 func _show(tab: String) -> void:

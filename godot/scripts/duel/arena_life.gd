@@ -41,6 +41,11 @@ var _lights: Array = []     # [ShaderMaterial, its strength]: the glows, flames 
 var _warps: Array = []      # [ShaderMaterial, its amp]: water, heat, sway, glitter (react)
 var _emitters: Array = []   # every particle emitter (react)
 var _react: Tween
+var _fogs: Array = []       # [ShaderMaterial, its density]: the mist layers (fade)
+var _fade_k := 1.0
+
+## A lightning flash went off (its strength): duel.gd lights the cards from the sky and rolls the thunder.
+signal flashed(strength: float)
 
 static var _textures := {}
 
@@ -182,6 +187,7 @@ func _lightning(e: Dictionary) -> void:
 		if not is_inside_tree():
 			return
 		var peak := float(e.get("strength", 0.35)) * clampf(_level, 0.3, 1.0)
+		flashed.emit(peak * _fade_k)
 		var t := flash.create_tween()
 		t.tween_property(flash, "color:a", peak, 0.05)
 		t.tween_property(flash, "color:a", peak * 0.2, 0.08)
@@ -204,6 +210,7 @@ func _fog(e: Dictionary) -> void:
 	m.set_shader_parameter("frame", float(e.get("frame", 0.0)))
 	m.set_shader_parameter("seed", randf() * 10.0)
 	_rect_node(r, m)
+	_fogs.append([m, float(e.get("density", 0.35))])
 
 
 func _warp(e: Dictionary) -> void:
@@ -323,6 +330,19 @@ func react(power: float) -> void:
 	for p in _emitters:
 		if is_instance_valid(p):
 			_react.tween_property(p, "speed_scale", 1.0, 1.2).from(1.0 + 2.0 * power)
+
+
+## Bring the whole layer in or out (0..1) over some seconds: weather arriving and clearing (duel.gd _weather_in).
+## The particles and flashes fade with the node; the mist thins (its shader ignores the node's fade).
+func fade(to: float, seconds: float) -> Tween:
+	var step := func(v: float):
+		_fade_k = v
+		modulate.a = v
+		for f in _fogs:
+			f[0].set_shader_parameter("density", f[1] * v)
+	var t := create_tween()
+	t.tween_method(step, _fade_k, to, maxf(seconds, 0.01)).set_trans(Tween.TRANS_SINE)
+	return t
 
 
 func _fade(col: Color, peak: float) -> Gradient:

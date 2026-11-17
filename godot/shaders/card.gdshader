@@ -80,6 +80,7 @@ uniform vec4 scene_light : source_color = vec4(0.0);
 uniform vec2 scene_dir = vec2(0.0, -1.0);
 uniform vec4 burst_light : source_color = vec4(0.0);
 uniform vec2 burst_dir = vec2(0.0);
+uniform float smoulder = 0.0;   // 0..1: a Downed card's edges charred, with embers creeping along them (CardView)
 
 varying vec2 s;
 varying vec4 vcol;
@@ -515,6 +516,17 @@ void fragment() {
 		float tw2 = pow(max(0.0, sin(TIME * 1.7 + rnd2 * 50.0)), 30.0);
 		vec2 inc = fract((uv + 0.5) * vec2(11.0, 16.0)) - 0.5;
 		col.rgb += vec3(1.0, 0.93, 0.7) * tw2 * step(0.86, rnd2) * sparkle * 0.6 * smoothstep(0.3, 0.0, length(inc));
+	}
+	if (smoulder > 0.0) {
+		float e = min(0.5 - abs(uv.x), (0.5 - abs(uv.y)) * aspect);   // how far in from the nearest edge
+		float n = vnoise(vec2(uv.x * 26.0, uv.y * 26.0 * aspect) + vec2(0.0, -TIME * 0.7));
+		float n2 = vnoise(vec2(uv.x * 64.0, uv.y * 64.0 * aspect) + vec2(TIME * 0.3, -TIME * 1.3));
+		float reach = 0.03 + 0.035 * n;   // a ragged burnt rim
+		float burnt = 1.0 - smoothstep(reach * 0.5, reach, e);
+		col.rgb *= 1.0 - burnt * 0.6 * smoulder;   // charred
+		float line = 1.0 - smoothstep(0.0, reach * 0.45, abs(e - reach * 0.6));
+		float ember = line * smoothstep(0.42, 0.78, n2) * (0.55 + 0.45 * sin(TIME * 4.0 + n * 14.0));
+		col.rgb += vec3(1.0, 0.42, 0.1) * ember * 1.5 * smoulder * (calm > 0.5 ? 0.5 : 1.0);
 	}
 	if (scene_light.a > 0.0) {
 		vec2 dir = normalize(scene_dir + vec2(1e-4));

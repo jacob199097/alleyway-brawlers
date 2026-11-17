@@ -859,11 +859,24 @@ func _mvp_panel(mvp: Dictionary) -> Control:
 		info.add_child(k)
 		_count(k, kos, "%d", 0.5, 1.4)
 		info.add_child(UI.label("KO%s" % ("" if kos == 1 else "S"), 16, UI.MUTED, true))
-	# The card flips in once the panel has landed, and the light behind it comes up
+	var more: Array = []   # its brawls and its biggest hit, under the rest
+	if int(mvp.get("brawls", 0)) > 0:
+		more.append("%d BRAWL%s" % [int(mvp.brawls), "" if int(mvp.brawls) == 1 else "S"])
+	if int(mvp.get("best", 0)) > 0:
+		more.append("BIGGEST HIT %d" % int(mvp.best))
+	if not more.is_empty():
+		info.add_child(_gap_box(6))
+		info.add_child(UI.label("  ·  ".join(more), 16, Color(0.85, 0.87, 0.95), true))
+	# First it's shown big, centre stage, with what it did; then it flies into the panel, flips in there, and
+	# the light behind it comes up
 	tile.modulate.a = 0.0
 	rays.modulate.a = 0.0
+	var line := "%d MORALE DEALT%s" % [int(mvp.get("damage", 0)), ("  ·  %d KO%s" % [kos, "" if kos == 1 else "S"]) if kos > 0 else ""]
+	var spot := create_tween()
+	spot.tween_interval(0.35 + INTRO)
+	spot.tween_callback(func(): _mvp_spotlight(card, rarity, line, tile, mine))
 	var t := create_tween()
-	t.tween_interval(0.75 + INTRO)
+	t.tween_interval(0.75 + INTRO + 1.9)
 	t.tween_callback(func():
 		tile.pivot_offset = tile.size / 2
 		tile.scale = Vector2(0.0, 1.0)
@@ -875,6 +888,66 @@ func _mvp_panel(mvp: Dictionary) -> Control:
 		_burst(tile.get_global_rect().get_center(), UI.rarity_color(rarity).lightened(0.4), 70, 700.0, 0.9, 250.0)
 		rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.6))
 	return p
+
+
+## The MVP, big in the middle of the screen for a moment (its art moving if its owner has it animated), its name
+## and what it did under it, then it flies down into its place in the MVP panel (`into`, which flips in after).
+func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, mine: bool) -> void:
+	var layer := Control.new()
+	layer.size = Vector2(1920, 1080)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = 90
+	add_child(layer)
+	var veil := ColorRect.new()
+	veil.size = layer.size
+	veil.color = Color(0, 0, 0, 0.0)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(veil)
+	veil.create_tween().tween_property(veil, "color:a", 0.7, 0.3)
+	var rays := _spin_rays(Vector2(960, 470), 520.0, UI.rarity_color(rarity).lightened(0.25), 18)
+	rays.modulate.a = 0.0
+	layer.add_child(rays)
+	rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.4)
+	var big := UI.texture_rect(UI.card_art(card) if UI.card_art(card) else CardDB.back(), Vector2(400, 566))
+	big.position = Vector2(960, 470) - big.size / 2.0
+	big.material = UI.card_material(big.size, rarity, Game.anim_card(card) if mine else {})
+	big.pivot_offset = big.size / 2.0
+	big.scale = Vector2.ONE * 0.6
+	big.modulate.a = 0.0
+	layer.add_child(big)
+	var head := UI.label("★  MATCH MVP  ★", 34, UI.GOLD, true)
+	head.size = Vector2(1920, 44)
+	head.position = Vector2(0, 120)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layer.add_child(head)
+	var name_l := UI.label("%s  ·  %s" % [str(card.get("name", "?")).to_upper(), line], 30, Color.WHITE, true)
+	name_l.size = Vector2(1920, 40)
+	name_l.position = Vector2(0, 770)
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layer.add_child(name_l)
+	for l in [head, name_l]:
+		l.modulate.a = 0.0
+		l.create_tween().tween_property(l, "modulate:a", 1.0, 0.3)
+	Sfx.play("promote", 1.1, -6.0)
+	var t := big.create_tween().set_parallel()
+	t.tween_property(big, "modulate:a", 1.0, 0.2)
+	t.tween_property(big, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_burst(Vector2(960, 470), UI.rarity_color(rarity).lightened(0.4), 60, 760.0, 0.9, 200.0)
+	await get_tree().create_timer(1.25).timeout
+	if not is_instance_valid(layer):
+		return
+	# Down into the panel
+	Sfx.play("whoosh", 1.1, -6.0)
+	var to: Rect2 = into.get_global_rect() if is_instance_valid(into) else Rect2(big.position, big.size)
+	var fly := layer.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	fly.tween_property(big, "position", to.get_center() - big.size / 2.0, 0.45)
+	fly.tween_property(big, "scale", Vector2.ONE * (to.size.x / big.size.x), 0.45)
+	fly.tween_property(veil, "color:a", 0.0, 0.45)
+	fly.tween_property(rays, "modulate:a", 0.0, 0.3)
+	fly.tween_property(head, "modulate:a", 0.0, 0.25)
+	fly.tween_property(name_l, "modulate:a", 0.0, 0.25)
+	fly.chain().tween_property(big, "modulate:a", 0.0, 0.15)
+	fly.chain().tween_callback(layer.queue_free)
 
 
 func _gap_box(h: float) -> Control:

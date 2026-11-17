@@ -1,5 +1,17 @@
 [
     {
+        "version": "0.9.172",
+        "notes": [
+            "Weather: in most matches the sky turns for a few turns. A storm rolls in over the Back Alley (rain, lightning that lights up the cards, thunder), snow falls on the Frozen Lake, ash drifts down over the Caldera, a sandstorm blows through the Dust Bowl, fog creeps over the Crypt. Each arena has its own kinds. Online, both players see the same weather. It's only how the match looks and sounds: the rules don't change.",
+            "Cards on the table breathe: a slow, slight sway of their own. A Downed card's edges char and smoulder with creeping embers.",
+            "The opening deal: each card snaps off the deck with its own sound, a step higher than the last, and spins into your hand.",
+            "The MVP is shown big in the middle of the screen after a match, with what it did, before it drops into its panel. The panel also lists its brawls and its biggest hit.",
+            "Panels open and close the same way everywhere: dialogs, Settings, How to Play, the card zoom, the turf map's districts and the prompts in a match.",
+            "Text: one display font and one body font throughout, on one set of sizes.",
+            "Android: the phone buzzes on big hits and KOs (Settings → Gameplay → Vibration). This needs the new app: download it again from the game's download page."
+        ]
+    },
+    {
         "version": "0.9.171",
         "notes": [
             "Matches open with a face-off: both leaders slide in over their clan's colours with their names, clans and players, VS lands between them and the arena is named below (with its effect). Click or tap to skip it.",

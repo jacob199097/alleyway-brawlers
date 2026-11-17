@@ -39,16 +39,17 @@ static var _tex := {}
 const BACKDROP_W := 1536
 
 
-## The game's own fonts (res://fonts, the Barlow family, Open Font Licence): the same on Windows, Mac and
-## Android. Signs a font lacks (★, ▶) come from the system's.
-##   heading: condensed bold, a touch of space between the letters (buttons, headings, numbers)
-##   title:   condensed extra-bold italic (screen titles, banners, call-outs)
-##   body:    reading text · strong: reading text, semi-bold (chat, emotes)
+## The game's own fonts (res://fonts, Open Font Licence): the same on Windows, Mac and Android. Two faces:
+## one display font, Barlow Condensed, and one body font, Barlow. Signs a font lacks (★, ▶) come from the system's.
+##   heading: the display font, bold, a touch of space between the letters (buttons, headings, numbers;
+##            "label" is the same)
+##   title:   the display font's extra-bold italic cut (screen titles, banners, call-outs)
+##   body:    the body font, for reading ("strong" is the same)
 static func font_of(kind: String) -> Font:
 	if _fonts.has(kind):
 		return _fonts[kind]
-	var files := {"heading": "BarlowCondensed-Bold", "title": "BarlowCondensed-ExtraBoldItalic", "label": "BarlowCondensed-SemiBold",
-		"body": "Barlow-Medium", "strong": "Barlow-SemiBold"}
+	var files := {"heading": "BarlowCondensed-Bold", "title": "BarlowCondensed-ExtraBoldItalic", "label": "BarlowCondensed-Bold",
+		"body": "Barlow-Medium", "strong": "Barlow-Medium"}
 	var path := "res://fonts/%s.ttf" % files.get(kind, "Barlow-Medium")
 	var f: Font = null
 	if ResourceLoader.exists(path):
@@ -93,7 +94,7 @@ static func theme() -> Theme:
 	th.set_color("font_outline_color", "Button", Color(0, 0, 0, 0.5))
 	th.set_constant("outline_size", "Button", 2)
 	th.set_font("font", "Button", font())
-	th.set_font_size("font_size", "Button", 23)
+	th.set_font_size("font_size", "Button", 22)
 	var field := box(Color(0.02, 0.025, 0.06, 0.96), Color(STEEL, 0.4), 2, 6)
 	field.depth = -0.6   # (a field is sunk: darker at the top)
 	field.trim = false
@@ -238,6 +239,22 @@ const TEXT_SCALE_BELOW := 28
 ## headings don't. Every label goes through it; set sizes of reading text (card text, the battle log,
 ## mail, How to Play) call it too.
 ## `phone`: false where the size already has a phone's own (21 if phone else 16).
+## The type scale: text sizes up to 54 snap down onto these steps (UI.label, the duel's labels, the theme), so
+## every screen shares the same handful of sizes; bigger display numbers keep their own. Text Size and a phone's
+## bigger small print apply after it (text_size).
+const TYPE_SCALE := [12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 34, 40, 44, 48, 54]
+
+
+static func type_size(px: int) -> int:
+	if px < TYPE_SCALE[0] or px > TYPE_SCALE[-1]:
+		return px
+	var best: int = TYPE_SCALE[0]
+	for step in TYPE_SCALE:
+		if step <= px:
+			best = step
+	return best
+
+
 static func text_size(px: int, phone := true) -> int:
 	if phone and px < 20 and Game.mobile():   # (small print a little bigger on a phone's small screen)
 		px = mini(px + 3, 20)
@@ -258,7 +275,7 @@ static func label(text: String, font_size := 20, color := Color.WHITE, heading :
 	var ls := LabelSettings.new()
 	if heading:
 		ls.font = font()
-	font_size = text_size(font_size)
+	font_size = text_size(type_size(font_size))
 	ls.font_size = font_size
 	ls.font_color = color
 	# A fine dark edge and a shadow under it: readable over the art without the text looking stencilled
@@ -754,7 +771,7 @@ const DIALOG_CANCELS := ["CANCEL", "CLOSE", "BACK", "NO", "NOT NOW", "LATER", "S
 static func dialog_open(parent: Node) -> Control:
 	for i in range(parent.get_child_count() - 1, -1, -1):
 		var c := parent.get_child(i)
-		if c.has_meta("ui_dialog") and not c.is_queued_for_deletion():
+		if c.has_meta("ui_dialog") and not c.is_queued_for_deletion() and not c.has_meta("closing"):
 			return c
 	return null
 
@@ -783,9 +800,9 @@ static func dialog(parent: Control, heading: String, text: String, buttons: Arra
 	for spec in buttons:
 		var cb: Callable = spec[1]
 		var press := func():
-			if not is_instance_valid(veil) or veil.is_queued_for_deletion():
+			if not is_instance_valid(veil) or veil.is_queued_for_deletion() or veil.has_meta("closing"):
 				return
-			veil.queue_free()
+			pop_close(veil, p)
 			cb.call()
 		row.add_child(button(spec[0], press, Vector2(220, 56), spec[2] if spec.size() > 2 else BLUE))
 		# Esc presses its Cancel / Close button (or the only one); the screen behind never sees it
@@ -803,14 +820,48 @@ static func dialog(parent: Control, heading: String, text: String, buttons: Arra
 	p.reset_size()
 	var sz := p.get_combined_minimum_size()
 	p.position = (Vector2(1920, 1080) - sz) / 2
-	p.pivot_offset = sz / 2
-	veil.modulate.a = 0.0
-	p.scale = Vector2.ONE * 0.9
-	var t := veil.create_tween().set_parallel()
-	t.tween_property(veil, "modulate:a", 1.0, 0.15)
-	t.tween_property(p, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop_open(p, veil)
 	Sfx.play("phase", 0.8, -8.0)
 	return veil
+
+
+## The one way panels come and go, on every screen (dialogs, Settings, How to Play, the card zoom, the duel's
+## prompts): the veil behind fades in while the panel grows from a touch small with a little give; closing is
+## the same in reverse, quicker, and lets clicks through at once.
+const OPEN_SECS := 0.24
+const CLOSE_SECS := 0.14
+
+
+static func pop_open(panel: Control, veil: CanvasItem = null) -> void:
+	if veil:
+		veil.modulate.a = 0.0
+		veil.create_tween().tween_property(veil, "modulate:a", 1.0, OPEN_SECS * 0.7)
+	if panel == null:
+		return
+	var sz := panel.size if panel.size != Vector2.ZERO else panel.get_combined_minimum_size()
+	panel.pivot_offset = sz / 2.0
+	panel.scale = Vector2.ONE * 0.92
+	if veil == null:
+		panel.modulate.a = 0.0
+		panel.create_tween().tween_property(panel, "modulate:a", 1.0, OPEN_SECS * 0.7)
+	panel.create_tween().tween_property(panel, "scale", Vector2.ONE, OPEN_SECS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Close what pop_open opened: `node` (the veil, or the whole popup) fades and is freed, `panel` shrinks a little.
+static func pop_close(node: CanvasItem, panel: Control = null) -> void:
+	if node == null or not is_instance_valid(node) or node.is_queued_for_deletion() or node.has_meta("closing"):
+		return
+	node.set_meta("closing", true)
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for c in node.find_children("*", "Control", true, false):
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var t := node.create_tween().set_parallel()
+	t.tween_property(node, "modulate:a", 0.0, CLOSE_SECS)
+	if panel and is_instance_valid(panel):
+		panel.pivot_offset = panel.size / 2.0
+		t.tween_property(panel, "scale", Vector2.ONE * 0.95, CLOSE_SECS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.chain().tween_callback(node.queue_free)
 
 
 ## "LOADING…" text that pulses until freed.
@@ -1101,7 +1152,9 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 	parent.add_child(veil)
 	veil.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
-			veil.queue_free())
+			pop_close(veil))
+	if not instant:
+		pop_open(null, veil)
 	var art := texture_rect(card_art(c) if card_art(c) else CardDB.back(), Vector2(520, 736))
 	art.position = Vector2(400, 172)
 	var rarity_ := int(c.get("rarity", 1)) if c.get("rarity") != null else 1
@@ -1272,7 +1325,7 @@ static func card_zoom(parent: Control, c: Dictionary, instant := false) -> void:
 				KEY_RIGHT, KEY_D:
 					go_level.call(at + 1)
 				KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
-					veil.queue_free()
+					pop_close(veil)
 			veil.accept_event())
 	veil.grab_focus.call_deferred()
 	var hint := label(touch_words("Click anywhere to close" + ("  ·  ◀ ▶ or click a level to see it" if levels.size() > 1 else "")), 18, MUTED)

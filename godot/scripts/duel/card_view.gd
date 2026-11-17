@@ -345,8 +345,13 @@ func set_stats(atk: int, def: int, base_atk: int, base_def: int) -> void:
 
 
 func set_downed(v: bool) -> void:
+	var was := downed
 	downed = v
-	_body.modulate = Color(0.78, 0.5, 0.5) if v else Color.WHITE
+	_body.modulate = Color(0.82, 0.58, 0.55) if v else Color.WHITE
+	if v != was and is_inside_tree():   # (its edges catch and smoulder while it's Down: card.gdshader smoulder)
+		create_tween().tween_method(func(k: float): _mat.set_shader_parameter("smoulder", k), 0.0 if v else 1.0, 1.0 if v else 0.0, 0.8 if v else 0.4)
+	elif v != was:
+		_mat.set_shader_parameter("smoulder", 1.0 if v else 0.0)
 	_status_layer.queue_redraw()
 	_update_badge()
 
@@ -483,6 +488,9 @@ func _update_tilt(delta: float) -> void:
 	if hovered and not busy:
 		var m := (to_local(Game.pad.pointer(self)) / (SIZE / 2.0)).clamp(-Vector2.ONE, Vector2.ONE)
 		target += Vector2(-m.x, m.y) * 14.0
+	elif not busy and face_up:   # at rest it breathes: a slow, slight sway of its own (uid: no two in step)
+		var bt := Time.get_ticks_msec() / 1000.0 + float(uid % 37) * 0.73
+		target += Vector2(sin(bt * 0.9), sin(bt * 0.7 + 1.3)) * (0.7 if downed else 1.4)
 	target = target.clamp(-Vector2.ONE * MAX_TILT * 1.5, Vector2.ONE * MAX_TILT * 1.5)
 	_tilt = _tilt.lerp(target, 1.0 - exp(-14.0 * delta))
 	_kick = _kick.lerp(Vector2.ZERO, 1.0 - exp(-7.0 * delta))
@@ -719,7 +727,7 @@ func _draw_downed(r: Rect2) -> void:
 	var L := _status_layer
 	var p := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.6)
 	L.draw_rect(r, Color(0.3, 0.0, 0.02, 0.3))
-	L.draw_rect(r.grow(-2.0), Color(1.0, 0.22, 0.18, 0.5 + 0.4 * p), false, 4.0)
+	L.draw_rect(r.grow(-1.0), Color(1.0, 0.3, 0.16, 0.2 + 0.25 * p), false, 1.5)   # (a thin line: the edges smoulder now, card.gdshader)
 	# The tag, turned back against the card's own turn so it stays level on screen
 	var tag := Rect2(-34, -10, 68, 20)
 	L.draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)

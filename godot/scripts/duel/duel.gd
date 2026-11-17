@@ -19,6 +19,36 @@ const COLS := [780.0, 930.0, 1080.0, 1230.0, 1380.0]
 const ROWS := {"player": [536.0, 728.0], "opponent": [312.0, 120.0]}   # [front, back]
 const DIVIDER_Y := 424.0
 const CAM_LEAN := 9.0   # how far the camera leans toward whoever is acting (_cam_turn)
+## Weather that rolls in mid-match (an arena's "weather" in data/arenas.json names which can come): its layers
+## (ArenaLife kinds, picture pixels), how dark the arena goes, the backdrop's rain / sheen / haze added, the light on
+## the cards (its colour mixed in, its strength scaled), the street sound, and what's said when it comes and goes.
+## Only how the match looks and sounds: the rules are the same in any weather.
+const WEATHER := {
+	"storm": {"come": "A STORM ROLLS IN", "go": "THE STORM PASSES", "dark": 0.74, "ambience": "city_rain",
+		"alive": {"rain": 0.45, "sheen": 0.1, "haze": 0.03}, "light": ["#9fb4ff", 0.7],
+		"fx": [{"kind": "fog", "color": "#30364d", "density": 0.24, "drift": [0.05, 0.012], "scale": 1.4},
+			{"kind": "rain", "amount": 340, "wind": 0.3, "alpha": 0.3},
+			{"kind": "lightning", "every": 7, "strength": 0.34, "color": "#c9d4ff"}]},
+	"snow": {"come": "SNOW STARTS TO FALL", "go": "THE SNOW EASES OFF", "dark": 0.9,
+		"alive": {"haze": 0.08}, "light": ["#e2f2ff", 0.85],
+		"fx": [{"kind": "fog", "color": "#dfe8f5", "density": 0.13, "drift": [0.02, 0.006], "scale": 1.8},
+			{"kind": "snow", "amount": 320, "wind": 0.45}]},
+	"fog": {"come": "A FOG ROLLS IN", "go": "THE FOG LIFTS", "dark": 0.84,
+		"alive": {"haze": 0.12}, "light": ["", 0.6],
+		"fx": [{"kind": "fog", "color": "#8a90a6", "density": 0.4, "drift": [0.02, 0.004], "scale": 1.1},
+			{"kind": "fog", "color": "#b4b8c8", "density": 0.22, "drift": [-0.015, 0.006], "scale": 2.3}]},
+	"ash": {"come": "ASH STARTS TO FALL", "go": "THE ASH SETTLES", "dark": 0.8,
+		"alive": {"haze": 0.06}, "light": ["#ff6a2a", 1.3],
+		"fx": [{"kind": "fog", "color": "#5a2c1e", "density": 0.22, "drift": [0.015, -0.01], "scale": 1.5},
+			{"kind": "snow", "amount": 260, "wind": 0.15, "color": "#a59b93"}]},
+	"sandstorm": {"come": "A SANDSTORM BLOWS IN", "go": "THE SANDSTORM DIES DOWN", "dark": 0.84,
+		"alive": {"haze": 0.1}, "light": ["#ffc68a", 0.8],
+		"fx": [{"kind": "fog", "color": "#b98a52", "density": 0.36, "drift": [0.09, 0.012], "scale": 1.6},
+			{"kind": "sand", "amount": 240, "alpha": 0.45, "color": "#e8c48a"}]},
+	"wind": {"come": "THE WIND PICKS UP", "go": "THE WIND DROPS", "dark": 1.0,
+		"alive": {}, "light": ["", 1.0],
+		"fx": [{"kind": "leaves", "amount": 34}, {"kind": "sand", "amount": 80, "alpha": 0.12, "color": "#ffffff"}]},
+}
 const LEFT_X := 610.0
 const RIGHT_X := 1550.0
 const HAND_Y := 992.0
@@ -181,6 +211,12 @@ var _cam_rest := Vector2(960, 540)   # where the camera rests between moves: lea
 var _intro_on := false     # the opening face-off is playing: the match's first events wait for it
 var _intro_skip := false
 var _arena_info := {}      # this match's arena (data/arenas.json), for the opening
+var _weather_plan: Array = []   # [[from turn, until turn, kind], ...]: this match's weather (_plan_weather)
+var _weather_planned := false
+var _dealt := {}           # side -> cards dealt into its opening hand so far (_ev_draw: each a step higher)
+var _weather_now := ""
+var _weather_life: ArenaLife = null
+var _weather_base := {}    # the arena's own look (backdrop tint, its rain / sheen / haze, the cards' light), to go back to
 var _streak_tex: Texture2D
 var _strike_at := Vector2.INF       # where the last clash landed (damage flies from there)
 var _strike_time := 0.0              # game time of that clash
@@ -641,6 +677,7 @@ func _setup_online(start: Dictionary) -> void:
 	counts = duel._counts()
 	if start.get("resync", false):
 		_build_from_view()
+		_weather_turn(int(duel.turn), true)   # (back in a match: its weather as it is now)
 	_refresh_hud()
 	if Game.duel_setup.has("replay"):
 		_setup_replay(Game.duel_setup.replay)
@@ -1708,6 +1745,7 @@ func _arena_fx(arena: Dictionary, tex: Texture2D) -> void:
 	life.position = -m
 	$BackLayer.add_child(life)
 	_life = life
+	life.flashed.connect(_on_sky_flash)
 	var ts := UI.tex_size(tex)
 	var k := maxf((1920.0 + m.x * 2) / ts.x, (1080.0 + m.y * 2) / ts.y)
 	var to_screen := func(p) -> Vector2: return _cover_point(Vector2(float(p[0]), float(p[1])), ts)
@@ -2412,11 +2450,17 @@ func _track(ev: Dictionary) -> void:
 		"clash":
 			var v: CardView = field[ev.side].get(ev.from)
 			_last_hit = {"side": ev.side, "card": v.card if v else {}}
+			if v:   # (its brawls, for the MVP's stats)
+				var key := "%s:%s" % [ev.side, v.card.get("uid", 0)]
+				var entry: Dictionary = _damage_log.get(key, {"card": v.card, "owner": ev.side, "damage": 0, "kos": 0})
+				entry.brawls = int(entry.get("brawls", 0)) + 1
+				_damage_log[key] = entry
 		"damage":
 			if not _last_hit.is_empty() and _last_hit.side != ev.side and not _last_hit.card.is_empty():
 				var key := "%s:%s" % [_last_hit.side, _last_hit.card.get("uid", 0)]
 				var entry: Dictionary = _damage_log.get(key, {"card": _last_hit.card, "owner": _last_hit.side, "damage": 0, "kos": 0})
 				entry.damage += int(ev.amount)
+				entry.best = maxi(int(entry.get("best", 0)), int(ev.amount))
 				_damage_log[key] = entry
 		"ko":   # (the MVP's KOs: the card whose brawl it was)
 			if not _last_hit.is_empty() and _last_hit.side != ev.side and not _last_hit.card.is_empty():
@@ -2575,14 +2619,29 @@ func _ev_draw(ev: Dictionary) -> void:
 	v.z_index = 400
 	hand[side].append(v)
 	_layout_hand(side)
-	Sfx.play("draw", randf_range(0.92, 1.12))
+	# The opening deal is a moment: each card snaps off the deck with its own sound, a step higher than the
+	# last, spinning in on a higher arc, with a flick of sparks off the deck
+	var opening: bool = ev.get("opening", false)
+	var n: int = _dealt.get(side, 0)
+	if opening:
+		_dealt[side] = n + 1
+		Sfx.play("draw", 0.9 + 0.06 * n, -1.0)
+		Sfx.play("whoosh", 1.5 + 0.05 * n, -14.0)
+		_sparks(v.position, (v.home - v.position).normalized(), Color(1.0, 0.9, 0.6), 6, 40.0)
+	else:
+		Sfx.play("draw", randf_range(0.92, 1.12))
 	var start := v.position
 	var end_scale: float = v.home_scale
+	var arc := 170.0 if opening else 110.0
+	var spin := (0.6 if side == "player" else -0.6) if opening else 0.0
+	var end_rot: float = v.home_rot
 	var t := create_tween()
 	t.tween_method(func(k: float):
-		v.position = start.lerp(v.home, k) + Vector2(0, -110.0 * sin(PI * k) * v.board_scale)
+		v.position = start.lerp(v.home, k) + Vector2(0, -arc * sin(PI * k) * v.board_scale)
 		v.scale = Vector2.ONE * lerpf(1.0, end_scale, k) * v.board_scale
-	, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if spin != 0.0:
+			v.rotation = lerpf(spin, end_rot, k)
+	, 0.0, 1.0, 0.5 if opening else 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if side == "player" and not _spectating:
 		get_tree().create_timer(0.12).timeout.connect(func():
 			if is_instance_valid(v):
@@ -2590,8 +2649,8 @@ func _ev_draw(ev: Dictionary) -> void:
 	t.finished.connect(func():
 		v.busy = false
 		_layout_hand(side))
-	if ev.opening:
-		await _wait(0.09)
+	if opening:
+		await _wait(0.17)
 	else:
 		await t.finished
 
@@ -2599,6 +2658,7 @@ func _ev_draw(ev: Dictionary) -> void:
 ## A redrawn opening hand: the cards sweep back into the deck (the new ones arrive as draws).
 func _ev_mulligan(ev: Dictionary) -> void:
 	var side: String = ev.side
+	_dealt[side] = 0   # (the new hand is dealt like the first)
 	var mine := side == "player"
 	Sfx.play("whoosh", 0.9)
 	_float_text(Vector2(1080, DIVIDER_Y), "NEW HAND" if mine else ("%s REDRAWS" % str(_names.get(side, "OPPONENT")).to_upper() if _ffa else "OPPONENT REDRAWS"), BLUE if mine else RED, 40)
@@ -2637,6 +2697,7 @@ func _ev_turn(ev: Dictionary) -> void:
 	_ui.phase_track.queue_redraw()
 	Sfx.play("turn_yours" if mine else "turn_theirs")
 	_cam_turn(str(ev.side))
+	_weather_turn(int(ev.turn), false)
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
 	for side in field:
@@ -5867,6 +5928,7 @@ func _ev_ko(ev: Dictionary) -> void:
 	field[side].erase(ev.slot)
 	if v == null:
 		return
+	Game.buzz(80, 1.0)   # (a KO: the longest buzz)
 	v.show_badge = false
 	v.z_index = 440
 	if ev.card.get("token", false):   # a token doesn't go to the Gutter: it dissolves
@@ -7292,7 +7354,7 @@ static func _mvp_score(e: Dictionary) -> int:
 func _finish_match(won: bool) -> void:
 	var mvp := {}
 	for key in _damage_log:
-		if mvp.is_empty() or _mvp_score(_damage_log[key]) > _mvp_score(mvp):
+		if _mvp_score(_damage_log[key]) > 0 and (mvp.is_empty() or _mvp_score(_damage_log[key]) > _mvp_score(mvp)):   # (a card that only brawled isn't one)
 			mvp = _damage_log[key]
 	var snap: Texture2D = _end_snap
 	if snap == null and DisplayServer.get_name() != "headless":
@@ -7480,6 +7542,8 @@ func _to_gutter(v: CardView, side: String) -> void:
 
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount * _fx_level())
+	if amount >= 8.0:   # (a phone feels the hit: Game.buzz)
+		Game.buzz(roundi(clampf(amount * 2.0, 18.0, 60.0)), clampf(amount / 26.0, 0.3, 1.0))
 	if amount >= 10.0:   # (a big moment: the arena feels it too)
 		_arena_react(clampf(amount / 24.0, 0.4, 1.0) * _fx_level())
 
@@ -7650,6 +7714,133 @@ func _arena_light(arena: Dictionary) -> void:
 	var f = l.get("from", [0, -1])
 	CardView.scene_light = Color(str(l.get("color", "#ffffff")), clampf(float(l.get("amount", 0.3)), 0.0, 1.0))
 	CardView.scene_from = Vector2(float(f[0]), float(f[1])).normalized() if f is Array and f.size() == 2 else Vector2.UP
+
+
+## This match's weather: now and then a front from the arena's list rolls in for 3-5 turns, then clears. Online it
+## comes from the match's id, so both players see the same sky; offline it's random. Not in the tutorial.
+func _plan_weather() -> void:
+	_weather_planned = true
+	var kinds: Array = _arena_info.get("weather", []) if _arena_info.get("weather") is Array else []
+	if kinds.is_empty() or _tutorial:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(_match_id) if _online and _match_id != "" else randi()
+	var t := rng.randi_range(3, 6)
+	while t < 60:
+		if rng.randf() < 0.8:
+			var lasts := rng.randi_range(3, 5)
+			_weather_plan.append([t, t + lasts, str(kinds[rng.randi() % kinds.size()])])
+			t += lasts
+		t += rng.randi_range(3, 6)
+
+
+## A new turn (or a resync, instant): the weather it should have comes in, or the weather that's over clears.
+func _weather_turn(turn: int, instant: bool) -> void:
+	if not _weather_planned:
+		_plan_weather()
+	var want := ""
+	for f in _weather_plan:
+		if turn >= int(f[0]) and turn < int(f[1]):
+			want = str(f[2])
+	if want == _weather_now:
+		return
+	var was := _weather_now
+	_weather_now = want
+	if was != "":
+		_weather_out(was, instant and want == "")
+	if want != "":
+		_weather_in(want, instant)
+
+
+func _weather_in(kind: String, instant: bool) -> void:
+	var w: Dictionary = WEATHER.get(kind, {})
+	if w.is_empty() or _life == null or Game.arena_level() <= 0.0:   # (Settings → Arena Effects off: a clear sky)
+		return
+	var secs := 0.01 if instant else 4.0
+	var m: Vector2 = Game.wide.margin
+	var life := ArenaLife.new().setup($BackLayer/Background.texture, $BackLayer/Background.modulate, Game.arena_level(), Vector2(1920, 1080) + m * 2)
+	life.position = -m
+	$BackLayer.add_child(life)   # (over the arena's own life: the rain falls in front of it)
+	for e in w.fx:
+		life.add(e)
+	life.flashed.connect(_on_sky_flash)
+	life.fade(0.0, 0.0)
+	life.fade(1.0, secs)
+	_weather_life = life
+	_weather_look(w, secs)
+	if w.has("ambience"):
+		Game.sound.ambience(str(w.ambience), secs)
+	if not instant:
+		_weather_tag(str(w.come))
+		if kind == "storm":
+			Sfx.play("boom", 0.38, -10.0)   # (thunder, far off)
+
+
+func _weather_out(kind: String, instant: bool) -> void:
+	var w: Dictionary = WEATHER.get(kind, {})
+	var secs := 0.01 if instant else 4.0
+	if _weather_life and is_instance_valid(_weather_life):
+		var life := _weather_life
+		life.fade(0.0, secs).finished.connect(life.queue_free)
+	_weather_life = null
+	_weather_look({}, secs)
+	Game.sound.ambience(_ambience, secs)
+	if not instant and not w.is_empty() and Game.arena_level() > 0.0:
+		_weather_tag(str(w.go))
+
+
+## The arena under the weather (w), or back to itself ({}): darker, wetter or hazier, and the cards' light with it.
+func _weather_look(w: Dictionary, secs: float) -> void:
+	var bg: TextureRect = $BackLayer/Background
+	var mat := bg.material as ShaderMaterial
+	if _weather_base.is_empty():
+		var alive := {}
+		for k in ["rain", "sheen", "haze"]:
+			var v = mat.get_shader_parameter(k) if mat else null
+			alive[k] = float(v) if v != null else 0.0
+		_weather_base = {"mod": bg.modulate, "light": CardView.scene_light, "alive": alive}
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	var dark := float(w.get("dark", 1.0))
+	var base_mod: Color = _weather_base.mod
+	t.tween_property(bg, "modulate", Color(base_mod.r * dark, base_mod.g * dark, base_mod.b * dark, base_mod.a), secs)
+	if mat:
+		for k in _weather_base.alive:
+			t.tween_property(mat, "shader_parameter/" + k, _weather_base.alive[k] + float(w.get("alive", {}).get(k, 0.0)), secs)
+	var base_light: Color = _weather_base.light
+	var want := base_light
+	if not w.is_empty() and base_light.a > 0.0:
+		var l: Array = w.light
+		var tint := base_light if str(l[0]) == "" else base_light.lerp(Color(str(l[0])), 0.55)
+		want = Color(tint, clampf(base_light.a * float(l[1]), 0.0, 1.0))
+	t.tween_method(func(c: Color): CardView.scene_light = c, CardView.scene_light, want, secs)
+
+
+## What the weather's doing, said quietly under the top of the screen.
+func _weather_tag(text: String) -> void:
+	var l := _label(26, Color(0.82, 0.88, 1.0), true)
+	l.text = text
+	l.size = Vector2(900, 36)
+	l.position = Vector2(1080 - 450, 104)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.modulate.a = 0.0
+	overlay.add_child(l)
+	var t := l.create_tween()
+	t.tween_property(l, "modulate:a", 1.0, 0.6)
+	t.tween_interval(2.6)
+	t.tween_property(l, "modulate:a", 0.0, 0.8)
+	t.tween_callback(l.queue_free)
+
+
+## Lightning (the arena's or a storm's): the cards catch the flash from the sky, and the thunder follows.
+func _on_sky_flash(strength: float) -> void:
+	var k := strength * _fx_level()
+	if k > 0.0:
+		for v in cards_layer.get_children():
+			if v is CardView and v.visible:
+				v.light_up(Color(0.8, 0.86, 1.0), v.global_position + Vector2(-260, -900), minf(1.0, k * 1.8))
+	await get_tree().create_timer(randf_range(0.5, 1.5)).timeout
+	if is_inside_tree() and strength > 0.05:
+		Sfx.play("boom", randf_range(0.34, 0.44), -15.0)
 
 
 ## Behind a big prompt (a choice, the opening hand, a card to pick from a pile) the table goes soft:
@@ -7984,6 +8175,7 @@ func _label(font_size: int, color: Color, heading := false) -> Label:
 	var ls := LabelSettings.new()
 	if heading:
 		ls.font = _font
+	font_size = UI.type_size(font_size)   # (on the game's type scale, as UI.label)
 	if font_size < 20 and Game.mobile():   # (small print a little bigger on a phone, as UI.label)
 		font_size = mini(font_size + 3, 20)
 	ls.font_size = font_size
@@ -9361,8 +9553,7 @@ func _show_choice(p: Dictionary) -> void:
 		_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
-	box.modulate.a = 0.0
-	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	UI.pop_open(box)
 	_menu = box
 	Sfx.play("effect", 1.3, -6.0)
 	queue_redraw()
@@ -9446,8 +9637,7 @@ func _show_mulligan(p: Dictionary) -> void:
 	_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
-	box.modulate.a = 0.0
-	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	UI.pop_open(box)
 	_menu = box
 	Sfx.play("draw", 1.2, -6.0)
 
@@ -9511,8 +9701,7 @@ func _show_card_choice(p: Dictionary) -> void:
 	_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
-	box.modulate.a = 0.0
-	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	UI.pop_open(box)
 	_menu = box
 	Sfx.play("draw", 1.2, -6.0)
 
@@ -9543,8 +9732,7 @@ func _show_target_choice(p: Dictionary) -> void:
 	overlay.add_child(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, DIVIDER_Y - sz.y / 2)
-	box.modulate.a = 0.0
-	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	UI.pop_open(box)
 	_menu = box
 	Sfx.play("effect", 1.3, -6.0)
 	queue_redraw()
@@ -10264,7 +10452,7 @@ func _on_next() -> void:
 
 func _close_menu() -> void:
 	if _menu and is_instance_valid(_menu):
-		_menu.queue_free()
+		UI.pop_close(_menu, _menu)   # (the same close as every panel: UI.pop_close)
 	_menu = null
 
 
@@ -10380,8 +10568,7 @@ func _show_pile(side: String, pile: String) -> void:
 	overlay.add_child(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
-	box.modulate.a = 0.0
-	create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+	UI.pop_open(box)
 	_menu = box
 	Sfx.play("draw", 1.2, -6.0)
 

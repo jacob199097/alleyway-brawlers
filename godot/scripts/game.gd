@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS := {
 	"anim_speed": 1.0,              # duel animation speed (1, 1.5 or 2)
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
+	"haptics": true,                # phones: a buzz on big hits and KOs (Game.buzz)
 	"phone_notifications": true,    # Android: invites, the daily reward, results and updates (scripts/push.gd)
 	"battery_saver": true,          # phones: 30 fps and solid panels instead of frosted glass (else 60 fps)
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour
@@ -467,6 +468,21 @@ func window_size() -> Vector2i:
 
 
 ## A phone or tablet (the Android build; "--mobile" tries it on a PC): touch, no windows, no keyboard.
+## Phone haptics: a short buzz (ms long, strength 0..1) on a big hit or a KO. Android only (the APK has the
+## vibrate permission from 0.9.172); Settings → Vibration turns it off. Buzzes closer together than 90 ms merge.
+var _buzz_at := 0
+
+
+func buzz(ms: int, strength := 1.0) -> void:
+	if not OS.has_feature("android") or not settings.get("haptics", true):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _buzz_at < 90:
+		return
+	_buzz_at = now
+	Input.vibrate_handheld(ms, clampf(strength, 0.1, 1.0))
+
+
 func mobile() -> bool:
 	if _mobile == -1:
 		_mobile = 1 if OS.has_feature("mobile") or "--mobile" in OS.get_cmdline_user_args() else 0
