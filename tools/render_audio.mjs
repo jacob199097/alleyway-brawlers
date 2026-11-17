@@ -8,7 +8,7 @@
 // docs/AUDIO_PROMPTS.md has what each one is for, and prompts to generate the real thing.
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'sfx');
 const TAU = Math.PI * 2;
@@ -617,6 +617,44 @@ function duelMusic(name, bpm, tense, seed) {
 
 // ── what to render ──────────────────────────────────────────────────────────
 
+// ── adaptive music layers (Game.sound.layer: over whatever track plays, so no key and no strict beat) ──
+
+/** A low tension bed: a sub rumble, a wind-like band that swells and falls, a slow throb. Loops. */
+function layerDrone() {
+    const rate = 32000, len = 16, xf = 2, R = rng(71);
+    const buf = stereo(rate, len + xf);
+    const n = buf[0].length;
+    const nz = [brown(R), brown(R)], hiss = [pink(R), pink(R)];
+    const sub = [biquad('lp', rate, 90), biquad('lp', rate, 90)];
+    const band = [biquad('bp', rate, 420, 2.5), biquad('bp', rate, 470, 2.5)];
+    const sw = wander(R, rate, 0.25);
+    for (let i = 0; i < n; i++) {
+        const t = i / rate;
+        const swell = 0.35 + 0.65 * sw();
+        const throb = 0.75 + 0.25 * Math.sin(TAU * 0.5 * t);
+        for (let c = 0; c < 2; c++) {
+            band[c].set(380 + 260 * swell + c * 40, 2.5);
+            buf[c][i] = sub[c].run(nz[c]()) * 1.4 * throb + band[c].run(hiss[c]()) * 1.6 * swell
+                + Math.sin(TAU * 41 * t + c) * 0.12 * throb;
+        }
+    }
+    writeWav('music_layer_drone', rate, normalize(loopFold(withReverb(buf, rate, 0.35, 0.85, 0.5), rate, len), 0.7));
+}
+
+/** The last turns: a clock ticking at a racing heart's pace, a muffled low knock on every fourth. Loops. */
+function layerPulse() {
+    const rate = 32000, len = 8, xf = 0.5, R = rng(83);
+    const buf = stereo(rate, len + xf);
+    const step = 0.25;   // 4 ticks a second
+    for (let k = 0; k * step < len + xf; k++) {
+        const at = k * step, accent = k % 4 === 0;
+        const hp = biquad('hp', rate, 5200), wn = () => R() * 2 - 1;
+        addEvent(buf, rate, at, 0.05, k % 2 ? 0.25 : -0.25, (t) => hp.run(wn()) * Math.exp(-t * 90) * (accent ? 0.5 : 0.32));
+        if (accent) addEvent(buf, rate, at, 0.3, 0, (t) => Math.sin(TAU * 62 * t) * Math.exp(-t * 16) * 0.9);
+    }
+    writeWav('music_layer_pulse', rate, normalize(loopFold(withReverb(buf, rate, 0.2, 0.6, 0.5), rate, len), 0.6));
+}
+
 const JOBS = {
     amb_city_rain: ambCityRain,
     amb_crowd: ambCrowd,
@@ -639,9 +677,14 @@ const JOBS = {
     music_defeat: defeatStinger,
     music_duel: () => duelMusic('music_duel', 96, false, 101),
     music_duel_tense: () => duelMusic('music_duel_tense', 124, true, 202),
+    music_layer_drone: layerDrone,
+    music_layer_pulse: layerPulse,
 };
 
-const want = process.argv.slice(2);
+// (tools/render_voices.mjs borrows the helpers: run as a script only when it is the one started)
+export { OUT, MARK, isStandIn, writeWav, normalize, biquad, reverb, fades };
+const main = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const want = main ? process.argv.slice(2) : ['(none)'];
 for (const [name, job] of Object.entries(JOBS)) {
     if (want.length && !want.includes(name)) continue;
     // A real recording (ogg/mp3, or a .wav that isn't one of ours) replaces the stand-in: leave it be

@@ -7,6 +7,7 @@ const achievements    = require('../economy/achievements');
 const { leaderboard } = require('../economy/leaderboard');
 const mastery         = require('../economy/mastery');
 const veterans        = require('../economy/veterans');
+const showcase        = require('../economy/showcase');
 
 // ── GET /api/profile/me ───────────────────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
@@ -32,7 +33,7 @@ router.get('/me', requireAuth, async (req, res) => {
         const { first_win_date: fw, ...me } = rows[0];
         const firstWinReady = (fw ? fw.toISOString().slice(0, 10) : null) !== new Date().toISOString().slice(0, 10);
         res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id),
-            most_played: await mastery.mostPlayed(req.playerId).catch(() => null) });
+            most_played: await mastery.mostPlayed(req.playerId).catch(() => null), showcase: await showcase.get(req.playerId).catch(() => []) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -80,7 +81,7 @@ router.get('/player/:id', requireAuth, async (req, res) => {
         const best = Object.entries(vet.cards).sort((a, b) => b[1].xp - a[1].xp).slice(0, 5)
             .map(([cardId, v]) => ({ id: cardId, plays: v.plays, wins: v.wins, tier: v.tier }));
         res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id), mastery: ms, best_cards: best,
-            most_played: await mastery.mostPlayed(id).catch(() => null) });
+            most_played: await mastery.mostPlayed(id).catch(() => null), showcase: await showcase.get(id).catch(() => []) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -118,6 +119,17 @@ router.patch('/me', requireAuth, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ── PUT /api/profile/showcase — the cards shown off on your profile and in the match intro ─────────────
+//   { cards: [gameId, ...] } (up to 3, cards you own) → { showcase: [gameId, ...] }
+router.put('/showcase', requireAuth, async (req, res) => {
+    try {
+        res.json({ showcase: await showcase.set(req.playerId, (req.body || {}).cards) });
+    } catch (err) {
+        if (err instanceof showcase.ShowcaseError) return res.status(400).json({ error: err.message });
+        res.status(500).json({ error: 'Something went wrong. Try again.' });
     }
 });
 

@@ -68,6 +68,10 @@ matched to what they replaced), with silence trimmed off the start; the .m4a mus
 | `whoosh` | cards flying, screen changes | **wanted** (synthesised) |
 | `riser` | build-up before big moments (leader awakening, Legendary pull) | **wanted** (synthesised) |
 | `heartbeat` | low Morale | **wanted** (synthesised) |
+| `thump` | big hits: the low layer (duel.gd `_hit_layers`) | **wanted** (synthesised) |
+| `debris` | big hits: grit pattering down after the impact | **wanted** (synthesised) |
+| `music_layer_drone`, `music_layer_pulse` | adaptive music layers over the duel track (`Game.sound.layer`) | stand-ins |
+| `vo_*` | the announcer and the Turf Defense bosses' voices (`Sfx.voice`; docs/AUDIO_PROMPTS.md) | stand-ins (`tools/render_voices.mjs`) |
 | `phase` | the phase changes | **wanted** (synthesised blip) |
 | `turn` | your turn starts | **wanted** (synthesised two-note chime) |
 | `click` | buttons, counting numbers up | **wanted** (synthesised) |

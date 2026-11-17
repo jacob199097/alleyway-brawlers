@@ -401,9 +401,10 @@ function createOnlineService(io, deps) {
     }
 
     function profileOf(seat) {
-        return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url,
+        return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url, rank: seat.profile.rank || null,
             clan: seat.profile.clan || null, clan_level: seat.profile.clan_level || null,
             title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {}, vet_xp: seat.vetXp || {}, anim: seat.anim || [],
+            showcase: seat.profile.showcase || [],
             ...(seat.profile.bot ? { bot: true, subtitle: seat.profile.subtitle || 'CPU OPPONENT', ...(seat.profile.stars ? { stars: seat.profile.stars } : {}) } : {}) };   // (a CPU: who it is; a turf gang's stars)
     }
 
@@ -1110,10 +1111,11 @@ async function loadSetupFromDb(pool, playerId) {
 }
 
 async function loadProfileFromDb(pool, playerId) {
-    const { rows } = await pool.query('SELECT username, level, avatar_url, title, card_back FROM players WHERE id = $1', [playerId]);
+    const { rows } = await pool.query('SELECT username, level, avatar_url, title, card_back, rank FROM players WHERE id = $1', [playerId]);
     if (!rows[0]) return { username: 'Player', level: 1, avatar_url: null };
     const { titleText } = require('../economy/achievements');
-    return { ...rows[0], title: await titleText(rows[0].title).catch(() => null) };
+    return { ...rows[0], title: await titleText(rows[0].title).catch(() => null),
+        showcase: await require('../economy/showcase').get(playerId).catch(() => []) };
 }
 
 /**

@@ -33,6 +33,17 @@ func lines() -> Dictionary:
 	return info.get("lines", {}) if info.get("lines") is Dictionary else {}
 
 
+## The boss says a line aloud (vo_boss_<id>_<key>: tools/render_voices.mjs). Returns how long it talks for (its
+## echo left out), so the words stay up while it does; 0 if it has no recording or voices are off.
+func _speak(key: String) -> float:
+	var name := "boss_%s_%s" % [str(info.get("id", "")), key]
+	var s: Array = Sfx.streams("vo_" + name)
+	if s.is_empty() or not Game.settings.get("voices", true):
+		return 0.0
+	Sfx.voice(name, 0.0)
+	return maxf(0.0, (s[0] as AudioStream).get_length() - 1.0)
+
+
 func portrait() -> Texture2D:
 	return CardDB.art(str(info.get("portrait", "")))
 
@@ -109,11 +120,12 @@ func intro(players: Dictionary) -> void:
 	await _hold(root, 0.7)
 	# What it has to say
 	var said_any := false
-	for line in (lines().get("intro", []) as Array):
+	var intro: Array = lines().get("intro", [])
+	for i in intro.size():
 		if root.get_meta("skip", false):
 			break
 		said_any = true
-		await _typed(root, str(line), Vector2(140, 1080 - LETTERBOX - 210), 900.0, 2.0)
+		await _typed(root, str(intro[i]), Vector2(140, 1080 - LETTERBOX - 210), 900.0, 2.0, "intro%d" % (i + 1))
 	if not said_any:
 		await _hold(root, 0.6)
 	# The crew
@@ -186,7 +198,7 @@ func phase(ev: Dictionary) -> void:
 	d._burst(Vector2(1080, 440), color.lightened(0.3), 70, 900, 1.1, -60.0)
 	var said_line := str((lines().get("phase", {}) as Dictionary).get(str(n), "")) if lines().get("phase") is Dictionary else ""
 	if said_line != "":
-		await _typed(root, said_line, Vector2(800, 380 + big.get_minimum_size().y + 20), 960.0, 1.4)
+		await _typed(root, said_line, Vector2(800, 380 + big.get_minimum_size().y + 20), 960.0, 1.4, "phase%d" % n)
 	else:
 		await _hold(root, 1.4)
 	var out: Tween = d.create_tween().set_parallel()
@@ -215,7 +227,7 @@ func farewell(won_by_crew: bool) -> void:
 		var fall: Tween = d.create_tween().set_parallel()
 		fall.tween_property(art, "rotation_degrees", 9.0, 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		fall.tween_property(art, "position:y", 380.0, 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await _typed(root, line, Vector2(620, 440), 1000.0, 1.3)
+	await _typed(root, line, Vector2(620, 440), 1000.0, 1.3, "defeat" if won_by_crew else "victory")
 	var out: Tween = d.create_tween()
 	out.tween_property(root, "modulate:a", 0.0, 0.35)
 	await out.finished
@@ -231,6 +243,7 @@ func say(key: String) -> void:
 	if text == "":
 		return
 	said[key] = true
+	_speak(key)
 	var p: Control = d._panels.get("boss", {}).get("root")
 	var box := PanelContainer.new()
 	box.add_theme_stylebox_override("panel", d._box(Color(0.03, 0.02, 0.06, 0.95), color, 3, 12))
@@ -473,7 +486,8 @@ func _glow(at: Vector2, size: float, strength: float) -> TextureRect:
 
 ## A line typed out in the boss's voice under its name, then held a moment (a click finishes the
 ## typing at once, a second click moves on).
-func _typed(root: Control, text: String, at: Vector2, width: float, hold: float) -> void:
+func _typed(root: Control, text: String, at: Vector2, width: float, hold: float, voice_key := "") -> void:
+	var spoken := _speak(voice_key) if voice_key != "" else 0.0
 	var speaker: Label = d._label(18, color.lightened(0.3), true)
 	speaker.text = boss_name()
 	speaker.position = at
@@ -499,7 +513,7 @@ func _typed(root: Control, text: String, at: Vector2, width: float, hold: float)
 			Sfx.play("click", randf_range(1.5, 1.8), -18.0)
 	l.visible_ratio = 1.0
 	_skip = false
-	await _hold(root, hold)
+	await _hold(root, maxf(hold, spoken - secs))   # (the words stay up while it talks)
 	var t: Tween = d.create_tween().set_parallel()
 	t.tween_property(l, "modulate:a", 0.0, 0.2)
 	t.tween_property(speaker, "modulate:a", 0.0, 0.2)

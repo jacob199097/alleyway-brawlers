@@ -67,6 +67,22 @@ func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
 
 
 ## A sound from a place on the screen (panned left or right with it), under parent.
+## A voice line (vo_<name>: the announcer, a boss; tools/render_voices.mjs makes stand-ins). Settings →
+## Announcer & Voices turns them off. One doesn't start within min_gap seconds of the last, so they don't talk
+## over each other.
+var _voice_at := -100.0
+
+
+func voice(name: String, min_gap := 1.2, gain_db := 0.0) -> void:
+	if not Game.settings.get("voices", true):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _voice_at < min_gap:
+		return
+	_voice_at = now
+	play("vo_" + name, 1.0, gain_db)
+
+
 func play_at(sound: String, at: Vector2, parent: Node, gain_db := 0.0, pitch := 1.0) -> void:
 	var options: Array = _stream(sound)
 	if options.is_empty() or not is_instance_valid(parent):
@@ -414,6 +430,26 @@ func _r_reveal_legendary() -> AudioStream:
 ## A card you didn't have: two quick sparkly dings.
 func _r_new_card() -> AudioStream:
 	return _render(0.6, func(t, st): return (_bell(1567.98, t) + _bell(2093.0, t - 0.09)) * 0.12)
+
+
+## A big hit's low layer: a tight sub drop, felt more than heard (shorter and lower than boom).
+func _r_thump() -> AudioStream:
+	return _render(0.45, func(t, st):
+		return tanh(_sweep(st, lerpf(68.0, 30.0, minf(t / 0.2, 1.0))) * exp(-t * 9.0) * 2.2) * 0.9)
+
+
+## A big hit's last layer: grit and small pieces pattering down for half a second after it.
+func _r_debris() -> AudioStream:
+	var bits: Array = []   # [when, how loud]
+	for i in 18:
+		bits.append([randf() * randf() * 0.55, randf_range(0.3, 1.0)])
+	return _render(0.7, func(t, st):
+		var v := _noise(st, 0.18) * exp(-t * 6.0) * 0.22   # (a hiss of grit)
+		for b in bits:
+			var dt: float = t - b[0]
+			if dt > 0.0 and dt < 0.03:
+				v += (randf() * 2.0 - 1.0) * b[1] * exp(-dt * 240.0) * 0.6
+		return v)
 
 
 ## Two low thuds (lub-dub) for when the player's Morale is low.

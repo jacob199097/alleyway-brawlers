@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS := {
 	"turn_alert": true,             # flash the taskbar + sound when it's your move and the game isn't in front
 	"rival_emotes": true,           # show the opponent's emotes
 	"haptics": true,                # phones: a buzz on big hits and KOs (Game.buzz)
+	"voices": true,                 # the announcer and the bosses' voices (Sfx.voice)
+	"adaptive_music": true,         # the duel's music opens up and layers come in as it heats up (duel.gd _heat_music)
 	"phone_notifications": true,    # Android: invites, the daily reward, results and updates (scripts/push.gd)
 	"battery_saver": true,          # phones: 30 fps and solid panels instead of frosted glass (else 60 fps)
 	"glow_symbols": false,          # colour-blind help: a shape on every glow, not just its colour

@@ -18,6 +18,10 @@ var _now := {"music": "", "amb": ""}
 var _use := {"music": 0, "amb": 0}
 var _resume := ""   # the track to bring in once the sting is over
 var _fades := {}     # player -> the fade running on it (a new fade replaces it)
+var _layers := {}    # layer name -> its looping player (layer)
+var _heat := 1.0     # 0..1: how open the music is (heat)
+var _heat_tw: Tween
+const LAYER_DB := -6.0
 
 
 func _ready() -> void:
@@ -47,6 +51,63 @@ func music(track: String, fade := 1.6) -> void:
 	if track != "":
 		stream = _looping("music_" + track)
 	_swap(_music, "music", stream, MUSIC_DB, fade)
+
+
+## Adaptive music: a layer (music_layer_<name>: "drone", "pulse") fades in over the track to a level (0..1), or
+## out at 0. Layers carry no key or strict beat, so they sit over any track. The duel raises them as the match
+## heats up (duel.gd _heat_music).
+func layer(name: String, level: float, fade := 2.5) -> void:
+	var p: AudioStreamPlayer = _layers.get(name)
+	if level <= 0.01:
+		if p and p.playing:
+			_fade(p, -80.0, fade, true)
+		return
+	if p == null:
+		p = _player("Music")
+		_layers[name] = p
+	if not p.playing:
+		var s := _looping("music_layer_" + name)
+		if s == null:
+			return
+		p.stream = s
+		p.volume_db = -80.0
+		p.play()
+	_fade(p, LAYER_DB + linear_to_db(clampf(level, 0.01, 1.0)), fade)
+
+
+## How heated the music sounds, 0..1: a calm match plays it a little muffled (a low-pass on the Music bus),
+## and it opens to full as things heat up. 1 (the default, every other screen) takes the filter off.
+func heat(h: float, fade := 3.0) -> void:
+	h = clampf(h, 0.0, 1.0)
+	var bus := AudioServer.get_bus_index("Music")
+	if bus < 0:
+		return
+	var at := -1
+	for i in AudioServer.get_bus_effect_count(bus):
+		if AudioServer.get_bus_effect(bus, i) is AudioEffectLowPassFilter:
+			at = i
+	if at < 0:
+		var lp := AudioEffectLowPassFilter.new()
+		lp.cutoff_hz = 20000.0
+		AudioServer.add_bus_effect(bus, lp)
+		at = AudioServer.get_bus_effect_count(bus) - 1
+	var fx := AudioServer.get_bus_effect(bus, at) as AudioEffectLowPassFilter
+	if _heat_tw and _heat_tw.is_valid():
+		_heat_tw.kill()
+	var hz := func(k: float) -> float: return 3200.0 * pow(20000.0 / 3200.0, k)   # (3.2 kHz muffled .. 20 kHz open)
+	AudioServer.set_bus_effect_enabled(bus, at, true)
+	_heat_tw = _tween()
+	_heat_tw.tween_method(func(k: float): fx.cutoff_hz = hz.call(k), _heat, h, maxf(fade, 0.01)).set_trans(Tween.TRANS_SINE)
+	if h >= 1.0:
+		_heat_tw.tween_callback(func(): AudioServer.set_bus_effect_enabled(bus, at, false))
+	_heat = h
+
+
+## Back to plain music: the layers out and the filter off (leaving a duel).
+func calm(fade := 1.0) -> void:
+	for name in _layers:
+		layer(name, 0.0, fade)
+	heat(1.0, fade)
 
 
 ## The track playing now ("" for none).

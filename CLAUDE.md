@@ -51,6 +51,11 @@
   `weather` list, the kinds in `duel.gd WEATHER`, planned from the match id (`_plan_weather`, both players alike).
 - UI conventions: panels open/close with `UI.pop_open` / `UI.pop_close`; text sizes snap to `UI.TYPE_SCALE` (two faces:
   Barlow Condensed display, Barlow body, `UI.font_of`); phone haptics via `Game.buzz` (Android, vibrate permission since 0.9.172).
+- Profile showcase (3 cards a player picks, on their profile and under their leader in the VS screen): `backend/economy/showcase.js`
+  (`players.showcase`, owned cards only), `PUT /api/profile/showcase`, match profiles' `showcase`.
+- Audio: adaptive music `Game.sound.heat` / `layer` (duel.gd `_heat_music`, loops `music_layer_*`); voices `Sfx.voice("…")`
+  (`vo_*`: the announcer and each boss's lines; stand-ins from `node tools/render_voices.mjs`, prompts in docs/AUDIO_PROMPTS.md);
+  big hits layer `thump` + `debris` (duel.gd `_hit_layers`).
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

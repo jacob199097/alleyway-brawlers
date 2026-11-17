@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.173",
+        "notes": [
+            "Your showcase: pick three cards to show off on your profile (YOUR SHOWCASE, EDIT). Friends see them on your profile, and your opponent sees them under your leader as a match begins.",
+            "The VS screen at the start of a match now shows each player's picture, name, level and rank, and their mastery with the clan they're playing.",
+            "Adaptive music: a match starts a little hushed and the music opens up as it heats up (someone low on Morale, a leader Awake). A low tension layer comes in, and in the last turns a ticking pulse. Settings → Audio → Adaptive Music.",
+            "An announcer: \"Your turn!\", \"Knockout!\", \"The leader awakens!\", \"Double or nothing!\" and \"Fight!\" in the VS screen. The Turf Defense bosses now speak their lines. Settings → Audio → Announcer & Voices. (These voices are placeholders for now.)",
+            "Big hits are layered: a deep thump you feel under the impact, then debris pattering down."
+        ]
+    },
+    {
         "version": "0.9.172",
         "notes": [
             "Weather: in most matches the sky turns for a few turns. A storm rolls in over the Back Alley (rain, lightning that lights up the cards, thunder), snow falls on the Frozen Lake, ash drifts down over the Caldera, a sandstorm blows through the Dust Bowl, fog creeps over the Crypt. Each arena has its own kinds. Online, both players see the same weather. It's only how the match looks and sounds: the rules don't change.",

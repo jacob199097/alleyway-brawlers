@@ -214,6 +214,8 @@ var _arena_info := {}      # this match's arena (data/arenas.json), for the open
 var _weather_plan: Array = []   # [[from turn, until turn, kind], ...]: this match's weather (_plan_weather)
 var _weather_planned := false
 var _dealt := {}           # side -> cards dealt into its opening hand so far (_ev_draw: each a step higher)
+var _pride := {}           # side -> its player's showcase (game card ids: backend/economy/showcase.js), for the opening
+var _profiles := {}        # side -> its player's match profile (online: the server's; the opening's nameplates)
 var _weather_now := ""
 var _weather_life: ArenaLife = null
 var _weather_base := {}    # the arena's own look (backdrop tint, its rain / sheen / haze, the cards' light), to go back to
@@ -349,6 +351,11 @@ func _ready() -> void:
 			_anims[side] = {}
 			for id in pa:
 				_anims[side][str(id)] = true
+		if profs[side] is Dictionary:
+			_profiles[side] = profs[side]
+		var sc = profs[side].get("showcase") if profs[side] is Dictionary else null
+		if sc is Array:
+			_pride[side] = sc
 		var px = profs[side].get("vet_xp") if profs[side] is Dictionary else null
 		if px is Dictionary:
 			_vet_xp[side] = px
@@ -460,6 +467,7 @@ func _make_leader_views() -> void:
 
 func _exit_tree() -> void:
 	CardView.scene_light = Color(0, 0, 0, 0)   # (the arena's light stays in its match)
+	Game.sound.calm(0.8)   # (and its music's layers and filter)
 
 
 ## The opening: the two leaders square off. Each slides in large over its clan's colour with its name,
@@ -538,16 +546,41 @@ func _match_intro(effect_title := "") -> void:
 		clan_l.text = str(v.card.get("clanName", "")).to_upper()
 		clan_row.add_child(clan_l)
 		box.add_child(clan_row)
-		var who := _label(22, Color(0.85, 0.87, 0.95), true)
-		who.text = _intro_name(side).to_upper()
-		who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		box.add_child(who)
+		var prof := _intro_profile(side)
+		if prof.get("clan") is String and str(prof.clan) == str(v.card.get("clan", "")) and prof.get("clan_level") != null:
+			clan_l.text += "  ·  MASTERY %d" % int(prof.clan_level)   # (their mastery with the clan they're playing)
+		var plate := _intro_plate(side, prof, col)   # their nameplate, over their leader
+		plate.position = Vector2(spots[side].x - 310.0, 128)
+		plate.modulate.a = 0.0
+		layer.add_child(plate)
+		words.append(plate)
+		# Their showcase: the cards they picked to show off (offline: your own)
+		var shown: Array = _pride.get(side, Game.player.get("showcase", []) if side == "player" and Game.player.get("showcase") is Array else [])
+		if shown.is_empty() and side != "player":   # (a CPU shows off the rarest cards in its deck, when the deck is known)
+			shown = _deck_pride(side)
+		var tiles := HBoxContainer.new()
+		tiles.alignment = BoxContainer.ALIGNMENT_CENTER
+		tiles.add_theme_constant_override("separation", 10)
+		tiles.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for id in shown.slice(0, 3):
+			var sc := CardDB.get_card(str(id))
+			if sc.is_empty():
+				continue
+			var tile := CardTile.make(sc, Vector2(64, 90))
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tiles.add_child(tile)
+		if tiles.get_child_count() > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 6)
+			box.add_child(gap)
+			box.add_child(tiles)
 		box.modulate.a = 0.0
 		layer.add_child(box)
 		words.append(box)
 	await _intro_wait(0.42)
 	# They meet: VS lands between them
 	var center := Vector2(1080, 470)
+	Sfx.voice("fight", 0.0)
 	Sfx.play("boom", 0.8, -2.0)
 	Sfx.play("hit", 0.7, -4.0)
 	shake(14)
@@ -606,7 +639,7 @@ func _match_intro(effect_title := "") -> void:
 		var arena_l := _label(30, GOLD, true)
 		arena_l.text = "ARENA  ·  %s%s" % [where.to_upper(), ("   ·   " + effect_title.to_upper()) if effect_title != "" else ""]
 		arena_l.size = Vector2(1400, 44)
-		arena_l.position = Vector2(1080 - 700, 930)
+		arena_l.position = Vector2(1080 - 700, 985)
 		arena_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		arena_l.modulate.a = 0.0
 		layer.add_child(arena_l)
@@ -637,11 +670,87 @@ func _match_intro(effect_title := "") -> void:
 	_pump()
 
 
+## A side's three rarest cards (one of each), from its deck: the CPU's showcase in the opening. Empty when the deck
+## isn't known here (an online opponent's).
+func _deck_pride(side: String) -> Array:
+	var cards: Array = []
+	var seen := {}
+	for c in duel.sides.get(side, {}).get("deck", []):
+		var id := str(c.get("id", "")) if c is Dictionary else ""
+		if id == "" or seen.has(id) or CardDB.get_card(id).is_empty():
+			continue
+		seen[id] = true
+		cards.append(c)
+	cards.sort_custom(func(a, b): return int(a.get("rarity", 1)) > int(b.get("rarity", 1)))
+	return cards.slice(0, 3).map(func(c): return str(c.get("id", "")))
+
+
 ## The opening's wait, cut short by a click or tap (_intro_skip).
 func _intro_wait(seconds: float) -> void:
 	var end := _game_time + seconds
 	while not _intro_skip and _game_time < end and is_inside_tree():
 		await get_tree().process_frame
+
+
+## A side's player for the opening: the server's match profile online; offline your own (Game.player) or the CPU.
+func _intro_profile(side: String) -> Dictionary:
+	if _profiles.get(side) is Dictionary:
+		return _profiles[side]
+	if side == "player":
+		return Game.player
+	return {"username": "CPU", "avatar_url": "cpu", "bot": true, "subtitle": "CPU OPPONENT"}
+
+
+## A player's nameplate in the opening, fighting-game style: their picture framed in their clan's colour, their name,
+## and under it their level and rank (a CPU: what it is).
+func _intro_plate(side: String, prof: Dictionary, col: Color) -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	row.size = Vector2(620, 0)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var frame := PanelContainer.new()
+	var fb := UI.box(Color(0, 0, 0, 0.5), col, 3, 10)
+	for m in ["content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"]:
+		fb.set(m, 4)
+	frame.add_theme_stylebox_override("panel", UI._glow(fb, col, 0.8))
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(UI.texture_rect(UI.avatar(prof.get("avatar_url")), Vector2(84, 84), true))
+	row.add_child(frame)
+	var info := VBoxContainer.new()
+	info.add_theme_constant_override("separation", 2)
+	info.alignment = BoxContainer.ALIGNMENT_CENTER
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(info)
+	var name_l := _label(34, Color.WHITE, true)
+	name_l.text = _intro_name(side).to_upper()
+	info.add_child(name_l)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(line)
+	if prof.get("bot", false):
+		var what := _label(20, Color(0.85, 0.87, 0.95), true)
+		what.text = str(prof.get("subtitle", "CPU OPPONENT")).to_upper()
+		line.add_child(what)
+		return row
+	var level := int(prof.get("level", 1))
+	line.add_child(UI.texture_rect(UI.level_icon(level), Vector2(28, 28)))
+	var lv := _label(20, Color(0.85, 0.87, 0.95), true)
+	lv.text = "LV %d" % level
+	line.add_child(lv)
+	var rank := str(prof.get("rank", "")) if prof.get("rank") is String else ""
+	if rank != "":
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(6, 0)
+		line.add_child(gap)
+		var rt := UI.tex("ranks/%s.png" % rank)
+		if rt:
+			line.add_child(UI.texture_rect(rt, Vector2(28, 28)))
+		var rl := _label(20, BLUE, true)
+		rl.text = rank.replace("_", " ").to_upper()
+		line.add_child(rl)
+	return row
 
 
 ## A side's player, for the opening: their name online, the player's own offline, else the CPU.
@@ -2698,6 +2807,9 @@ func _ev_turn(ev: Dictionary) -> void:
 	Sfx.play("turn_yours" if mine else "turn_theirs")
 	_cam_turn(str(ev.side))
 	_weather_turn(int(ev.turn), false)
+	_heat_music()
+	if mine and not _watching():   # the announcer, just after the turn's sting
+		get_tree().create_timer(0.3).timeout.connect(func(): Sfx.voice("your_turn"))
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
 	for side in field:
@@ -5247,6 +5359,8 @@ func _ev_luck(ev: Dictionary) -> void:
 	var rest := at + Vector2(0, -150)   # where it lands and shows the result
 	tok.ground = rest.y + 44.0
 	Sfx.play("coin_flip" if coin else "dice_roll")
+	if ev.get("double", false):
+		Sfx.voice("double_or_nothing", 0.0)
 	if coin:
 		await _toss_coin(tok, at, rest, value == 1)
 	else:
@@ -5419,6 +5533,7 @@ func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
 		await _wait(0.07)
 	_cam_reset(0.3)
 	Sfx.play("ambush", 0.8)
+	Sfx.voice("awakened", 0.0)
 	_leader_line(c, col)
 	await _showcase(v, c, col, "%s AWAKENS" % str(c.get("name", "")).to_upper())
 	var center := Vector2(1080, DIVIDER_Y)
@@ -5929,6 +6044,8 @@ func _ev_ko(ev: Dictionary) -> void:
 	if v == null:
 		return
 	Game.buzz(80, 1.0)   # (a KO: the longest buzz)
+	if not ev.card.get("token", false):
+		Sfx.voice("ko")
 	v.show_badge = false
 	v.z_index = 440
 	if ev.card.get("token", false):   # a token doesn't go to the Gutter: it dissolves
@@ -5985,6 +6102,7 @@ func _ev_damage(ev: Dictionary) -> void:
 	Sfx.play("boom", 0.8 if lethal else 1.0, 0.0 if lethal or amount >= 1000 else -6.0)
 	shake(clampf(amount / 60.0, 8.0, 28.0) * (1.4 if lethal else 1.0))
 	_set_morale(side, ev.morale)
+	_heat_music()
 	if lethal:
 		_finisher(_panels[side].root)
 	elif side == "player" and int(ev.morale) <= DuelState.START_MORALE / 4:
@@ -7226,6 +7344,7 @@ func _ev_awaken(ev: Dictionary) -> void:
 	v.busy = false
 	v.z_index = 10
 	v.show_badge = true
+	_heat_music()   # (a leader on the field: the music rises with it)
 
 
 func _ev_leader_hit(ev: Dictionary) -> void:
@@ -7313,10 +7432,12 @@ func _ev_game_over(ev: Dictionary) -> void:
 		shake(14)
 		_post_pulse("aberration", 10.0, 0.4)
 		Sfx.play("boom", 0.8, -4.0)
+		Game.sound.calm(0.8)
 		Game.sound.music("", 0.8)
 		await _wait(0.9)
 		_finish_match(won)
 		return
+	Game.sound.calm(0.6)
 	Game.sound.music("", 0.6)
 	Game.sound.sting("victory" if won else "defeat")
 	var title := _label(170, GOLD if won else RED, true)
@@ -7544,6 +7665,8 @@ func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount * _fx_level())
 	if amount >= 8.0:   # (a phone feels the hit: Game.buzz)
 		Game.buzz(roundi(clampf(amount * 2.0, 18.0, 60.0)), clampf(amount / 26.0, 0.3, 1.0))
+	if amount >= 16.0:
+		_hit_layers(amount)
 	if amount >= 10.0:   # (a big moment: the arena feels it too)
 		_arena_react(clampf(amount / 24.0, 0.4, 1.0) * _fx_level())
 
@@ -7829,6 +7952,45 @@ func _weather_tag(text: String) -> void:
 	t.tween_interval(2.6)
 	t.tween_property(l, "modulate:a", 0.0, 0.8)
 	t.tween_callback(l.queue_free)
+
+
+## Layered hits: under a big hit's own sound (hit, slam, boom), a low thump you feel at once and debris pattering
+## down just after; bigger hits, louder and lower. At most every 0.2 s.
+var _layers_at := 0
+
+
+func _hit_layers(amount: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _layers_at < 200:
+		return
+	_layers_at = now
+	var k := clampf((amount - 16.0) / 14.0, 0.0, 1.0)
+	Sfx.play("thump", randf_range(0.95, 1.05) - 0.12 * k, -5.0 + 4.0 * k)
+	get_tree().create_timer(0.05, true, false, true).timeout.connect(func(): Sfx.play("debris", randf_range(0.85, 1.15), -8.0 + 4.0 * k))
+
+
+## Adaptive music (Game.sound.heat / layer): the match starts a little muffled and opens up as it heats up:
+## someone low on Morale, a leader Awake on the field; a low drone comes in as it does, and in the last turns
+## (someone down to a quarter of their Morale) a ticking pulse. The track itself still turns to its battle version
+## (_tension). Settings → Adaptive Music turns it off (the plain track, unfiltered).
+func _heat_music() -> void:
+	if duel == null or _mode == "over":
+		return
+	if not Game.settings.get("adaptive_music", true):
+		Game.sound.calm(0.5)
+		return
+	var low := 1.0
+	var awake := false
+	for side in _sides:
+		if _out.has(side) or not duel.sides.has(side):
+			continue
+		low = minf(low, float(duel.sides[side].get("morale", DuelState.START_MORALE)) / _max_morale(side))
+		if str(duel.sides[side].get("leader_state", "")) == "awake":
+			awake = true
+	var heat := clampf(0.25 + clampf((0.7 - low) / 0.55, 0.0, 1.0) * 0.55 + (0.25 if awake else 0.0), 0.0, 1.0)
+	Game.sound.heat(heat)
+	Game.sound.layer("drone", clampf((heat - 0.4) / 0.45, 0.0, 1.0) * 0.85)
+	Game.sound.layer("pulse", 0.7 if low <= 0.25 else 0.0)
 
 
 ## Lightning (the arena's or a storm's): the cards catch the flash from the sky, and the thunder follows.

@@ -27,6 +27,11 @@ Suno: put the style line in "Style of Music", turn on Instrumental, aim for 2 to
 | `music_duel_tense` | When someone is down to a third of their Morale | `aggressive darksynth, cyberpunk final battle, distorted driving bass, pounding drums, urgent arpeggios, high stakes, relentless energy, 130 bpm, instrumental, loopable` |
 | `music_victory` | A win (5 to 8 seconds) | `short triumphant victory fanfare, synth brass and big drum hit, cyberpunk, ends on a held major chord, 6 seconds` (or cut the first seconds of a longer take) |
 | `music_defeat` | A loss (5 to 8 seconds) | `short somber defeat sting, dark descending synth, heavy low hit, ends on a low drone, cyberpunk, 6 seconds` |
+| `music_layer_drone` | Adaptive music: fades in over the duel track as the match heats up (low Morale, a leader Awake) | `dark tension bed, sub bass rumble and swelling filtered noise, no melody, no drums, no clear key, ominous, seamless loop, 16 seconds` |
+| `music_layer_pulse` | Adaptive music: the last turns (someone down to a quarter of their Morale) | `ticking clock tension loop, tight hi-hat ticks four per second with a muffled low knock every bar, no melody, no key, seamless loop, 8 seconds` |
+
+The two `music_layer_*` loops play *over* whichever duel track is on, so they must have no key and
+no strong beat of their own (ElevenLabs Sound Effects with "loop" on suits them better than Suno).
 
 ### Clan music
 
@@ -107,6 +112,32 @@ quietly under everything.
 | `friend_online` | A friend comes online (the pop-up) | 0.6 s | `Soft friendly two-note notification chime, a friend is online` |
 | `level_up` | Your level or clan mastery goes up (results screen) | 1.5 s | `Triumphant level up sound, rising synth arpeggio ending on a sparkle` |
 | `achievement` | An achievement unlocks (the banner) | 1.2 s | `Achievement unlocked jingle, short bright brass and chime flourish` |
+
+| `thump` | Big hits: the low layer under `hit` / `boom` | 0.4 s | `Deep sub bass thump, a heavy body blow felt in the chest, very short, no tail` |
+| `debris` | Big hits: just after the impact | 0.6 s | `Small debris and grit pattering down after an impact, concrete crumbs and dust, short` |
+
+## Voices (ElevenLabs Text to Speech, or recorded)
+
+The stand-ins are Windows' built-in speech voice, shaped per speaker by `node tools/render_voices.mjs`
+(it reads the boss lines from `godot/data/bosses.json`). Replace them before launch: same name, any of
+`.mp3` / `.ogg` / `.wav`, then delete the stand-in `.wav`. Several takes of an announcer line are numbered
+(`vo_ko_1`, `vo_ko_2`): the game picks one. Settings → Announcer & Voices turns them all off.
+
+**The announcer** (a fight-night ring announcer: big, gravelly, a stadium echo):
+
+| File | When | Line |
+|---|---|---|
+| `vo_your_turn_1`, `_2` | Your turn starts | "Your turn!" / "Your move!" |
+| `vo_ko_1`, `_2` | A character is KO'd | "Knockout!" / "K.O.!" |
+| `vo_awakened_1`, `_2` | A leader Awakens | "The leader awakens!" / "Awakened!" |
+| `vo_double_or_nothing` | A DOUBLE OR NOTHING coin is tossed | "Double or nothing!" |
+| `vo_fight` | VS lands in the match intro | "Fight!" |
+
+**The Turf Defense bosses**, each line in `bosses.json` `lines`: `vo_boss_<id>_intro1..3` (the intro, in
+order), `_phase1..` (each new phase), `_low`, `_player_out`, `_defeat`, `_victory`. Casting notes:
+`archon` a vast, slow cosmic voice; `graves` a barking officer over a field radio; `vale` a smooth,
+amused casino boss; `veyr` a hollow, ancient whisper-growl; `cinder` a gleeful, crackling firestarter;
+`marlow` a weathered sea captain.
 
 ### Already recorded (keep)
 

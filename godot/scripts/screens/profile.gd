@@ -170,9 +170,13 @@ func _render(p: Dictionary) -> void:
 	if not Game.offline and not _friend:
 		_recent_matches(stats_view)
 		_showcase(stats_view)
-	elif not Game.offline:   # a friend's: their recent matches (watch them) and their best cards
+	elif not Game.offline:   # a friend's: their recent matches (watch them) and their showcase (else their best cards)
 		_recent_matches(stats_view, _friend_id)
-		_friend_cards(stats_view, p.get("best_cards", []) if p.get("best_cards") is Array else [])
+		var shown: Array = p.get("showcase", []) if p.get("showcase") is Array else []
+		if shown.is_empty():
+			_friend_cards(stats_view, p.get("best_cards", []) if p.get("best_cards") is Array else [])
+		else:
+			_showcase_row(stats_view, shown, "THEIR SHOWCASE", false)
 
 
 ## A stat's number counting up to what it says ("1200", "63.2%"; anything else is left as it is).
@@ -307,37 +311,140 @@ static func _record(d: Dictionary) -> String:
 
 
 ## Your last matches, each with a replay (routes/replays.js on the server).
-## Your best cards, beside the last row of stats: the rarest you own (then the strongest), one of each.
+## Your showcase, beside the last row of stats: the three cards you picked to show off (backend/economy/showcase.js).
+## Friends see it on your profile, and opponents see it under your leader in the match intro. EDIT picks them.
 func _showcase(parent: Control) -> void:
-	var r := await Api.request("GET", "/api/profile/inventory")
-	if not r.ok or not (r.data is Array) or not is_instance_valid(parent):
-		return
-	var best: Array = []
-	var names := {}
-	var items: Array = r.data.duplicate()
-	items.sort_custom(func(a, b):
-		var ra := int(a.get("rarity", 1))
-		var rb := int(b.get("rarity", 1))
-		return ra > rb if ra != rb else int(a.get("attack") if a.get("attack") != null else 0) > int(b.get("attack") if b.get("attack") != null else 0))
-	for it in items:
-		var n := str(it.get("name", ""))
-		if names.has(n) or best.size() >= 5:
-			continue
-		names[n] = true
-		best.append(it)
-	if best.is_empty():
-		return
-	var head := UI.label("YOUR BEST CARDS", 18, UI.GOLD, true)
-	head.position = Vector2(1214, 548)
-	parent.add_child(head)
+	_showcase_row(parent, Game.player.get("showcase", []) if Game.player.get("showcase") is Array else [], "YOUR SHOWCASE", true)
+
+
+const SHOWCASE_AT := Vector2(1214, 548)
+
+## A showcase: up to three cards (game ids) under a heading; your own has EDIT, and empty slots to fill.
+func _showcase_row(parent: Control, ids: Array, heading: String, mine: bool) -> void:
+	var box := Control.new()
+	box.name = "Showcase"
+	box.position = SHOWCASE_AT
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(box)
+	box.add_child(UI.label(heading, 18, UI.GOLD, true))
 	var row: Array = []
-	for i in best.size():
-		var t := CardTile.make(best[i], Vector2(100, 141))
-		t.position = Vector2(1214 + i * 114, 574)
-		t.zoomed.connect(func(tt): UI.card_zoom(self, tt.card))
-		parent.add_child(t)
-		row.append(t)
+	for i in 3:
+		var c := CardDB.get_card(str(ids[i])) if i < ids.size() else {}
+		if not c.is_empty():
+			var t := CardTile.make(c, Vector2(100, 141))
+			t.position = Vector2(i * 114, 26)
+			t.zoomed.connect(func(tt): UI.card_zoom(self, tt.card))
+			t.pressed.connect(func(tt): UI.card_zoom(self, tt.card))
+			box.add_child(t)
+			row.append(t)
+		elif mine:   # an empty slot: click to pick
+			var slot := UI.button("+", _pick_showcase.bind(box), Vector2(100, 141), UI.STEEL)
+			slot.position = Vector2(i * 114, 26)
+			slot.tooltip_text = "Pick a card to show off"
+			box.add_child(slot)
+	if mine:
+		var edit := UI.button("EDIT", _pick_showcase.bind(box), Vector2(110, 44), UI.GOLD)
+		edit.position = Vector2(3 * 114, 26)
+		box.add_child(edit)
 	CardTile.cascade(row, 0.5)
+
+
+## Pick the showcase: the cards you own, one of each (a search box narrows them); click to pick up to three, in
+## order, then SAVE.
+func _pick_showcase(old_box: Control) -> void:
+	var r := await Api.request("GET", "/api/profile/inventory")
+	if not r.ok or not (r.data is Array):
+		UI.toast(self, "Your cards couldn't be loaded.", UI.RED)
+		return
+	var cards: Array = []
+	var seen := {}
+	for it in r.data:
+		var id := str(it.get("art_url", ""))
+		var c := CardDB.get_card(id)
+		if c.is_empty() or seen.has(id):
+			continue
+		seen[id] = true
+		cards.append(c)
+	cards.sort_custom(func(a, b): return int(a.get("rarity", 1)) > int(b.get("rarity", 1)) if int(a.get("rarity", 1)) != int(b.get("rarity", 1)) else str(a.get("name", "")) < str(b.get("name", "")))
+	var picked: Array = (Game.player.get("showcase", []) as Array).duplicate() if Game.player.get("showcase") is Array else []
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0.8)
+	veil.size = Vector2(1920, 1080)
+	veil.z_index = 60
+	add_child(veil)
+	var p := UI.panel(UI.GOLD, Color(0.04, 0.04, 0.1, 0.98))
+	p.position = Vector2(210, 70)
+	p.custom_minimum_size = Vector2(1500, 0)
+	veil.add_child(p)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	p.add_child(col)
+	col.add_child(UI.panel_title("YOUR SHOWCASE", 40, UI.GOLD, 520.0))
+	var sub := UI.label("Pick up to three cards to show off: friends see them on your profile, and opponents see them under your leader as a match begins.", 20, UI.MUTED)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD
+	sub.custom_minimum_size = Vector2(1440, 0)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(sub)
+	var search := LineEdit.new()
+	search.placeholder_text = "Search your cards"
+	search.custom_minimum_size = Vector2(500, 46)
+	search.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(search)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1440, 600)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 11
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(grid)
+	var tiles := {}
+	var mark := func():
+		for id in tiles:
+			var t: CardTile = tiles[id]
+			var n: int = picked.find(id)
+			t.selected = n >= 0
+			t.badge = str(n + 1) if n >= 0 else ""
+			t.refresh()
+	for c in cards:
+		var t := CardTile.make(c, Vector2(118, 167))
+		var id := str(c.get("id", ""))
+		t.pressed.connect(func(_tt):
+			if picked.has(id):
+				picked.erase(id)
+			elif picked.size() < 3:
+				picked.append(id)
+			else:
+				UI.toast(self, "Three at most: click one of yours to take it off first.", UI.GOLD)
+				return
+			Sfx.play("click")
+			mark.call())
+		t.zoomed.connect(func(tt): UI.card_zoom(self, tt.card))
+		grid.add_child(t)
+		tiles[id] = t
+	mark.call()
+	search.text_changed.connect(func(q: String):
+		for id in tiles:
+			tiles[id].visible = q.strip_edges() == "" or CardDB.search_hit(tiles[id].card, q))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 20)
+	col.add_child(row)
+	row.add_child(UI.button("CANCEL", func(): UI.pop_close(veil, p), Vector2(220, 56)))
+	row.add_child(UI.button("SAVE", func():
+		var s := await Api.request("PUT", "/api/profile/showcase", {"cards": picked})
+		if not s.ok:
+			UI.toast(self, str(s.get("error", "That couldn't be saved.")), UI.RED)
+			return
+		Game.player["showcase"] = s.data.get("showcase", picked) if s.data is Dictionary else picked
+		UI.pop_close(veil, p)
+		if is_instance_valid(old_box):
+			var parent := old_box.get_parent()
+			old_box.queue_free()
+			_showcase(parent)
+		UI.toast(self, "Showcase saved.", UI.GOLD), Vector2(220, 56), UI.GOLD))
+	UI.pop_open(p, veil)
 
 
 ## A friend's best cards: the ones they've played most and won most with (card XP), with their records.
