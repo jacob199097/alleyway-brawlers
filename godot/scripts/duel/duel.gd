@@ -18,7 +18,7 @@ const OPP_HAND_SCALE := 0.66
 const COLS := [780.0, 930.0, 1080.0, 1230.0, 1380.0]
 const ROWS := {"player": [536.0, 728.0], "opponent": [312.0, 120.0]}   # [front, back]
 const DIVIDER_Y := 424.0
-const CAM_LEAN := 9.0   # how far the camera leans toward whoever is acting (_cam_turn)
+const CAM_LEAN := 6.0   # how far the camera leans toward whoever is acting (_cam_turn)
 ## Weather that rolls in mid-match (an arena's "weather" in data/arenas.json names which can come): its layers
 ## (ArenaLife kinds, picture pixels), how dark the arena goes, the backdrop's rain / sheen / haze added, the light on
 ## the cards (its colour mixed in, its strength scaled), the street sound, and what's said when it comes and goes.
@@ -8403,7 +8403,7 @@ func _cam_focus(world: Vector2, zoom: float, seconds: float) -> void:
 func _cam_reset(seconds: float) -> void:
 	if _cam_tw and _cam_tw.is_valid():
 		_cam_tw.kill()
-	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)   # (no overshoot: it settles)
 	_cam_tw.tween_property(camera, "position", _cam_rest, seconds)
 	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, seconds)
 
@@ -8422,10 +8422,11 @@ func _cam_turn(side: String) -> void:
 		return
 	if _cam_tw and _cam_tw.is_valid():
 		_cam_tw.kill()
-	camera.zoom = Vector2.ONE * (1.0 + 0.035 * k)
-	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_cam_tw.tween_property(camera, "position", _cam_rest, 0.9)
-	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, 0.9)
+	# One smooth breath from wherever it is (no snap): a slight swell in, then settling back as it glides over
+	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tw.tween_property(camera, "position", _cam_rest, 1.4)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE * (1.0 + 0.02 * k), 0.55)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, 0.85).set_delay(0.55)
 
 
 ## Fast streaks of light thrown out along the direction of a hit.

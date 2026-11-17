@@ -3352,7 +3352,7 @@ export class DuelState {
                     return `${c.name} CONFUSES ${x.card.name}: its attacks may hit the wrong target`;
                 }, `${c.name} confuses %s`);
                 break;
-            case 'stoke':   // STOKE (Arsonists): BURN that builds: on a character already burning it adds to the burn
+            case 'stoke':   // STOKE (Arsonists): a character already BURNING burns more (only those: _fxTargets)
                 this._fxApply(side, slot, c, e, vs, 'any', 'STOKE', (x) => {
                     const cur = x.card.burn;
                     const amt = cur !== undefined ? toInt(cur.amt ?? 0) + n : n;
@@ -3686,6 +3686,7 @@ export class DuelState {
         const status = what_ === 'stoke' ? 'burn' : what_;   // (STOKE is BURN: immunity to BURN covers it)
         const covers = (im) => !Array.isArray(im.statuses) || !im.statuses.length || im.statuses.includes(status);
         if (IMMUNE_TO.includes(status)) entries = entries.filter(x => !this._passive(x.side, x.slot, x.card, 'immune', covers));
+        if (what_ === 'stoke') entries = entries.filter(x => x.card.burn !== undefined);   // (STOKE only fans a fire already burning)
         if (what_ === 'down') entries = entries.filter(x => !this._staysUp(x.side, x.slot, x.card));
         if (target === 'attacker' || target === 'deployed') entries = entries.filter(x => x.side === side || !this._noTarget(x.side, x.slot, x.card, c, side, slot));
         return entries;

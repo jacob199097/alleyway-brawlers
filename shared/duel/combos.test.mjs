@@ -331,14 +331,14 @@ assert.equal(friend.attack, 1200, '"when another of your characters is Downed" h
     const st = duel();
     const c = put(st, 'player', 1, unit(st));   // (lane 2 faces their lane 4)
     const e = [0, 1, 2, 3, 4].map(i => put(st, 'opponent', i, unit(st)));
-    st._doFx('player', 1, c, { do: 'stoke', target: 'opposite_wide', amount: 200 });
+    st._doFx('player', 1, c, { do: 'burn', target: 'opposite_wide', amount: 200 });
     assert.deepEqual(e.map(x => x.burn ? x.burn.amt : 0), [0, 0, 200, 200, 200], 'the one across and the two beside it');
     assert.ok(!c.burn, 'not itself');
     // With nobody straight across, the lanes beside that one are still hit; at the edge there is only one
     const st2 = duel();
     const c2 = put(st2, 'player', 0, unit(st2));   // (lane 1 faces their lane 5)
     const side = put(st2, 'opponent', 3, unit(st2)), far = put(st2, 'opponent', 2, unit(st2));
-    st2._doFx('player', 0, c2, { do: 'stoke', target: 'opposite_wide', amount: 200 });
+    st2._doFx('player', 0, c2, { do: 'burn', target: 'opposite_wide', amount: 200 });
     assert.ok(side.burn && !far.burn);
 }
 

@@ -28,10 +28,11 @@ function board(player = [], opponent = []) {
 const src = { id: 'src', name: 'Torch', cardType: 'hustle', clanTag: 'arsonists' };
 const burn = { amt: 200, left: 1 };
 
-// STOKE on a character that isn't burning: it BURNS
-let st = board([], [{}]);
+// STOKE on a character that isn't burning: nothing (it only fans a fire that's already there)
+let st = board([], [{}, { burn: { ...burn } }]);
 st._doFx('player', -1, src, { do: 'stoke', target: 'enemies', amount: 200 });
-assert.deepEqual(st.cardAt('opponent', 0).burn, { amt: 200, left: 3 }, 'STOKE starts a BURN');
+assert.equal(st.cardAt('opponent', 0).burn, undefined, 'STOKE does not start a BURN');
+assert.deepEqual(st.cardAt('opponent', 1).burn, { amt: 400, left: 3 }, 'but the burning one burns more');
 
 // STOKE on a burning one: the burn grows and lasts another 3 turns (BURN would only refresh it)
 st = board([], [{ burn: { ...burn } }]);

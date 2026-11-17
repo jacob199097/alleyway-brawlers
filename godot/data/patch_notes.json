@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.180",
+        "notes": [
+            "STOKE now only works on a character that's already BURNING: it makes the burn bigger and last another 3 turns. It no longer starts a burn, so BURN lights the fire and STOKE fans it. Cards that STOKE: Flint, Haze, The Pyre Twins, Fan the Flames, Madame Wildfire and Rain of Embers.",
+            "The camera at the start of each turn now moves in one smooth glide (no snap), and settles without overshooting after an attack."
+        ]
+    },
+    {
         "version": "0.9.179",
         "notes": [
             "New keyword, FLYING: only another FLYING character can attack it. To everyone else it's out of reach, and it doesn't block their direct attacks. A FLYING card floats above the board. Downed (or SILENCED), it falls and can be attacked like any other.",

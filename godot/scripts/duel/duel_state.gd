@@ -4237,6 +4237,8 @@ func _fx_targets(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dict
 		return not (list is Array) or list.is_empty() or status in list
 	if status in IMMUNE_TO:
 		entries = entries.filter(func(x): return _passive(x.side, x.slot, x.card, "immune", covers).is_empty())
+	if what_ == "stoke":   # (STOKE only fans a fire already burning)
+		entries = entries.filter(func(x): return x.card.has("burn"))
 	if what_ == "down":
 		entries = entries.filter(func(x): return not _stays_up(x.side, x.slot, x.card))
 	if target == "attacker" or target == "deployed":
