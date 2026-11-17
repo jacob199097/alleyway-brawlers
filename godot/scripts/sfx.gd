@@ -67,22 +67,6 @@ func play(sound: String, pitch := 1.0, gain_db := 0.0) -> void:
 
 
 ## A sound from a place on the screen (panned left or right with it), under parent.
-## A voice line (vo_<name>: the announcer, a boss; tools/render_voices.mjs makes stand-ins). Settings →
-## Announcer & Voices turns them off. One doesn't start within min_gap seconds of the last, so they don't talk
-## over each other.
-var _voice_at := -100.0
-
-
-func voice(name: String, min_gap := 1.2, gain_db := 0.0) -> void:
-	if not Game.settings.get("voices", true):
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	if now - _voice_at < min_gap:
-		return
-	_voice_at = now
-	play("vo_" + name, 1.0, gain_db)
-
-
 func play_at(sound: String, at: Vector2, parent: Node, gain_db := 0.0, pitch := 1.0) -> void:
 	var options: Array = _stream(sound)
 	if options.is_empty() or not is_instance_valid(parent):

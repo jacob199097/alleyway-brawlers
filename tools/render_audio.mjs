@@ -681,7 +681,7 @@ const JOBS = {
     music_layer_pulse: layerPulse,
 };
 
-// (tools/render_voices.mjs borrows the helpers: run as a script only when it is the one started)
+// (other tools can borrow the helpers: run as a script only when it is the one started)
 export { OUT, MARK, isStandIn, writeWav, normalize, biquad, reverb, fades };
 const main = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 const want = main ? process.argv.slice(2) : ['(none)'];

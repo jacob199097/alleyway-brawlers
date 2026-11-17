@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.174",
+        "notes": [
+            "The announcer and the bosses' voices are gone: matches and Turf Defense are back to music and sound effects only (the bosses' lines still show on screen)."
+        ]
+    },
+    {
         "version": "0.9.173",
         "notes": [
             "Your showcase: pick three cards to show off on your profile (YOUR SHOWCASE, EDIT). Friends see them on your profile, and your opponent sees them under your leader as a match begins.",

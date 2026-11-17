@@ -108,7 +108,6 @@ func _show(tab: String) -> void:
 			_slider("Music Volume", "music_volume")
 			_slider("Sound Effects Volume", "sfx_volume")
 			_slider("Ambience Volume", "ambience_volume")
-			_cycle("Announcer & Voices", [true, false], ["ON", "OFF"], "voices")
 			_cycle("Adaptive Music", [true, false], ["ON", "OFF"], "adaptive_music")
 		"display":
 			_cycle("Window Mode", WINDOW_MODES.map(func(m): return m[0]), WINDOW_MODES.map(func(m): return m[1]), "window_mode", true)

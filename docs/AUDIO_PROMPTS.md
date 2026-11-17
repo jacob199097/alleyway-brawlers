@@ -116,29 +116,6 @@ quietly under everything.
 | `thump` | Big hits: the low layer under `hit` / `boom` | 0.4 s | `Deep sub bass thump, a heavy body blow felt in the chest, very short, no tail` |
 | `debris` | Big hits: just after the impact | 0.6 s | `Small debris and grit pattering down after an impact, concrete crumbs and dust, short` |
 
-## Voices (ElevenLabs Text to Speech, or recorded)
-
-The stand-ins are Windows' built-in speech voice, shaped per speaker by `node tools/render_voices.mjs`
-(it reads the boss lines from `godot/data/bosses.json`). Replace them before launch: same name, any of
-`.mp3` / `.ogg` / `.wav`, then delete the stand-in `.wav`. Several takes of an announcer line are numbered
-(`vo_ko_1`, `vo_ko_2`): the game picks one. Settings → Announcer & Voices turns them all off.
-
-**The announcer** (a fight-night ring announcer: big, gravelly, a stadium echo):
-
-| File | When | Line |
-|---|---|---|
-| `vo_your_turn_1`, `_2` | Your turn starts | "Your turn!" / "Your move!" |
-| `vo_ko_1`, `_2` | A character is KO'd | "Knockout!" / "K.O.!" |
-| `vo_awakened_1`, `_2` | A leader Awakens | "The leader awakens!" / "Awakened!" |
-| `vo_double_or_nothing` | A DOUBLE OR NOTHING coin is tossed | "Double or nothing!" |
-| `vo_fight` | VS lands in the match intro | "Fight!" |
-
-**The Turf Defense bosses**, each line in `bosses.json` `lines`: `vo_boss_<id>_intro1..3` (the intro, in
-order), `_phase1..` (each new phase), `_low`, `_player_out`, `_defeat`, `_victory`. Casting notes:
-`archon` a vast, slow cosmic voice; `graves` a barking officer over a field radio; `vale` a smooth,
-amused casino boss; `veyr` a hollow, ancient whisper-growl; `cinder` a gleeful, crackling firestarter;
-`marlow` a weathered sea captain.
-
 ### Already recorded (keep)
 
 `draw`, `set`, `flip`, `slam`, `heavy`, `hit`, `damage`, `down`, `ko`, `boom`, `ambush`, `laser`,

@@ -580,7 +580,6 @@ func _match_intro(effect_title := "") -> void:
 	await _intro_wait(0.42)
 	# They meet: VS lands between them
 	var center := Vector2(1080, 470)
-	Sfx.voice("fight", 0.0)
 	Sfx.play("boom", 0.8, -2.0)
 	Sfx.play("hit", 0.7, -4.0)
 	shake(14)
@@ -2808,8 +2807,6 @@ func _ev_turn(ev: Dictionary) -> void:
 	_cam_turn(str(ev.side))
 	_weather_turn(int(ev.turn), false)
 	_heat_music()
-	if mine and not _watching():   # the announcer, just after the turn's sting
-		get_tree().create_timer(0.3).timeout.connect(func(): Sfx.voice("your_turn"))
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
 	for side in field:
@@ -5359,8 +5356,6 @@ func _ev_luck(ev: Dictionary) -> void:
 	var rest := at + Vector2(0, -150)   # where it lands and shows the result
 	tok.ground = rest.y + 44.0
 	Sfx.play("coin_flip" if coin else "dice_roll")
-	if ev.get("double", false):
-		Sfx.voice("double_or_nothing", 0.0)
 	if coin:
 		await _toss_coin(tok, at, rest, value == 1)
 	else:
@@ -5533,7 +5528,6 @@ func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
 		await _wait(0.07)
 	_cam_reset(0.3)
 	Sfx.play("ambush", 0.8)
-	Sfx.voice("awakened", 0.0)
 	_leader_line(c, col)
 	await _showcase(v, c, col, "%s AWAKENS" % str(c.get("name", "")).to_upper())
 	var center := Vector2(1080, DIVIDER_Y)
@@ -6044,8 +6038,6 @@ func _ev_ko(ev: Dictionary) -> void:
 	if v == null:
 		return
 	Game.buzz(80, 1.0)   # (a KO: the longest buzz)
-	if not ev.card.get("token", false):
-		Sfx.voice("ko")
 	v.show_badge = false
 	v.z_index = 440
 	if ev.card.get("token", false):   # a token doesn't go to the Gutter: it dissolves
