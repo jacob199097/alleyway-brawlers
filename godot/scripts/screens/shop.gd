@@ -86,10 +86,10 @@ func _ready() -> void:
 	_pack_list = packs
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 16)
-	tabs.position = Vector2(960 - 624, 990)   # (bottom centre: the back button is bottom left)
+	tabs.position = Vector2(336, 990)   # (between the back button, bottom left, and PURCHASE CONTRABAND, bottom right: 4 × 260 + gaps ends at 1424)
 	add_child(tabs)
 	for t in [["packs", "CARD PACKS"], ["starters", "STARTER DECKS"], ["contracts", "CONTRACTS"], ["animated", "ANIMATED"]]:
-		var tb := UI.button(t[1], _show.bind(t[0]), Vector2(300, 64), UI.GOLD)
+		var tb := UI.button(t[1], _show.bind(t[0]), Vector2(260, 64), UI.GOLD)
 		tabs.add_child(tb)
 		_tabs[t[0]] = tb
 	_show("packs")

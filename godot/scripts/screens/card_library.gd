@@ -17,9 +17,9 @@ var _sub := "any"               # the finer filter (dropdown): a role, a Heavy's
 ## The dropdown's choices: [key, label]
 const SUBS := [["any", "ANY KIND"], ["striver", "STRIVERS"], ["brawler", "BRAWLERS"], ["heavy", "HEAVIES"],
 	["heavy1", "HEAVIES · SACRIFICE 1"], ["heavy2", "HEAVIES · SACRIFICE 2"], ["heavy3", "HEAVIES · SACRIFICE 3"],
-	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"],
-	["animated", "✦ ANIMATED (YOURS)"], ["not_animated", "✦ ANIMATED (NOT YOURS)"]]
+	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"]]
 var _rarities := {}
+var _anim := ""                 # "yes": only the cards you own animated; "no": only the ones you don't; "": either
 var _grid: GridContainer
 var _total: Label
 var _detail: VBoxContainer
@@ -106,11 +106,14 @@ func _ready() -> void:
 func _build_filters() -> void:
 	var bar := HBoxContainer.new()
 	bar.position = Vector2(20, 116)
-	bar.add_theme_constant_override("separation", 10)
+	bar.add_theme_constant_override("separation", 6)   # (snug: every filter fits across 1920)
 	add_child(bar)
 	if not Game.offline:
 		bar.add_child(_chip("show", "owned", "OWNED"))
 		bar.add_child(_chip("show", "all", "ALL CARDS"))
+		bar.add_child(_spacer())
+		bar.add_child(_chip("anim", "yes", "✦ ANIMATED"))   # (the animated versions you own, or not yet)
+		bar.add_child(_chip("anim", "no", "NOT ANIMATED"))
 		bar.add_child(_spacer())
 	var clans := CardDB.clans()
 	if clans.size() <= 3:
@@ -155,7 +158,7 @@ func _build_filters() -> void:
 
 func _spacer() -> Control:
 	var c := Control.new()
-	c.custom_minimum_size = Vector2(14, 0)
+	c.custom_minimum_size = Vector2(8, 0)
 	return c
 
 
@@ -179,6 +182,8 @@ func _chip(group: String, value: String, text: String) -> Button:
 					_rarities.erase(int(value))
 				else:
 					_rarities[int(value)] = true
+			"anim":   # (pressed again: off)
+				_anim = "" if _anim == value else value
 		_sync_chips()
 		_render())
 	_chips["%s:%s" % [group, value]] = b
@@ -198,6 +203,8 @@ func _sync_chips() -> void:
 				on = _kind == parts[1]
 			"rarity":
 				on = _rarities.has(int(parts[1]))
+			"anim":
+				on = _anim == parts[1]
 		var b: Button = _chips[key]
 		b.set_pressed_no_signal(on)
 		# The chosen ones light up (a rarity in its own colour)
@@ -236,6 +243,11 @@ func _entries() -> Array:
 	return out
 
 
+## Whether you own this card's animated version (Game.animated: crafted or bought). Tokens never have one.
+func _owns_animated(c: Dictionary) -> bool:
+	return Game.animated.has(str(c.get("art_url", c.get("id", "")))) and not c.get("token", false)
+
+
 ## The zoom here always plays a card's animation, as the big card beside the grid does (yours or not: a preview).
 func _zoom(c: Dictionary) -> void:
 	var zc := c.duplicate()
@@ -252,9 +264,6 @@ func _sub_matches(c: Dictionary) -> bool:
 			return DuelState.needs_tribute(c) and DuelState.tributes_for(c) == int(_sub.substr(5))
 		"continuous", "equip":
 			return str(c.get("cardType", "")) in ["hustle", "ambush"] and sub == _sub
-		"animated", "not_animated":   # (the animated versions you own: Game.animated, crafted or bought)
-			var mine := Game.animated.has(str(c.get("art_url", c.get("id", ""))))
-			return mine == (_sub == "animated") and not c.get("token", false)
 	return true
 
 
@@ -276,11 +285,9 @@ func _render() -> void:
 			continue
 		if _query != "" and not CardDB.search_hit(c, _query):
 			continue
-		var shown_c: Dictionary = c
-		if _sub in ["animated", "not_animated"]:   # (both animated lists play each card's animation, yours or not)
-			shown_c = c.duplicate()
-			shown_c.anim = true
-		var tile := CardTile.make(shown_c, TILE)
+		if _anim != "" and _owns_animated(c) != (_anim == "yes"):
+			continue
+		var tile := CardTile.make(c, TILE)
 		tile.veteran = Game.veteran_tier(str(c.get("id", "")))
 		var qty := int(c.get("quantity", 0))
 		if qty > 1:

@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.178",
+        "notes": [
+            "Card Library: ✦ ANIMATED and NOT ANIMATED buttons in the filter bar (the cards you own animated, or not yet). Cards only move in the grid when you own their animated version; the big card and the zoom still preview any card's animation.",
+            "Fixed overlaps: the Shop's tabs no longer run into PURCHASE CONTRABAND, the turf map's rules line has a backing strip so district names don't show through it, and floating text near the top of a match stays on screen."
+        ]
+    },
+    {
         "version": "0.9.177",
         "notes": [
             "Card Library: the second animated filter is now ✦ ANIMATED (NOT YOURS), and both animated filters play every card's animation in the grid, so you can see one before you craft or buy it.",

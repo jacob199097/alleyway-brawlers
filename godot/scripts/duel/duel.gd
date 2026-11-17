@@ -8523,6 +8523,7 @@ func _float_text(pos: Vector2, text: String, color: Color, font_size: int) -> vo
 	l.label_settings.font = f
 	l.text = text
 	l.size = Vector2(700, font_size * 1.4)
+	pos.y = maxf(pos.y, 50.0 + l.size.y / 2.0 + 50.0)   # (it rises 50 as it fades: never off the top of the screen)
 	l.position = pos - l.size / 2
 	l.pivot_offset = l.size / 2
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

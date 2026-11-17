@@ -101,6 +101,12 @@ func _build() -> void:
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.size = Vector2(1560, 50)
 	how.position = Vector2(290, 990)
+	var band := Panel.new()   # (a dark band under it: the city's markers can pass beneath when it's zoomed or dragged)
+	band.add_theme_stylebox_override("panel", UI.box(Color(0.02, 0.02, 0.05, 0.86), Color(1, 1, 1, 0.08), 1, 10))
+	band.position = how.position - Vector2(14, 8)
+	band.size = Vector2(how.size.x + 28, how.get_combined_minimum_size().y + 16)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
 	add_child(how)
 
 

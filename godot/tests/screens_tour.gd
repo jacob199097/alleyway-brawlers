@@ -38,7 +38,9 @@ func _shot(name: String, wait := 1.6) -> void:
 	if "--site" in OS.get_cmdline_user_args():   # (the mouse in a corner: no card lifted or shown by hovering it)
 		get_viewport().warp_mouse(Vector2(4, 4))
 	await get_tree().create_timer(wait).timeout
-	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [_out, name])
+	var img := get_viewport().get_texture().get_image()
+	if img:   # (headless: no picture)
+		img.save_png("%s/%s.png" % [_out, name])
 	print("shot ", name)
 
 
@@ -614,6 +616,162 @@ func _screen() -> Node:
 	return get_tree().current_scene
 
 
+## --overlaps: every menu screen (the shop's tabs, every Settings tab too) checked for text and buttons that overlap
+## each other or run off the 1920 × 1080 frame. Prints each one found; runs headless (no pictures).
+func _overlap_tour() -> void:
+	var found := 0
+	for s in ["main_menu", "shop", "card_library", "deck_builder", "profile", "achievements", "auction_house", "territory",
+			"turf_defense", "fight_mode", "ffa_lobby", "matchmaking", "mailbox", "social", "leaderboard", "contraband", "clan_select"]:
+		Game.go(s)
+		await get_tree().create_timer(3.0).timeout
+		found += _overlaps(_screen(), s)
+		if s == "shop":
+			for tab in ["starters", "contracts", "animated"]:
+				_screen()._show(tab)
+				await get_tree().create_timer(1.5).timeout
+				found += _overlaps(_screen(), "shop/" + tab)
+	Game.go("main_menu")
+	await get_tree().create_timer(2.0).timeout
+	SettingsPanel.open(_screen())
+	await get_tree().process_frame
+	var sp: SettingsPanel = _screen().get_children().filter(func(c): return c is SettingsPanel)[0]
+	for tab in sp._tabs.keys():
+		sp._show(tab)
+		await get_tree().create_timer(0.5).timeout
+		found += _overlaps(sp, "settings/" + str(tab))
+	# A match under way (its HUD, the hand, the board), a few turns in, then the results screen
+	Game.duel_setup = {"first": "player", "arena": "docks"}
+	Game.go("duel")
+	var until := Time.get_ticks_msec() + 20000
+	while Time.get_ticks_msec() < until and (_screen() == null or _screen().name != "Duel"):
+		await get_tree().process_frame
+	var d := _screen()
+	while Time.get_ticks_msec() < until and not (d.get("_menu") != null and is_instance_valid(d._menu)):
+		await get_tree().process_frame
+	if d.get("_menu") != null and is_instance_valid(d._menu):
+		found += _overlaps(d._menu, "duel/opening hand")
+		for b in d._menu.find_children("*", "Button", true, false):
+			if b.text == "KEEP THIS HAND":
+				b.pressed.emit()
+	d.ai_sides = ["player", "opponent"]
+	await get_tree().create_timer(12.0).timeout
+	if is_instance_valid(d) and d.get("_menu") != null and is_instance_valid(d._menu):
+		d._close_menu()
+		await get_tree().create_timer(0.3).timeout
+	if is_instance_valid(d):
+		found += _overlaps(d.get_node("HUD/UI"), "duel/hud")
+	Game.match_result = {"result": "win", "player_morale": 4200, "opponent_morale": 0, "turns": 9, "cards_played": 11,
+		"mvp": {"card": CardDB.get_card("card_nebu_002"), "owner": "player", "damage": 2600, "kos": 2, "brawls": 4, "best": 1600},
+		"match_id": "", "snapshot": null, "tutorial": false, "reason": ""}
+	Game.go("post_match")
+	await get_tree().create_timer(5.0).timeout
+	found += _overlaps(_screen(), "post_match")
+	print("OVERLAPS: %d found" % found)
+
+
+## The text and buttons on a screen that overlap (neither inside the other) or leave the frame. A label counts by
+## the text it shows, not its box.
+func _overlaps(root: Node, where: String) -> int:
+	var items: Array = []   # [control, rect, what]
+	for c in root.find_children("*", "Control", true, false):
+		if not c.is_visible_in_tree() or c.get_global_rect().size.x < 2 or _faded(c):
+			continue
+		var r := Rect2()
+		var what := ""
+		if c is Button and not (c is CardTile):
+			if (c as Button).text == "" and (c as Button).icon == null:
+				continue
+			r = c.get_global_rect()
+			what = "button \"%s\"" % (c as Button).text
+		elif c is Label and (c as Label).text.strip_edges() != "":
+			r = _text_rect(c)
+			what = "text \"%s\"" % (c as Label).text.left(40).replace("\n", " ")
+		elif c is LineEdit or c is OptionButton:
+			r = c.get_global_rect()
+			what = c.get_class()
+		else:
+			continue
+		r = _clipped(c, r)   # (inside a scrolling list: only what the list shows)
+		if r.size.x <= 1 or r.size.y <= 1:
+			continue
+		items.append([c, r, what])
+	var n := 0
+	for i in items.size():
+		var a: Array = items[i]
+		var frame := Rect2(Vector2.ZERO, Vector2(1920, 1080)).grow(2)
+		if not frame.encloses(a[1]) and frame.intersects(a[1]):
+			print("  [%s] off the frame: %s at %s" % [where, a[2], a[1]])
+			n += 1
+		for j in range(i + 1, items.size()):
+			var b: Array = items[j]
+			var ca: Control = a[0]
+			var cb: Control = b[0]
+			if ca.is_ancestor_of(cb) or cb.is_ancestor_of(ca) or _same_tile(ca, cb):
+				continue
+			var cut: Rect2 = (a[1] as Rect2).intersection(b[1])
+			var smaller: float = minf((a[1] as Rect2).get_area(), (b[1] as Rect2).get_area())
+			if cut.size.x > 6.0 and cut.size.y > 6.0 and cut.get_area() > maxf(40.0, smaller * 0.08):   # (more than lines touching)
+				print("  [%s] %s at %s overlaps %s at %s" % [where, a[2], a[1], b[2], b[1]])
+				n += 1
+	return n
+
+
+## Where a label's words actually are: its text's width, placed by its alignment (wrapped text: its whole box).
+func _text_rect(l: Label) -> Rect2:
+	var g := l.get_global_rect()
+	if l.autowrap_mode != TextServer.AUTOWRAP_OFF or l.text.contains("\n"):
+		return Rect2(g.position, Vector2(g.size.x, minf(g.size.y, l.get_minimum_size().y)) * l.get_global_transform().get_scale())
+	var ls := l.label_settings
+	var f: Font = ls.font if ls and ls.font else l.get_theme_font("font")
+	var fs: int = ls.font_size if ls else l.get_theme_font_size("font_size")
+	var w: float = f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * l.get_global_transform().get_scale().x
+	var h := minf(g.size.y, l.get_minimum_size().y * l.get_global_transform().get_scale().y)
+	var x := g.position.x
+	match l.horizontal_alignment:
+		HORIZONTAL_ALIGNMENT_CENTER:
+			x += (g.size.x - w) / 2.0
+		HORIZONTAL_ALIGNMENT_RIGHT:
+			x += g.size.x - w
+	var y := g.position.y
+	if l.vertical_alignment == VERTICAL_ALIGNMENT_CENTER:
+		y += (g.size.y - h) / 2.0
+	elif l.vertical_alignment == VERTICAL_ALIGNMENT_BOTTOM:
+		y += g.size.y - h
+	return Rect2(x, y, w, h)
+
+
+## The part of a control's rect its clipping ancestors (scroll lists, panels that clip) let show.
+func _clipped(c: Control, r: Rect2) -> Rect2:
+	var n := c.get_parent()
+	while n is Control:
+		if (n as Control).clip_contents:
+			r = r.intersection((n as Control).get_global_rect())
+			if r.size.x <= 0.0 or r.size.y <= 0.0:
+				return Rect2()
+		n = n.get_parent()
+	return r
+
+
+## Hidden by its fade (it, or anything holding it, nearly see-through).
+func _faded(c: Node) -> bool:
+	var n := c
+	while n is CanvasItem:
+		if (n as CanvasItem).modulate.a < 0.05 or (n as CanvasItem).self_modulate.a < 0.05:
+			return true
+		n = n.get_parent()
+	return false
+
+
+## Two parts of the same card tile (its name, badges): drawn on the card on purpose.
+func _same_tile(a: Control, b: Control) -> bool:
+	var n: Node = a
+	while n:
+		if n is CardTile:
+			return n.is_ancestor_of(b)
+		n = n.get_parent()
+	return false
+
+
 ## The auction house: browse (an auction picked, one with Buy Now), sell (a card picked, Buy Now offered),
 ## my auctions (my listing picked).
 func _auction_shots() -> void:
@@ -842,6 +1000,10 @@ func _run() -> void:
 	Game.settings.last_seen_version = str(ProjectSettings.get_setting("application/config/version", ""))
 	if "--clans" in OS.get_cmdline_user_args():   # (the screens with 10 clans: start the mock server with EXTRA_CLANS=8)
 		await _clan_shots()
+		get_tree().quit()
+		return
+	if "--overlaps" in OS.get_cmdline_user_args():   # (no pictures: every screen's text and buttons checked for overlaps)
+		await _overlap_tour()
 		get_tree().quit()
 		return
 	if "--polish" in OS.get_cmdline_user_args():   # (0.9.148's touches; with --phone --mobile, the same on a phone)
