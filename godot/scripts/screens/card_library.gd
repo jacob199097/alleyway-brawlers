@@ -17,7 +17,8 @@ var _sub := "any"               # the finer filter (dropdown): a role, a Heavy's
 ## The dropdown's choices: [key, label]
 const SUBS := [["any", "ANY KIND"], ["striver", "STRIVERS"], ["brawler", "BRAWLERS"], ["heavy", "HEAVIES"],
 	["heavy1", "HEAVIES · SACRIFICE 1"], ["heavy2", "HEAVIES · SACRIFICE 2"], ["heavy3", "HEAVIES · SACRIFICE 3"],
-	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"]]
+	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"],
+	["animated", "✦ ANIMATED (YOURS)"], ["not_animated", "NOT ANIMATED YET"]]
 var _rarities := {}
 var _grid: GridContainer
 var _total: Label
@@ -244,6 +245,9 @@ func _sub_matches(c: Dictionary) -> bool:
 			return DuelState.needs_tribute(c) and DuelState.tributes_for(c) == int(_sub.substr(5))
 		"continuous", "equip":
 			return str(c.get("cardType", "")) in ["hustle", "ambush"] and sub == _sub
+		"animated", "not_animated":   # (the animated versions you own: Game.animated, crafted or bought)
+			var mine := Game.animated.has(str(c.get("art_url", c.get("id", ""))))
+			return mine == (_sub == "animated") and not c.get("token", false)
 	return true
 
 

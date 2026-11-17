@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.176",
+        "notes": [
+            "Card Library: the kind filter (the dropdown) now has ✦ ANIMATED (YOURS), the cards you own animated, and NOT ANIMATED YET."
+        ]
+    },
+    {
         "version": "0.9.175",
         "notes": [
             "Weather now changes the fight while it lasts, for both sides: a storm makes SHOCK effects 100 stronger, ash makes BURN 100 stronger, snow gives every character +100 DEF, fog -100 ATK, a gale +100 ATK, and a sandstorm takes 100 off direct attacks. What it does shows when it rolls in (and in the log). In Ranked and weekly challenges the weather is only scenery.",
