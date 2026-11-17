@@ -134,8 +134,8 @@ func _show(tab: String) -> void:
 	_contract_note(tab == "contracts")
 	if tab == "contracts":
 		_fill(_contracts.get("offers", []), _contract)
-	elif tab == "animated":
-		var offers: Array = Game.animated_offers.duplicate()
+	elif tab == "animated":   # today's featured ones (the server's rotation, new each day at midnight UTC)
+		var offers: Array = Game.animated_offers.filter(func(o): return o is Dictionary and o.get("featured", false))
 		offers.sort_custom(func(a, b): return int(a.get("owned", false)) < int(b.get("owned", false)) if a.get("owned", false) != b.get("owned", false) \
 			else (int(a.rarity) > int(b.rarity) if int(a.rarity) != int(b.rarity) else str(CardDB.get_card(str(a.id)).get("name", "")) < str(CardDB.get_card(str(b.id)).get("name", ""))))
 		_fill(offers, _animated_offer)
@@ -509,7 +509,11 @@ func _contract_note(on: bool) -> void:
 		_contract_info.position = Vector2(210, 910)
 		_contract_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		add_child(_contract_info)
-	_contract_info.visible = on
+	_contract_info.visible = on or _tab == "animated"
+	if _tab == "animated":
+		var secs := int(Game.get("animated_resets_in")) if Game.get("animated_resets_in") != null else 0
+		_contract_info.text = "Every card has an animated version. These are in the shop today; any of them can be crafted for Dust in the Card Library.\nNEW ONES IN %dH %02dM" % [secs / 3600, (secs % 3600) / 60]
+		return
 	if not on:
 		return
 	var secs := int(_contracts.get("resetsIn", 0))

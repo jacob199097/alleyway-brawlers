@@ -90,6 +90,7 @@ var veteran_tiers: Array = []
 ## and every card that has an animated version, with its prices: [{id, rarity, dust, contraband, owned}]
 var animated := {}
 var animated_offers: Array = []
+var animated_resets_in := 0   # seconds until the shop's featured animated cards change (midnight UTC)
 
 ## Music, ambience and stings (scripts/audio/soundscape.gd): Game.sound.music("duel"), .ambience("crowd")
 var sound: Node
@@ -588,6 +589,7 @@ func load_animated() -> void:
 	var r := await Api.request("GET", "/api/animated")
 	if r.ok and r.data is Dictionary and r.data.get("cards") is Array:
 		animated_offers = r.data.cards
+		animated_resets_in = int(r.data.get("resetsIn", 0))
 		animated = {}
 		for o in animated_offers:
 			if o is Dictionary and o.get("owned", false):

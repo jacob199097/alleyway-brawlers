@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.170",
+        "notes": [
+            "Every card now has an animated version: fire shimmers with heat, the Pirates sea ripples, neon, eyes and magic drift and glow, and the rest sway gently. Craft any of them in the Card Library for Dust; the big card there shows each one before you get it.",
+            "The Shop's ANIMATED tab is now a daily selection: six animated cards a day for Contraband, new ones every day at midnight UTC."
+        ]
+    },
+    {
         "version": "0.9.169",
         "notes": [
             "Animated cards are now yours to own: craft a card's animated version in the Card Library for Dust (4 times the card's own craft cost), or buy it in the Shop's new ANIMATED tab for Contraband (it comes with a copy of the card if you don't have one). Every copy of that card then moves, in your collection and in your matches, and your opponents see it too.",

@@ -1,6 +1,6 @@
 {
-    "latest": "0.9.169",
-    "minimum": "0.9.169",
+    "latest": "0.9.170",
+    "minimum": "0.9.170",
     "patchBase": "0.9.139",
     "macos": {
         "patchBase": "0.9.139"

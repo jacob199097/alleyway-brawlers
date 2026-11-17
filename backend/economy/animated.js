@@ -16,6 +16,9 @@
  *
  * Crafting needs a copy of the card; buying gives one too if the player has none. An animated version
  * is never scrapped, traded or sold, and stays when copies of the card are scrapped.
+ *
+ * Every card has one, so the shop shows a rotation: FEATURED cards a day (UTC), the same for everyone,
+ * picked by the day (featured); only those can be bought for Contraband that day. Any can be crafted.
  */
 
 const { pool } = require('../db/pool');
@@ -24,6 +27,22 @@ const { bump } = require('./counters');
 
 const CRAFT_FACTOR = 4;
 const CONTRABAND = { 1: 150, 2: 250, 3: 400, 4: 700, 5: 1200 };
+const FEATURED = 6;
+
+const dayNumber = (now = Date.now()) => Math.floor(now / 86400000);
+
+/** Today's featured animated cards: FEATURED of them, one of each rarity first where it can, shuffled by
+ *  the day's number so every player sees the same, and they change at midnight UTC. → [gameId] */
+function featured(ids, day = dayNumber()) {
+    let seed = (day * 2654435761) >>> 0;
+    const rand = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const pool = [...ids].sort();
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    return pool.slice(0, FEATURED);
+}
+
+/** Seconds until the shop's rotation changes (midnight UTC). */
+const secondsToNextDay = (now = Date.now()) => Math.ceil(((dayNumber(now) + 1) * 86400000 - now) / 1000);
 
 class AnimatedError extends Error {}
 
@@ -53,17 +72,21 @@ async function owned(playerId, cardIds = null) {
 async function overview(playerId) {
     const cards = await animatable();
     const mine = new Set(await owned(playerId));
+    const today = new Set(featured(Object.keys(cards)));
     return {
         craftFactor: CRAFT_FACTOR,
-        cards: Object.entries(cards).map(([id, rarity]) => ({ id, rarity, ...pricesOf(rarity), owned: mine.has(id) })),
+        resetsIn: secondsToNextDay(),
+        cards: Object.entries(cards).map(([id, rarity]) => ({ id, rarity, ...pricesOf(rarity), owned: mine.has(id), featured: today.has(id) })),
     };
 }
 
 /** Take one: with Dust (craft: needs a copy of the card) or Contraband (buy: gives a copy if none). */
 async function acquire(playerId, gameId, currency) {
     if (!['dust', 'contraband'].includes(currency)) throw new AnimatedError('Pay with Dust or Contraband.');
-    const rarity = validId(gameId) ? (await animatable())[gameId] : null;
+    const able = await animatable();
+    const rarity = validId(gameId) ? able[gameId] : null;
     if (!rarity) throw new AnimatedError('That card has no animated version.');
+    const inShop = featured(Object.keys(able)).includes(gameId);
     const cost = pricesOf(rarity)[currency];
     const client = await pool.connect();
     try {
@@ -72,6 +95,9 @@ async function acquire(playerId, gameId, currency) {
         if (!card) throw new AnimatedError("That card isn't in the game yet.");
         const { rows: [has] } = await client.query('SELECT 1 FROM animated_cards WHERE player_id = $1 AND card_id = $2 FOR UPDATE', [playerId, gameId]);
         if (has) throw new AnimatedError(`You already have the animated ${card.name}.`);
+        if (currency === 'contraband' && !inShop) {
+            throw new AnimatedError(`The animated ${card.name} isn't in the shop today: craft it in the Card Library, or look for it in a later day's shop.`);
+        }
         const { rows: [own] } = await client.query('SELECT quantity FROM player_inventory WHERE player_id = $1 AND card_id = $2', [playerId, card.id]);
         if (currency === 'dust' && !(own?.quantity > 0)) throw new AnimatedError(`Craft or find ${card.name} first: the animated version is for a card you have.`);
         const col = currency === 'dust' ? 'dust' : 'contraband';
@@ -97,4 +123,4 @@ async function acquire(playerId, gameId, currency) {
     }
 }
 
-module.exports = { overview, owned, acquire, animatable, pricesOf, AnimatedError, CRAFT_FACTOR, CONTRABAND };
+module.exports = { overview, owned, acquire, animatable, pricesOf, featured, AnimatedError, CRAFT_FACTOR, CONTRABAND, FEATURED };

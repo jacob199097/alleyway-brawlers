@@ -1,7 +1,7 @@
 'use strict';
 
 // Animated cards (economy/animated.js): a card's animated version, crafted for Dust or bought for Contraband.
-//   GET  /api/animated                       → { craftFactor, cards: [{id, rarity, dust, contraband, owned}] }
+//   GET  /api/animated                       → { craftFactor, resetsIn, cards: [{id, rarity, dust, contraband, owned, featured}] }
 //   POST /api/animated/craft  {card}         → { id, dust, contraband, spent, currency, gaveCard }   (Dust; needs the card)
 //   POST /api/animated/buy    {card}         → the same                                            (Contraband; gives the card if none)
 

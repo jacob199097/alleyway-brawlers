@@ -147,6 +147,9 @@ for (const id of Object.keys(cards)) {
     }
 }
 const incoming = Object.keys(cards);
+// A card's art animation: the Forge's when it sets one, else the one it already has in the game (every
+// card has one: most were chosen from their art, see docs/CARD_PIPELINE.md "Art animation")
+for (const [id, c] of Object.entries(cards)) if (!c.artFx && before[id]?.artFx && !c.token) c.artFx = before[id].artFx;
 const keep = changesOnly ? before : Object.fromEntries(Object.entries(before).filter(([, c]) => inSkipped(c) || forgeOf(c) !== FORGE));
 const all = { ...keep, ...cards };
 for (const c of Object.values(all)) {

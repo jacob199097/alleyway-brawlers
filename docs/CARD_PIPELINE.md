@@ -28,6 +28,11 @@ A card's "Art animation" section in the Forge (motion, strength, speed, what mov
 `tools/import_forge.mjs` whitelists it (`cleanArtFx`) and the game's card shader plays it inside the art window
 (`card.gdshader` `art_anim`, set by `UI.art_anim_fx`). It needs no new build: the game downloads the changed cards.json.
 
+Every card has one (2026-11-17: chosen from each card's art by measuring its fire, water and glow:
+heat on fire, water on a Pirates card's sea, a drift through glowing parts, else a gentle sway or drift for its clan).
+A Forge card left on "Automatic" keeps the one it has (import_forge.mjs); setting one in the Forge replaces it.
+Players see a card move once they own its animated version (crafted for Dust, or bought in the shop's daily rotation).
+
 ## 2. Import on the PC
 ```
 node tools/import_forge.mjs path/to/alleyway-cards.zip
