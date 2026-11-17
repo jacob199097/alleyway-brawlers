@@ -640,7 +640,7 @@ func _match_intro(effect_title := "") -> void:
 	if _cam_tw and _cam_tw.is_valid():
 		_cam_tw.kill()
 	_cam_tw = create_tween()
-	_cam_tw.tween_property(camera, "zoom", Vector2.ONE * (1.0 + 0.05 * _fx_level()), 2.4).set_trans(Tween.TRANS_SINE)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE * (1.0 + 0.05 * _fx_level()), 4.4).set_trans(Tween.TRANS_SINE)
 	await _intro_wait(0.45)
 	# Where: the arena, and its effect
 	var where := str(_arena_info.get("name", ""))
@@ -654,7 +654,7 @@ func _match_intro(effect_title := "") -> void:
 		layer.add_child(arena_l)
 		words.append(arena_l)
 		arena_l.create_tween().tween_property(arena_l, "modulate:a", 1.0, 0.3)
-	await _intro_wait(1.6)
+	await _intro_wait(3.6)   # (time to take in both players: their nameplates, leaders and showcases)
 	# To their places; the board comes back and the camera settles on it
 	Sfx.play("whoosh", 1.0, -6.0)
 	for w in words:
@@ -2506,8 +2506,9 @@ func _refresh_guards() -> void:
 			# TAUNT (standing) and SHROUD (until it attacks): shown as statuses, with their glow and mist
 			var taunting: bool = c != null and not c.get("downed", false) and not duel._passive(side, slot, c, "taunt").is_empty()
 			var hidden: bool = c != null and duel._shrouded(side, slot, c)
-			if taunting != v.statuses.has("taunt") or hidden != v.statuses.has("shroud"):
-				v.statuses = v.statuses.filter(func(k): return k != "taunt" and k != "shroud") + (["taunt"] if taunting else []) + (["shroud"] if hidden else [])
+			var flying: bool = c != null and not duel._passive(side, slot, c, "flying").is_empty()   # (FLYING: it levitates; Downed, it falls)
+			if taunting != v.statuses.has("taunt") or hidden != v.statuses.has("shroud") or flying != v.statuses.has("flying"):
+				v.statuses = v.statuses.filter(func(k): return k != "taunt" and k != "shroud" and k != "flying") + (["taunt"] if taunting else []) 					+ (["shroud"] if hidden else []) + (["flying"] if flying else [])
 			if v.get_meta("shrouded", false) and not hidden and c != null and int(v.card.get("uid", -1)) == int(c.get("uid", -2)):
 				_smoke_puff(v.position, 260.0, Color(0.35, 0.33, 0.5, 0.6))   # (it attacked: the mist blows off)
 				_float_text(v.position + Vector2(0, -120 if side == "player" else 120), "REVEALED", CardView.status_color("shroud"), 32)
@@ -9010,7 +9011,7 @@ func _live_statuses(v: CardView) -> Array:
 	return (["downed"] if v.downed else []) + v.statuses
 
 const STATUS_WORDS := {"guarded": "CAN'T BE ATTACKED", "poison": "POISON", "burn": "BURN", "bleed": "BLEED", "freeze": "FREEZE",
-	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "confuse": "CONFUSE", "corrode": "CORRODE", "taunt": "TAUNT", "shroud": "SHROUD", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
+	"stasis": "STASIS", "stun": "STUN", "blind": "BLIND", "confuse": "CONFUSE", "corrode": "CORRODE", "taunt": "TAUNT", "shroud": "SHROUD", "flying": "FLYING", "shield": "SHIELD", "suppress": "SUPPRESS", "downed": "DOWNED",
 	"resting": "CAN'T ATTACK THIS TURN (just promoted or Awakened)", "bounty": "BOUNTY"}
 ## Statuses that aren't keywords (keywords use their own colour, and explain themselves when hovered)
 const STATUS_COLORS := {"downed": "ff5a5a", "resting": "ffb35a", "guarded": "a0d8ff"}

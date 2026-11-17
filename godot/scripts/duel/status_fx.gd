@@ -101,6 +101,12 @@ static func icon(L: CanvasItem, kind: String, c: Vector2, r: float, col: Color) 
 			L.draw_arc(c, r * 0.86, 0.0, TAU, 24, col, w * 1.2, true)
 			L.draw_arc(c, r * 0.5, 0.0, TAU, 20, lite, w, true)
 			L.draw_circle(c, r * 0.18, col)
+		"flying":   # a pair of wings
+			for k in [-1.0, 1.0]:
+				var pts := PackedVector2Array([c + Vector2(k * 0.08, 0.1) * r, c + Vector2(k * 0.9, -0.55) * r, c + Vector2(k * 0.8, -0.05) * r,
+					c + Vector2(k * 0.62, 0.2) * r, c + Vector2(k * 0.4, 0.38) * r])
+				L.draw_colored_polygon(pts, col)
+				L.draw_polyline(PackedVector2Array([c + Vector2(k * 0.2, 0.05) * r, c + Vector2(k * 0.72, -0.3) * r]), lite, w * 0.6, true)
 		"shroud":   # a cloud of mist, two eyes peering out of it
 			for b in [[-0.42, 0.12, 0.42], [0.04, -0.16, 0.54], [0.46, 0.16, 0.38]]:
 				L.draw_circle(c + Vector2(b[0], b[1]) * r, r * b[2], col)

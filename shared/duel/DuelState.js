@@ -716,7 +716,10 @@ export class DuelState {
         const att = from == null ? null : this.cardAt(side, from);
         // (STASIS and SHROUD: it can't be attacked and doesn't block a direct attack; one that ignores SHROUD sees it)
         const sees = this._ignores(side, from, att, 'shroud');
-        const foes = this.characters(foe).filter(e => !this.inStasis(e.card) && (sees || !this._shrouded(foe, e.slot, e.card)));
+        // FLYING: only another FLYING character can attack it; to the rest it's out of reach (and doesn't block their direct attacks)
+        const flies = att != null && this._passive(side, from, att, 'flying') != null;
+        const foes = this.characters(foe).filter(e => !this.inStasis(e.card) && (sees || !this._shrouded(foe, e.slot, e.card))
+            && (flies || this._passive(foe, e.slot, e.card, 'flying') == null));
         // TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE),
         // unless the attacker ignores TAUNT
         const taunts = foes.filter(e => !e.card.downed && this._passive(foe, e.slot, e.card, 'taunt'));

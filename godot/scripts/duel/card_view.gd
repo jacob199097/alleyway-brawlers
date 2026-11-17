@@ -22,6 +22,7 @@ const STATUS_STYLE := {
 	"resting": [Color("c9c6e0"), "ZZZ", "CAN'T ATTACK YET"],
 	"guarded": [Color("a0d8ff"), "SAFE", "CAN'T BE ATTACKED"],
 	"taunt": [Color("ff7a7a"), "TNT", "TAUNTING"], "shroud": [Color("a29ec4"), "SHR", "SHROUDED"],
+	"flying": [Color("9fe2ff"), "FLY", "FLYING"],
 }
 const Keywords := preload("res://scripts/keywords.gd")
 const StatusFx := preload("res://scripts/duel/status_fx.gd")
@@ -321,6 +322,24 @@ func stop_moving() -> void:
 		_tw.kill()
 
 
+## FLYING: the card floats above the board, bobbing gently, its shadow dropped further below it (_draw).
+var _levitate := 0.0
+
+
+func _update_levitate(delta: float) -> void:
+	var want := 1.0 if statuses.has("flying") and not busy else 0.0
+	if want == 0.0 and _levitate == 0.0:
+		return
+	_levitate = move_toward(_levitate, want, delta * 2.5)
+	var bob := sin(Time.get_ticks_msec() / 1000.0 * 1.7 + float(uid % 13)) * 4.0
+	var y := -(16.0 + bob) * _levitate   # (in the card's own units: its scale is on the node)
+	_body.position.y = y
+	_status_layer.position.y = y   # (its markers float with it)
+	if _sheet:   # (and the status effects drawn over it: flames, frost...)
+		_sheet.position.y = -_sheet.size.y / 2.0 + y
+	queue_redraw()
+
+
 ## A big effect's light falling on the card from a point (world space), fading in a moment.
 func light_up(col: Color, from: Vector2, amount: float) -> void:
 	if amount <= _burst.a:
@@ -421,6 +440,7 @@ func _badge_wanted() -> bool:
 
 func _process(delta: float) -> void:
 	_update_tilt(delta)
+	_update_levitate(delta)
 	var lift := clampf(scale.x / maxf(home_scale, 0.01) - 1.0, 0.0, 1.0)
 	if absf(lift - _lift) > 0.01:
 		_lift = lift
@@ -535,10 +555,11 @@ func _update_light(delta: float) -> void:
 func _draw() -> void:
 	var r := Rect2(-SIZE / 2, SIZE)
 	# Its shadow: tight under a card at rest, further off and softer the higher it's lifted
-	var off := Vector2(6, 8) * (1.0 + _lift * 2.6)
+	var high := maxf(_lift, _levitate * 0.8)   # (lifted, or FLYING)
+	var off := Vector2(6, 8) * (1.0 + high * 2.6)
 	for i in 3:
-		var a := (0.3 if i == 0 else 0.1) * (1.0 - _lift * 0.35) * reveal
-		draw_rect(Rect2(r.position + off, r.size).grow(i * (1.5 + _lift * 5.0)), Color(0, 0, 0, a))
+		var a := (0.3 if i == 0 else 0.1) * (1.0 - high * 0.35) * reveal
+		draw_rect(Rect2(r.position + off, r.size).grow(i * (1.5 + high * 5.0)), Color(0, 0, 0, a))
 	if glow > 0.01:
 		var col := glow_color
 		var a := glow

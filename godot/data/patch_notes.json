@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.179",
+        "notes": [
+            "New keyword, FLYING: only another FLYING character can attack it. To everyone else it's out of reach, and it doesn't block their direct attacks. A FLYING card floats above the board. Downed (or SILENCED), it falls and can be attacked like any other.",
+            "Cards can now do something at the start or end of every 2nd, 3rd... turn of yours (counted while the card is on the field).",
+            "The VS screen at the start of a match stays up two seconds longer."
+        ]
+    },
+    {
         "version": "0.9.178",
         "notes": [
             "Card Library: ✦ ANIMATED and NOT ANIMATED buttons in the filter bar (the cards you own animated, or not yet). Cards only move in the grid when you own their animated version; the big card and the zoom still preview any card's animation.",

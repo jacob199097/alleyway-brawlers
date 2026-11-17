@@ -434,4 +434,28 @@ st.active = 'opponent';
 st._beginTurn();
 assert.equal(st.sides.opponent.morale, st.sides.opponent.max_morale ?? 8000, 'never above the most it can be');
 
+// FLYING: only another FLYING character can attack it; to the rest it's out of reach and doesn't block a direct attack
+st = duel('brawl');
+const bird = put(st, 'opponent', 0, unit(st, [{ when: 'passive', do: 'flying' }]));
+put(st, 'player', 0, unit(st, [], 2000, 1000));
+put(st, 'player', 1, unit(st, [{ when: 'passive', do: 'flying' }], 2000, 1000));
+assert.deepEqual(st.attackTargets('player', 'opponent', 0), [DIRECT], 'a ground character cannot reach it, and attacks directly');
+assert.deepEqual(st.attackTargets('player', 'opponent', 1), [0], 'another FLYING character can (and must: it is standing)');
+put(st, 'opponent', 1, unit(st));
+assert.deepEqual(st.attackTargets('player', 'opponent', 0), [1], 'the ground character on the other side is still a target');
+bird.downed = true;   // (a Downed character's effects don't work: it falls out of the sky)
+assert.ok(st.attackTargets('player', 'opponent', 0).includes(0), 'Downed, it can be reached by ground characters');
+
+// "After N of your turns": a turn_start / turn_end effect with times waits for its Nth turn on the field, then counts again
+st = duel();
+const slow = put(st, 'player', 0, unit(st, [{ when: 'turn_start', do: 'heal', amount: 500, times: 3 }]));
+st.sides.player.morale = 3000;
+st.active = 'player';
+for (const want of [3000, 3000, 3500, 3500, 3500, 4000]) {
+    st._beginTurn();
+    answerAll(st);
+    assert.equal(st.sides.player.morale, want, 'every third turn of its owner');
+}
+delete slow.fx_count;
+
 console.log('keywords: all passed');

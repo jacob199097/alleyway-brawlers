@@ -47,6 +47,7 @@ const LIST := {
 	"HEIST": [Color("f0c060"), "HEIST X (Pirates): when it makes your opponent lose Morale in a brawl (a direct attack, or beating a character), you draw X cards."],
 	"ECHO": [Color("8fd3ff"), "ECHO: the effect happens again at the start of your next turn (a character's only while it's still on the field)."],
 	"SHROUD": [Color("a29ec4"), "SHROUD: until it attacks, it can't be attacked and your opponent's effects can't choose it. It doesn't block direct attacks. Once it attacks, the SHROUD is gone."],
+	"FLYING": [Color("9fe2ff"), "FLYING: only another FLYING character can attack it. To the rest it's out of reach, and it doesn't block their direct attacks. Downed (or SILENCED), it falls and can be attacked like any other."],
 	"CORRODE": [Color("c8bb52"), "CORRODE X: at the start of its owner's next 3 turns, it loses X DEF. The loss lasts until it leaves the field."],
 	"DEBT": [Color("e89a5c"), "DEBT X: the next card your opponent plays costs X more Authority (one they play before the end of their next turn)."],
 	"COMBO": [Color("ffd43b"), "COMBO: it happens only if the card you played just before this one, this turn, was of the same clan (a character from your hand or a Hustle; Neutral cards break a chain). COMBO ×3: the two before it were."],
@@ -71,7 +72,7 @@ const ALIASES := {"FROZEN": "FREEZE", "POISONOUS": "POISON", "BURNT": "BURN", "R
 const CB_GROUPS := [
 	[Color("ffa630"), ["POISON", "BURN", "STOKE", "BLEED", "SHOCK", "PIERCE", "DRAIN", "LIFESTEAL", "BOUNTY", "BRITTLE", "TAX", "COLLATERAL", "CORRODE", "DEBT"]],   # damage and weakening
 	[Color("eb9cd0"), ["STUN", "BLIND", "CONFUSE", "FREEZE", "STASIS", "SUPPRESS", "SILENCE", "JAM", "CHARM", "EXILE", "EXILES", "MARKED", "TAUNT", "NEGATE"]],   # holding back
-	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS", "BRACE", "SHROUD"]],   # protection and recovery
+	[Color("6cc4ff"), ["SHIELD", "HEAL", "CLEANSE", "BARRICADE", "UNDEAD", "REWIND", "REMAINS", "BRACE", "SHROUD", "FLYING"]],   # protection and recovery
 	[Color("f0e442"), ["CONTINUOUS", "EQUIP", "LOADED", "DOUBLE", "PLUNDER", "PLUNDERS", "INFILTRATE", "RECKLESS", "RALLY", "HEIST", "ECHO", "COMBO"]],   # card rules
 ]
 const CB_STATUS := {"DOWNED": Color("ffa630"), "RESTING": Color("f0e442"), "GUARDED": Color("6cc4ff")}

@@ -224,6 +224,11 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "shroud"}, {"when": "deploy", "do": "draw", "amount": 1, "echo": true}],
 	[{"when": "deploy", "do": "confuse", "target": "enemies"}, {"when": "deploy", "do": "buff", "target": "allies", "atk": 200, "echo": true}],
 	[{"when": "passive", "do": "shroud"}, {"when": "passive", "do": "taunt"}],
+	# FLYING (only another FLYING character attacks it), with TAUNT and Guard; "after N of your turns" (turn_start / turn_end times)
+	[{"when": "passive", "do": "flying"}, {"when": "turn_start", "do": "draw", "amount": 1, "times": 2}],
+	[{"when": "passive", "do": "flying"}, {"when": "passive", "do": "taunt"}],
+	[{"when": "passive", "do": "flying"}, {"when": "turn_end", "do": "buff", "target": "self", "atk": 300, "until": "forever", "times": 3}],
+	[{"when": "passive", "do": "guard"}, {"when": "turn_start", "do": "heal", "amount": 200, "times": 2}],
 	# "When it's KO'd / Downed": the character that beat it in the brawl ("attacker")
 	[{"when": "self_ko", "do": "ko", "target": "attacker"}, {"when": "self_downed", "do": "poison", "target": "attacker", "amount": 200}],
 	# "immune" that also ignores BRACE / TAUNT / SHROUD; "Only if an enemy is SUPPRESSED" (foe_st_<status>)

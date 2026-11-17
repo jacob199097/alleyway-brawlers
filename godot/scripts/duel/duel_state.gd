@@ -827,7 +827,9 @@ func attack_targets(side: String, foe := "", from := -100) -> Array:
 	var att = card_at(side, from) if from in FRONT else null
 	# A character in STASIS or SHROUDED can't be attacked and doesn't block a direct attack (one that ignores SHROUD sees it)
 	var sees := _ignores(side, from, att, "shroud")
-	var foes := characters(foe).filter(func(e): return not in_stasis(e.card) and (sees or not _shrouded(foe, e.slot, e.card)))
+	# FLYING: only another FLYING character can attack it; to the rest it's out of reach (and doesn't block their direct attacks)
+	var flies: bool = att != null and not _passive(side, from, att, "flying").is_empty()
+	var foes := characters(foe).filter(func(e): return not in_stasis(e.card) and (sees or not _shrouded(foe, e.slot, e.card)) 			and (flies or _passive(foe, e.slot, e.card, "flying").is_empty()))
 	# TAUNT: a standing one must be attacked (no other character, no direct attack, not even INFILTRATE),
 	# unless the attacker ignores TAUNT
 	var taunts := foes.filter(func(e): return not e.card.downed and not _passive(foe, e.slot, e.card, "taunt").is_empty())
