@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.177",
+        "notes": [
+            "Card Library: the second animated filter is now ✦ ANIMATED (NOT YOURS), and both animated filters play every card's animation in the grid, so you can see one before you craft or buy it.",
+            "Card Library: zooming in on a card (right-click) plays its animation, like the big card beside the grid."
+        ]
+    },
+    {
         "version": "0.9.176",
         "notes": [
             "Card Library: the kind filter (the dropdown) now has ✦ ANIMATED (YOURS), the cards you own animated, and NOT ANIMATED YET."

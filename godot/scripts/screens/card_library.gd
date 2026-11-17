@@ -18,7 +18,7 @@ var _sub := "any"               # the finer filter (dropdown): a role, a Heavy's
 const SUBS := [["any", "ANY KIND"], ["striver", "STRIVERS"], ["brawler", "BRAWLERS"], ["heavy", "HEAVIES"],
 	["heavy1", "HEAVIES · SACRIFICE 1"], ["heavy2", "HEAVIES · SACRIFICE 2"], ["heavy3", "HEAVIES · SACRIFICE 3"],
 	["continuous", "CONTINUOUS"], ["equip", "EQUIP"], ["token", "TOKENS (made by effects)"],
-	["animated", "✦ ANIMATED (YOURS)"], ["not_animated", "NOT ANIMATED YET"]]
+	["animated", "✦ ANIMATED (YOURS)"], ["not_animated", "✦ ANIMATED (NOT YOURS)"]]
 var _rarities := {}
 var _grid: GridContainer
 var _total: Label
@@ -236,6 +236,13 @@ func _entries() -> Array:
 	return out
 
 
+## The zoom here always plays a card's animation, as the big card beside the grid does (yours or not: a preview).
+func _zoom(c: Dictionary) -> void:
+	var zc := c.duplicate()
+	zc.anim = true
+	UI.card_zoom(self, zc)
+
+
 func _sub_matches(c: Dictionary) -> bool:
 	var sub := str(c.get("subtype", ""))
 	match _sub:
@@ -269,7 +276,11 @@ func _render() -> void:
 			continue
 		if _query != "" and not CardDB.search_hit(c, _query):
 			continue
-		var tile := CardTile.make(c, TILE)
+		var shown_c: Dictionary = c
+		if _sub in ["animated", "not_animated"]:   # (both animated lists play each card's animation, yours or not)
+			shown_c = c.duplicate()
+			shown_c.anim = true
+		var tile := CardTile.make(shown_c, TILE)
 		tile.veteran = Game.veteran_tier(str(c.get("id", "")))
 		var qty := int(c.get("quantity", 0))
 		if qty > 1:
@@ -280,10 +291,10 @@ func _render() -> void:
 		tile.hovered.connect(func(t): _show_detail(t.card))
 		tile.pressed.connect(func(t):
 			if Game.offline:
-				UI.card_zoom(self, t.card)
+				_zoom(t.card)
 			else:
 				_select(t.card))
-		tile.zoomed.connect(func(t): UI.card_zoom(self, t.card))
+		tile.zoomed.connect(func(t): _zoom(t.card))
 		_grid.add_child(tile)
 		shown += 1
 	_total.text = "%d card%s" % [shown, "" if shown == 1 else "s"]
