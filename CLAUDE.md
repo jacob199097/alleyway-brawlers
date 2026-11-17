@@ -45,6 +45,9 @@
   `backend/utils/arenas.js` puts it in a match's rules (`arena_bonus`) in every mode but Ranked. A new arena picture also needs
   its small copy (`assets/arena_thumbs`, for the roulette and turf map) and its neon spots (`godot/data/neon_zones.json`):
   `godot/tools/make_arena_thumbs.gd`, then sync_assets. Backdrops (.jpg) are placed by `UI.tex_size` (1536 wide), not their real size.
+  An arena's `light` (colour, where it comes from, strength) lights every card (`CardView.scene_light`, card.gdshader's
+  `scene_light`; big effects flash theirs via `_light_burst`). Matches open with a leader face-off (`duel.gd _match_intro`,
+  the first events wait on `_intro_on`; `-- --no-intro` skips it).
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
   veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number

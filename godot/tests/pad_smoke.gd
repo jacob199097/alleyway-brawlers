@@ -105,7 +105,8 @@ func _buttons() -> void:
 func _duel() -> void:
 	var duel: Node = load("res://scenes/duel.tscn").instantiate()
 	add_child(duel)
-	for i in 1200:
+	var until := Time.get_ticks_msec() + 30000   # (the opening face-off plays first: duel.gd _match_intro)
+	while Time.get_ticks_msec() < until:
 		await get_tree().process_frame
 		var d = duel.get("duel")
 		if d and d.active == "player" and d.phase == "deployment" and d.pending.is_empty() and not duel._playing \

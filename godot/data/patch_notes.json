@@ -1,5 +1,15 @@
 [
     {
+        "version": "0.9.171",
+        "notes": [
+            "Matches open with a face-off: both leaders slide in over their clan's colours with their names, clans and players, VS lands between them and the arena is named below (with its effect). Click or tap to skip it.",
+            "Each arena now lights the cards in its own colour and from its own side: the Caldera's lava glows orange from below, the Crypt's light is cold, the Rooftop has moonlight. Fire, explosions and lightning also throw their light onto the cards around them.",
+            "A gentler, livelier camera: it pulls back at the start of each turn and leans toward whoever is acting, and it snaps in on a leader that takes a hit.",
+            "The board goes soft and frosted behind big prompts (your opening hand, choices, picking a card from a pile).",
+            "An awakening leader now says its line across the top of the screen as it takes the stage."
+        ]
+    },
+    {
         "version": "0.9.170",
         "notes": [
             "Every card now has an animated version: fire shimmers with heat, the Pirates sea ripples, neon, eyes and magic drift and glow, and the rest sway gently. Craft any of them in the Card Library for Dust; the big card there shows each one before you get it.",

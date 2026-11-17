@@ -217,6 +217,9 @@ func _site_scene(s: Dictionary) -> void:
 	Game.go("duel")
 	await get_tree().create_timer(4.0).timeout
 	var d = _screen()
+	while d.get("_intro_on"):   # (the opening face-off plays first: duel.gd _match_intro)
+		await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(1.0).timeout
 	var st = d.duel
 	d.ai_sides = []
 	get_viewport().warp_mouse(Vector2(4, 4))

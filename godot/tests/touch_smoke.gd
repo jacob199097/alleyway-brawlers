@@ -206,7 +206,8 @@ func _duel(deal := 1) -> void:
 	Game.duel_setup = {"first": "player"}
 	Game.go("duel")
 	var d: Node = null
-	for i in 400:
+	var until := Time.get_ticks_msec() + 20000   # (the opening face-off plays first: duel.gd _match_intro)
+	while Time.get_ticks_msec() < until:
 		await get_tree().process_frame
 		d = get_tree().current_scene
 		if d and d.name == "Duel" and d.get("_menu") != null:

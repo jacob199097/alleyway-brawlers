@@ -73,6 +73,13 @@ uniform float tide_center_y = -0.033;   // the emblem's centre, as uv.y (card ce
 uniform float reveal = 1.0;   // 0..1: the card burning into view from the bottom up (Underworld's rise), 1 = whole
 uniform vec4 reveal_color : source_color = vec4(0.75, 0.35, 1.0, 1.0);   // the glowing edge of the reveal
 uniform vec2 quad_size = vec2(0.0);   // Controls (TextureRect): the drawn size; sprites use the texture size
+// The match's light on the card (CardView): the arena's colour (scene_light, a = strength) coming from
+// scene_dir (card space, y down: (0, 1) = from below), brighter on that side and along that edge, and
+// stronger as the card tilts toward it; a big effect nearby (burst_light) flashes its colour from its side.
+uniform vec4 scene_light : source_color = vec4(0.0);
+uniform vec2 scene_dir = vec2(0.0, -1.0);
+uniform vec4 burst_light : source_color = vec4(0.0);
+uniform vec2 burst_dir = vec2(0.0);
 
 varying vec2 s;
 varying vec4 vcol;
@@ -508,6 +515,20 @@ void fragment() {
 		float tw2 = pow(max(0.0, sin(TIME * 1.7 + rnd2 * 50.0)), 30.0);
 		vec2 inc = fract((uv + 0.5) * vec2(11.0, 16.0)) - 0.5;
 		col.rgb += vec3(1.0, 0.93, 0.7) * tw2 * step(0.86, rnd2) * sparkle * 0.6 * smoothstep(0.3, 0.0, length(inc));
+	}
+	if (scene_light.a > 0.0) {
+		vec2 dir = normalize(scene_dir + vec2(1e-4));
+		float side = dot(uv, dir) * 2.0;   // -1 the far edge, 1 the edge facing the light
+		float facing = clamp(1.0 + dot(r[2].xy, dir) * 2.5, 0.5, 1.8);   // tilted toward it: more
+		float key = smoothstep(-0.7, 1.0, side) * facing;
+		float rim = pow(clamp(side, 0.0, 1.0), 7.0);
+		col.rgb *= mix(vec3(1.0), 0.7 + scene_light.rgb * 0.45, scene_light.a * 0.6);   // the arena's colour over it
+		col.rgb += scene_light.rgb * (key * 0.24 + rim * 0.5) * scene_light.a;
+	}
+	if (burst_light.a > 0.0) {
+		float bl = length(burst_dir);
+		float near_side = bl > 0.01 ? smoothstep(-0.9, 1.0, dot(uv, burst_dir / bl) * 2.0) : 1.0;
+		col.rgb += burst_light.rgb * burst_light.a * (0.1 + 0.4 * near_side);
 	}
 	col.rgb = mix(col.rgb, vec3(1.0), flash);
 	if (reveal < 1.0) {

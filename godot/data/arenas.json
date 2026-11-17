@@ -1,5 +1,6 @@
 [
     {"id": "alley", "name": "Back Alley", "image": "arena_1v1.jpg",
+        "light": {"color": "#5fd0ff", "from": [-0.5, -1], "amount": 0.32},
         "alive": {"rain": 0.3, "sheen": 0.16, "haze": 0.06, "neon": 0.5},
         "fx": [
             {"kind": "glow", "mode": "pulse", "speed": 0.7, "r": 190, "strength": 0.2, "color": "#3fd8ff", "points": [[120, 250], [1390, 660], [190, 790]]},
@@ -15,6 +16,7 @@
             {"kind": "scurry", "path": [[118, 880], [150, 620], [118, 250]], "every": 30, "size": 1.2}
         ]},
     {"id": "rooftop", "name": "The Rooftop", "image": "arena_1v1_rooftop.jpg",
+        "light": {"color": "#b8c8ff", "from": [0.4, -1], "amount": 0.28},
         "alive": {"rain": 0.35, "sheen": 0.18, "haze": 0.05, "neon": 0.5},
         "fx": [
             {"kind": "spin", "at": [420, 72], "r": 27, "speed": 3.2},
@@ -32,6 +34,7 @@
             {"kind": "lightning", "every": 15, "strength": 0.24, "color": "#c9c2ff"}
         ]},
     {"id": "pit", "ambience": "crowd", "stutter": false, "name": "The Pit", "image": "arena_1v1_pit.jpg",
+        "light": {"color": "#ffd28a", "from": [0, -1], "amount": 0.4},
         "bonus": {"title": "BLOOD SPORT", "atk": 100},
         "board": {"style": "paint", "tint": "#efe6cf"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.3},
@@ -51,6 +54,7 @@
             {"kind": "smoke", "at": [1420, 250]}
         ]},
     {"id": "observatory", "ambience": "", "stutter": false, "name": "The Observatory", "image": "arena_1v1_observatory.jpg",
+        "light": {"color": "#9a7bff", "from": [0, -1], "amount": 0.42},
         "bonus": {"title": "STATIC CHARGE", "boost": ["shock"], "amount": 100},
         "board": {"style": "neon", "color": "#b388ff"},
         "alive": {"rain": 0.0, "sheen": 0.08, "haze": 0.03, "neon": 0.5},
@@ -66,6 +70,7 @@
             {"kind": "shooting", "rect": [260, 200, 1000, 560]}
         ]},
     {"id": "junkyard", "ambience": "", "stutter": false, "name": "The Junkyard", "image": "arena_1v1_junkyard.jpg",
+        "light": {"color": "#ff8a2a", "from": [0.6, 1], "amount": 0.45},
         "bonus": {"title": "JAGGED SCRAP", "boost": ["bleed"], "amount": 100},
         "board": {"style": "paint", "tint": "#e8873e"},
         "alive": {"rain": 0.1, "sheen": 0.12, "haze": 0.06, "neon": 0.4},
@@ -83,6 +88,7 @@
             {"kind": "fog", "rect": [0, 0, 1536, 1024], "color": "#6b5a4a", "density": 0.25, "frame": 1.0, "drift": [0.03, -0.012]}
         ]},
     {"id": "casino", "ambience": "crowd", "stutter": false, "name": "The High-Roller Table", "image": "arena_1v1_casino.jpg",
+        "light": {"color": "#ffc96b", "from": [0, -1], "amount": 0.36},
         "bonus": {"title": "HIGH STAKES", "boost": ["damage"], "amount": 100},
         "board": {"style": "felt", "color": "#d9a944"},
         "alive": {"rain": 0.0, "sheen": 0.05, "haze": 0.04, "neon": 0.3},
@@ -98,6 +104,7 @@
             {"kind": "glow", "mode": "blink", "speed": 0.6, "r": 46, "strength": 0.3, "color": "#ffe6a8", "points": [[380, 40], [1160, 80], [632, 922], [1505, 625], [145, 150]]}
         ]},
     {"id": "crypt", "ambience": "", "stutter": false, "name": "The Crypt", "image": "arena_1v1_crypt.jpg",
+        "light": {"color": "#8f9bff", "from": [0, 1], "amount": 0.44},
         "bonus": {"title": "GRAVE CHILL", "boost": ["drain"], "amount": 100},
         "board": {"style": "neon", "color": "#b06bff"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.1, "neon": 0.45},
@@ -116,6 +123,7 @@
             {"kind": "scurry", "path": [[1350, 960], [900, 990], [560, 985]], "every": 36, "size": 1.1, "color": "#1a0f14"}
         ]},
     {"id": "base", "ambience": "", "stutter": false, "name": "Militia Outpost", "image": "arena_1v1_base.jpg",
+        "light": {"color": "#ffe08a", "from": [0, -1], "amount": 0.34},
         "bonus": {"title": "CROSSFIRE", "boost": ["suppress"], "amount": 100},
         "board": {"style": "paint", "tint": "#ffd23a"},
         "alive": {"rain": 0.12, "sheen": 0.12, "haze": 0.05, "neon": 0.35},
@@ -131,6 +139,7 @@
             {"kind": "dust", "rect": [220, 160, 1100, 700], "color": "#e6f2c8"}
         ]},
     {"id": "graveyard", "ambience": "", "stutter": false, "name": "The Graveyard", "image": "arena_1v1_graveyard.jpg",
+        "light": {"color": "#a9ffd6", "from": [0, -1], "amount": 0.36},
         "bonus": {"title": "RESTLESS DEAD", "morale": -100},
         "board": {"style": "neon", "color": "#a9ffd6"},
         "alive": {"rain": 0.0, "sheen": 0.03, "haze": 0.06, "neon": 0.2},
@@ -149,6 +158,7 @@
             {"kind": "scurry", "path": [[300, 1010], [760, 1012], [1180, 1000]], "every": 34, "size": 1.2}
         ]},
     {"id": "grove", "ambience": "", "stutter": false, "name": "Glowshroom Grove", "image": "arena_1v1_grove.jpg",
+        "light": {"color": "#62f2ff", "from": [0, 1], "amount": 0.42},
         "bonus": {"title": "HEALING SPORES", "boost": ["heal"], "amount": 100},
         "board": {"style": "neon", "color": "#62f2ff"},
         "alive": {"rain": 0.0, "sheen": 0.06, "haze": 0.04, "neon": 0.4},
@@ -168,6 +178,7 @@
             {"kind": "motes", "rect": [120, 100, 1300, 820], "amount": 22, "color": "#c58bff", "size": 0.08, "life": 7, "speed": 8, "rise": 10}
         ]},
     {"id": "lab", "ambience": "", "stutter": false, "name": "The Lab", "image": "arena_1v1_lab.jpg",
+        "light": {"color": "#5cffa0", "from": [-0.6, -1], "amount": 0.4},
         "bonus": {"title": "TOXIC SPILL", "boost": ["poison", "corrode"], "amount": 100},
         "board": {"style": "holo", "color": "#5cffa0"},
         "alive": {"rain": 0.0, "sheen": 0.14, "haze": 0.02, "neon": 0.4},
@@ -187,6 +198,7 @@
             {"kind": "motes", "rect": [230, 140, 1080, 720], "amount": 14, "color": "#a6ffcf", "size": 0.06, "life": 6, "speed": 8, "rise": 6}
         ]},
     {"id": "docks", "ambience": "city_rain", "stutter": false, "name": "The Docks", "image": "arena_1v1_docks.jpg",
+        "light": {"color": "#ffd9a0", "from": [0.5, -1], "amount": 0.34},
         "bonus": {"title": "PIRATE PORT", "boost": ["plunder"], "amount": 1},
         "board": {"style": "felt", "color": "#d9a35a"},
         "alive": {"rain": 0.28, "sheen": 0.16, "haze": 0.04, "neon": 0.2},
@@ -203,6 +215,7 @@
             {"kind": "rain", "amount": 140, "wind": 0.2, "alpha": 0.2}
         ]},
     {"id": "frozen", "ambience": "", "stutter": false, "name": "Frozen Lake", "image": "arena_1v1_frozen.jpg",
+        "light": {"color": "#cfeeff", "from": [0, -1], "amount": 0.4},
         "bonus": {"title": "THICK ICE", "def": 100},
         "board": {"style": "frost", "color": "#cfeeff"},
         "alive": {"rain": 0.0, "sheen": 0.14, "haze": 0.03, "neon": 0.15},
@@ -220,6 +233,7 @@
             {"kind": "glow", "mode": "breathe", "speed": 0.25, "r": 520, "strength": 0.06, "color": "#9fd8ff", "at": [768, 500]}
         ]},
     {"id": "canyon", "ambience": "", "stutter": false, "name": "Dust Bowl", "image": "arena_1v1_canyon.jpg",
+        "light": {"color": "#ffb070", "from": [0.7, -1], "amount": 0.4},
         "bonus": {"title": "OPEN GROUND", "direct": 100},
         "board": {"style": "paint", "tint": "#3a1606"},
         "alive": {"rain": 0.0, "sheen": 0.0, "haze": 0.0, "neon": 0.1},
@@ -238,6 +252,7 @@
             {"kind": "dust", "rect": [200, 110, 1150, 780], "color": "#ffe2b0"}
         ]},
     {"id": "clocktower", "ambience": "", "stutter": false, "name": "The Clockwork Tower", "image": "arena_1v1_clocktower.jpg",
+        "light": {"color": "#ffcf6b", "from": [-0.5, -1], "amount": 0.38},
         "bonus": {"title": "OVERCLOCKED", "authority": 1},
         "board": {"style": "brass", "color": "#ffcf6b"},
         "alive": {"rain": 0.0, "sheen": 0.1, "haze": 0.04, "neon": 0.2},
@@ -257,6 +272,7 @@
             {"kind": "motes", "rect": [180, 100, 1180, 800], "amount": 10, "color": "#ffd28a", "size": 0.06, "life": 7, "speed": 6, "rise": 3}
         ]},
     {"id": "mirror", "ambience": "", "stutter": false, "name": "The Shattered Realm", "image": "arena_1v1_mirror.jpg",
+        "light": {"color": "#c99bff", "from": [0, -1], "amount": 0.4},
         "bonus": {"title": "SPLIT REFLECTIONS", "draw": 1},
         "board": {"style": "shard", "color": "#c99bff"},
         "alive": {"rain": 0.0, "sheen": 0.06, "haze": 0.03, "neon": 0.45},
@@ -280,6 +296,7 @@
             {"kind": "lightning", "every": 18, "strength": 0.2, "color": "#c08bff"}
         ]},
     {"id": "koi", "ambience": "", "stutter": false, "name": "Koi Garden", "image": "arena_1v1_koi.jpg",
+        "light": {"color": "#bff8ef", "from": [0, 1], "amount": 0.3},
         "bonus": {"title": "STILL WATERS", "morale": 100},
         "board": {"style": "water", "color": "#f4fffb"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.02, "neon": 0.1},
@@ -304,6 +321,7 @@
             {"kind": "motes", "rect": [150, 100, 1250, 820], "amount": 8, "color": "#fff5c8", "size": 0.06, "life": 6, "speed": 6, "rise": 2}
         ]},
     {"id": "caldera", "ambience": "", "stutter": false, "name": "The Caldera", "image": "arena_1v1_caldera.jpg",
+        "light": {"color": "#ff7a32", "from": [0, 1], "amount": 0.5},
         "bonus": {"title": "LAVA HEAT", "boost": ["burn", "stoke"], "amount": 100},
         "board": {"style": "paint", "tint": "#ff7a32"},
         "alive": {"rain": 0.0, "sheen": 0.04, "haze": 0.08, "neon": 0.25},

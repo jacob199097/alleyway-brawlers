@@ -18,6 +18,7 @@ const OPP_HAND_SCALE := 0.66
 const COLS := [780.0, 930.0, 1080.0, 1230.0, 1380.0]
 const ROWS := {"player": [536.0, 728.0], "opponent": [312.0, 120.0]}   # [front, back]
 const DIVIDER_Y := 424.0
+const CAM_LEAN := 9.0   # how far the camera leans toward whoever is acting (_cam_turn)
 const LEFT_X := 610.0
 const RIGHT_X := 1550.0
 const HAND_Y := 992.0
@@ -176,6 +177,10 @@ var _post_mat: ShaderMaterial
 var _post_fx := {"aberration": 0.0, "wave_strength": 0.0, "impact": 0.0}
 var _danger := 0.0                  # 0..1, the player's Morale is low
 var _cam_tw: Tween
+var _cam_rest := Vector2(960, 540)   # where the camera rests between moves: leaning a little toward whoever is acting
+var _intro_on := false     # the opening face-off is playing: the match's first events wait for it
+var _intro_skip := false
+var _arena_info := {}      # this match's arena (data/arenas.json), for the opening
 var _streak_tex: Texture2D
 var _strike_at := Vector2.INF       # where the last clash landed (damage flies from there)
 var _strike_time := 0.0              # game time of that clash
@@ -221,6 +226,7 @@ var _turf: TurfShow = null # its cutscenes, plate and intel (scripts/duel/turf_s
 func _ready() -> void:
 	randomize()
 	CardView.anim_uids.clear()   # (a new table: whose cards move is this match's)
+	CardView.scene_light = Color(0, 0, 0, 0)   # (and its light is this arena's, below)
 	if "--autoplay" in OS.get_cmdline_user_args():
 		ai_sides = ["player", "opponent"]
 	_font = UI.font()
@@ -258,6 +264,8 @@ func _ready() -> void:
 					$BackLayer/Background.material.set_shader_parameter(k, float(arena.alive[k]))
 				_style_board(arena.get("board", {}))
 				_arena_fx(arena, $BackLayer/Background.texture)
+				_arena_light(arena)
+				_arena_info = arena
 	_build_detail()
 	var me := Game.player
 	var online_start: Dictionary = Game.duel_setup.get("start", {}) if Game.duel_setup.get("online", false) else {}
@@ -397,6 +405,8 @@ func _ready() -> void:
 	Sfx.play("shuffle", 1.0, -8.0)
 	duel.start()
 	_queue.append_array(duel.take_events())
+	var ab = duel.rules.get("arena_bonus")
+	_match_intro(str(ab.get("title", "")) if ab is Dictionary else "")
 	_pump()
 
 
@@ -410,6 +420,201 @@ func _make_leader_views() -> void:
 			v.badge_text = _influence_text(int(l.get("influence", l.get("base_defense", 0))))
 			v.show_badge = true
 			leaders[side] = v
+
+
+func _exit_tree() -> void:
+	CardView.scene_light = Color(0, 0, 0, 0)   # (the arena's light stays in its match)
+
+
+## The opening: the two leaders square off. Each slides in large over its clan's colour with its name,
+## its clan and its player, VS lands between them, the arena is named below (and its effect); then they
+## go to their places and the camera settles on the board. A click or tap skips it. The match's first
+## events wait for it (_intro_on). Not on a resync, a replay, a spectator's view, the tutorial, Turf
+## Defense (its own intro, _coop_intro) or a free-for-all.
+func _match_intro(effect_title := "") -> void:
+	var sides := ["player", "opponent"]
+	if _ffa or _coop or _tutorial or _spectating or Game.duel_setup.has("replay") or "--no-intro" in OS.get_cmdline_user_args() \
+			or not leaders.has("player") or not leaders.has("opponent"):
+		return
+	_intro_on = true
+	_intro_skip = false
+	var m: Vector2 = Game.wide.margin
+	var layer := CanvasLayer.new()   # (the words, over the HUD; the cards stay in the world, over the dimmed board)
+	layer.layer = 5
+	add_child(layer)
+	var catcher := Control.new()
+	catcher.position = -m
+	catcher.size = Vector2(1920, 1080) + m * 2.0
+	catcher.gui_input.connect(func(e: InputEvent):
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			_intro_skip = true)
+	layer.add_child(catcher)
+	var hud: Control = $HUD/UI
+	hud.create_tween().tween_property(hud, "modulate:a", 0.0, 0.25)
+	_dim(0.86, 0.3)
+	var spots := {"player": Vector2(700, 470), "opponent": Vector2(1460, 470)}
+	var bands: Array[Node2D] = []
+	var words: Array[Control] = []
+	var z_was := {}
+	Sfx.play("riser", 0.8, -4.0)
+	for side in sides:
+		var v: CardView = leaders[side]
+		var col := _clan_color(v.card)
+		var left: bool = side == "player"
+		# The clan's colour, a soft glow behind its leader, sweeping in from that side
+		var band := Sprite2D.new()
+		band.texture = _soft_dot()
+		band.material = _add_mat
+		band.modulate = Color(col.lightened(0.1), 0.0)
+		band.scale = Vector2(15.0, 11.0)
+		band.z_index = 420
+		band.position = spots[side] + Vector2(-700.0 if left else 700.0, 0.0)
+		cards_layer.add_child(band)
+		var bt := band.create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		bt.tween_property(band, "position", spots[side], 0.45)
+		bt.tween_property(band, "modulate:a", 0.75, 0.3)
+		bands.append(band)
+		v.busy = true
+		z_was[side] = v.z_index
+		v.z_index = 430
+		v.position = spots[side] + Vector2(-1200.0 if left else 1200.0, 0.0)
+		v.move_to(spots[side], 2.6, 0.0, 0.45, Tween.TRANS_BACK)
+		# Its name, its clan (emblem and name) and whose it is, under it
+		var box := VBoxContainer.new()
+		box.alignment = BoxContainer.ALIGNMENT_CENTER
+		box.add_theme_constant_override("separation", 2)
+		box.size = Vector2(620, 0)
+		box.position = Vector2(spots[side].x - 310.0, 712)
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var name_l := _label(54, Color.WHITE, true)
+		name_l.label_settings.font = UI.font_of("title")
+		name_l.label_settings.outline_color = Color(col.darkened(0.7), 0.95)
+		name_l.text = str(v.card.get("name", "")).to_upper()
+		name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(name_l)
+		var clan_row := HBoxContainer.new()
+		clan_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		clan_row.add_theme_constant_override("separation", 10)
+		clan_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var em := UI.texture_rect(UI.clan_emblem(str(v.card.get("clan", ""))), Vector2(40, 40))
+		clan_row.add_child(em)
+		var clan_l := _label(26, col.lightened(0.3), true)
+		clan_l.text = str(v.card.get("clanName", "")).to_upper()
+		clan_row.add_child(clan_l)
+		box.add_child(clan_row)
+		var who := _label(22, Color(0.85, 0.87, 0.95), true)
+		who.text = _intro_name(side).to_upper()
+		who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(who)
+		box.modulate.a = 0.0
+		layer.add_child(box)
+		words.append(box)
+	await _intro_wait(0.42)
+	# They meet: VS lands between them
+	var center := Vector2(1080, 470)
+	Sfx.play("boom", 0.8, -2.0)
+	Sfx.play("hit", 0.7, -4.0)
+	shake(14)
+	_shockwave(center, 0.7)
+	_post_pulse("aberration", 8.0, 0.4)
+	_ring(center, Color.WHITE, 2.0)
+	_light_burst(center, Color(1.0, 0.95, 0.85), 1.0)
+	for side in sides:
+		var v: CardView = leaders[side]
+		var toward := Vector2.RIGHT if side == "player" else Vector2.LEFT
+		v.kick(toward, 16.0)
+		_sparks(v.position + toward * 170.0, toward, _clan_color(v.card).lightened(0.4), 18, 50.0)
+	# A slash of light between them, behind VS
+	var slash := Polygon2D.new()
+	slash.polygon = PackedVector2Array([Vector2(1112, 120), Vector2(1124, 120), Vector2(1086, 470), Vector2(1048, 820), Vector2(1036, 820), Vector2(1074, 470)])
+	var lc := _clan_color(leaders.player.card).lerp(_clan_color(leaders.opponent.card), 0.5).lightened(0.6)
+	slash.vertex_colors = PackedColorArray([Color(lc, 0.0), Color(lc, 0.0), Color(1, 1, 1, 0.95), Color(lc, 0.0), Color(lc, 0.0), Color(1, 1, 1, 0.95)])
+	slash.material = _add_mat
+	slash.z_index = 425
+	slash.scale = Vector2(1, 0.05)
+	slash.position = Vector2(0, 470) * 0.95
+	cards_layer.add_child(slash)
+	bands.append(slash)
+	var st := slash.create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	st.tween_property(slash, "scale", Vector2.ONE, 0.25)
+	st.tween_property(slash, "position", Vector2.ZERO, 0.25)
+	var vs := _label(150, Color.WHITE, true)
+	vs.label_settings.font = UI.font_of("title")
+	vs.label_settings.outline_size = 14
+	vs.label_settings.outline_color = Color(0.05, 0.02, 0.1, 0.95)
+	vs.text = "VS"
+	vs.size = Vector2(400, 190)
+	vs.position = center - vs.size / 2.0
+	vs.pivot_offset = vs.size / 2.0
+	vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	vs.scale = Vector2.ONE * 2.6
+	vs.modulate.a = 0.0
+	layer.add_child(vs)
+	words.append(vs)
+	var pt := vs.create_tween().set_parallel()
+	pt.tween_property(vs, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pt.tween_property(vs, "modulate:a", 1.0, 0.12)
+	for w in words:
+		if w != vs:
+			w.create_tween().tween_property(w, "modulate:a", 1.0, 0.3)
+	# The camera drifts in while they stare each other down
+	if _cam_tw and _cam_tw.is_valid():
+		_cam_tw.kill()
+	_cam_tw = create_tween()
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE * (1.0 + 0.05 * _fx_level()), 2.4).set_trans(Tween.TRANS_SINE)
+	await _intro_wait(0.45)
+	# Where: the arena, and its effect
+	var where := str(_arena_info.get("name", ""))
+	if where != "":
+		var arena_l := _label(30, GOLD, true)
+		arena_l.text = "ARENA  ·  %s%s" % [where.to_upper(), ("   ·   " + effect_title.to_upper()) if effect_title != "" else ""]
+		arena_l.size = Vector2(1400, 44)
+		arena_l.position = Vector2(1080 - 700, 930)
+		arena_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		arena_l.modulate.a = 0.0
+		layer.add_child(arena_l)
+		words.append(arena_l)
+		arena_l.create_tween().tween_property(arena_l, "modulate:a", 1.0, 0.3)
+	await _intro_wait(1.6)
+	# To their places; the board comes back and the camera settles on it
+	Sfx.play("whoosh", 1.0, -6.0)
+	for w in words:
+		w.create_tween().tween_property(w, "modulate:a", 0.0, 0.2)
+	for b in bands:
+		b.create_tween().tween_property(b, "modulate:a", 0.0, 0.35)
+	for side in sides:
+		if leaders.has(side) and is_instance_valid(leaders[side]):
+			leaders[side].go_home(0.45)
+	_dim(0.0, 0.45)
+	hud.create_tween().tween_property(hud, "modulate:a", 1.0, 0.4)
+	_cam_reset(0.8)
+	await _wait(0.47)
+	for side in sides:
+		if leaders.has(side) and is_instance_valid(leaders[side]):
+			leaders[side].busy = false
+			leaders[side].z_index = z_was[side]
+	for b in bands:
+		b.queue_free()
+	layer.queue_free()
+	_intro_on = false
+	_pump()
+
+
+## The opening's wait, cut short by a click or tap (_intro_skip).
+func _intro_wait(seconds: float) -> void:
+	var end := _game_time + seconds
+	while not _intro_skip and _game_time < end and is_inside_tree():
+		await get_tree().process_frame
+
+
+## A side's player, for the opening: their name online, the player's own offline, else the CPU.
+func _intro_name(side: String) -> String:
+	if _names.has(side):
+		return str(_names[side])
+	if side == "player":
+		return str(Game.player.get("username", "You"))
+	return "CPU"
 
 
 # ── Online matches ───────────────────────────────────────────────────────────
@@ -471,6 +676,8 @@ func _setup_online(start: Dictionary) -> void:
 	if _coop and not start.get("resync", false):
 		_coop_intro(start)
 		return
+	if not start.get("resync", false):
+		_match_intro(str(start.arenaBonus.get("title", "")) if start.get("arenaBonus") is Dictionary else "")
 	_after_events()
 
 
@@ -2108,7 +2315,7 @@ func _act(side: String, action: Dictionary) -> bool:
 
 
 func _pump() -> void:
-	if _playing:
+	if _playing or _intro_on:
 		return
 	_playing = true
 	_clear_highlights()
@@ -2150,7 +2357,7 @@ func _refresh_guards() -> void:
 
 
 func _after_events() -> void:
-	if duel.winner != "":
+	if duel.winner != "" or _intro_on:
 		return
 	_settle_board()
 	var side: String = duel.pending.side if not duel.pending.is_empty() else duel.active
@@ -2429,6 +2636,7 @@ func _ev_turn(ev: Dictionary) -> void:
 	_phase_side = str(ev.side)
 	_ui.phase_track.queue_redraw()
 	Sfx.play("turn_yours" if mine else "turn_theirs")
+	_cam_turn(str(ev.side))
 	# A Downed look the rules no longer have goes (only cleared here: the rules may be ahead of
 	# what is shown, and a card about to be Downed gets its look from that event)
 	for side in field:
@@ -3382,6 +3590,7 @@ func _shards(at: Vector2, dir: Vector2, amount: int, palette: Array = []) -> voi
 
 ## A round burst of spectral flame, blooming and dying away.
 func _flame_burst(at: Vector2, size: float, core: Color, outer: Color, secs := 0.45) -> void:
+	_light_burst(at, outer.lerp(core, 0.3), clampf(size / 260.0, 0.3, 1.3))
 	if Game.photosafe():   # (Photosensitive mode: no bright core, and it comes and goes slower)
 		outer = outer.darkened(0.35)
 		core = outer.lerp(core, 0.2)
@@ -5149,6 +5358,7 @@ func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
 		await _wait(0.07)
 	_cam_reset(0.3)
 	Sfx.play("ambush", 0.8)
+	_leader_line(c, col)
 	await _showcase(v, c, col, "%s AWAKENS" % str(c.get("name", "")).to_upper())
 	var center := Vector2(1080, DIVIDER_Y)
 	_shockwave(center, 1.2)
@@ -5171,6 +5381,26 @@ func _awaken_cinematic(v: CardView, c: Dictionary, side: String) -> void:
 	tt.tween_property(tag, "modulate:a", 0.0, 0.3)
 	tt.tween_callback(tag.queue_free)
 	await _wait(0.75)
+
+
+## An awakening leader's own line (its flavour text), over the top of the screen while it takes the stage.
+func _leader_line(c: Dictionary, col: Color) -> void:
+	var line := str(c.get("flavourText", "")).strip_edges()
+	if line == "":
+		return
+	var l := _label(34, col.lightened(0.55), true)
+	l.text = "\u201c%s\u201d" % line
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (wrapping on before the size: the width holds)
+	l.size = Vector2(1000, 0)
+	l.position = Vector2(1080 - 500, 78)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.modulate.a = 0.0
+	overlay.add_child(l)
+	var t := l.create_tween()
+	t.tween_property(l, "modulate:a", 1.0, 0.3)
+	t.tween_interval(2.4)
+	t.tween_property(l, "modulate:a", 0.0, 0.4)
+	t.tween_callback(l.queue_free)
 
 
 ## The Nebula portal: spiral arms turning around a dark centre.
@@ -5964,6 +6194,7 @@ func _status_shot(from: Vector2, to: Vector2, kind: String, col: Color) -> void:
 
 ## A bolt of lightning from one point to another: a jagged line and a fork off it, there and gone.
 func _lightning(from: Vector2, to: Vector2, col: Color) -> void:
+	_light_burst(to, col.lerp(Color.WHITE, 0.3), 1.3)
 	var across := (to - from).orthogonal().normalized()
 	for fork in 2:
 		var pts := PackedVector2Array()
@@ -6946,8 +7177,13 @@ func _ev_leader_hit(ev: Dictionary) -> void:
 	v.kick(Vector2(randf_range(-1, 1), -1), 14.0)
 	_burst(v.home, RED, 20, 320, 0.5)
 	_ring(v.home, RED, 1.0)
+	_light_burst(v.home, RED, 0.8)
 	shake(6.0)
+	if _fx_level() > 0.0:   # (the camera snaps in on the leader that took it)
+		_cam_focus(v.home, 1.05, 0.12)
 	await _wait(0.35)
+	if _fx_level() > 0.0:
+		_cam_reset(0.4)
 
 
 func _ev_leader_heal(ev: Dictionary) -> void:
@@ -7390,6 +7626,48 @@ func _pulse_glow(v: CardView, color: Color) -> void:
 	t.tween_property(v, "glow", 0.0, 0.5)
 
 
+## A big effect lights the cards near it for a moment, from its side (CardView.light_up, card.gdshader
+## burst_light): fire throws orange on its neighbours, lightning a cold flash. Settings → Screen
+## Shake & Flashes turns it down (off in Photosensitive mode).
+func _light_burst(at: Vector2, col: Color, power := 1.0) -> void:
+	var k := power * _fx_level()
+	if k <= 0.0:
+		return
+	var reach := 560.0 * clampf(power, 0.6, 1.5)
+	for v in cards_layer.get_children():
+		if v is CardView and v.visible:
+			var d: float = v.global_position.distance_to(at)
+			if d < reach:
+				v.light_up(col, at, k * 0.85 * (1.0 - d / reach))
+
+
+## The arena's light on the cards (data/arenas.json "light": its colour, where it comes from on screen,
+## how strong): the Caldera's orange from below, the Crypt's cold glow, the Rooftop's moonlight.
+func _arena_light(arena: Dictionary) -> void:
+	var l = arena.get("light")
+	if not (l is Dictionary):
+		return
+	var f = l.get("from", [0, -1])
+	CardView.scene_light = Color(str(l.get("color", "#ffffff")), clampf(float(l.get("amount", 0.3)), 0.0, 1.0))
+	CardView.scene_from = Vector2(float(f[0]), float(f[1])).normalized() if f is Array and f.size() == 2 else Vector2.UP
+
+
+## Behind a big prompt (a choice, the opening hand, a card to pick from a pile) the table goes soft:
+## frosted, the way the HUD's glass is (UI.glass), until the prompt closes. Not on a phone saving battery.
+func _prompt_blur(box: Control) -> void:
+	if Game.battery_saver():
+		return
+	var m: Vector2 = Game.wide.margin
+	var bd := Control.new()
+	bd.position = -m - Vector2(40, 40)
+	bd.size = Vector2(1920, 1080) + m * 2.0 + Vector2(80, 80)
+	bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UI.glass(bd, Color(0.02, 0.02, 0.05, 0.3), 5.0)
+	overlay.add_child(bd)
+	overlay.move_child(bd, box.get_index())
+	box.tree_exiting.connect(bd.queue_free)
+
+
 func _dim(alpha: float, seconds: float) -> void:
 	create_tween().tween_property(_dim_rect, "color:a", alpha, seconds)
 
@@ -7623,8 +7901,28 @@ func _cam_reset(seconds: float) -> void:
 	if _cam_tw and _cam_tw.is_valid():
 		_cam_tw.kill()
 	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_cam_tw.tween_property(camera, "position", Vector2(960, 540), seconds)
+	_cam_tw.tween_property(camera, "position", _cam_rest, seconds)
 	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, seconds)
+
+
+## A new turn: the camera pulls back from a touch closer and comes to rest leaning a little toward
+## whoever is acting (down to the player's half, up to the rival's). Gentle, and none with Screen
+## Shake & Flashes off; a free-for-all or Turf Defense table stays centred.
+func _cam_turn(side: String) -> void:
+	var k := _fx_level()
+	var lean := 0.0
+	if not _ffa and not _coop:
+		lean = CAM_LEAN * k * (1.0 if side == "player" else -1.0)
+	_cam_rest = Vector2(960, 540 + lean)
+	if k <= 0.0:
+		_cam_reset(0.3)
+		return
+	if _cam_tw and _cam_tw.is_valid():
+		_cam_tw.kill()
+	camera.zoom = Vector2.ONE * (1.0 + 0.035 * k)
+	_cam_tw = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_cam_tw.tween_property(camera, "position", _cam_rest, 0.9)
+	_cam_tw.tween_property(camera, "zoom", Vector2.ONE, 0.9)
 
 
 ## Fast streaks of light thrown out along the direction of a hit.
@@ -9059,6 +9357,8 @@ func _show_choice(p: Dictionary) -> void:
 		if o.has("slot"):
 			_valid["%s:%d" % [o.side, o.slot]] = GOLD
 	overlay.add_child(box)
+	if on_field.is_empty():   # (a card on the field to pick stays sharp)
+		_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
 	box.modulate.a = 0.0
@@ -9143,6 +9443,7 @@ func _show_mulligan(p: Dictionary) -> void:
 		b.pressed.connect(_pick.bind(id))
 		row.add_child(b)
 	overlay.add_child(box)
+	_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
 	box.modulate.a = 0.0
@@ -9207,6 +9508,7 @@ func _show_card_choice(p: Dictionary) -> void:
 		row.add_child(b)
 		col.add_child(row)
 	overlay.add_child(box)
+	_prompt_blur(box)
 	var sz := box.get_combined_minimum_size()
 	box.position = Vector2(1080 - sz.x / 2, clampf(DIVIDER_Y - sz.y / 2, 10, 1070 - sz.y))
 	box.modulate.a = 0.0

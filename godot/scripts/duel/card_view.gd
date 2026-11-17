@@ -91,6 +91,12 @@ var veteran := 0
 var anims: Dictionary = {}
 var animated := false
 static var anim_uids := {}
+## The arena's light on every card (the duel sets it from data/arenas.json "light"; a = strength) and the
+## way it comes from on screen; a big effect nearby flashes its own (light_up), fading in a moment.
+static var scene_light := Color(0, 0, 0, 0)
+static var scene_from := Vector2.UP
+var _burst := Color(0, 0, 0, 0)
+var _burst_from := Vector2.ZERO
 var face_up := false
 var downed := false: set = set_downed
 var show_badge := false: set = set_show_badge
@@ -314,6 +320,14 @@ func stop_moving() -> void:
 		_tw.kill()
 
 
+## A big effect's light falling on the card from a point (world space), fading in a moment.
+func light_up(col: Color, from: Vector2, amount: float) -> void:
+	if amount <= _burst.a:
+		return
+	_burst = Color(col, minf(amount, 1.0))
+	_burst_from = from
+
+
 ## A quick white hit-flash over the card (amount: how white, a leader's is softer).
 func flash(amount := 0.9) -> void:
 	_flash = amount
@@ -487,6 +501,26 @@ func _update_tilt(delta: float) -> void:
 			m.set_shader_parameter("flash", minf(_flash, 0.2) if Game.photosafe() else _flash)   # (Photosensitive mode: a soft glow at most)
 	_mat.set_shader_parameter("reveal", reveal)
 	_mat.set_shader_parameter("reveal_color", reveal_color)
+	_update_light(delta)
+
+
+## The arena's light and any flash, turned into the card's own frame (a sideways card is lit from its side).
+func _update_light(delta: float) -> void:
+	var lit := scene_light.a > 0.0
+	if _burst.a > 0.0:
+		_burst.a = maxf(0.0, _burst.a - delta * 2.2)
+		var to := (_burst_from - global_position)
+		var d := to.rotated(-global_rotation).normalized() if to.length() > 40.0 else Vector2.ZERO
+		for m in [_mat, _back_mat]:
+			if m:
+				m.set_shader_parameter("burst_light", _burst)
+				m.set_shader_parameter("burst_dir", d)
+	if lit:
+		var dir := scene_from.rotated(-global_rotation)
+		for m in [_mat, _back_mat]:
+			if m:
+				m.set_shader_parameter("scene_light", scene_light)
+				m.set_shader_parameter("scene_dir", dir)
 
 
 func _draw() -> void:
