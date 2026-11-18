@@ -458,4 +458,38 @@ for (const want of [3000, 3000, 3500, 3500, 3500, 4000]) {
 }
 delete slow.fx_count;
 
+// COMBO then PROMOTE (a Striver played right after another card of its clan, while the opponent's hand is small)
+st = duel();
+st.sides.player.authority = 15;
+st.sides.player.hideout.push(st.makeCard({ id: 'card_nebu_002', name: 'Kade', cardType: 'gang_member', subtype: 'striver', clanTag: 'nebula', level: 2, attack: 1600, defense: 1200, authority: 4 }));
+st.sides.opponent.hand = st.sides.opponent.hand.slice(0, 3);
+const kade = inHand(st, [{ when: 'combo', do: 'promote', if: 'foe_hand_le', n: 4 }], 'nebula', { id: 'card_nebu_001', name: 'Kade', subtype: 'striver', level: 1 });
+const lead = inHand(st, [], 'nebula');
+assert.ok(play(st, lead, 0));
+answerAll(st);
+assert.ok(play(st, kade, 1));
+pendingAll(st);   // (its new form's position)
+assert.equal(st.cardAt('player', 1)?.id, 'card_nebu_002', 'played right after another NEBULA card, with their hand at 3: it PROMOTES at once');
+
+// New conditions: cards played this turn, this card's turns on the field, it attacked this turn, this game's KOs
+st = duel();
+st.sides.player.authority = 15;
+const counter = inHand(st, [{ when: 'deploy', do: 'draw', amount: 1, if: 'played_ge', n: 2 }]);
+assert.ok(play(st, inHand(st, []), 0));
+let handNow = st.sides.player.hand.length;
+assert.ok(play(st, counter, 1));
+answerAll(st);
+assert.equal(st.sides.player.hand.length, handNow - 1 + 1, 'the 2nd card played this turn: played_ge 2 holds, it draws');
+const vet = st.cardAt('player', 1);
+assert.ok(!st._fxCond('player', 1, { if: 'field_turns_ge', n: 1 }, null), 'no turns on the field yet');
+st.sides.player.turns = toTurns(st) + 2;
+assert.ok(st._fxCond('player', 1, { if: 'field_turns_ge', n: 2 }, null), "two of its owner's turns later");
+assert.ok(!st._fxCond('player', 1, { if: 'self_attacked' }, null));
+vet.has_attacked = true;
+assert.ok(st._fxCond('player', 1, { if: 'self_attacked' }, null));
+assert.ok(!st._fxCond('player', 1, { if: 'kos_ge', n: 1 }, null));
+st.sides.opponent.kod = 2;
+assert.ok(st._fxCond('player', 1, { if: 'kos_ge', n: 2 }, null), "two enemy characters KO'd this game");
+function toTurns(s2) { return Number(s2.sides.player.turns ?? 0); }
+
 console.log('keywords: all passed');

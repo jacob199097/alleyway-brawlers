@@ -1195,6 +1195,8 @@ func _combo_chain(side: String, c: Dictionary) -> int:
 	if own:
 		n = int(cur.n) + 1 if cur is Dictionary and int(cur.turn) == turn and str(cur.clan) == clan else 1
 	s.combo = {"turn": turn, "clan": clan if own else "", "n": n}
+	s.played = int(s.get("played", 0)) + 1 if int(s.get("played_turn", 0)) == turn else 1   # (cards played this turn: "played_ge")
+	s.played_turn = turn
 	return n
 
 
@@ -2315,6 +2317,7 @@ func _spring(side: String, slot: int) -> void:
 ## doesn't count as a deploy for other cards ("when you / your opponent deploy a character").
 func _on_deploy(side: String, slot: int, c: Dictionary, evolved := false) -> void:
 	c.erase("fx_count")   # "times" counts start fresh each time a card enters the field
+	c.field_mark = int(sides[side].get("turns", 0))   # (and its turns on the field: "field_turns_ge")
 	_run_fx(side, slot, c, "deploy")
 	var foes := foes_of(side)
 	if not evolved:
@@ -2975,6 +2978,27 @@ func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
 			return foes_of(side).any(func(f): return sides[f].morale > s.morale)
 		"morale_ahead":
 			return not foes_of(side).is_empty() and foes_of(side).all(func(f): return sides[f].morale < s.morale)
+		# This card's own turns on the field (its owner's turns begun since it arrived), and what it did this turn
+		"field_turns_ge":
+			var me = card_at(side, slot)
+			return me != null and int(s.get("turns", 0)) - int(me.get("field_mark", s.get("turns", 0))) >= n
+		"self_attacked":
+			var me = card_at(side, slot)
+			return me != null and me.get("has_attacked", false)
+		"played_ge":   # cards played this turn
+			return (int(s.get("played", 0)) if int(s.get("played_turn", 0)) == turn else 0) >= n
+		# This game so far
+		"kos_ge":   # enemy characters KO'd
+			var kos := 0
+			for f in foes_of(side):
+				kos += int(sides[f].get("kod", 0))
+			return kos >= n
+		"promoted_ge":
+			return int(s.get("promotions", 0)) >= n
+		"plundered_ge":
+			return int(s.get("plundered", 0)) >= n
+		"luck_ge":   # coin flips / die rolls won
+			return int(s.get("luck_won", 0)) >= n
 	# "An enemy is SUPPRESSED" (foe_st_suppress): an enemy character with that status
 	var if_key := str(e.get("if", ""))
 	if if_key.begins_with("foe_st_"):

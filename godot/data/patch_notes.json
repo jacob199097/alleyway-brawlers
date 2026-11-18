@@ -1,5 +1,12 @@
 [
     {
+        "version": "0.9.181",
+        "notes": [
+            "New conditions for card effects: this card has been on the field for N of your turns, it attacked this turn, you've played N cards this turn, and this game's KOs, promotions, PLUNDERs and won coin flips. New cards can use them (to PROMOTE, or anything else).",
+            "The camera's lean toward a leader that takes a hit is gentler, and no longer jerks when it happens during an attack."
+        ]
+    },
+    {
         "version": "0.9.180",
         "notes": [
             "STOKE now only works on a character that's already BURNING: it makes the burn bigger and last another 3 turns. It no longer starts a burn, so BURN lights the fire and STOKE fans it. Cards that STOKE: Flint, Haze, The Pyre Twins, Fan the Flames, Madame Wildfire and Rain of Embers.",

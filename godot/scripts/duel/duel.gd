@@ -7369,11 +7369,14 @@ func _ev_leader_hit(ev: Dictionary) -> void:
 	_ring(v.home, RED, 1.0)
 	_light_burst(v.home, RED, 0.8)
 	shake(6.0)
-	if _fx_level() > 0.0:   # (the camera snaps in on the leader that took it)
-		_cam_focus(v.home, 1.05, 0.12)
+	# The camera leans in on the leader that took it, gently, and only from rest: during an attack its own move
+	# is already on it (taking over mid-move is what made it jerk)
+	var lean := _fx_level() > 0.0 and camera.zoom.x < 1.005 and not (_cam_tw and _cam_tw.is_valid() and _cam_tw.is_running())
+	if lean:
+		_cam_focus(v.home, 1.03, 0.3)
 	await _wait(0.35)
-	if _fx_level() > 0.0:
-		_cam_reset(0.4)
+	if lean:
+		_cam_reset(0.6)
 
 
 func _ev_leader_heal(ev: Dictionary) -> void:

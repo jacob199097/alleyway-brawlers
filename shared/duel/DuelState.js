@@ -1023,6 +1023,8 @@ export class DuelState {
         const own = clan !== '' && clan !== 'neutral';
         const n = own && s.combo && toInt(s.combo.turn) === this.turn && s.combo.clan === clan ? toInt(s.combo.n) + 1 : own ? 1 : 0;
         s.combo = { turn: this.turn, clan: own ? clan : '', n };
+        s.played = toInt(s.played_turn ?? 0) === this.turn ? toInt(s.played ?? 0) + 1 : 1;   // (cards played this turn: "played_ge")
+        s.played_turn = this.turn;
         return n;
     }
 
@@ -2035,6 +2037,7 @@ export class DuelState {
      *  it doesn't count as a deploy for other cards ("when you / your opponent deploy a character"). */
     _onDeploy(side, slot, c, evolved = false) {
         delete c.fx_count;   // "times" counts start fresh each time a card enters the field
+        c.field_mark = toInt(this.sides[side].turns ?? 0);   // (and its turns on the field: "field_turns_ge")
         this._runFx(side, slot, c, 'deploy');
         const foes = this.foesOf(side);
         if (!evolved) {
@@ -2539,6 +2542,15 @@ export class DuelState {
             case 'hustles_ge': return this._hustlesThisTurn(side) >= n;
             case 'morale_behind': return this.foesOf(side).some(f => this.sides[f].morale > s.morale);
             case 'morale_ahead': return this.foesOf(side).length > 0 && this.foesOf(side).every(f => this.sides[f].morale < s.morale);
+            // This card's own turns on the field (its owner's turns begun since it arrived), and what it did this turn
+            case 'field_turns_ge': { const me = this.cardAt(side, slot); return me != null && toInt(s.turns ?? 0) - toInt(me.field_mark ?? s.turns ?? 0) >= n; }
+            case 'self_attacked': { const me = this.cardAt(side, slot); return me != null && !!me.has_attacked; }
+            case 'played_ge': return (toInt(s.played_turn ?? 0) === this.turn ? toInt(s.played ?? 0) : 0) >= n;   // cards played this turn
+            // This game so far
+            case 'kos_ge': return this.foesOf(side).reduce((t, f) => t + toInt(this.sides[f].kod ?? 0), 0) >= n;   // enemy characters KO'd
+            case 'promoted_ge': return toInt(s.promotions ?? 0) >= n;
+            case 'plundered_ge': return toInt(s.plundered ?? 0) >= n;
+            case 'luck_ge': return toInt(s.luck_won ?? 0) >= n;   // coin flips / die rolls won
         }
         // "An enemy is SUPPRESSED" (foe_st_suppress): an enemy character with that status
         const ifKey = String(e.if ?? '');

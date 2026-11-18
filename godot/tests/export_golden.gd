@@ -229,6 +229,11 @@ const FX_SAMPLES := [
 	[{"when": "passive", "do": "flying"}, {"when": "passive", "do": "taunt"}],
 	[{"when": "passive", "do": "flying"}, {"when": "turn_end", "do": "buff", "target": "self", "atk": 300, "until": "forever", "times": 3}],
 	[{"when": "passive", "do": "guard"}, {"when": "turn_start", "do": "heal", "amount": 200, "times": 2}],
+	# New conditions (0.9.181): turns on the field, played this turn, attacked this turn, this game's KOs / promotions / PLUNDERs / luck
+	[{"when": "turn_start", "do": "buff", "target": "self", "atk": 400, "until": "forever", "if": "field_turns_ge", "n": 2}, {"when": "deploy", "do": "draw", "amount": 1, "if": "played_ge", "n": 2}],
+	[{"when": "turn_end", "do": "heal", "amount": 300, "if": "self_attacked"}, {"when": "attack", "do": "damage", "amount": 200, "if": "kos_ge", "n": 1}],
+	[{"when": "turn_start", "do": "draw", "amount": 1, "if": "promoted_ge", "n": 1}, {"when": "deploy", "do": "burn", "target": "enemy", "amount": 200, "if": "luck_ge", "n": 1}],
+	[{"when": "turn_end", "do": "promote", "if": "field_turns_ge", "n": 1}, {"when": "combo", "do": "promote", "if": "foe_hand_le", "n": 5}],
 	# "When it's KO'd / Downed": the character that beat it in the brawl ("attacker")
 	[{"when": "self_ko", "do": "ko", "target": "attacker"}, {"when": "self_downed", "do": "poison", "target": "attacker", "amount": 200}],
 	# "immune" that also ignores BRACE / TAUNT / SHROUD; "Only if an enemy is SUPPRESSED" (foe_st_<status>)
