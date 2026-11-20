@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.183",
+        "notes": [
+            "After a match, the MVP card no longer vanishes for a moment as it drops into its panel: the panel's card is there under it as it lands."
+        ]
+    },
+    {
         "version": "0.9.182",
         "notes": [
             "A BLINDED card's dark band now sits higher, across the eyes in its picture."

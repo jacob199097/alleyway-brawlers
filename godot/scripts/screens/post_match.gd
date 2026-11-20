@@ -874,25 +874,22 @@ func _mvp_panel(mvp: Dictionary) -> Control:
 	var line := "%d MORALE DEALT%s" % [int(mvp.get("damage", 0)), ("  ·  %d KO%s" % [kos, "" if kos == 1 else "S"]) if kos > 0 else ""]
 	var spot := create_tween()
 	spot.tween_interval(0.35 + INTRO)
-	spot.tween_callback(func(): _mvp_spotlight(card, rarity, line, tile, mine))
-	var t := create_tween()
-	t.tween_interval(0.75 + INTRO + 1.9)
-	t.tween_callback(func():
-		tile.pivot_offset = tile.size / 2
-		tile.scale = Vector2(0.0, 1.0)
+	# (as the big card lands on it the panel's card is already there, under it: no gap)
+	var land := func():
 		tile.modulate.a = 1.0
-		Sfx.play("flip", 0.9, -4.0))
-	t.tween_property(tile, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.tween_callback(func():
+		tile.pivot_offset = tile.size / 2
+		tile.create_tween().tween_property(tile, "scale", Vector2.ONE, 0.25).from(Vector2.ONE * 1.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		Sfx.play("promote", 1.3, -8.0)
 		_burst(tile.get_global_rect().get_center(), UI.rarity_color(rarity).lightened(0.4), 70, 700.0, 0.9, 250.0)
-		rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.6))
+		rays.create_tween().tween_property(rays, "modulate:a", 1.0, 0.6)
+	spot.tween_callback(func(): _mvp_spotlight(card, rarity, line, tile, mine, land))
 	return p
 
 
 ## The MVP, big in the middle of the screen for a moment (its art moving if its owner has it animated), its name
-## and what it did under it, then it flies down into its place in the MVP panel (`into`, which flips in after).
-func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, mine: bool) -> void:
+## and what it did under it, then it flies down into its place in the MVP panel (`into`), which shows under it as it
+## lands (`landed`).
+func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, mine: bool, landed: Callable) -> void:
 	var layer := Control.new()
 	layer.size = Vector2(1920, 1080)
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -935,6 +932,7 @@ func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, 
 	_burst(Vector2(960, 470), UI.rarity_color(rarity).lightened(0.4), 60, 760.0, 0.9, 200.0)
 	await get_tree().create_timer(1.25).timeout
 	if not is_instance_valid(layer):
+		landed.call()
 		return
 	# Down into the panel
 	Sfx.play("whoosh", 1.1, -6.0)
@@ -946,7 +944,8 @@ func _mvp_spotlight(card: Dictionary, rarity: int, line: String, into: Control, 
 	fly.tween_property(rays, "modulate:a", 0.0, 0.3)
 	fly.tween_property(head, "modulate:a", 0.0, 0.25)
 	fly.tween_property(name_l, "modulate:a", 0.0, 0.25)
-	fly.chain().tween_property(big, "modulate:a", 0.0, 0.15)
+	fly.chain().tween_callback(landed)   # (the panel's card shows under it the moment it lands...)
+	fly.chain().tween_property(big, "modulate:a", 0.0, 0.2)   # (...then the big one fades off it)
 	fly.chain().tween_callback(layer.queue_free)
 
 
