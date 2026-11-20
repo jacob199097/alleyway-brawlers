@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.182",
+        "notes": [
+            "A BLINDED card's dark band now sits higher, across the eyes in its picture."
+        ]
+    },
+    {
         "version": "0.9.181",
         "notes": [
             "New conditions for card effects: this card has been on the field for N of your turns, it attacked this turn, you've played N cards this turn, and this game's KOs, promotions, PLUNDERs and won coin flips. New cards can use them (to PROMOTE, or anything else).",

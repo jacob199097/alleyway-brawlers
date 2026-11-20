@@ -143,7 +143,7 @@ void fragment() {
 	}
 
 	if (blind > 0.001) {
-		float by = -hc.y + card.y * 0.31;   // (across the eyes of the art)
+		float by = -hc.y + card.y * 0.26;   // (across the eyes of the art: the upper part of the picture)
 		float bn = fbm(vec2(p.x * 0.05 - t * 0.35, p.y * 0.09 + t * 0.08) + 5.0);
 		float band = (1.0 - smoothstep(7.0 + bn * 9.0, 13.0 + bn * 12.0, abs(p.y - by))) * inside * min(blind, 1.0);
 		float sa = band * 0.92;
