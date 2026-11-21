@@ -15232,5 +15232,38 @@
   "subtype": "striver",
   "promotesTo": null,
   "forge": "forge2"
+ },
+ "card_arso_043": {
+  "id": "card_arso_043",
+  "name": "Ashen, Lord Of Cinder",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_043",
+  "code": "ARSO-043",
+  "flavourText": "Every fire in this city burns because I allow it. Remember who holds the flame.",
+  "effectText": "When deployed: Gain 1 Authority this turn.\nAfter your opponent has taken 800 BURN damage: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "authority",
+    "amount": 1
+   },
+   {
+    "when": "foe_burned",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 1500,
+  "defense": 1200,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_arso_044"
  }
 }
