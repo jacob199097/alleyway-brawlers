@@ -2504,7 +2504,14 @@ export class DuelState {
         return this.fxCan(side, slot, c, e, vs);
     }
 
+    /** An effect's "Only if" (if, n, if_clan) and its second condition (if2, n2, if2_clan): both must hold. */
     _fxCond(side, slot, e, def) {
+        if (!this._fxCondOne(side, slot, e, def)) return false;
+        if (String(e.if2 ?? '') === '') return true;
+        return this._fxCondOne(side, slot, { ...e, if: e.if2, n: e.n2 ?? 1, if_clan: e.if2_clan ?? '' }, def);
+    }
+
+    _fxCondOne(side, slot, e, def) {
         const n = toInt(e.n ?? 1);
         const s = this.sides[side];
         switch (String(e.if ?? '')) {
@@ -2619,14 +2626,16 @@ export class DuelState {
 
     /** then: a follow-up effect that happens only if this one did something ("If you do, ...").
      *  Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP. */
-    /** follow: a follow-up (then) of an effect that has already happened: no NEGATE question of its own. */
-    _doFx(side, slot, c, e, vs = {}, follow = false) {
+    /** follow: a follow-up (then) of an effect that has already happened: no NEGATE question of its own.
+     *  asked: its player has said yes to it (Ask first). */
+    _doFx(side, slot, c, e, vs = {}, follow = false, asked = false) {
         const w = this._luckWait;
         if (w && w.uid === c.uid && String(e.if_luck ?? '') !== '') {   // ("If tails, ..." waits for the bet it follows)
             const cb = w.ask.cb;
             w.ask.cb = (...answer) => { if (cb) cb(...answer); if (this.winner === '') this._doFx(side, this._slotOf(side, c, slot), c, e, vs); };
             return;
         }
+        if (!follow && !asked && e.ask && String(e.if_luck ?? '') === '') { this._askFirst(side, slot, c, e, vs); return; }
         if (!follow && String(e.if_luck ?? '') === '') {   // NEGATE: an enemy may stop it (asked first: it waits)
             const by = this._negator(side, c);
             if (by) { this._askNegate(side, slot, c, e, vs, by); return; }
@@ -2649,6 +2658,24 @@ export class DuelState {
             }
         }
         return null;
+    }
+
+    /** Ask first ("You may PROMOTE this card"): its player says whether it happens now (the CPU always does).
+     *  Not now: it doesn't happen this time (a once-per-turn or every-Nth-turn effect has had its turn). */
+    _askFirst(side, slot, c, e, vs) {
+        const what = String(e.label ?? '') !== '' ? `${String(e.label).replace(/\.$/, '')}?` : 'use its effect now?';
+        const w = { uid: c.uid, ask: null };   // ("If tails, ..." after it waits for the answer: _doFx)
+        w.ask = this._ask(side, 'may', `${c.name}: ${what}`, c,
+            [{ id: 'yes', label: 'YES' }, { id: 'no', label: 'NOT NOW' }], (choice) => {
+                if (this._luckWait === w) this._luckWait = null;
+                if (this.winner !== '') return;
+                const at = this._slotOf(side, c, slot);
+                if (choice === 'yes') { this._doFx(side, at, c, e, vs, false, true); return; }
+                this._luckLast = null;   // (it never happened: no "If heads" or "If tails" after it)
+                this._emit('effect', { side, card: clone(c), text: `${c.name}: not now`, slot: at });   // (not _effect: it did nothing)
+            });
+        this._luckWait = w;
+        this._heldAsks = toInt(this._heldAsks ?? 0) + 1;
     }
 
     /** NEGATE's question (the CPU negates): stop this effect, or let it happen and keep NEGATE for later. */

@@ -2904,7 +2904,20 @@ func _fx_useful(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dicti
 	return fx_can(side, slot, c, e, vs)
 
 
+## An effect's "Only if" (if, n, if_clan) and its second condition (if2, n2, if2_clan): both must hold.
 func _fx_cond(side: String, slot: int, e: Dictionary, def) -> bool:
+	if not _fx_cond_one(side, slot, e, def):
+		return false
+	if str(e.get("if2", "")) == "":
+		return true
+	var e2 := e.duplicate()
+	e2["if"] = e.if2
+	e2.n = e.get("n2", 1)
+	e2.if_clan = e.get("if2_clan", "")
+	return _fx_cond_one(side, slot, e2, def)
+
+
+func _fx_cond_one(side: String, slot: int, e: Dictionary, def) -> bool:
 	var n := int(e.get("n", 1))
 	var s: Dictionary = sides[side]
 	match str(e.get("if", "")):
@@ -3093,7 +3106,8 @@ func _run_echoes(side: String) -> void:
 ## then: a follow-up effect that happens only if this one did something ("If you do, ...").
 ## Effects that wait on a choice (a target, a card to take) run it after the answer, and not on SKIP.
 ## follow: a follow-up (then) of an effect that has already happened: no NEGATE question of its own.
-func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, follow := false) -> void:
+## asked: its player has said yes to it (Ask first).
+func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, follow := false, asked := false) -> void:
 	var w := _luck_wait
 	if not w.is_empty() and w.uid == c.get("uid") and str(e.get("if_luck", "")) != "":   # ("If tails, ..." waits for the bet it follows)
 		var ask: Dictionary = w.ask
@@ -3102,6 +3116,9 @@ func _do_fx(side: String, slot: int, c: Dictionary, e: Dictionary, vs := {}, fol
 			cb.call(answer)
 			if winner == "":
 				_do_fx(side, _slot_of(side, c, slot), c, e, vs)
+		return
+	if not follow and not asked and e.get("ask", false) and str(e.get("if_luck", "")) == "":
+		_ask_first(side, slot, c, e, vs)
 		return
 	if not follow and str(e.get("if_luck", "")) == "":   # NEGATE: an enemy may stop it (asked first: it waits)
 		var by := _negator(side, c)
@@ -3130,6 +3147,28 @@ func _negator(side: String, c: Dictionary) -> Dictionary:
 			if not _passive(foe, x.slot, x.card, "negate_fx", fits).is_empty():
 				return {"side": foe, "slot": x.slot, "card": x.card}
 	return {}
+
+
+## Ask first ("You may PROMOTE this card"): its player says whether it happens now (the CPU always does).
+## Not now: it doesn't happen this time (a once-per-turn or every-Nth-turn effect has had its turn). Same as _askFirst in DuelState.js.
+func _ask_first(side: String, slot: int, c: Dictionary, e: Dictionary, vs: Dictionary) -> void:
+	var label := str(e.get("label", ""))
+	var what := (label.trim_suffix(".") + "?") if label != "" else "use its effect now?"
+	var w := {"uid": c.get("uid")}   # ("If tails, ..." after it waits for the answer: _do_fx)
+	w.ask = _ask(side, "may", "%s: %s" % [c.name, what], c,
+		[{"id": "yes", "label": "YES"}, {"id": "no", "label": "NOT NOW"}], func(choice: String) -> void:
+			if is_same(_luck_wait, w):
+				_luck_wait = {}
+			if winner != "":
+				return
+			var at := _slot_of(side, c, slot)
+			if choice == "yes":
+				_do_fx(side, at, c, e, vs, false, true)
+				return
+			_luck_last = {}   # (it never happened: no "If heads" or "If tails" after it)
+			_emit("effect", {"side": side, "card": c.duplicate(true), "text": "%s: not now" % c.name, "slot": at}))   # (not _effect: it did nothing)
+	_luck_wait = w
+	_held_asks += 1
 
 
 ## NEGATE's question (the CPU negates): stop this effect, or let it happen and keep NEGATE for later.

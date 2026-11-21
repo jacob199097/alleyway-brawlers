@@ -234,6 +234,10 @@ const FX_SAMPLES := [
 	[{"when": "turn_end", "do": "heal", "amount": 300, "if": "self_attacked"}, {"when": "attack", "do": "damage", "amount": 200, "if": "kos_ge", "n": 1}],
 	[{"when": "turn_start", "do": "draw", "amount": 1, "if": "promoted_ge", "n": 1}, {"when": "deploy", "do": "burn", "target": "enemy", "amount": 200, "if": "luck_ge", "n": 1}],
 	[{"when": "turn_end", "do": "promote", "if": "field_turns_ge", "n": 1}, {"when": "combo", "do": "promote", "if": "foe_hand_le", "n": 5}],
+	# A second condition (if2) and Ask first (ask: "You may ...", the CPU says yes)
+	[{"when": "turn_start", "do": "draw", "amount": 1, "if": "field_turns_ge", "n": 1, "if2": "hand_le", "n2": 5}, {"when": "attack", "do": "damage", "amount": 200, "if": "enemies_ge", "n": 1, "if2": "morale_le", "n2": 9000}],
+	[{"when": "turn_end", "do": "promote", "ask": true, "label": "PROMOTE this card"}, {"when": "deploy", "do": "burn", "target": "enemy", "amount": 200, "ask": true}],
+	[{"when": "ko", "do": "heal", "amount": 300, "ask": true, "if": "foe_burning", "if2": "self_attacked"}, {"when": "turn_start", "do": "draw", "amount": 1, "ask": true, "times": 2}],
 	# "When it's KO'd / Downed": the character that beat it in the brawl ("attacker")
 	[{"when": "self_ko", "do": "ko", "target": "attacker"}, {"when": "self_downed", "do": "poison", "target": "attacker", "amount": 200}],
 	# "immune" that also ignores BRACE / TAUNT / SHROUD; "Only if an enemy is SUPPRESSED" (foe_st_<status>)

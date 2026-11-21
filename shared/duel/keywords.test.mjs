@@ -492,4 +492,27 @@ st.sides.opponent.kod = 2;
 assert.ok(st._fxCond('player', 1, { if: 'kos_ge', n: 2 }, null), "two enemy characters KO'd this game");
 function toTurns(s2) { return Number(s2.sides.player.turns ?? 0); }
 
+// A second condition: both must hold
+assert.ok(st._fxCond('player', 1, { if: 'kos_ge', n: 2, if2: 'self_attacked' }, null), 'both hold');
+assert.ok(!st._fxCond('player', 1, { if: 'kos_ge', n: 2, if2: 'kos_ge', n2: 3 }, null), 'the second has its own N');
+assert.ok(!st._fxCond('player', 1, { if: 'kos_ge', n: 3, if2: 'self_attacked' }, null), 'the first fails');
+
+// Ask first ("You may ..."): its player is asked; NOT NOW and it doesn't happen, YES and it does
+const askTurn = (answer) => {
+    const s2 = duel();
+    put(s2, 'player', 0, unit(s2, [{ when: 'turn_start', do: 'heal', amount: 500, ask: true, label: 'HEAL 500' }]));
+    s2.sides.player.morale = 3000;
+    s2.active = 'player';
+    s2._beginTurn();
+    const q = s2._asks.find(a => a.key === 'may');
+    assert.ok(q, 'it asks');
+    assert.match(q.prompt, /HEAL 500\?$/);
+    s2._asks.splice(s2._asks.indexOf(q), 1);
+    s2._runAnswer(() => q.cb(answer));
+    answerAll(s2);
+    return s2.sides.player.morale;
+};
+assert.equal(askTurn('yes'), 3500, 'YES: it happens');
+assert.equal(askTurn('no'), 3000, "NOT NOW: it doesn't");
+
 console.log('keywords: all passed');

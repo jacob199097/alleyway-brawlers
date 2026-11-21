@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.184",
+        "notes": [
+            "29 new cards: 16 ARSONISTS (Flicker, Ashen, Ashfang, Cinderclaw, Cinderborn, Ashwing, Sister Cinder, Wickwick, Crown of the Inferno) and 13 PIRATES (Captain Blackwake, Powderpaw Pete, Marina Tidewhisper, Gerald Riverfist, Blackbeard's Curse).",
+            "Cards can now have two conditions on one effect (\"If you have played 2 or more cards this turn and an enemy is BURNING, ...\").",
+            "\"You may\" effects: when one would happen, you are asked YES or NOT NOW (handy for a PROMOTE you want to save for later)."
+        ]
+    },
+    {
         "version": "0.9.183",
         "notes": [
             "After a match, the MVP card no longer vanishes for a moment as it drops into its panel: the panel's card is there under it as it lands."

@@ -14132,5 +14132,1105 @@
    "sparks": 0.7,
    "spark": "#bffff4"
   }
+ },
+ "card_arso_040": {
+  "id": "card_arso_040",
+  "name": "Flicker",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_040",
+  "code": "ARSO-040",
+  "flavourText": "Relax, it's just a little spark. What's the worst that could happen?",
+  "effectText": "When you play a Hustle: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "hustle_played",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 800,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_arso_041"
+ },
+ "card_arso_041": {
+  "id": "card_arso_041",
+  "name": "Flicker",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_041",
+  "code": "ARSO-041",
+  "flavourText": "Relax, it's just a little spark. What's the worst that could happen?",
+  "effectText": "After your opponent has taken 800 BURN damage: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "foe_burned",
+    "do": "promote"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 1900,
+  "defense": 1100,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_arso_042"
+ },
+ "card_arso_042": {
+  "id": "card_arso_042",
+  "name": "Flicker",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_042",
+  "code": "ARSO-042",
+  "flavourText": "Relax, it's just a little spark. What's the worst that could happen?",
+  "effectText": "When deployed: Give up to 2 enemy characters STOKE 200. ECHO.\nOnce per turn, when your opponent takes BURN damage: Search your deck for an ARSONISTS Hustle and add it to your hand.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "stoke",
+    "target": "enemy",
+    "amount": 200,
+    "count": 2
+   },
+   {
+    "when": "foe_burned",
+    "do": "search",
+    "clan": "arsonists",
+    "kind": "hustle",
+    "amount": 1,
+    "once": true,
+    "choose": true
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 2700,
+  "defense": 1900,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_arso_044": {
+  "id": "card_arso_044",
+  "name": "Ashen, Lord Of Cinder",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 6,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_044",
+  "code": "ARSO-044",
+  "flavourText": "Every fire in this city burns because I allow it. Remember who holds the flame.",
+  "effectText": "When deployed: Gain 2 Authority this turn.\nAfter this card Downs 3 characters: PROMOTE this card.\nWhen this card KOs a character: BLIND one enemy character.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "authority",
+    "amount": 2
+   },
+   {
+    "when": "down",
+    "do": "promote",
+    "times": 3
+   },
+   {
+    "when": "ko",
+    "do": "blind",
+    "target": "enemy"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 2900,
+  "defense": 2500,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_arso_045"
+ },
+ "card_arso_045": {
+  "id": "card_arso_045",
+  "name": "Ashen, Lord Of Cinder",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 9,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_045",
+  "code": "ARSO-045",
+  "flavourText": "Every fire in this city burns because I allow it. Remember who holds the flame.",
+  "effectText": "When deployed: Gain 3 Authority this turn.\nWhen this card KOs a character: BLIND up to 2 enemy characters.\nThis card is immune to BURN, STUN, BLIND, CONFUSE, STASIS and SUPPRESS.\nAt the end of your turn: Give the enemy character across from this card and the enemy characters next to it BURN 300.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "authority",
+    "amount": 3
+   },
+   {
+    "when": "ko",
+    "do": "blind",
+    "target": "enemy",
+    "count": 2
+   },
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "burn",
+     "stun",
+     "blind",
+     "confuse",
+     "stasis",
+     "suppress"
+    ]
+   },
+   {
+    "when": "turn_end",
+    "do": "burn",
+    "target": "opposite_wide",
+    "amount": 300
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 4000,
+  "defense": 3500,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_arso_046": {
+  "id": "card_arso_046",
+  "name": "Ashfang, the Threefold Terror",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_046",
+  "code": "ARSO-046",
+  "flavourText": "Three mouths to feed, three ways to kill. Which one wants a taste first?",
+  "effectText": "At the end of every 2nd turn of yours: PROMOTE this card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "times": 2
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 1100,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_arso_047"
+ },
+ "card_arso_047": {
+  "id": "card_arso_047",
+  "name": "Ashfang, the Threefold Terror",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_047",
+  "code": "ARSO-047",
+  "flavourText": "Three mouths to feed, three ways to kill. Which one wants a taste first?",
+  "effectText": "After this card Downs 3 characters: PROMOTE this card.\nOnce per turn, when this card KOs a character: This card may attack again this turn.",
+  "effects": [
+   {
+    "when": "down",
+    "do": "promote",
+    "times": 3
+   },
+   {
+    "when": "ko",
+    "do": "attack_again",
+    "once": true
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 2300,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_arso_048"
+ },
+ "card_arso_048": {
+  "id": "card_arso_048",
+  "name": "Ashfang, the Threefold Terror",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_048",
+  "code": "ARSO-048",
+  "flavourText": "Three mouths to feed, three ways to kill. Which one wants a taste first?",
+  "effectText": "Once per turn, when this card Downs a character: Give one enemy character STOKE 400.\nOnce per turn, when this card KOs a character: This card may attack again this turn.\nCOMBO: Switch up to 3 enemy characters to ATK position.",
+  "effects": [
+   {
+    "when": "down",
+    "do": "stoke",
+    "target": "enemy",
+    "amount": 400,
+    "once": true
+   },
+   {
+    "when": "ko",
+    "do": "attack_again",
+    "once": true
+   },
+   {
+    "when": "combo",
+    "do": "force_atk",
+    "target": "enemy",
+    "count": 3
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 3300,
+  "defense": 2900,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_arso_049": {
+  "id": "card_arso_049",
+  "name": "Cinderclaw",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_049",
+  "code": "ARSO-049",
+  "flavourText": "I smell fear... and something tells me you're about to burn.",
+  "effectText": "When this card attacks a leader: If your leader is Dormant, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "attack_leader",
+    "do": "promote",
+    "if": "leader_dormant"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 700,
+  "defense": 1000,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_arso_050"
+ },
+ "card_arso_050": {
+  "id": "card_arso_050",
+  "name": "Cinderclaw",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_050",
+  "code": "ARSO-050",
+  "flavourText": "I smell fear... and something tells me you're about to burn.",
+  "effectText": "When another of your characters is attacked: If an enemy character is BURNING, PROMOTE this card.\nOnce per turn, when an enemy character is KO'd: Give one enemy character BURN 300.",
+  "effects": [
+   {
+    "when": "ally_attacked",
+    "do": "promote",
+    "if": "foe_burning"
+   },
+   {
+    "when": "foe_ko",
+    "do": "burn",
+    "target": "enemy",
+    "amount": 300,
+    "once": true
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 1800,
+  "defense": 2200,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_arso_051"
+ },
+ "card_arso_051": {
+  "id": "card_arso_051",
+  "name": "Cinderclaw",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_051",
+  "code": "ARSO-051",
+  "flavourText": "I smell fear... and something tells me you're about to burn.",
+  "effectText": "When an enemy character is KO'd: Give one enemy character BURN 300.\nThis card has FLYING.\nCOMBO ×3: PROMOTE one of your Strivers.",
+  "effects": [
+   {
+    "when": "foe_ko",
+    "do": "burn",
+    "target": "enemy",
+    "amount": 300
+   },
+   {
+    "when": "passive",
+    "do": "flying"
+   },
+   {
+    "when": "combo",
+    "do": "promote_ally",
+    "target": "ally"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 2600,
+  "defense": 3400,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null
+ },
+ "card_arso_052": {
+  "id": "card_arso_052",
+  "name": "Cinderborn",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_052",
+  "code": "ARSO-052",
+  "flavourText": "I was buried beneath the ashes. Now I'll bury this whole city with me.",
+  "effectText": "This card gains +700 ATK and +100 DEF for each BURNING enemy character.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "buff",
+    "target": "self",
+    "per": "burning",
+    "atk": 700,
+    "def": 100
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 0,
+  "defense": 0,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null,
+  "varStats": true
+ },
+ "card_arso_053": {
+  "id": "card_arso_053",
+  "name": "Ashwing, the Infernal Phoenix",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_053",
+  "code": "ARSO-053",
+  "flavourText": "Kill me once, and I'll rise again. Kill me twice, and I'll take your whole world with me.",
+  "effectText": "Once per turn, when this card is Downed: It stands back up.\nWhen this card is KO'd: KO the character that KO'd it.",
+  "effects": [
+   {
+    "when": "self_downed",
+    "do": "stand",
+    "target": "self",
+    "once": true
+   },
+   {
+    "when": "self_ko",
+    "do": "ko",
+    "target": "attacker"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 500,
+  "defense": 100,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_arso_054": {
+  "id": "card_arso_054",
+  "name": "Sister Cinder, the Flamebound",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 3,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_054",
+  "code": "ARSO-054",
+  "flavourText": "The flames do not judge the wicked, child. They simply cleanse them.",
+  "effectText": "At the end of your turn: If an enemy character is BURNING, the Downed characters next to this card stand back up.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "stand",
+    "target": "neighbors",
+    "if": "foe_burning"
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 1000,
+  "defense": 1800,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_arso_055": {
+  "id": "card_arso_055",
+  "name": "Wickwick, the Waxborn",
+  "clan": "arsonists",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_055",
+  "code": "ARSO-055",
+  "flavourText": "Come closer, little flame. I've been dying to meet you.",
+  "effectText": "While an enemy character is BURNING, this card can NEGATE an enemy character's effect once a turn (it doesn't happen).\nOnce per turn, when this card is Downed: Switch the character that Downed it to DEF position.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "negate_fx",
+    "if": "foe_burning"
+   },
+   {
+    "when": "self_downed",
+    "do": "force_def",
+    "target": "attacker",
+    "once": true
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "attack": 2300,
+  "defense": 2000,
+  "level": 1,
+  "subtype": "brawler",
+  "promotesTo": null
+ },
+ "card_arso_056": {
+  "id": "card_arso_056",
+  "name": "Crown of the Inferno",
+  "clan": "arsonists",
+  "cardType": "hustle",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 5,
+  "clanTag": "arsonists",
+  "effectKey": "",
+  "art_url": "card_arso_056",
+  "code": "ARSO-056",
+  "flavourText": "Kneel before the flames, brothers! Tonight, we claim this city as our kingdom of ash!",
+  "effectText": "While an enemy character is BURNING, your ARSONISTS characters are immune to POISON, BURN, BLEED, CORRODE, STASIS and SUPPRESS.\nYour ARSONISTS cards cost 1 less Authority.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "immune",
+    "clan": "arsonists",
+    "if": "foe_burning",
+    "statuses": [
+     "poison",
+     "burn",
+     "bleed",
+     "corrode",
+     "stasis",
+     "suppress"
+    ]
+   },
+   {
+    "when": "passive",
+    "do": "cost_down",
+    "clan": "arsonists",
+    "amount": 1
+   }
+  ],
+  "clanName": "Arsonists",
+  "clanColor": "#f45815",
+  "subtype": "continuous"
+ },
+ "card_pira_054": {
+  "id": "card_pira_054",
+  "name": "Blackbeard's Curse",
+  "clan": "pirates",
+  "cardType": "hustle",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_054",
+  "code": "PIRA-054",
+  "flavourText": "One flip, mate. Heads, ye live the rest of your days with a curse. Tails, and the dead will eventually come to collect.",
+  "effectText": "Flip a coin. If heads, SILENCE one enemy character for as long as it stays on the field. If tails, give one enemy character CORRODE 500.",
+  "effects": [
+   {
+    "when": "deploy",
+    "do": "silence",
+    "target": "enemy",
+    "until": "forever",
+    "luck": "coin"
+   },
+   {
+    "when": "deploy",
+    "do": "corrode",
+    "target": "enemy",
+    "if_luck": "lost",
+    "amount": 500
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "forge": "forge2"
+ },
+ "card_pira_055": {
+  "id": "card_pira_055",
+  "name": "Captain Blackwake",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_055",
+  "code": "PIRA-055",
+  "flavourText": "The sea took me ship, me crew, and nearly me life. But she'll have to try harder than that to take me freedom!",
+  "effectText": "When you deploy another PIRATES character: If you have 4 or more cards in hand, PROMOTE this card.",
+  "effects": [
+   {
+    "when": "ally_deployed",
+    "do": "promote",
+    "if": "hand_ge",
+    "n": 4,
+    "when_clan": "pirates"
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 1100,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_pira_056",
+  "forge": "forge2"
+ },
+ "card_pira_056": {
+  "id": "card_pira_056",
+  "name": "Captain Blackwake",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_056",
+  "code": "PIRA-056",
+  "flavourText": "The sea took me ship, me crew, and nearly me life. But she'll have to try harder than that to take me freedom!",
+  "effectText": "ACTIVATE (once per turn): If your opponent has 3 or fewer cards in hand, PROMOTE this card.\nWhen this card attacks: RALLY 300.\nThis card can't be Downed as long as you control another character.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "promote",
+    "if": "foe_hand_le",
+    "n": 3
+   },
+   {
+    "when": "attack",
+    "do": "rally",
+    "amount": 300
+   },
+   {
+    "when": "passive",
+    "do": "no_down"
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 2200,
+  "defense": 1000,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_pira_057",
+  "forge": "forge2"
+ },
+ "card_pira_057": {
+  "id": "card_pira_057",
+  "name": "Captain Blackwake",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 4,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_057",
+  "code": "PIRA-057",
+  "flavourText": "The sea took me ship, me crew, and nearly me life. But she'll have to try harder than that to take me freedom!",
+  "effectText": "When this card attacks: RALLY 500.\nThis card can't be Downed as long as you control another character.\nACTIVATE (once per turn, discard 1 card): Give the enemy character across from this card and the enemy characters next to it BLEED 500.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "rally",
+    "amount": 500
+   },
+   {
+    "when": "passive",
+    "do": "no_down"
+   },
+   {
+    "when": "activate",
+    "do": "bleed",
+    "target": "opposite_wide",
+    "cost": "discard",
+    "amount": 500,
+    "cost_n": 1
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 3400,
+  "defense": 2000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_pira_058": {
+  "id": "card_pira_058",
+  "name": "Powderpaw Pete",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_058",
+  "code": "PIRA-058",
+  "flavourText": "Hehehe! What's more fun than a barrel o' gunpowder? TWO barrels o' gunpowder!",
+  "effectText": "ACTIVATE (once per turn, discard 1 card): PROMOTE this card.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "promote",
+    "cost": "discard",
+    "cost_n": 1
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 700,
+  "defense": 200,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_pira_059",
+  "forge": "forge2"
+ },
+ "card_pira_059": {
+  "id": "card_pira_059",
+  "name": "Powderpaw Pete",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_059",
+  "code": "PIRA-059",
+  "flavourText": "Hehehe! What's more fun than a barrel o' gunpowder? TWO barrels o' gunpowder!",
+  "effectText": "ACTIVATE (once per turn): If you've PLUNDERED 4 or more cards this game, PROMOTE this card.\nAt the end of your turn: Put a BOUNTY 2 on one enemy character.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "promote",
+    "if": "plundered_ge",
+    "n": 4
+   },
+   {
+    "when": "turn_end",
+    "do": "bounty",
+    "target": "enemy",
+    "amount": 2
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 1750,
+  "defense": 800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_pira_060",
+  "forge": "forge2"
+ },
+ "card_pira_060": {
+  "id": "card_pira_060",
+  "name": "Powderpaw Pete",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 2,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_060",
+  "code": "PIRA-060",
+  "flavourText": "Hehehe! What's more fun than a barrel o' gunpowder? TWO barrels o' gunpowder!",
+  "effectText": "At the end of your turn: Put a BOUNTY 2 on up to 2 enemy characters.\nOnce per turn, when this card attacks: Destroy one of your opponent's Hustle or Ambush cards, face-up or face-down.\nOnce per turn, when you play a Hustle: PLUNDER a random card from your opponent's hand.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "bounty",
+    "target": "enemy",
+    "amount": 2,
+    "count": 2
+   },
+   {
+    "when": "attack",
+    "do": "wreck",
+    "amount": 1,
+    "once": true
+   },
+   {
+    "when": "hustle_played",
+    "do": "plunder",
+    "from": "hand",
+    "amount": 1,
+    "once": true
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 2700,
+  "defense": 1500,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_pira_061": {
+  "id": "card_pira_061",
+  "name": "Marina Tidewhisper",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 1,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_061",
+  "code": "PIRA-061",
+  "flavourText": "They say the sea keeps its greatest treasures hidden. Lucky for me, I've never been one to leave secrets buried",
+  "effectText": "At the start of your turn: If this card is next to another PIRATES character, PROMOTE this card.\nAt the end of your turn: Add the first PIRATES card from your deck to your hand.",
+  "effects": [
+   {
+    "when": "turn_start",
+    "do": "promote",
+    "if": "adjacent",
+    "if_clan": "pirates"
+   },
+   {
+    "when": "turn_end",
+    "do": "search",
+    "clan": "pirates",
+    "amount": 1
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 600,
+  "defense": 100,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_pira_062",
+  "forge": "forge2"
+ },
+ "card_pira_062": {
+  "id": "card_pira_062",
+  "name": "Marina Tidewhisper",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 4,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_062",
+  "code": "PIRA-062",
+  "flavourText": "They say the sea keeps its greatest treasures hidden. Lucky for me, I've never been one to leave secrets buried",
+  "effectText": "At the end of your turn: If you've played 2 or more cards this turn, PROMOTE this card.\nAt the end of your turn: Search your deck for a PIRATES character and add it to your hand. If you do, draw 1 card.",
+  "effects": [
+   {
+    "when": "turn_end",
+    "do": "promote",
+    "if": "played_ge",
+    "n": 2
+   },
+   {
+    "when": "turn_end",
+    "do": "search",
+    "clan": "pirates",
+    "kind": "gang_member",
+    "amount": 1,
+    "choose": true
+   },
+   {
+    "when": "turn_end",
+    "do": "draw",
+    "amount": 1,
+    "if_done": true
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 1600,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_pira_063",
+  "forge": "forge2"
+ },
+ "card_pira_063": {
+  "id": "card_pira_063",
+  "name": "Marina Tidewhisper",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 7,
+  "tributeCost": 0,
+  "rarity": 3,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_063",
+  "code": "PIRA-063",
+  "flavourText": "They say the sea keeps its greatest treasures hidden. Lucky for me, I've never been one to leave secrets buried",
+  "effectText": "While this card is next to another character, it can NEGATE an enemy character's effect once a turn.\nAt the end of your turn: Search your deck for a PIRATES card and add it to your hand. If you do, draw 1 card.\nOnce per turn, when this card is Downed: The characters next to it gain SHIELD.",
+  "effects": [
+   {
+    "when": "passive",
+    "do": "negate_fx",
+    "if": "adjacent",
+    "if_clan": ""
+   },
+   {
+    "when": "turn_end",
+    "do": "search",
+    "clan": "pirates",
+    "amount": 1,
+    "choose": true
+   },
+   {
+    "when": "turn_end",
+    "do": "draw",
+    "amount": 1,
+    "if_done": true
+   },
+   {
+    "when": "self_downed",
+    "do": "shield",
+    "target": "neighbors",
+    "once": true
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 2300,
+  "defense": 3200,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null,
+  "forge": "forge2"
+ },
+ "card_pira_064": {
+  "id": "card_pira_064",
+  "name": "Gerald Riverfist",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 2,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_064",
+  "code": "PIRA-064",
+  "flavourText": "Give me a pile of scrap, a barrel of gunpowder, and five minutes. You'll be amazed.",
+  "effectText": "At the end of your opponent's turn: If this card has been on the field for 2 or more of your turns, PROMOTE this card.\nWhen deployed: One of your other characters gains +500 ATK until the end of your turn.",
+  "effects": [
+   {
+    "when": "foe_turn_end",
+    "do": "promote",
+    "if": "field_turns_ge",
+    "n": 2
+   },
+   {
+    "when": "deploy",
+    "do": "buff",
+    "target": "ally",
+    "until": "turn",
+    "atk": 500
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 1100,
+  "defense": 500,
+  "level": 1,
+  "subtype": "striver",
+  "promotesTo": "card_pira_065",
+  "forge": "forge2"
+ },
+ "card_pira_065": {
+  "id": "card_pira_065",
+  "name": "Gerald Riverfist",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 5,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_065",
+  "code": "PIRA-065",
+  "flavourText": "Give me a pile of scrap, a barrel of gunpowder, and five minutes. You'll be amazed.",
+  "effectText": "When this card attacks: If you've PLUNDERED 4 or more cards this game, PROMOTE this card.\nACTIVATE (once per turn): One of your other characters gains +500 ATK until the end of your opponent's next turn.\nThis card is immune to POISON, BURN, BLEED and SILENCE.",
+  "effects": [
+   {
+    "when": "attack",
+    "do": "promote",
+    "if": "plundered_ge",
+    "n": 4
+   },
+   {
+    "when": "activate",
+    "do": "buff",
+    "target": "ally",
+    "until": "next_turn",
+    "atk": 500
+   },
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "burn",
+     "bleed",
+     "silence"
+    ]
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 2000,
+  "defense": 1800,
+  "level": 2,
+  "subtype": "striver",
+  "promotesTo": "card_pira_066",
+  "forge": "forge2"
+ },
+ "card_pira_066": {
+  "id": "card_pira_066",
+  "name": "Gerald Riverfist",
+  "clan": "pirates",
+  "cardType": "gang_member",
+  "authority": 8,
+  "tributeCost": 0,
+  "rarity": 1,
+  "clanTag": "pirates",
+  "effectKey": "",
+  "art_url": "card_pira_066",
+  "code": "PIRA-066",
+  "flavourText": "Give me a pile of scrap, a barrel of gunpowder, and five minutes. You'll be amazed.",
+  "effectText": "ACTIVATE (once per turn): One of your other characters gains +500 ATK permanently.\nThis card is immune to POISON, BURN, BLEED, STUN, CONFUSE, SILENCE and CHARM.\nOnce per turn, when this card is attacked: STUN the enemy character across from it.",
+  "effects": [
+   {
+    "when": "activate",
+    "do": "buff",
+    "target": "ally",
+    "until": "forever",
+    "atk": 500
+   },
+   {
+    "when": "passive",
+    "do": "immune",
+    "statuses": [
+     "poison",
+     "burn",
+     "bleed",
+     "stun",
+     "confuse",
+     "silence",
+     "charm"
+    ]
+   },
+   {
+    "when": "defend",
+    "do": "stun",
+    "target": "opposite",
+    "once": true
+   }
+  ],
+  "clanName": "Pirates",
+  "clanColor": "#2ec4b6",
+  "attack": 3000,
+  "defense": 3000,
+  "level": 3,
+  "subtype": "striver",
+  "promotesTo": null,
+  "forge": "forge2"
  }
 }
