@@ -40,6 +40,8 @@
 - Ranked seasons: `backend/economy/seasons.js` (numbers in `season_settings.js`, each season's prize card (Kingpin and Legend) in
   `shared/seasons.js`), `godot/scripts/ui/seasons.gd`. Rewards go by the highest rank reached, claimed in the game; a new
   season drops every rank two. Season 0 runs until launch. End one with `node backend/scripts/season.mjs end --apply`.
+  Each season's highest rank (Street Tough and up) gives a title and a picture border (`seasons.honours`, worn as "season:N" in
+  `players.title` / `players.border`; `UI.season_border`, `season_border.gdshader`).
 - Arena effects: an arena's `bonus` in `godot/data/arenas.json`, for both sides, on every arena but the Back Alley and Rooftop
   (effect kinds stronger, ATK/DEF, direct attacks, Authority / a card / Morale each turn; `_arenaBoost` in both engines);
   `backend/utils/arenas.js` puts it in a match's rules (`arena_bonus`) in every mode but Ranked. A new arena picture also needs
@@ -51,7 +53,8 @@
   server plans the fronts into the rules (`backend/utils/weather.js` → `rules.weather`), each with its effect from
   `godot/data/weather.json` (arena-effect kinds; none in Ranked or challenges), applied by both engines (`_weather`);
   `duel.gd WEATHER` draws them. Big moments leave marks on the board for a few turns (`duel.gd _scar`); card faces
-  sit behind their frame's window (card.gdshader `parallax`, `UI.card_material(..., face)`).
+  sit behind their frame's window (card.gdshader `parallax`, `UI.card_material(..., face)`). The 1v1 board has a slight table
+  perspective (`duel.gd _depth`: the far rows smaller and closer together; cards size to their home slot, `CardView.depth_at`).
 - UI conventions: panels open/close with `UI.pop_open` / `UI.pop_close`; text sizes snap to `UI.TYPE_SCALE` (two faces:
   Barlow Condensed display, Barlow body, `UI.font_of`); phone haptics via `Game.buzz` (Android, vibrate permission since 0.9.172).
 - Profile showcase (3 cards a player picks, on their profile and under their leader in the VS screen): `backend/economy/showcase.js`
@@ -59,7 +62,8 @@
 - Audio: adaptive music `Game.sound.heat` / `layer` (duel.gd `_heat_music`, loops `music_layer_*`); big hits layer
   `thump` + `debris` (duel.gd `_hit_layers`). No voices or announcer (tried in 0.9.173, removed on request: don't add them back unasked).
 - The turf map (weekly clan control of districts = the arenas) is `backend/economy/territory.js` + `screens/territory.gd`;
-  veteran cards (card XP per card → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
+  veteran cards (three mastery quests per card, `godot/data/veteran_quests.json`, counted by the server from match events
+  → a bronze / chrome / gold frame, card.gdshader) are `backend/economy/veterans.js`.
 - The auction house (players sell cards for Karat): `backend/economy/auction.js` + `screens/auction_house.gd`, every number
   (price floors and ceilings, fees, level / account-age limits) in `backend/economy/auction_settings.js`. Sales that look like one
   person trading with their own accounts get flagged: `node backend/scripts/auction_report.mjs` on the server.
