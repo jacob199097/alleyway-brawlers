@@ -32,6 +32,7 @@ var _hero: TextureRect          # the side panel's big card (tilts toward the mo
 var _hero_mat: ShaderMaterial
 var _hero_tilt := Vector2.ZERO
 var _detail_id := "-"           # the card the side panel shows ("" = the collection)
+var _show_anim := false         # the big card (and its zoom) shows a card's animated version: off at first, kept while browsing
 var _detail_panel: Control
 var _query := ""                # the search box's words (CardDB.search_hit)
 var _search_timer: SceneTreeTimer
@@ -248,10 +249,10 @@ func _owns_animated(c: Dictionary) -> bool:
 	return Game.animated.has(str(c.get("art_url", c.get("id", "")))) and not c.get("token", false)
 
 
-## The zoom here always plays a card's animation, as the big card beside the grid does (yours or not: a preview).
+## The zoom here shows a card still or animated, as the big card beside the grid does (yours or not: a preview).
 func _zoom(c: Dictionary) -> void:
 	var zc := c.duplicate()
-	zc.anim = true
+	zc.anim = _show_anim
 	UI.card_zoom(self, zc)
 
 
@@ -319,6 +320,18 @@ static func _rarest_first(a: Dictionary, b: Dictionary) -> bool:
 	return str(a.get("name", "")) < str(b.get("name", ""))
 
 
+## The big card's still / animated switch: the card changes in place, and the choice stays for the next card.
+func _flip_anim(b: Button, c: Dictionary) -> void:
+	_show_anim = not _show_anim
+	_anim_label(b)
+	if _hero_mat:
+		UI.rarity_fx(_hero_mat, int(c.get("rarity", 1)), randf(), c if _show_anim else {})
+
+
+func _anim_label(b: Button) -> void:
+	b.text = "■  SHOW STILL" if _show_anim else "▶  SHOW ANIMATED"
+
+
 func _show_detail(c: Dictionary) -> void:
 	var id := str(c.get("id", ""))
 	if id == _detail_id:
@@ -341,7 +354,7 @@ func _show_detail(c: Dictionary) -> void:
 	_hero = UI.texture_rect(UI.card_art(c), Vector2(330, 467))
 	_hero.pivot_offset = _hero.size / 2
 	if _hero.texture:
-		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)), c, true)
+		_hero_mat = UI.card_material(_hero.size, int(c.get("rarity", 1)), c if _show_anim else {}, true)
 		_hero.material = _hero_mat
 	holder.add_child(_hero)
 	var vet := Game.veteran_tier(id)
@@ -362,13 +375,21 @@ func _show_detail(c: Dictionary) -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	below.add_child(info)
 	info.add_child(UI.label(str(c.get("name", "?")), 34, Color.WHITE, true))
-	if CardDB.get_card(id).get("artFx") is Dictionary:   # (the card above moves: a preview, unless it's theirs)
+	if CardDB.get_card(id).get("artFx") is Dictionary:   # (it has an animated version: the card above shows it at a press)
 		var mine: bool = Game.animated.has(id)
-		var cap := UI.label("✦ ANIMATED  ·  YOURS" if mine else "✦ ANIMATED VERSION  ·  PREVIEW", 18, UI.GOLD if mine else UI.PURPLE, true)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		var cap := UI.label("✦ ANIMATED  ·  YOURS" if mine else "✦ ANIMATED VERSION", 18, UI.GOLD if mine else UI.PURPLE, true)
+		cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		cap.tooltip_text = "Every copy of this card moves, in your collection and in your matches." if mine \
 			else "Craft it below for Dust, or buy it in the Shop (ANIMATED) for Contraband: every copy of this card moves, in your collection and in your matches."
 		cap.mouse_filter = Control.MOUSE_FILTER_PASS
-		info.add_child(cap)
+		row.add_child(cap)
+		var flip := UI.button("", func(): pass, Vector2(190, 40), UI.GOLD if mine else UI.PURPLE)
+		flip.pressed.connect(_flip_anim.bind(flip, c))
+		_anim_label(flip)
+		row.add_child(flip)
+		info.add_child(row)
 	var rarity := int(c.get("rarity", 1))
 	var kind := str(UI.TYPE_NAMES.get(c.get("cardType", ""), "CARD"))
 	var sub = c.get("subtype")

@@ -1,5 +1,13 @@
 [
     {
+        "version": "0.9.186",
+        "notes": [
+            "Animated cards, remade: every card's animation now fits its own art. Rain falls on rainy streets, flames flicker, hellfire burns in its own purple, gunfire flashes, smoke rolls, ghosts drift, the sea ripples, stars twinkle and screens glitch, with embers, ash, motes or bubbles over the top. The picture itself no longer warps, so it always looks like the original art.",
+            "Card Library: the big card shows a card still at first. Press SHOW ANIMATED to see its animated version (and SHOW STILL to go back); your choice stays as you look through other cards.",
+            "In a match, the card panel's picture is now the same size for every card you hover. Long card text scrolls under it."
+        ]
+    },
+    {
         "version": "0.9.185",
         "notes": [
             "Card mastery quests: every card has three quests (zoom in on a card to see them), done in order, and each one earns its next veteran frame: bronze, chrome, gold. A Striver PROMOTEs, a Heavy hits hard directly, a Hustle gets used. Frames you already have are kept.",

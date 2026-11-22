@@ -8923,7 +8923,7 @@ func _action_tag(pos: Vector2, word: String, color: Color, title := "") -> void:
 
 func _build_detail() -> void:
 	var p: Panel = $HUD/UI/Detail
-	# A phone: the card's text bigger, under a smaller picture, and on a wide screen the panel (and
+	# A phone: the card's text bigger, under a smaller picture (one size for every card), and on a wide screen the panel (and
 	# the player's plate under it) reach into the room at the side (scripts/widescreen.gd)
 	var phone := Game.mobile()
 	var side := minf(Game.wide.margin.x, 240.0)
@@ -8992,28 +8992,9 @@ func _build_detail() -> void:
 	_show_detail({})
 
 
-const DETAIL_ART_MIN := 300.0   # the card panel's picture never gets smaller than this (the zoom shows it whole)
-
-## The card panel laid out for the text it has: a long one (or a bigger Text Size) takes its room from
-## the picture, and only scrolls once the picture is as small as it goes.
+## The card panel's picture is the same size for every card: a long text scrolls under it, from its top.
 func _fit_detail() -> void:
-	var p: Panel = $HUD/UI/Detail
-	var text: RichTextLabel = _ui.detail_text
-	var full := 420.0 if Game.mobile() else 482.0
-	var room := p.size.y - (full + 24.0) - 104.0 - 14.0   # (the text's height under a full-size picture)
-	var art_h := clampf(full - maxf(float(text.get_content_height()) + 6.0 - room, 0.0), DETAIL_ART_MIN, full)
-	var art: TextureRect = _ui.detail_art
-	if is_equal_approx(art.size.y, art_h):
-		return
-	art.size = Vector2(art_h * 340.0 / 482.0, art_h)
-	art.position = Vector2((p.size.x - art.size.x) / 2, 18)
-	(art.material as ShaderMaterial).set_shader_parameter("quad_size", art.size)
-	var y := art_h + 24.0
-	_ui.detail_title.position.y = y
-	_ui.detail_kind.position.y = y + 40
-	_ui.detail_stats.position.y = y + 66
-	text.position.y = y + 104
-	text.size.y = p.size.y - y - 104 - 14
+	_ui.detail_text.scroll_to_line(0)
 
 
 ## The card panel's type line ("CHARACTER · NEBULA · AUTHORITY 3"): bigger on a phone.

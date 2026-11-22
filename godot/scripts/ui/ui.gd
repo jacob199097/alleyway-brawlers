@@ -560,11 +560,14 @@ static func rarity_fx(m: ShaderMaterial, rarity: int, seed := 0.0, card := {}) -
 	art_anim_fx(m, card if motion else {})
 
 
-const ART_ANIM_KINDS := {"water": 1.0, "heat": 2.0, "sway": 3.0, "drift": 4.0}
+const ART_ANIM_KINDS := {"water": 1.0, "heat": 2.0, "sway": 3.0, "drift": 4.0, "fire": 5.0, "neon": 6.0, "energy": 7.0,
+	"storm": 8.0, "fog": 9.0, "stars": 10.0, "wisps": 11.0, "glitch": 12.0}
+const ART_ANIM_PARTS := {"embers": 1.0, "ash": 2.0, "snow": 3.0, "rain": 4.0, "bubbles": 5.0, "motes": 6.0}
 const ART_ANIM_MASKS := {"all": 0.0, "glow": 1.0, "colour": 2.0}
 
 
-## A card's own animated art (card.artFx from the Forge: {kind, amp, speed, mask, key, tol, sparks, spark}):
+## A card's own animated art (card.artFx from the Forge: {kind, amp, speed, mask, key, tol, sparks, spark, tint,
+## parts, partsAmt, partsColor}):
 ## the shader's art_anim uniforms. A card dict with no artFx (a collection row, a deck entry) is looked up
 ## in CardDB by its id. {} turns it off.
 static func art_anim_fx(m: ShaderMaterial, card: Dictionary) -> void:
@@ -589,6 +592,11 @@ static func art_anim_fx(m: ShaderMaterial, card: Dictionary) -> void:
 	m.set_shader_parameter("art_tol", clampf(float(fx.get("tol", 0.25)), 0.02, 1.0))
 	m.set_shader_parameter("art_sparks", clampf(float(fx.get("sparks", 0.0)), 0.0, 1.0))
 	m.set_shader_parameter("art_spark", Color.html(str(fx.get("spark", "#fff2cc"))) if Color.html_is_valid(str(fx.get("spark", ""))) else Color(1, 0.95, 0.8))
+	m.set_shader_parameter("art_tint", Color.html(str(fx.get("tint", ""))) if Color.html_is_valid(str(fx.get("tint", ""))) else Color(1, 0.8, 0.5))
+	var parts: float = ART_ANIM_PARTS.get(str(fx.get("parts", "")), 0.0)
+	m.set_shader_parameter("art_parts", parts)
+	m.set_shader_parameter("art_parts_amt", clampf(float(fx.get("partsAmt", 0.5)), 0.0, 1.0) * (0.6 if Game.battery_saver() else 1.0) if parts > 0.0 else 0.0)
+	m.set_shader_parameter("art_parts_col", Color.html(str(fx.get("partsColor", ""))) if Color.html_is_valid(str(fx.get("partsColor", ""))) else Color(1, 0.7, 0.35))
 
 
 static func texture_rect(t: Texture2D, size: Vector2, cover := false) -> TextureRect:

@@ -26,7 +26,9 @@ uniform float art_fx = 0.0;
 uniform vec4 art_rect = vec4(-0.455, -0.374, 0.455, 0.07);
 // art_anim: the card's own animated art, chosen per card in the Forge (card.artFx, UI.rarity_fx): the picture
 // moves inside art_rect. 1 water (rippling), 2 heat (shimmer), 3 sway (cloth, leaves, smoke), 4 drift (fog,
-// stars, a slow breath through the scene). art_amp: how far it moves; art_speed: how fast. What moves:
+// stars, a slow breath through the scene); and kinds that light the art rather than move it: 5 fire (flames
+// flicker), 6 neon (lights hum and stutter), 7 energy (bands run through glowing parts), 8 storm (lightning),
+// 9 fog (smoke rolls across), 10 stars (the dark sky twinkles), 11 wisps (spirit ribbons rise), 12 glitch. art_amp: how far it moves; art_speed: how fast. What moves:
 // art_mask 0 all of it, 1 its glowing parts (glowness), 2 pixels near art_key (within art_tol).
 // art_sparks: glints twinkling over the moving parts (0 none .. 1 many), in art_spark's colour.
 uniform float art_anim = 0.0;
@@ -37,6 +39,11 @@ uniform vec4 art_key : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform float art_tol = 0.25;
 uniform float art_sparks = 0.0;
 uniform vec4 art_spark : source_color = vec4(1.0, 0.95, 0.8, 1.0);
+uniform vec4 art_tint : source_color = vec4(1.0, 0.8, 0.5, 1.0);   // the light the effect adds: flames, neon, bands, lightning, fog, stars, wisps
+// art_parts: particles over the picture (1 embers rising, 2 ash, 3 snow, 4 rain, 5 bubbles, 6 motes), art_parts_amt 0..1 how many
+uniform float art_parts = 0.0;
+uniform float art_parts_amt = 0.0;
+uniform vec4 art_parts_col : source_color = vec4(1.0, 0.7, 0.35, 1.0);
 uniform float galaxy = 0.0;
 uniform float galaxy_angle = 0.0;     // how far the swirl has turned (radians; CardView turns it)
 uniform float galaxy_glow = 0.0;      // 0..1: brighter swirl and crest (hovered)
@@ -114,6 +121,11 @@ float vnoise(vec2 p) {
 	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
+// How much a colour looks like flame: bright, warm (red over blue), not yet white
+float fireness(vec3 c) {
+	return smoothstep(0.45, 0.8, c.r) * smoothstep(0.12, 0.4, c.r - c.b) * (1.0 - smoothstep(0.92, 1.0, min(c.g, c.b)));
+}
+
 // How much a colour looks like a light source: bright and saturated (neon, glowing eyes), or near white
 float glowness(vec3 c) {
 	float mx = max(c.r, max(c.g, c.b));
@@ -174,7 +186,7 @@ void fragment() {
 	}
 	float inside = step(0.0, lam) * step(max(abs(uv.x), abs(uv.y)), 0.5);
 	vec4 col = texture(TEXTURE, uv + 0.5);
-	if (art_fx > 0.0) {
+	if (art_fx > 0.0 && art_anim < 0.5) {   // (a card with its own animation, art_anim, shows that instead)
 		float in_art = smoothstep(art_rect.x, art_rect.x + 0.012, uv.x) * (1.0 - smoothstep(art_rect.z - 0.012, art_rect.z, uv.x))
 				* smoothstep(art_rect.y, art_rect.y + 0.01, uv.y) * (1.0 - smoothstep(art_rect.w - 0.01, art_rect.w, uv.y));
 		if (in_art > 0.0) {
@@ -231,34 +243,96 @@ void fragment() {
 			float t = (TIME + shine_seed * 20.0) * art_speed;
 			vec2 p = vec2(uv.x, uv.y * aspect);   // card widths, centred
 			int kind = int(art_anim + 0.5);
-			vec2 off = vec2(0.0);
-			if (kind == 1) {   // water: two drifting noise fields, like light through ripples
-				off = (vec2(vnoise(p * 12.0 + vec2(t * 0.4, t * 0.12)), vnoise(p * 12.0 + vec2(3.7, -t * 0.35))) - 0.5) * 0.026;
-			} else if (kind == 2) {   // heat: a fine horizontal shimmer rising through the picture
-				float h = vnoise(p * 9.0 + vec2(0.0, -t * 0.9));
-				off = vec2(sin(p.y * 70.0 + t * 3.0 + h * 6.0) * (0.3 + 0.7 * h) * 0.006, h * 0.002);
-			} else if (kind == 3) {   // sway: a slow side-to-side wave, like wind through cloth or leaves
-				float g = 0.5 + 0.5 * vnoise(p * 4.0 + vec2(t * 0.2, 0.0));
-				off = vec2(sin(t * 1.2 + p.y * 6.0) * g * 0.009, cos(t * 0.9 + p.x * 5.0) * g * 0.003);
-			} else {   // drift: the scene breathes, as if fog or starlight moved through it
-				off = (vec2(vnoise(p * 4.0 + vec2(t * 0.25, 0.0)), vnoise(p * 4.0 + vec2(5.1, t * 0.2))) - 0.5) * 0.024;
-			}
-			off *= art_amp * in_art;
+			// What moves: the Forge's mask (all / glowing parts / near a colour); the light-only kinds have their own
+			// (fire: the flames' colours; neon and energy: the glowing parts) unless keyed to a colour
 			float m = 1.0;
 			if (art_mask > 1.5) m = 1.0 - smoothstep(art_tol * 0.5, art_tol, distance(col.rgb, art_key.rgb));
-			else if (art_mask > 0.5) m = glowness(col.rgb);
+			else if (art_mask > 0.5 || kind == 6 || kind == 7) m = glowness(col.rgb);
+			else if (kind == 5) m = fireness(col.rgb);
+			// The picture itself only ever moves a little (a warp much past this tears it apart)
+			vec2 off = vec2(0.0);
+			if (kind == 1) {   // water: two drifting noise fields, like light through ripples
+				off = (vec2(vnoise(p * 12.0 + vec2(t * 0.4, t * 0.12)), vnoise(p * 12.0 + vec2(3.7, -t * 0.35))) - 0.5) * 0.012;
+			} else if (kind == 2) {   // heat: a fine horizontal shimmer rising through the picture
+				float h = vnoise(p * 9.0 + vec2(0.0, -t * 0.9));
+				off = vec2(sin(p.y * 70.0 + t * 3.0 + h * 6.0) * (0.3 + 0.7 * h) * 0.0035, h * 0.0015);
+			} else if (kind == 3) {   // sway: a slow side-to-side wave, like wind through cloth or leaves
+				float g = 0.5 + 0.5 * vnoise(p * 4.0 + vec2(t * 0.2, 0.0));
+				off = vec2(sin(t * 1.2 + p.y * 6.0) * g * 0.005, cos(t * 0.9 + p.x * 5.0) * g * 0.0018);
+			} else if (kind == 4) {   // drift: the scene breathes, as if fog or starlight moved through it
+				off = (vec2(vnoise(p * 4.0 + vec2(t * 0.25, 0.0)), vnoise(p * 4.0 + vec2(5.1, t * 0.2))) - 0.5) * 0.008;
+			} else if (kind == 5) {   // fire: the flames lick upward a touch
+				off = vec2((vnoise(p * vec2(14.0, 6.0) + vec2(0.0, t * 1.6)) - 0.5) * 0.002, -vnoise(p * vec2(10.0, 5.0) + vec2(2.0, t * 2.2)) * 0.003);
+			} else if (kind == 9) {   // fog: the scene sways with the smoke, barely
+				off = (vec2(vnoise(p * 3.0 + vec2(t * 0.12, 0.0)), vnoise(p * 3.0 + vec2(4.2, t * 0.1))) - 0.5) * 0.004;
+			}
+			off *= min(art_amp, 2.0) * in_art;
 			// Sample inside the art window only: the frame never bleeds into the moving picture
 			vec2 suv = clamp(uv + off * m, art_rect.xy + 0.002, art_rect.zw - 0.002);
-			col = mix(col, texture(TEXTURE, suv + 0.5), in_art);
-			// Light that moves with it, so the motion reads even at a glance: caustics dancing on water,
-			// a slow swell of light drifting through fog and starlight
+			if (kind == 12) {   // glitch: now and then the rows tear sideways and the colours split, like a bad signal
+				float gk = floor(t * 0.35);
+				float burst = step(0.55, hash21(vec2(gk, 3.0))) * step(fract(t * 0.35), 0.06);
+				float row = floor(uv.y * 46.0);
+				suv.x += (hash21(vec2(row, floor(t * 24.0))) - 0.5) * 0.03 * burst * min(art_amp, 2.0);
+				vec2 split = vec2(0.004 * burst + 0.0008, 0.0) * min(art_amp, 2.0);
+				vec4 mid = texture(TEXTURE, clamp(suv, art_rect.xy + 0.002, art_rect.zw - 0.002) + 0.5);
+				float rr = texture(TEXTURE, clamp(suv + split, art_rect.xy + 0.002, art_rect.zw - 0.002) + 0.5).r;
+				float bb = texture(TEXTURE, clamp(suv - split, art_rect.xy + 0.002, art_rect.zw - 0.002) + 0.5).b;
+				col = mix(col, vec4(rr, mid.g, bb, mid.a), in_art);
+				col.rgb *= 1.0 - 0.05 * in_art * (0.5 + 0.5 * sin(uv.y * 1400.0 + t * 8.0));   // scanlines
+				col.rgb += art_tint.rgb * 0.18 * in_art * smoothstep(0.985, 1.0, sin(uv.y * 9.0 - t * 2.5));   // a band rolling down
+			} else {
+				col = mix(col, texture(TEXTURE, suv + 0.5), in_art);
+			}
 			float la = min(art_amp, 2.0) * m * in_art;
-			if (kind == 1) {
+			float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+			if (kind == 1) {   // caustics dancing on water
 				float ca = 1.0 - abs(vnoise(p * 18.0 + vec2(t * 0.5, t * 0.2)) - vnoise(p * 18.0 + vec2(-t * 0.4, 2.3 + t * 0.3)));
 				col.rgb += col.rgb * pow(ca, 7.0) * 0.55 * la;
-			} else if (kind == 4) {
+			} else if (kind == 4) {   // a slow swell of light drifting through fog and starlight
 				float sw = vnoise(p * 2.2 + vec2(t * 0.18, -t * 0.07));
 				col.rgb *= 1.0 + (sw - 0.45) * 0.4 * la;
+			} else if (kind == 5) {   // fire: the flames flicker, brightest where the noise rising through them peaks
+				float n = vnoise(p * vec2(7.0, 3.5) + vec2(0.0, t * 2.4)) * 0.65 + vnoise(p * vec2(15.0, 8.0) + vec2(1.7, t * 3.6)) * 0.35;
+				col.rgb *= 1.0 + (n - 0.45) * 0.55 * la;
+				col.rgb += mix(vec3(1.0, 0.55, 0.15), art_tint.rgb, 0.5) * pow(n, 3.0) * 0.35 * la;
+			} else if (kind == 6) {   // neon: the lights hum, and now and then one stutters
+				vec2 cell = floor(p * 3.0);
+				float hum = 0.5 + 0.5 * sin(t * 2.2 + hash21(cell) * 6.28);
+				float stutter = step(0.93, hash21(cell + floor(t * 7.0)));
+				col.rgb *= 1.0 + (0.28 * hum - 0.45 * stutter) * la;
+				col.rgb += art_tint.rgb * col.rgb * 0.25 * hum * la;
+			} else if (kind == 7) {   // energy: bright bands run through the glowing parts
+				float wv = sin((p.x * 0.5 + p.y) * 16.0 - t * 3.2 + vnoise(p * 6.0 + vec2(0.0, t * 0.5)) * 5.0);
+				float band = smoothstep(0.55, 1.0, wv);
+				col.rgb += mix(col.rgb, art_tint.rgb, 0.5) * band * 0.75 * la;
+				col.rgb *= 1.0 + 0.12 * sin(t * 1.7) * la;
+			} else if (kind == 8) {   // storm: lightning lights the whole scene for a moment, every few seconds
+				float k = floor(t / 4.3);
+				float lt = fract(t / 4.3) * 4.3;
+				float bolt = (exp(-lt * 10.0) + 0.7 * step(0.16, lt) * exp(-(lt - 0.16) * 12.0)) * step(0.3, hash21(vec2(k, 9.0)));
+				col.rgb += art_tint.rgb * bolt * (0.12 + lum * 0.8) * min(art_amp, 2.0) * 0.7 * m * in_art;
+			} else if (kind == 9) {   // fog: smoke rolls slowly across the picture in its own colour
+				float fg = vnoise(p * 2.6 + vec2(t * 0.09, -t * 0.03)) * 0.6 + vnoise(p * 5.5 + vec2(-t * 0.14, t * 0.02)) * 0.4;
+				col.rgb = mix(col.rgb, art_tint.rgb * (0.55 + 0.45 * lum), smoothstep(0.42, 0.85, fg) * 0.3 * la);
+			} else if (kind == 10) {   // stars: the dark sky twinkles, and light swells slowly through it
+				float dark = 1.0 - smoothstep(0.1, 0.3, lum);
+				for (int L = 0; L < 2; L++) {
+					float fl = float(L);
+					vec2 q = p * (34.0 + fl * 22.0) + vec2(fl * 5.3, 0.0);
+					vec2 cell = floor(q);
+					float r = hash21(cell + fl * 31.0);
+					vec2 f = fract(q) - 0.5 - (vec2(hash21(cell + 3.0), hash21(cell + 13.0)) - 0.5) * 0.5;
+					float tw = 0.5 + 0.5 * sin(t * (1.3 + r * 2.0) + r * 50.0);
+					col.rgb += art_tint.rgb * smoothstep(0.12, 0.0, length(f)) * step(0.8, r) * tw * tw * dark * la;
+				}
+				col.rgb *= 1.0 + (vnoise(p * 1.8 + vec2(t * 0.1, 0.0)) - 0.45) * 0.2 * la;
+			} else if (kind == 11) {   // wisps: pale ribbons of spirit rise and curl through the picture
+				float w = vnoise(vec2(p.x * 11.0 + sin(p.y * 6.0 + t * 0.8) * 0.5, p.y * 3.5 + t * 0.45));
+				float rib = smoothstep(0.66, 0.72, w) * (1.0 - smoothstep(0.72, 0.8, w));
+				rib *= smoothstep(0.45, 0.75, vnoise(p * 2.0 + vec2(0.0, t * 0.15)));   // (in patches, not everywhere)
+				col.rgb += art_tint.rgb * rib * 0.4 * la;
+				col.rgb *= 1.0 + 0.1 * sin(t * 1.1) * la;
 			}
 			if (art_sparks > 0.0 && calm < 0.5) {   // glints twinkling over the moving parts
 				float dens = 0.95 - art_sparks * 0.35;
@@ -273,8 +347,40 @@ void fragment() {
 					col.rgb += art_spark.rgb * glint * m * in_art * 0.9;
 				}
 			}
+			// Particles over the whole picture: 1 embers rising, 2 ash and 3 snow falling, 4 rain, 5 bubbles, 6 motes floating
+			int pk = int(art_parts + 0.5);
+			if (pk > 0 && art_parts_amt > 0.0) {
+				float dens = 0.93 - art_parts_amt * 0.25;
+				for (int L = 0; L < 2; L++) {
+					float fl = float(L);
+					float add = 0.0;
+					if (pk == 4) {   // rain: thin slanted streaks
+						vec2 q = vec2((p.x + p.y * 0.12) * (46.0 + fl * 24.0), p.y * (3.0 + fl) - t * (2.6 + fl * 0.8));
+						vec2 cell = floor(q);
+						float r = hash21(cell + fl * 41.0);
+						vec2 f = fract(q);
+						add = (1.0 - smoothstep(0.0, 0.11, abs(f.x - 0.5 - (r - 0.5) * 0.5))) * smoothstep(0.0, 0.25, f.y) * (1.0 - smoothstep(0.25, 0.7, f.y))
+								* step(dens - 0.06, r) * (0.24 + 0.2 * fl);
+					} else {
+						float sc = (pk == 6 ? 9.0 : 14.0) + fl * 8.0;
+						float vy = pk == 1 ? -0.5 : pk == 5 ? -0.35 : pk == 6 ? -0.06 : pk == 2 ? 0.22 : 0.3;
+						vec2 q = p * sc + vec2(fl * 4.1 + sin(t * 0.7 + p.y * 3.0 + fl) * (pk == 6 ? 0.6 : 0.35), -t * vy * sc * 0.25);
+						vec2 cell = floor(q);
+						float r = hash21(cell + fl * 19.0);
+						vec2 f = fract(q) - 0.5 - (vec2(hash21(cell + 5.0), hash21(cell + 9.0)) - 0.5) * 0.6;
+						float d = length(f * vec2(1.0, pk == 1 ? 0.7 : 1.0));
+						float sz = pk == 5 ? 0.16 : pk == 3 ? 0.11 : pk == 2 ? 0.08 : 0.07;
+						float shape = pk == 5 ? smoothstep(sz, sz * 0.75, d) * smoothstep(sz * 0.45, sz * 0.75, d) + smoothstep(sz * 0.3, 0.0, length(f + sz * 0.35)) * 0.6
+								: smoothstep(sz, 0.0, d);
+						float tw = pk == 1 || pk == 6 ? 0.45 + 0.55 * sin(t * (2.0 + r * 3.0) + r * 30.0) : 1.0;
+						add = shape * step(dens, r) * tw * (pk == 2 ? 0.5 : 0.85);
+					}
+					col.rgb += art_parts_col.rgb * add * in_art * (pk == 1 || pk == 6 ? 1.2 : 1.0);
+				}
+			}
 		}
 	}
+
 	if (galaxy > 0.0) {
 		// Turn the swirl around the crest. The crest (a disc plus a cross of spikes) and the frame are
 		// masked by shape on both ends: they stay put, and the turning swirl never drags copies of them

@@ -24,12 +24,15 @@ Press **Export all**. You get `alleyway-cards.zip` with `card_catalog.json` and 
 
 ### Art animation
 
-A card's "Art animation" section in the Forge (motion, strength, speed, what moves, sparkles) exports as `artFx`;
+A card's "Art animation" section in the Forge (motion, strength, speed, what moves, sparkles, effect colour, particles) exports as `artFx`;
 `tools/import_forge.mjs` whitelists it (`cleanArtFx`) and the game's card shader plays it inside the art window
 (`card.gdshader` `art_anim`, set by `UI.art_anim_fx`). It needs no new build: the game downloads the changed cards.json.
 
-Every card has one (2026-11-17: chosen from each card's art by measuring its fire, water and glow:
-heat on fire, water on a Pirates card's sea, a drift through glowing parts, else a gentle sway or drift for its clan).
+The motions: fire, neon, energy, storm, fog, stars, wisps and glitch add light to the art (flames flicker, lights hum,
+lightning flashes, smoke rolls, spirits rise) without moving the picture; water, heat, sway and drift move it, only a
+little (a bigger warp tears the art apart). Particles (embers, ash, snow, rain, bubbles, motes) drift over either.
+Every card has one, picked for what is in its art (2026-11-22: rain on rainy streets, purple hellfire keyed to its colour,
+gunfire flashes, ghost wisps, the sea rippling, stars in space); a new game build or patch is needed for new kinds.
 A Forge card left on "Automatic" keeps the one it has (import_forge.mjs); setting one in the Forge replaces it.
 Players see a card move once they own its animated version (crafted for Dust, or bought in the shop's daily rotation).
 

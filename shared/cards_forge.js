@@ -32,12 +32,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_002",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#d9b9d3"
+            "kind": "stars",
+            "amp": 1.2,
+            "speed": 0.94,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_002": {
@@ -77,12 +78,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_003",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#d3c5d7"
+            "kind": "stars",
+            "amp": 1.2,
+            "speed": 0.91,
+            "tint": "#ece4ff",
+            "sparks": 0.35,
+            "spark": "#f6f2ff"
         }
     },
     "card_nebu_003": {
@@ -122,12 +123,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#e5b1d5"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.99,
+            "tint": "#ff83cc",
+            "mask": "colour",
+            "key": "#ca3e90",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffa7db"
         }
     },
     "card_nebu_007": {
@@ -155,12 +160,16 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#c9b1e8"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.09,
+            "tint": "#be7cff",
+            "mask": "colour",
+            "key": "#8538d2",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_008": {
@@ -187,11 +196,13 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.55,
-            "spark": "#d8c8ff"
+            "kind": "stars",
+            "amp": 1.3,
+            "speed": 1.07,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_009": {
@@ -239,12 +250,12 @@ export const FORGE_CARDS = {
         },
         "influence": 3500,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#cbbadd"
+            "kind": "stars",
+            "amp": 1.35,
+            "speed": 0.95,
+            "tint": "#ece4ff",
+            "sparks": 0.35,
+            "spark": "#f6f2ff"
         }
     },
     "card_nebu_010": {
@@ -279,12 +290,13 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#e5becf"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.9,
+            "tint": "#ffd6f0",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffcbd5"
         }
     },
     "card_nebu_011": {
@@ -316,12 +328,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#d3b8df"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.02,
+            "tint": "#ee97ff",
+            "mask": "colour",
+            "key": "#a84eba",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_012": {
@@ -353,12 +369,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_013",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#ccb9db"
+            "kind": "stars",
+            "amp": 1.25,
+            "speed": 1.05,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_013": {
@@ -397,12 +414,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_014",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#ceabe3"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#dc64ff",
+            "mask": "colour",
+            "key": "#a01ac7",
+            "tol": 0.35
         }
     },
     "card_nebu_014": {
@@ -441,11 +459,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.5,
-            "spark": "#d8c8ff"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1,
+            "tint": "#fb96ff",
+            "mask": "colour",
+            "key": "#b04ab4",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_018": {
@@ -479,11 +502,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.5,
-            "spark": "#d8c8ff"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.91,
+            "tint": "#cfe6ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_019": {
@@ -514,12 +539,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#cbbadd"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 1.03,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_023": {
@@ -550,12 +576,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#c0bae5"
+            "kind": "stars",
+            "amp": 1.2,
+            "speed": 0.97,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_024": {
@@ -591,12 +618,16 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#c2c9e2"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.04,
+            "tint": "#acc9ff",
+            "mask": "colour",
+            "key": "#6988c3",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#c4d9ff"
         }
     },
     "card_nebu_025": {
@@ -645,12 +676,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e1a8e3"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.92,
+            "tint": "#ff72fb",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_026": {
@@ -679,12 +711,13 @@ export const FORGE_CARDS = {
         "clanColor": "#9b7bff",
         "ambushClan": "nebula",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
+            "kind": "wisps",
+            "amp": 1.4,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#c7ade6"
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_027": {
@@ -714,12 +747,16 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#dbb7e0"
+            "kind": "energy",
+            "amp": 1.15,
+            "speed": 1.07,
+            "tint": "#ffacfc",
+            "mask": "colour",
+            "key": "#cb6cc7",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff9ae0"
         }
     },
     "card_nebu_028": {
@@ -752,12 +789,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#dbb3e2"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.93,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_029": {
@@ -789,12 +827,16 @@ export const FORGE_CARDS = {
         "clanColor": "#9b7bff",
         "ambushClan": "nebula",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e9aff0"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.01,
+            "tint": "#f47eff",
+            "mask": "colour",
+            "key": "#d33ee1",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_nebu_020": {
@@ -827,12 +869,10 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_021",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#c7b7de"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 0.94,
+            "tint": "#d198ff"
         }
     },
     "card_nebu_021": {
@@ -872,12 +912,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_022",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#cbbbd8"
+            "kind": "fire",
+            "amp": 1.35,
+            "speed": 1.02,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_022": {
@@ -920,12 +961,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#dab3d8"
+            "kind": "storm",
+            "amp": 1.25,
+            "speed": 1.09,
+            "tint": "#ff8ad8",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff8ad8"
         }
     },
     "card_nebu_030": {
@@ -956,12 +998,10 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_031",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#d6b6e1"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.98,
+            "tint": "#e093ff"
         }
     },
     "card_nebu_031": {
@@ -999,12 +1039,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_032",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#dab5e5"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.9,
+            "tint": "#e58eff",
+            "parts": "embers",
+            "partsAmt": 0.35,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_032": {
@@ -1046,12 +1087,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#d9b8e7"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.03,
+            "tint": "#d6a3ff",
+            "mask": "colour",
+            "key": "#a869d9",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_nebu_033": {
@@ -1090,12 +1135,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#c5bee4"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.95,
+            "tint": "#c1a5ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_034": {
@@ -1128,12 +1174,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#b0c8e6"
+            "kind": "stars",
+            "amp": 1.25,
+            "speed": 1.08,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#a6d2ff"
         }
     },
     "card_nebu_035": {
@@ -1178,12 +1225,10 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#c3b9e7"
+            "kind": "glitch",
+            "amp": 1,
+            "speed": 1.01,
+            "tint": "#b098ff"
         }
     },
     "card_nebu_036": {
@@ -1223,12 +1268,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#bebee1"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.93,
+            "tint": "#90a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_037": {
@@ -1260,12 +1306,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#d1a8ed"
+            "kind": "energy",
+            "amp": 1.15,
+            "speed": 1.05,
+            "tint": "#c569ff",
+            "mask": "colour",
+            "key": "#9623de",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_038": {
@@ -1293,12 +1343,13 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#cdbcdc"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 0.97,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_001": {
@@ -1340,12 +1391,10 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#e0c1d0"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.93,
+            "tint": "#b4e66a"
         }
     },
     "card_mili_002": {
@@ -1381,11 +1430,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "glitch",
+            "amp": 0.9,
+            "speed": 0.96,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.4,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_003": {
@@ -1420,10 +1471,11 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "artFx": {
             "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "amp": 1,
+            "speed": 1.08,
+            "parts": "motes",
+            "partsAmt": 0.3,
+            "partsColor": "#b4e66a"
         }
     },
     "card_mili_004": {
@@ -1462,12 +1514,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#c0d2ca"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.9,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_005": {
@@ -1497,12 +1550,16 @@ export const FORGE_CARDS = {
         "clanColor": "#a3e635",
         "ambushClan": "militia",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#b9cbd7"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.03,
+            "tint": "#b4e66a",
+            "mask": "colour",
+            "key": "#5384a4",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#b4e66a"
         }
     },
     "card_mili_006": {
@@ -1534,12 +1591,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_007",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#dbdbba"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.06,
+            "tint": "#b4e66a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#edffa8"
         }
     },
     "card_mili_007": {
@@ -1579,11 +1637,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_008",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.98,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_008": {
@@ -1625,11 +1685,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 1.02,
+            "tint": "#ffb060",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_009": {
@@ -1666,12 +1728,10 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#cbe3ac"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.94,
+            "tint": "#b4e66a"
         }
     },
     "card_mili_010": {
@@ -1698,12 +1758,12 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#b3c1db"
+            "kind": "sway",
+            "amp": 1,
+            "speed": 0.96,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_011": {
@@ -1752,10 +1812,11 @@ export const FORGE_CARDS = {
         "influence": 5000,
         "artFx": {
             "kind": "sway",
-            "amp": 1.03,
-            "speed": 0.9,
-            "sparks": 0.25,
-            "spark": "#fff2cc"
+            "amp": 1.15,
+            "speed": 1.03,
+            "parts": "embers",
+            "partsAmt": 0.4,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_012": {
@@ -1799,11 +1860,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.01,
+            "tint": "#f3ff85",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_013": {
@@ -1834,11 +1897,13 @@ export const FORGE_CARDS = {
         "clanColor": "#a3e635",
         "subtype": "equip",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.08,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_014": {
@@ -1881,11 +1946,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 1.03,
-            "speed": 0.9,
-            "sparks": 0.25,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 1.06,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_015": {
@@ -1924,11 +1991,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_016",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.94,
+            "tint": "#f2ffaa",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_016": {
@@ -1968,11 +2037,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_017",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.91,
+            "tint": "#b4e66a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_017": {
@@ -2016,11 +2087,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.99,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_018": {
@@ -2051,11 +2124,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_019",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.97,
+            "tint": "#ffb050",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_019": {
@@ -2092,11 +2167,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_020",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.04,
+            "tint": "#ffb050",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_020": {
@@ -2134,11 +2211,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.08,
+            "tint": "#ffb050",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_021": {
@@ -2169,12 +2248,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_022",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#ddb9d3"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.01,
+            "tint": "#ff90db",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_022": {
@@ -2217,12 +2297,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_023",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#c6c1d9"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.93,
+            "tint": "#e3bcff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_023": {
@@ -2271,12 +2352,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#d6d5c5"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 1.06,
+            "tint": "#ffb060",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_024": {
@@ -2310,10 +2392,11 @@ export const FORGE_CARDS = {
         "promotesTo": "card_mili_025",
         "artFx": {
             "kind": "sway",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.2,
-            "spark": "#fff2cc"
+            "amp": 1.1,
+            "speed": 0.99,
+            "parts": "rain",
+            "partsAmt": 0.35,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_025": {
@@ -2355,10 +2438,11 @@ export const FORGE_CARDS = {
         "promotesTo": "card_mili_026",
         "artFx": {
             "kind": "sway",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.2,
-            "spark": "#fff2cc"
+            "amp": 1.1,
+            "speed": 0.91,
+            "parts": "motes",
+            "partsAmt": 0.35,
+            "partsColor": "#fff0d4"
         }
     },
     "card_mili_026": {
@@ -2402,10 +2486,11 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "artFx": {
             "kind": "sway",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.2,
-            "spark": "#fff2cc"
+            "amp": 1.1,
+            "speed": 1.04,
+            "parts": "motes",
+            "partsAmt": 0.4,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_027": {
@@ -2439,11 +2524,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_028",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "drift",
+            "amp": 1.25,
+            "speed": 0.96,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_028": {
@@ -2481,11 +2567,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_029",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "storm",
+            "amp": 1.15,
+            "speed": 1.08,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_029": {
@@ -2531,11 +2619,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_030": {
@@ -2562,11 +2652,12 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "drift",
+            "amp": 1.25,
+            "speed": 1.05,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_031": {
@@ -2599,11 +2690,12 @@ export const FORGE_CARDS = {
         "clanColor": "#a3e635",
         "ambushClan": "militia",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.2,
-            "spark": "#fff2cc"
+            "kind": "drift",
+            "amp": 1.3,
+            "speed": 0.92,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_032": {
@@ -2636,11 +2728,13 @@ export const FORGE_CARDS = {
         "ambushClan": "militia",
         "subtype": "continuous",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.2,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_033": {
@@ -2675,11 +2769,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.08,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_nebu_015": {
@@ -2711,12 +2807,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_016",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#c8c0db"
+            "kind": "stars",
+            "amp": 1.3,
+            "speed": 0.92,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_016": {
@@ -2757,12 +2854,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_017",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#bcbde3"
+            "kind": "stars",
+            "amp": 1.3,
+            "speed": 0.95,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_017": {
@@ -2804,12 +2902,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#dab7db"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.07,
+            "tint": "#ff9ff3",
+            "mask": "colour",
+            "key": "#b855ac",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_mili_034": {
@@ -2852,11 +2954,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.95,
+            "tint": "#b4e66a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#fffaa9"
         }
     },
     "card_mili_035": {
@@ -2893,11 +2997,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.03,
+            "tint": "#b4e66a",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_mili_036": {
@@ -2930,11 +3036,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "sway",
-            "amp": 0.81,
+            "kind": "storm",
+            "amp": 1.1,
             "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "tint": "#e8ff9a",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_mili_037": {
@@ -2974,12 +3082,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.25,
-            "spark": "#d8cfbe"
+            "kind": "fire",
+            "amp": 1.35,
+            "speed": 0.98,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_038": {
@@ -3007,12 +3116,13 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.04,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.8,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_039": {
@@ -3042,12 +3152,13 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#dbe3ad"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.91,
+            "tint": "#b4e66a",
+            "parts": "embers",
+            "partsAmt": 0.4,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_040": {
@@ -3094,12 +3205,12 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1e0b5"
+            "kind": "sway",
+            "amp": 1.2,
+            "speed": 1.08,
+            "parts": "embers",
+            "partsAmt": 0.4,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_039": {
@@ -3132,12 +3243,15 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#cdafe2"
+            "kind": "stars",
+            "amp": 1.2,
+            "speed": 1.09,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff",
+            "sparks": 0.35,
+            "spark": "#f6f2ff"
         }
     },
     "card_nebu_040": {
@@ -3165,12 +3279,16 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#c9aaef"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.97,
+            "tint": "#b270ff",
+            "mask": "colour",
+            "key": "#7f2cdf",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_041": {
@@ -3197,12 +3315,13 @@ export const FORGE_CARDS = {
         "clanName": "Nebula",
         "clanColor": "#9b7bff",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#c6abf0"
+            "kind": "stars",
+            "amp": 1.35,
+            "speed": 1.05,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_042": {
@@ -3234,12 +3353,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#d8b0e1"
+            "kind": "energy",
+            "amp": 1.15,
+            "speed": 1.02,
+            "tint": "#cf72ff",
+            "mask": "colour",
+            "key": "#972ccf",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_004": {
@@ -3270,12 +3393,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_005",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#b8b9e0"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.97,
+            "tint": "#ae99ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_005": {
@@ -3310,12 +3434,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_006",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#b9b5e8"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.04,
+            "tint": "#8d90ff",
+            "mask": "colour",
+            "key": "#4d50d5",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_006": {
@@ -3352,12 +3480,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#b4b9f0"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.02,
+            "tint": "#7d90ff",
+            "mask": "colour",
+            "key": "#3e57e5",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_043": {
@@ -3387,12 +3519,16 @@ export const FORGE_CARDS = {
         "clanColor": "#9b7bff",
         "subtype": "continuous",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#c2a7f2"
+            "kind": "energy",
+            "amp": 1.15,
+            "speed": 1.09,
+            "tint": "#9f67ff",
+            "mask": "colour",
+            "key": "#6a22e5",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#bb93ff"
         }
     },
     "card_wild_001": {
@@ -3435,12 +3571,12 @@ export const FORGE_CARDS = {
         },
         "influence": 3500,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.65,
-            "spark": "#e5aed0"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 0.99,
+            "tint": "#ff80c7",
+            "sparks": 0.35,
+            "spark": "#ffc0e3"
         }
     },
     "card_wild_002": {
@@ -3472,12 +3608,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_003",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e9bfc2"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.96,
+            "tint": "#ff9ca6",
+            "sparks": 0.35,
+            "spark": "#ffced3"
         }
     },
     "card_wild_003": {
@@ -3516,12 +3652,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_004",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e8b7ba"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.03,
+            "tint": "#ff8293",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_004": {
@@ -3567,12 +3704,15 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.01,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_005": {
@@ -3607,10 +3747,11 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "artFx": {
             "kind": "drift",
-            "amp": 0.95,
-            "speed": 0.9,
-            "sparks": 0.6,
-            "spark": "#ffe08a"
+            "amp": 1.3,
+            "speed": 1.08,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_006": {
@@ -3644,12 +3785,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ebc7af"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.05,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_007": {
@@ -3688,12 +3829,12 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#eec5ba"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.93,
+            "tint": "#ffab93",
+            "sparks": 0.35,
+            "spark": "#ffd5c9"
         }
     },
     "card_wild_008": {
@@ -3728,12 +3869,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.92,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_009": {
@@ -3772,12 +3913,11 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "sway",
+            "amp": 1.1,
+            "speed": 1,
+            "sparks": 0.35,
+            "spark": "#ffcbb6"
         }
     },
     "card_wild_010": {
@@ -3810,12 +3950,15 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.95,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_011": {
@@ -3850,12 +3993,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e3b9c1"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.07,
+            "tint": "#ff979b",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_wild_012": {
@@ -3898,12 +4042,12 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.65,
-            "spark": "#f1c3b1"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 0.9,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_013": {
@@ -3941,12 +4085,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.75,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.2,
+            "speed": 1.02,
+            "tint": "#ffd27a",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_014": {
@@ -3974,12 +4119,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.05,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_015": {
@@ -4009,12 +4154,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.98,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_016": {
@@ -4048,12 +4193,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.01,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_017": {
@@ -4093,12 +4238,12 @@ export const FORGE_CARDS = {
         "clanColor": "#e8ba11",
         "subtype": "continuous",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 0.93,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_018": {
@@ -4133,12 +4278,13 @@ export const FORGE_CARDS = {
         "clanColor": "#e8ba11",
         "subtype": "equip",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ebbaa4"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.94,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_019": {
@@ -4168,12 +4314,13 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#f0b9ab"
+            "kind": "wisps",
+            "amp": 1.35,
+            "speed": 1.06,
+            "tint": "#ff6a5a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffaf99"
         }
     },
     "card_wild_021": {
@@ -4206,12 +4353,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_022",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#ebb4b6"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.06,
+            "tint": "#ff7d88",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_022": {
@@ -4249,12 +4397,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_023",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#eeb2b2"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.94,
+            "tint": "#ff797f",
+            "mask": "colour",
+            "key": "#de383f",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_wild_023": {
@@ -4297,12 +4449,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.02,
+            "tint": "#ff8079",
+            "mask": "colour",
+            "key": "#e24138",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_wild_024": {
@@ -4340,12 +4496,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_025",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#edb5b5"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.08,
+            "tint": "#ff8286",
+            "sparks": 0.35,
+            "spark": "#ffc1c3"
         }
     },
     "card_wild_025": {
@@ -4383,12 +4539,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_026",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.96,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_026": {
@@ -4433,12 +4589,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.03,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_027": {
@@ -4476,12 +4633,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_028",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.91,
+            "tint": "#b8b0a8",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#dcd8d4"
         }
     },
     "card_wild_028": {
@@ -4519,12 +4676,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_029",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_029": {
@@ -4568,12 +4725,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.05,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_030": {
@@ -4606,12 +4764,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_031",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.04,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_031": {
@@ -4656,12 +4814,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_032",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.96,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_032": {
@@ -4706,12 +4864,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.09,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_033": {
@@ -4746,12 +4905,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.01,
+            "tint": "#ffd27a",
+            "parts": "embers",
+            "partsAmt": 0.4,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_034": {
@@ -4784,12 +4944,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.93,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_035": {
@@ -4829,12 +4990,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.06,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_036": {
@@ -4874,12 +5036,13 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.98,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_wild_037": {
@@ -4908,12 +5071,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.9,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_038": {
@@ -4945,12 +5108,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_039",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#eab9b6"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.03,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_039": {
@@ -4989,12 +5153,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_040",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ecbbb3"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.95,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_040": {
@@ -5045,12 +5210,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.04,
+            "tint": "#ff8971",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_041": {
@@ -5089,12 +5255,10 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.92,
+            "tint": "#ff7768"
         }
     },
     "card_wild_042": {
@@ -5133,12 +5297,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.09,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_043": {
@@ -5166,12 +5330,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.97,
+            "tint": "#ff8e77",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#ffc7bb"
         }
     },
     "card_wild_044": {
@@ -5199,12 +5363,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.95,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_mili_041": {
@@ -5240,12 +5404,10 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
+            "kind": "glitch",
+            "amp": 0.95,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#e7dab7"
+            "tint": "#b4e66a"
         }
     },
     "card_mili_042": {
@@ -5285,12 +5447,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#e6e2b2"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.03,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_043": {
@@ -5323,12 +5486,13 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#e9deae"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.95,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_044": {
@@ -5367,12 +5531,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#d1b8ed"
+            "kind": "wisps",
+            "amp": 1.3,
+            "speed": 1.06,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_045": {
@@ -5408,12 +5573,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#cfb7e9"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.94,
+            "tint": "#be8dff",
+            "mask": "colour",
+            "key": "#8b4fdb",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#c8a8ff"
         }
     },
     "card_nebu_046": {
@@ -5442,12 +5611,15 @@ export const FORGE_CARDS = {
         "ambushClan": "nebula",
         "subtype": "continuous",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#d2b1f1"
+            "kind": "water",
+            "amp": 1.25,
+            "speed": 0.91,
+            "mask": "colour",
+            "key": "#5c77d6",
+            "tol": 0.3,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_047": {
@@ -5497,12 +5669,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#cdb4ee"
+            "kind": "stars",
+            "amp": 1.3,
+            "speed": 0.99,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_048": {
@@ -5558,12 +5731,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.7,
-            "spark": "#d0b1ec"
+            "kind": "stars",
+            "amp": 1.4,
+            "speed": 0.96,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d7a4ff"
         }
     },
     "card_nebu_049": {
@@ -5595,12 +5769,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#c7c0eb"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.04,
+            "tint": "#9fd2ff",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_050": {
@@ -5633,12 +5808,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_051",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ceb1e9"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.97,
+            "tint": "#bf81ff",
+            "mask": "colour",
+            "key": "#893fd6",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_051": {
@@ -5677,12 +5856,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_052",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#cdafed"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.09,
+            "tint": "#ba79ff",
+            "mask": "colour",
+            "key": "#8837de",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_nebu_052": {
@@ -5726,12 +5909,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#d2b1f1"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.92,
+            "tint": "#be7bff",
+            "mask": "colour",
+            "key": "#923ce6",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_001": {
@@ -5774,12 +5961,13 @@ export const FORGE_CARDS = {
         },
         "influence": 4500,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
+            "kind": "wisps",
+            "amp": 1.45,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#dfa8e9"
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_002": {
@@ -5848,12 +6036,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_004",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#d9afe3"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.05,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_004": {
@@ -5889,12 +6078,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_005",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e7a9db"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.03,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_005": {
@@ -5932,12 +6122,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e8a5e1"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 0.91,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_006": {
@@ -5974,12 +6165,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e9bfbb"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.08,
+            "tint": "#ffa397",
+            "mask": "colour",
+            "key": "#d66859",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_007": {
@@ -6013,12 +6208,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#deb4ed"
+            "kind": "wisps",
+            "amp": 1.3,
+            "speed": 0.95,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_008": {
@@ -6054,12 +6250,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dfaed3"
+            "kind": "wisps",
+            "amp": 1.3,
+            "speed": 0.92,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_009": {
@@ -6099,12 +6296,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e1afde"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.99,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_010": {
@@ -6140,12 +6338,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dfafe9"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.96,
+            "tint": "#e47bff",
+            "mask": "colour",
+            "key": "#b537d5",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#eca1ff"
         }
     },
     "card_unde_011": {
@@ -6185,12 +6387,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#d9b3e8"
+            "kind": "wisps",
+            "amp": 1.45,
+            "speed": 1.09,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_012": {
@@ -6224,12 +6427,16 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1afdd"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.92,
+            "tint": "#fe7cff",
+            "mask": "colour",
+            "key": "#bf33c0",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_013": {
@@ -6262,12 +6469,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ddb0eb"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 1.04,
+            "tint": "#f0e0ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_014": {
@@ -6298,12 +6506,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_015",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e5a9d9"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1.06,
+            "tint": "#ff71e4",
+            "mask": "colour",
+            "key": "#c929ab",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff9aec"
         }
     },
     "card_unde_015": {
@@ -6345,12 +6557,16 @@ export const FORGE_CARDS = {
         "promotesTo": "card_unde_016",
         "varStats": true,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#eba8ce"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 0.98,
+            "tint": "#ff69c4",
+            "mask": "colour",
+            "key": "#d72290",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff94d5"
         }
     },
     "card_unde_016": {
@@ -6393,12 +6609,16 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "varStats": true,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ebabdf"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1.01,
+            "tint": "#ff6eeb",
+            "mask": "colour",
+            "key": "#d328bc",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff98f1"
         }
     },
     "card_unde_017": {
@@ -6432,12 +6652,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_019",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e5abd7"
+            "kind": "wisps",
+            "amp": 1.3,
+            "speed": 0.94,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_019": {
@@ -6477,12 +6698,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_020",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dba6e9"
+            "kind": "wisps",
+            "amp": 1.3,
+            "speed": 1.08,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_020": {
@@ -6525,12 +6747,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1a6e6"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.92,
+            "tint": "#f56bff",
+            "mask": "colour",
+            "key": "#c122cc",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_021": {
@@ -6560,12 +6786,13 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e2a4e5"
+            "kind": "storm",
+            "amp": 1.15,
+            "speed": 0.99,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_022": {
@@ -6593,12 +6820,13 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1a5ca"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.07,
+            "tint": "#c87090",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_023": {
@@ -6627,12 +6855,13 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#d9a9e9"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.95,
+            "tint": "#d4a8ff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_unde_024": {
@@ -6660,12 +6889,13 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "ambushClan": "underworld",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e5a9da"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.02,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_025": {
@@ -6695,12 +6925,13 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "subtype": "continuous",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e1a7dd"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 1.1,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_026": {
@@ -6730,12 +6961,16 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#e5a5e1"
+            "kind": "energy",
+            "amp": 1.15,
+            "speed": 0.97,
+            "tint": "#ff67f6",
+            "mask": "colour",
+            "key": "#c51dbb",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_027": {
@@ -6765,12 +7000,13 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "subtype": "continuous",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e3a9db"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.05,
+            "tint": "#ff5a6a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ff99eb"
         }
     },
     "card_unde_028": {
@@ -6799,12 +7035,16 @@ export const FORGE_CARDS = {
         "clanName": "Underworld",
         "clanColor": "#4f1c5e",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1a4e7"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.93,
+            "tint": "#f061ff",
+            "mask": "colour",
+            "key": "#bb17cd",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#f48eff"
         }
     },
     "card_unde_029": {
@@ -6832,12 +7072,13 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "ambushClan": "underworld",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
+            "kind": "fog",
+            "amp": 1.3,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e5a3e8"
+            "tint": "#d4a8ff",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#fa8dff"
         }
     },
     "card_unde_030": {
@@ -6870,12 +7111,16 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "subtype": "equip",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dca9e7"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.96,
+            "tint": "#e76eff",
+            "mask": "colour",
+            "key": "#b126cc",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_031": {
@@ -6908,12 +7153,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dea4d8"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 1.08,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_032": {
@@ -6948,12 +7194,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
+            "kind": "wisps",
+            "amp": 1.4,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e7abd8"
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_033": {
@@ -6988,12 +7235,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#dda6e5"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.93,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_034": {
@@ -7036,12 +7284,16 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e4a5d9"
+            "kind": "fire",
+            "amp": 1.4,
+            "speed": 1.06,
+            "tint": "#ff65e9",
+            "mask": "colour",
+            "key": "#c51bad",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff91f0"
         }
     },
     "card_unde_035": {
@@ -7079,12 +7331,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e9a8b7"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 0.98,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_036": {
@@ -7122,12 +7375,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e4b6c9"
+            "kind": "sway",
+            "amp": 1.05,
+            "speed": 0.91,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_037": {
@@ -7161,12 +7414,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_038",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#dea4e2"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.03,
+            "tint": "#f262ff",
+            "mask": "colour",
+            "key": "#b517c3",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_038": {
@@ -7208,12 +7465,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_039",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e1a2d6"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.96,
+            "tint": "#ff5de5",
+            "mask": "colour",
+            "key": "#bc12a1",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff8ced"
         }
     },
     "card_unde_039": {
@@ -7257,12 +7518,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e0a8d7"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.09,
+            "tint": "#d4a8ff",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff97f6"
         }
     },
     "card_unde_040": {
@@ -7298,12 +7560,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_041",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e5a8e4"
+            "kind": "wisps",
+            "amp": 1.35,
+            "speed": 0.99,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_041": {
@@ -7344,12 +7607,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_042",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e7ade9"
+            "kind": "wisps",
+            "amp": 1.35,
+            "speed": 1.07,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_042": {
@@ -7385,12 +7649,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#eaaee7"
+            "kind": "wisps",
+            "amp": 1.35,
+            "speed": 1.04,
+            "tint": "#d4a8ff",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa0ff"
         }
     },
     "card_wild_045": {
@@ -7430,12 +7695,10 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ecbdb1"
+            "kind": "glitch",
+            "amp": 0.95,
+            "speed": 1.02,
+            "tint": "#ff8e77"
         }
     },
     "card_mili_044": {
@@ -7475,12 +7738,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ebd7b3"
+            "kind": "neon",
+            "amp": 1.2,
+            "speed": 0.98,
+            "tint": "#ffd080",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_nebu_053": {
@@ -7528,11 +7792,12 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2,
-            "speed": 1,
-            "sparks": 0.8,
-            "spark": "#d8c8ff"
+            "kind": "stars",
+            "amp": 1.4,
+            "speed": 1.05,
+            "tint": "#ece4ff",
+            "sparks": 0.35,
+            "spark": "#f6f2ff"
         }
     },
     "card_unde_043": {
@@ -7568,12 +7833,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_044",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#daabe9"
+            "kind": "fog",
+            "amp": 1.4,
+            "speed": 0.92,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_044": {
@@ -7613,12 +7879,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_045",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e2aceb"
+            "kind": "fire",
+            "amp": 1.4,
+            "speed": 1.09,
+            "tint": "#e972ff",
+            "mask": "colour",
+            "key": "#bf2ed9",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_045": {
@@ -7659,12 +7929,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.75,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#e2abeb"
+            "kind": "fire",
+            "amp": 1.4,
+            "speed": 0.96,
+            "tint": "#e86cff",
+            "mask": "colour",
+            "key": "#bf27db",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ef96ff"
         }
     },
     "card_wild_046": {
@@ -7711,12 +7985,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.75,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.2,
+            "speed": 0.99,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_mili_045": {
@@ -7748,12 +8022,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_046",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#e5d0b0"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.91,
+            "tint": "#ffd27c",
+            "parts": "embers",
+            "partsAmt": 0.4,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_046": {
@@ -7789,12 +8064,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_047",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 0.93,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_047": {
@@ -7845,12 +8121,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#efcea7"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 1.06,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_048": {
@@ -7884,11 +8161,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_049",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.09,
+            "tint": "#ffc97e",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd9a3"
         }
     },
     "card_mili_049": {
@@ -7924,11 +8203,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_050",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.01,
+            "tint": "#b4e66a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_050": {
@@ -7969,12 +8250,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#ead7b3"
+            "kind": "storm",
+            "amp": 1.15,
+            "speed": 0.92,
+            "tint": "#d8e4ff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_052": {
@@ -8007,12 +8289,13 @@ export const FORGE_CARDS = {
         "clanName": "Militia",
         "clanColor": "#a3e635",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.25,
-            "spark": "#e9d8b7"
+            "kind": "storm",
+            "amp": 1.25,
+            "speed": 0.97,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_054": {
@@ -8049,12 +8332,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_055",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#c1b2e8"
+            "kind": "stars",
+            "amp": 1.35,
+            "speed": 1.07,
+            "tint": "#ece4ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_055": {
@@ -8090,12 +8374,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_056",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
+            "kind": "energy",
+            "amp": 1.15,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#ceb4ef"
+            "tint": "#ba82ff",
+            "mask": "colour",
+            "key": "#8a44e2",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_056": {
@@ -8138,12 +8426,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.6,
-            "spark": "#cbb9ef"
+            "kind": "wisps",
+            "amp": 1.45,
+            "speed": 1.03,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_057": {
@@ -8178,11 +8467,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_058",
         "artFx": {
-            "kind": "drift",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.5,
-            "spark": "#d8c8ff"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.95,
+            "tint": "#cbd3ff",
+            "mask": "colour",
+            "key": "#838bb9",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_nebu_058": {
@@ -8218,11 +8512,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_nebu_059",
         "artFx": {
-            "kind": "drift",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.5,
-            "spark": "#d8c8ff"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#fedaff",
+            "mask": "colour",
+            "key": "#a281a3",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_nebu_059": {
@@ -8266,12 +8565,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.5,
-            "spark": "#c0c6ef"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 0.9,
+            "tint": "#a1acff",
+            "mask": "colour",
+            "key": "#6a77df",
+            "tol": 0.35,
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_046": {
@@ -8307,12 +8610,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e0a7db"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.94,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_047": {
@@ -8350,12 +8654,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#d9b9e7"
+            "kind": "fog",
+            "amp": 1.3,
+            "speed": 1.01,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_048": {
@@ -8391,12 +8696,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
+            "kind": "fog",
+            "amp": 1.3,
             "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#d6b9e3"
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_wild_047": {
@@ -8434,12 +8740,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_048",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.07,
+            "tint": "#ff7f70",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_048": {
@@ -8478,12 +8785,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_049",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 1.03,
+            "tint": "#ff9074",
+            "mask": "colour",
+            "key": "#e15631",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_wild_049": {
@@ -8526,12 +8837,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.91,
+            "tint": "#ff8c71",
+            "mask": "colour",
+            "key": "#de4f2d",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_wild_050": {
@@ -8571,12 +8886,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_051",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.08,
+            "tint": "#ff7970",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_051": {
@@ -8615,12 +8931,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_052",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_wild_052": {
@@ -8660,12 +8976,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.05,
+            "speed": 1.03,
+            "tint": "#ffd27a",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_053": {
@@ -8705,12 +9022,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_054",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.65,
-            "spark": "#ebb5a7"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 0.96,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_054": {
@@ -8758,12 +9076,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_wild_055",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.65,
-            "spark": "#edb5a9"
+            "kind": "glitch",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#ff876e",
+            "sparks": 0.35,
+            "spark": "#ffc3b7"
         }
     },
     "card_wild_055": {
@@ -8815,12 +9133,12 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
+            "kind": "neon",
+            "amp": 1.15,
             "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "tint": "#ff806f",
+            "sparks": 0.35,
+            "spark": "#ffc0b7"
         }
     },
     "card_wild_056": {
@@ -8847,12 +9165,16 @@ export const FORGE_CARDS = {
         "clanColor": "#e8ba11",
         "subtype": "continuous",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.93,
+            "tint": "#ff836e",
+            "mask": "colour",
+            "key": "#df442a",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffa798"
         }
     },
     "card_wild_057": {
@@ -8881,12 +9203,12 @@ export const FORGE_CARDS = {
         "clanName": "Wildcard",
         "clanColor": "#e8ba11",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.35,
+            "speed": 1.05,
+            "tint": "#c06050",
+            "sparks": 0.35,
+            "spark": "#e0b0a8"
         }
     },
     "card_wild_058": {
@@ -8919,12 +9241,12 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.07,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_wild_059": {
@@ -8963,12 +9285,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.99,
+            "tint": "#ff9570",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_wild_060": {
@@ -9002,12 +9325,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.08,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_001": {
@@ -9050,12 +9374,13 @@ export const FORGE_CARDS = {
         },
         "influence": 5000,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.35,
+            "speed": 1,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_002": {
@@ -9087,12 +9412,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_003",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.03,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_003": {
@@ -9129,12 +9455,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_004",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#f0b0b8"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.95,
+            "tint": "#ff798b",
+            "mask": "colour",
+            "key": "#e53950",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_004": {
@@ -9174,12 +9504,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#efaeb7"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 0.98,
+            "tint": "#ff7789",
+            "mask": "colour",
+            "key": "#e2364c",
+            "tol": 0.35,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_005": {
@@ -9210,12 +9544,15 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_006",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.9,
+            "tint": "#ffd7d6",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0",
             "sparks": 0.35,
-            "spark": "#d9c7c8"
+            "spark": "#ffebeb"
         }
     },
     "card_arso_006": {
@@ -9253,12 +9590,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_007",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.93,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_007": {
@@ -9297,12 +9635,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#aecfee"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.05,
+            "tint": "#6cb9ff",
+            "mask": "colour",
+            "key": "#298de8",
+            "tol": 0.35,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_008": {
@@ -9341,12 +9683,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_009",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 1.06,
+            "tint": "#b8b0a8",
+            "parts": "embers",
+            "partsAmt": 0.3,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_009": {
@@ -9389,11 +9732,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_010",
         "artFx": {
-            "kind": "heat",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.99,
+            "tint": "#b8b0a8",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_arso_010": {
@@ -9435,12 +9780,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.04,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_011": {
@@ -9472,12 +9818,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_012",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.91,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_012": {
@@ -9516,12 +9863,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_013",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.08,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.8,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_013": {
@@ -9560,12 +9908,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.96,
+            "tint": "#ffb050",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_arso_014": {
@@ -9602,12 +9951,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_015",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.3,
+            "speed": 0.93,
+            "tint": "#b8b0a8",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_arso_015": {
@@ -9645,12 +9995,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_arso_016",
         "artFx": {
-            "kind": "heat",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#e9bca6"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1.01,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_016": {
@@ -9688,12 +10039,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 0.98,
+            "tint": "#ffb050",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_arso_017": {
@@ -9727,12 +10079,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.05,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_018": {
@@ -9765,12 +10118,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.04,
+            "tint": "#ffaa89",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_019": {
@@ -9807,12 +10161,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.92,
+            "tint": "#ffb050",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_arso_020": {
@@ -9846,12 +10201,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.9,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_021": {
@@ -9888,12 +10244,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.03,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_022": {
@@ -9926,12 +10283,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.95,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_023": {
@@ -9970,12 +10328,15 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.07,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#ffd8a8"
         }
     },
     "card_arso_024": {
@@ -10009,12 +10370,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_025": {
@@ -10052,12 +10414,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.92,
+            "tint": "#b8b0a8",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_arso_026": {
@@ -10097,10 +10460,10 @@ export const FORGE_CARDS = {
         "artFx": {
             "kind": "heat",
             "amp": 1.3,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#ffb347"
+            "speed": 1.05,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_027": {
@@ -10128,12 +10491,13 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.97,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_arso_028": {
@@ -10161,12 +10525,13 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 1.09,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.7,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_029": {
@@ -10195,12 +10560,10 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ecd9a2"
+            "kind": "fog",
+            "amp": 1.3,
+            "speed": 1.02,
+            "tint": "#b4e66a"
         }
     },
     "card_arso_030": {
@@ -10229,12 +10592,13 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.91,
+            "tint": "#ffb050",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_arso_031": {
@@ -10264,12 +10628,13 @@ export const FORGE_CARDS = {
         "clanColor": "#f45815",
         "ambushClan": "arsonists",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.99,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.8,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_032": {
@@ -10304,12 +10669,13 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 1.06,
+            "tint": "#b8b0a8",
+            "parts": "embers",
+            "partsAmt": 0.35,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_033": {
@@ -10352,12 +10718,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.75,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.4,
+            "speed": 0.94,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_neut_001": {
@@ -10390,12 +10757,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.01,
+            "tint": "#ffa771",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_002": {
@@ -10427,11 +10795,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "sway",
-            "amp": 0.9,
-            "speed": 0.9,
-            "sparks": 0.15,
-            "spark": "#fff2cc"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.99,
+            "tint": "#ffac87",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_003": {
@@ -10463,12 +10833,10 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.06,
+            "tint": "#ff9a82"
         }
     },
     "card_neut_004": {
@@ -10501,12 +10869,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.03,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_neut_005": {
@@ -10540,12 +10909,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#e5c6b9"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.91,
+            "tint": "#ffaf91",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_006": {
@@ -10572,12 +10942,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.2,
+            "speed": 1.08,
+            "tint": "#b8b0a8",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_007": {
@@ -10609,12 +10980,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 0.96,
+            "tint": "#b8b0a8",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_008": {
@@ -10648,12 +11020,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.95,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_009": {
@@ -10688,12 +11061,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 1.02,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_neut_010": {
@@ -10727,12 +11101,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.93,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_neut_011": {
@@ -10765,12 +11139,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 1.05,
+            "tint": "#ff5a6a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_012": {
@@ -10809,12 +11184,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 1.08,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_013": {
@@ -10856,12 +11232,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.75,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.55,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.2,
+            "speed": 1.01,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_014": {
@@ -10890,12 +11267,12 @@ export const FORGE_CARDS = {
         "clanColor": "#9aa4b1",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "drift",
+            "amp": 1.2,
+            "speed": 1.03,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_neut_015": {
@@ -10924,11 +11301,11 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#e8c4b3"
+            "amp": 1.25,
+            "speed": 0.96,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_neut_016": {
@@ -10956,12 +11333,13 @@ export const FORGE_CARDS = {
         "clanColor": "#9aa4b1",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.99,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_neut_017": {
@@ -10989,12 +11367,13 @@ export const FORGE_CARDS = {
         "clanColor": "#9aa4b1",
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#e5c9b9"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 0.91,
+            "tint": "#d8e4ff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_neut_018": {
@@ -11024,12 +11403,12 @@ export const FORGE_CARDS = {
         "subtype": "equip",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.92,
+            "tint": "#ffa779",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#ffd3bc"
         }
     },
     "card_neut_019": {
@@ -11057,12 +11436,12 @@ export const FORGE_CARDS = {
         "clanColor": "#9aa4b1",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "drift",
+            "amp": 1.2,
+            "speed": 1.04,
+            "parts": "ash",
+            "partsAmt": 0.6,
+            "partsColor": "#d9b77a"
         }
     },
     "card_neut_020": {
@@ -11091,12 +11470,13 @@ export const FORGE_CARDS = {
         "clanColor": "#9aa4b1",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.97,
+            "tint": "#ffaa8b",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_mili_053": {
@@ -11138,12 +11518,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.25,
-            "spark": "#ebd4ad"
+            "kind": "fire",
+            "amp": 1.35,
+            "speed": 1.05,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_054": {
@@ -11181,12 +11562,13 @@ export const FORGE_CARDS = {
         "subtype": "heavy",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.2,
-            "spark": "#f1d4b0"
+            "kind": "storm",
+            "amp": 1.2,
+            "speed": 1.02,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_055": {
@@ -11220,12 +11602,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_056",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.25,
-            "spark": "#e5d4af"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 1.09,
+            "tint": "#b4e66a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_mili_056": {
@@ -11264,12 +11647,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_mili_053",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.25,
-            "spark": "#eacdaa"
+            "kind": "neon",
+            "amp": 1.15,
+            "speed": 1.07,
+            "tint": "#b4e66a",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_057": {
@@ -11302,12 +11686,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#efd4ac"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.94,
+            "tint": "#ffb060",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_mili_058": {
@@ -11343,12 +11728,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.15,
-            "spark": "#ebd5b4"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.91,
+            "tint": "#ffb050",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_unde_049": {
@@ -11380,12 +11766,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_050",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#d2aae4"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1.08,
+            "tint": "#d672ff",
+            "mask": "colour",
+            "key": "#982ac6",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_050": {
@@ -11419,12 +11809,16 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": "card_unde_051",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#d9a5d7"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1.03,
+            "tint": "#ff6bf7",
+            "mask": "colour",
+            "key": "#af1ea7",
+            "tol": 0.35,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff96f9"
         }
     },
     "card_unde_051": {
@@ -11478,12 +11872,13 @@ export const FORGE_CARDS = {
         "subtype": "striver",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#dfa5dc"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.96,
+            "tint": "#d4a8ff",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ff93fd"
         }
     },
     "card_unde_052": {
@@ -11524,12 +11919,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "varStats": true,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#e0a3de"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#ff62f7",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_053": {
@@ -11562,12 +11958,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "drift",
-            "amp": 2.31,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#daa6e1"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 0.91,
+            "tint": "#d4a8ff",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#d4a8ff"
         }
     },
     "card_unde_054": {
@@ -11598,12 +11995,13 @@ export const FORGE_CARDS = {
         "clanColor": "#4f1c5e",
         "subtype": "continuous",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.53,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#dca4d5"
+            "kind": "fog",
+            "amp": 1.35,
+            "speed": 0.94,
+            "tint": "#d4a8ff",
+            "parts": "ash",
+            "partsAmt": 0.45,
+            "partsColor": "#c8c0b8"
         }
     },
     "card_pira_001": {
@@ -11649,13 +12047,13 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 2.07,
-            "speed": 1,
+            "amp": 1.25,
+            "speed": 1.01,
             "mask": "colour",
             "key": "#2f5d65",
-            "tol": 0.4,
-            "sparks": 0.45,
-            "spark": "#a1b6ba"
+            "tol": 0.3,
+            "sparks": 0.35,
+            "spark": "#ffe1cd"
         }
     },
     "card_pira_002": {
@@ -11689,12 +12087,15 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_003",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "water",
+            "amp": 1.1,
+            "speed": 1.09,
+            "mask": "colour",
+            "key": "#336168",
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_003": {
@@ -11732,12 +12133,13 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_004",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.96,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_004": {
@@ -11780,14 +12182,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#345f66",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a4b7ba"
+            "kind": "sway",
+            "amp": 1,
+            "speed": 1.03,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_005": {
@@ -11825,12 +12225,15 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_006",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "water",
+            "amp": 1.1,
+            "speed": 0.91,
+            "mask": "colour",
+            "key": "#2f6364",
+            "tol": 0.3,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_pira_006": {
@@ -11870,13 +12273,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
+            "amp": 1.1,
+            "speed": 0.98,
             "mask": "colour",
             "key": "#275560",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9eb3b7"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_007": {
@@ -11920,12 +12324,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e9cbb4"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.06,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_008": {
@@ -11960,13 +12365,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
+            "amp": 1.15,
+            "speed": 0.95,
             "mask": "colour",
             "key": "#326a73",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a3bcc0"
+            "tol": 0.3,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_pira_009": {
@@ -12007,14 +12413,13 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_010",
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#336e74",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a3bec0"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.02,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_010": {
@@ -12055,13 +12460,13 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
+            "amp": 1.15,
+            "speed": 0.97,
             "mask": "colour",
             "key": "#2f626a",
-            "tol": 0.4,
+            "tol": 0.3,
             "sparks": 0.35,
-            "spark": "#a1b8bc"
+            "spark": "#ffe4c9"
         }
     },
     "card_pira_011": {
@@ -12095,12 +12500,13 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_012",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
+            "kind": "neon",
+            "amp": 1.05,
             "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_012": {
@@ -12138,12 +12544,12 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_013",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "sway",
+            "amp": 1.05,
+            "speed": 1.02,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_013": {
@@ -12188,14 +12594,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#266569",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9dbabc"
+            "kind": "storm",
+            "amp": 1.15,
+            "speed": 0.95,
+            "tint": "#d8e4ff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_014": {
@@ -12229,12 +12634,12 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_015",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "fog",
+            "amp": 1.3,
+            "speed": 1.07,
+            "tint": "#b8b0a8",
+            "sparks": 0.35,
+            "spark": "#dcd8d4"
         }
     },
     "card_pira_015": {
@@ -12275,12 +12680,12 @@ export const FORGE_CARDS = {
         "promotesTo": "card_pira_016",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.99,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_pira_016": {
@@ -12321,12 +12726,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.1,
+            "speed": 0.92,
+            "tint": "#ffd27a",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_pira_017": {
@@ -12360,12 +12765,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e8cdb6"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.04,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_018": {
@@ -12401,12 +12807,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.98,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_pira_019": {
@@ -12441,12 +12848,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.91,
+            "tint": "#ffd27a",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#fff0c0"
         }
     },
     "card_pira_020": {
@@ -12481,12 +12888,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.08,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_021": {
@@ -12521,14 +12929,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#2a6366",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9fb9ba"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.96,
+            "tint": "#ffb050",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_022": {
@@ -12564,12 +12971,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e7cbb2"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.93,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_023": {
@@ -12602,14 +13010,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#3f6b6d",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a9bcbd"
+            "kind": "fog",
+            "amp": 1.25,
+            "speed": 1.01,
+            "tint": "#a8c8c4",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_pira_024": {
@@ -12643,12 +13050,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e9cfb5"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 0.98,
+            "tint": "#ffd27a",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#ffd27a"
         }
     },
     "card_pira_025": {
@@ -12686,12 +13094,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e4d0b7"
+            "kind": "sway",
+            "amp": 1.05,
+            "speed": 1.06,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_026": {
@@ -12741,13 +13149,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.89,
-            "speed": 1,
+            "amp": 1.2,
+            "speed": 1.03,
             "mask": "colour",
             "key": "#2a6862",
-            "tol": 0.4,
-            "sparks": 0.4,
-            "spark": "#9fbbb8"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_027": {
@@ -12778,12 +13187,13 @@ export const FORGE_CARDS = {
         "clanColor": "#2ec4b6",
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 1.98,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#edd0b1"
+            "kind": "neon",
+            "amp": 1,
+            "speed": 0.9,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_028": {
@@ -12814,13 +13224,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
+            "amp": 1.1,
+            "speed": 1.08,
             "mask": "colour",
             "key": "#25625e",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9db8b7"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_029": {
@@ -12850,12 +13261,12 @@ export const FORGE_CARDS = {
         "clanColor": "#2ec4b6",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 0.95,
+            "tint": "#ffb050",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#ffd8a8"
         }
     },
     "card_pira_030": {
@@ -12885,13 +13296,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.89,
-            "speed": 1,
+            "amp": 1.2,
+            "speed": 1.1,
             "mask": "colour",
             "key": "#417c82",
-            "tol": 0.4,
-            "sparks": 0.4,
-            "spark": "#aac4c7"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_031": {
@@ -12921,14 +13333,12 @@ export const FORGE_CARDS = {
         "subtype": "continuous",
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#2b5d61",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a0b6b8"
+            "kind": "sway",
+            "amp": 1,
+            "speed": 1.02,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_032": {
@@ -12958,12 +13368,15 @@ export const FORGE_CARDS = {
         "clanColor": "#2ec4b6",
         "forge": "forge2",
         "artFx": {
-            "kind": "drift",
-            "amp": 2.2,
-            "speed": 1,
-            "mask": "glow",
-            "sparks": 0.3,
-            "spark": "#e7cdb1"
+            "kind": "neon",
+            "amp": 1.05,
+            "speed": 1.05,
+            "tint": "#ffd27a",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0",
+            "sparks": 0.35,
+            "spark": "#fff0c0"
         }
     },
     "card_pira_033": {
@@ -13009,14 +13422,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 2.25,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#347d7e",
-            "tol": 0.4,
-            "sparks": 0.55,
-            "spark": "#a4c5c5"
+            "kind": "wisps",
+            "amp": 1.5,
+            "speed": 0.97,
+            "tint": "#8ff5e6",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_034": {
@@ -13051,13 +13463,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.8,
+            "amp": 1.15,
             "speed": 1,
             "mask": "colour",
             "key": "#30636e",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a2b9be"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_035": {
@@ -13092,13 +13505,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.89,
-            "speed": 1,
+            "amp": 1.2,
+            "speed": 0.93,
             "mask": "colour",
             "key": "#20616b",
-            "tol": 0.4,
-            "sparks": 0.4,
-            "spark": "#9bb8bc"
+            "tol": 0.3,
+            "parts": "bubbles",
+            "partsAmt": 0.5,
+            "partsColor": "#d8fff8"
         }
     },
     "card_pira_036": {
@@ -13139,13 +13553,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 2.07,
-            "speed": 1,
+            "amp": 1.25,
+            "speed": 0.95,
             "mask": "colour",
             "key": "#168688",
-            "tol": 0.4,
-            "sparks": 0.45,
-            "spark": "#96c9c9"
+            "tol": 0.3,
+            "parts": "bubbles",
+            "partsAmt": 0.5,
+            "partsColor": "#d8fff8"
         }
     },
     "card_pira_037": {
@@ -13179,12 +13594,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.08,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_pira_038": {
@@ -13236,14 +13652,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 2.25,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#247f7f",
-            "tol": 0.4,
-            "sparks": 0.55,
-            "spark": "#9cc5c5"
+            "kind": "storm",
+            "amp": 1.3,
+            "speed": 0.91,
+            "tint": "#8ff5e6",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_039": {
@@ -13282,14 +13697,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#1e727f",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9ac0c5"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 1.03,
+            "tint": "#d8e4ff",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_040": {
@@ -13341,12 +13755,15 @@ export const FORGE_CARDS = {
         "influence": 6000,
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "water",
+            "amp": 1.25,
+            "speed": 1.01,
+            "mask": "colour",
+            "key": "#0f737d",
+            "tol": 0.3,
+            "parts": "bubbles",
+            "partsAmt": 0.5,
+            "partsColor": "#d8fff8"
         }
     },
     "card_arso_034": {
@@ -13379,10 +13796,13 @@ export const FORGE_CARDS = {
         "subtype": "brawler",
         "promotesTo": null,
         "artFx": {
-            "kind": "heat",
-            "amp": 1.2,
-            "speed": 1.2,
-            "mask": "glow"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.01,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.35,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_035": {
@@ -13418,11 +13838,11 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "artFx": {
             "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "amp": 1.2,
+            "speed": 1.08,
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_036": {
@@ -13457,12 +13877,13 @@ export const FORGE_CARDS = {
         "clanName": "Arsonists",
         "clanColor": "#f45815",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1.1,
+            "speed": 0.96,
+            "tint": "#ffb347",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_037": {
@@ -13499,12 +13920,13 @@ export const FORGE_CARDS = {
         "clanColor": "#f45815",
         "ambushClan": "arsonists",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.4,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.25,
+            "speed": 1.04,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.7,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_038": {
@@ -13534,12 +13956,13 @@ export const FORGE_CARDS = {
         "clanColor": "#f45815",
         "ambushClan": "arsonists",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.9,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.8,
+            "partsColor": "#ffa040"
         }
     },
     "card_arso_039": {
@@ -13568,12 +13991,13 @@ export const FORGE_CARDS = {
         "clanColor": "#f45815",
         "subtype": "continuous",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.61,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.45,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.35,
+            "speed": 0.98,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 1,
+            "partsColor": "#ffa040"
         }
     },
     "card_pira_041": {
@@ -13604,14 +14028,16 @@ export const FORGE_CARDS = {
         "subtype": "continuous",
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 2.25,
-            "speed": 1,
+            "kind": "energy",
+            "amp": 1.2,
+            "speed": 1.08,
+            "tint": "#80ffef",
             "mask": "colour",
-            "key": "#1d837d",
-            "tol": 0.4,
-            "sparks": 0.55,
-            "spark": "#99c7c5"
+            "key": "#3dd6c3",
+            "tol": 0.35,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_042": {
@@ -13649,14 +14075,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#1e7e84",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#9ac5c8"
+            "kind": "wisps",
+            "amp": 1.35,
+            "speed": 0.96,
+            "tint": "#8ff5e6",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_043": {
@@ -13708,14 +14133,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.89,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#2c7472",
-            "tol": 0.4,
-            "sparks": 0.4,
-            "spark": "#a0c0c0"
+            "kind": "wisps",
+            "amp": 1.4,
+            "speed": 1.04,
+            "tint": "#8ff5e6",
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#8ff5e6"
         }
     },
     "card_pira_044": {
@@ -13751,13 +14175,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.89,
-            "speed": 1,
+            "amp": 1.2,
+            "speed": 0.91,
             "mask": "colour",
             "key": "#266171",
-            "tol": 0.4,
-            "sparks": 0.4,
-            "spark": "#9db8bf"
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_045": {
@@ -13791,14 +14216,13 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 1.62,
-            "speed": 1,
-            "mask": "colour",
-            "key": "#2c7c82",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#a0c4c7"
+            "kind": "storm",
+            "amp": 1.1,
+            "speed": 0.99,
+            "tint": "#8ff5e6",
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_046": {
@@ -13834,12 +14258,12 @@ export const FORGE_CARDS = {
         "ambushClan": "pirates",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
+            "kind": "neon",
+            "amp": 1,
+            "speed": 1.07,
+            "tint": "#8ff5e6",
             "sparks": 0.35,
-            "spark": "#ffb347"
+            "spark": "#c7faf3"
         }
     },
     "card_pira_047": {
@@ -13873,13 +14297,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
+            "amp": 1.15,
+            "speed": 0.94,
             "mask": "colour",
             "key": "#1c7e7c",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#99c5c4"
+            "tol": 0.3,
+            "parts": "bubbles",
+            "partsAmt": 0.5,
+            "partsColor": "#d8fff8"
         }
     },
     "card_pira_048": {
@@ -13916,12 +14341,13 @@ export const FORGE_CARDS = {
         "ambushClan": "pirates",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.47,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.4,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.3,
+            "speed": 1,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.8,
+            "partsColor": "#ffa040"
         }
     },
     "card_pira_049": {
@@ -13957,11 +14383,15 @@ export const FORGE_CARDS = {
         "ambushClan": "pirates",
         "forge": "forge2",
         "artFx": {
-            "kind": "sway",
-            "amp": 1.2,
-            "speed": 0.9,
-            "sparks": 0.4,
-            "spark": "#d8fffb"
+            "kind": "water",
+            "amp": 1.25,
+            "speed": 1.07,
+            "mask": "colour",
+            "key": "#3d9795",
+            "tol": 0.3,
+            "parts": "rain",
+            "partsAmt": 0.6,
+            "partsColor": "#c8d8f0"
         }
     },
     "card_pira_050": {
@@ -13992,13 +14422,14 @@ export const FORGE_CARDS = {
         "forge": "forge2",
         "artFx": {
             "kind": "water",
-            "amp": 1.8,
-            "speed": 1,
+            "amp": 1.15,
+            "speed": 1.05,
             "mask": "colour",
             "key": "#157571",
-            "tol": 0.4,
-            "sparks": 0.35,
-            "spark": "#96c1bf"
+            "tol": 0.3,
+            "parts": "bubbles",
+            "partsAmt": 0.5,
+            "partsColor": "#d8fff8"
         }
     },
     "card_pira_051": {
@@ -14028,12 +14459,13 @@ export const FORGE_CARDS = {
         "subtype": "continuous",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "fire",
+            "amp": 1.2,
+            "speed": 0.97,
+            "tint": "#ffb050",
+            "parts": "embers",
+            "partsAmt": 0.55,
+            "partsColor": "#ffa040"
         }
     },
     "card_pira_052": {
@@ -14064,12 +14496,16 @@ export const FORGE_CARDS = {
         "clanColor": "#2ec4b6",
         "forge": "forge2",
         "artFx": {
-            "kind": "heat",
-            "amp": 1.26,
-            "speed": 1.1,
-            "mask": "glow",
-            "sparks": 0.35,
-            "spark": "#ffb347"
+            "kind": "energy",
+            "amp": 1,
+            "speed": 1.09,
+            "tint": "#ffd283",
+            "mask": "colour",
+            "key": "#d9a242",
+            "tol": 0.35,
+            "parts": "motes",
+            "partsAmt": 0.5,
+            "partsColor": "#8ff5e6"
         }
     },
     "card_pira_053": {
@@ -14128,14 +14564,12 @@ export const FORGE_CARDS = {
         "promotesTo": null,
         "forge": "forge2",
         "artFx": {
-            "kind": "water",
-            "amp": 2,
-            "speed": 1.1,
-            "mask": "colour",
-            "key": "#2ad4c8",
-            "tol": 0.45,
-            "sparks": 0.7,
-            "spark": "#bffff4"
+            "kind": "wisps",
+            "amp": 1.45,
+            "speed": 1.02,
+            "tint": "#8ff5e6",
+            "sparks": 0.35,
+            "spark": "#c7faf3"
         }
     },
     "card_arso_040": {

@@ -20,10 +20,11 @@
   Crafting (Dust), achievements, the daily reward and the leaderboard live in `backend/economy/`. The privacy
   policy and terms are pages on the server (`backend/routes/legal.js`): keep them true to what the server stores. Database changes go in a `db/migrate_*.sql`
   file (idempotent) listed in `db/migrate.js`, which applies them when the server starts.
-- Animated card art: a card's `artFx` ({kind: water|heat|sway|drift, amp, speed, mask, key, tol, sparks, spark}, the Forge's "Art animation"
+- Animated card art: a card's `artFx` ({kind: fire|neon|energy|storm|fog|stars|wisps|glitch (light only) or water|heat|sway|drift (small warps), amp, speed, mask,
+  key, tol, sparks, spark, tint, parts: embers|ash|snow|rain|bubbles|motes, partsAmt, partsColor}, the Forge's "Art animation"
   section) drives `card.gdshader`'s `art_anim` uniforms through `UI.art_anim_fx` (every card material goes through `UI.rarity_fx`).
   Only owned animated versions move (`backend/economy/animated.js`: crafted for Dust, bought for Contraband; `Game.anim_card`,
-  the match profiles' `anim`); the Card Library's big card always previews it.
+  the match profiles' `anim`); the Card Library's big card shows it still, with a SHOW ANIMATED switch.
 - New cards come from the Card Forge (or Card Forge 2, more art storage, numbers from 501): `node tools/import_forge.mjs <zip>`, then on the server
   `node backend/scripts/sync_cards.mjs` (see `docs/CARD_PIPELINE.md`). Clans come from the card data
   (`shared/clans.js`): no code names a clan, except Neutral (`NEUTRAL`: cards for any deck, no clan of their own;

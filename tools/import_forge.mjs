@@ -196,7 +196,8 @@ console.log(`\nNext: commit and push, then on the server:\n  git pull && node ba
 // ── helpers ──────────────────────────────────────────────────────────────────
 function int(v) { return Math.trunc(Number(v ?? 0)) || 0; }
 
-const ART_ANIM_KINDS = ['water', 'heat', 'sway', 'drift'];
+const ART_ANIM_KINDS = ['water', 'heat', 'sway', 'drift', 'fire', 'neon', 'energy', 'storm', 'fog', 'stars', 'wisps', 'glitch'];
+const ART_ANIM_PARTS = ['embers', 'ash', 'snow', 'rain', 'bubbles', 'motes'];
 const HEX = /^#[0-9a-f]{6}$/i;
 const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.round(Math.min(hi, Math.max(lo, n)) * 100) / 100 : d; };
 function cleanArtFx(a) {
@@ -204,6 +205,11 @@ function cleanArtFx(a) {
     if (a.mask === 'glow') out.mask = 'glow';
     else if (a.mask === 'colour' && HEX.test(String(a.key || ''))) { out.mask = 'colour'; out.key = String(a.key).toLowerCase(); out.tol = num(a.tol, 0.02, 1, 0.25); }
     if (num(a.sparks, 0, 1, 0) > 0) { out.sparks = num(a.sparks, 0, 1, 0); if (HEX.test(String(a.spark || ''))) out.spark = String(a.spark).toLowerCase(); }
+    if (HEX.test(String(a.tint || ''))) out.tint = String(a.tint).toLowerCase();   // (the light the effect adds)
+    if (ART_ANIM_PARTS.includes(String(a.parts)) && num(a.partsAmt, 0, 1, 0.5) > 0) {   // particles over the picture
+        out.parts = String(a.parts); out.partsAmt = num(a.partsAmt, 0, 1, 0.5);
+        if (HEX.test(String(a.partsColor || ''))) out.partsColor = String(a.partsColor).toLowerCase();
+    }
     return out;
 }
 
