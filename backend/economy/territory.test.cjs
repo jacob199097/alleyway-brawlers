@@ -2,7 +2,7 @@
 
 /**
  * Veteran cards (economy/veterans.js) and the turf map (economy/territory.js) against a real
- * Postgres: wins and plays per card and the tiers they reach; influence by mode, a district taken
+ * Postgres: wins, plays and quest counts per card and the tiers they reach; influence by mode, a district taken
  * from its local gang, a tie keeping it nobody's, the boss of a district, the week's Karat claimed
  * once, and nothing for a week still running. Builds a scratch database like economy/turf.test.cjs:
  *
@@ -46,23 +46,21 @@ const conn = (database) => new Client({
     const bob = await newPlayer('bob');
     const karat = async (id) => (await q('SELECT karat FROM players WHERE id = $1', [id])).rows[0].karat;
 
-    // ── Veteran cards ──
+    // ── Veteran cards (their mastery quests in detail: veterans.test.cjs) ──
     assert.deepEqual(await veterans.record(ann, ['nebu_001', 'nebu_002', 'nebu_001'], false), []);   // a loss: plays only
     for (let i = 0; i < 4; i++) assert.deepEqual(await veterans.record(ann, ['nebu_001'], true), []);
-    let up = await veterans.record(ann, ['nebu_001', 'nebu_002'], true);   // nebu_001's 5th win
+    const did = { cards: { nebu_001: { kos: 3, downs: 2 } } };   // (its first quest: Down or KO 5 enemy characters)
+    let up = await veterans.record(ann, ['nebu_001', 'nebu_002'], true, did);
     assert.deepEqual(up, [{ id: 'nebu_001', tier: 1, name: 'Seasoned' }]);
+    const none = { kos: 0, downs: 0, direct: 0, effects: 0, promotes: 0, awakens: 0 };
     let all = await veterans.overview(ann);
-    assert.deepEqual(all.cards.nebu_001, { wins: 5, plays: 6, tier: 1, xp: 16 });   // (1 a match + 2 a win)
-    assert.deepEqual(all.cards.nebu_002, { wins: 1, plays: 2, tier: 0, xp: 4 });
+    assert.deepEqual(all.cards.nebu_001, { wins: 5, plays: 6, tier: 1, xp: 16, ...none, kos: 3, downs: 2 });   // (card XP: 1 a match + 2 a win)
+    assert.deepEqual(all.cards.nebu_002, { wins: 1, plays: 2, tier: 0, xp: 4, ...none });
     assert.deepEqual(await veterans.tiers(ann), { nebu_001: 1 });
     assert.deepEqual(await veterans.tiers(ann, ['nebu_002', 'mili_001']), {}, 'only the cards asked about');
     assert.deepEqual(await veterans.tiers(bob), {}, "someone else's cards aren't mine");
-    for (let i = 0; i < 10; i++) up = await veterans.record(ann, ['nebu_001'], true);
-    assert.deepEqual(up, [{ id: 'nebu_001', tier: 2, name: 'Battle-Scarred' }]);
-    assert.equal(veterans.tierOf(44), 1);
-    assert.equal(veterans.tierOf(45), 2);
-    assert.equal(veterans.tierOf(119), 2);
-    assert.equal(veterans.tierOf(120), 3);
+    for (let i = 0; i < 3; i++) up = await veterans.record(ann, ['nebu_001'], true);
+    assert.deepEqual(up, [{ id: 'nebu_001', tier: 2, name: 'Battle-Scarred' }], 'its second quest: 8 wins');
 
     // ── The turf map ──
     const [d1, d2, d3] = territory.DISTRICTS.map(d => d.id);
