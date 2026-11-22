@@ -14339,7 +14339,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_046",
         "code": "ARSO-046",
         "flavourText": "Three mouths to feed, three ways to kill. Which one wants a taste first?",
-        "effectText": "At the end of every 2nd turn of yours: PROMOTE this card.",
+        "effectText": "Every 2 turns, at the end of your turn: PROMOTE this card.",
         "effects": [
             {
                 "when": "turn_end",
@@ -14646,7 +14646,7 @@ export const FORGE_CARDS = {
         "art_url": "card_arso_055",
         "code": "ARSO-055",
         "flavourText": "Come closer, little flame. I've been dying to meet you.",
-        "effectText": "While an enemy character is BURNING, this card can NEGATE an enemy character's effect once a turn (it doesn't happen).\nOnce per turn, when this card is Downed: Switch the character that Downed it to DEF position.",
+        "effectText": "While an enemy character is BURNING, this card can NEGATE an enemy character's effect once a turn.\nOnce per turn, when this card is Downed: Switch the character that Downed it to DEF position.",
         "effects": [
             {
                 "when": "passive",
