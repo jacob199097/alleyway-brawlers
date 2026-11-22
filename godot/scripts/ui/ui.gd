@@ -1076,30 +1076,72 @@ static func veteran_fx(m: ShaderMaterial, tier: int) -> void:
 		m.set_shader_parameter("veteran", float(tier))
 
 
-## A card's veteran standing for the zoom and the library: its rank, card XP and a bar to the next
-## rank (backend/economy/veterans.js: 1 XP a match, 3 for a win), or null (never played).
-## `theirs`: a card in a duel that isn't yours: its owner's card XP (their_xp, from the match), or
-## only its rank (their_xp -1: a server from before 0.9.143 sent no XP).
+## Season borders (backend/economy/seasons.js honours): the rank a border is in → how lively it is
+## (season_border.gdshader's level). Rookie has none.
+const BORDER_LEVEL := {"street_tough": 1, "enforcer": 2, "underboss": 3, "kingpin": 4, "legend": 5}
+
+## Puts a season border round a player's picture (a square Control of side `side`): tier is the rank it's in
+## (a profile's border_tier), or nothing for none. Drawn over the picture's edge and just outside it.
+static func season_border(pic: Control, tier, side: float) -> void:
+	if not tier is String or not BORDER_LEVEL.has(tier) or pic == null:
+		return
+	var m := maxf(5.0, side * 0.1)
+	var r := ColorRect.new()
+	r.name = "SeasonBorder"
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.position = Vector2(-m, -m)
+	r.size = Vector2.ONE * (side + 2.0 * m)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/season_border.gdshader")
+	mat.set_shader_parameter("color", load("res://scripts/ui/seasons.gd").RANK_COLORS.get(tier, GOLD))
+	mat.set_shader_parameter("level", float(BORDER_LEVEL[tier]))
+	mat.set_shader_parameter("margin", m / (side + 2.0 * m))
+	r.material = mat
+	pic.add_child(r)
+
+
+## Card mastery quests (godot/data/veteran_quests.json; backend/economy/veterans.js counts them): which set a
+## card has, by what it is. Same as questKind in veterans.js.
+static func veteran_kind(c: Dictionary) -> String:
+	var t := str(c.get("cardType", c.get("card_type", "")))
+	if t == "leader":
+		return "leader"
+	if t != "gang_member":
+		return "card"
+	if str(c.get("subtype", "")) == "striver" and str(c.get("promotesTo", "")) != "":
+		return "striver"
+	if str(c.get("subtype", "")) == "heavy":
+		return "heavy"
+	return "effects" if c.get("effects") is Array and not (c.effects as Array).is_empty() else "character"
+
+
+static var _vet_quests := {}
+
+## A card's three quests: [{stat, need, text}], or [] (a card the game doesn't know).
+static func veteran_quests(id: String) -> Array:
+	if _vet_quests.is_empty():
+		var j = JSON.parse_string(FileAccess.get_file_as_string("res://data/veteran_quests.json"))
+		_vet_quests = j.get("kinds", {}) if j is Dictionary else {}
+	var c := CardDB.get_card(id)
+	if c.is_empty():
+		return []
+	var q = _vet_quests.get(veteran_kind(c), [])
+	return q if q is Array else []
+
+
+## A card's mastery for the zoom and the library: its three quests in order, each done one earning the next
+## veteran frame, with the one being worked on and how far along it is. `theirs`: a card in a duel that isn't
+## yours: only its owner's tier (their_xp: unused since the quests).
 static func veteran_box(id: String, tier: int, theirs := false, width := 560.0, their_xp := -1) -> Control:
 	var t := mini(tier, 3)
-	if theirs and their_xp < 0:
+	if theirs:
 		return label("VETERAN  ·  %s" % VETERAN_NAMES[t], 19, VETERAN_COLORS[t]) if tier > 0 else null
-	var row = {"xp": their_xp} if theirs else Game.veterans.get(id)
-	if not row is Dictionary:
+	var quests := veteran_quests(id)
+	if quests.size() < 3:
 		return null
-	var wins := int(row.get("wins", 0))
-	var plays := int(row.get("plays", 0))
-	var xp := int(row.get("xp", plays + wins * 2))
-	var floor_xp := 0
-	var next := {}
-	for st in Game.veteran_tiers:
-		if not st is Dictionary:
-			continue
-		var need := int(st.get("xp", st.get("wins", 0)))
-		if need > xp:
-			next = st
-			break
-		floor_xp = need
+	var row = Game.veterans.get(id)
+	if not row is Dictionary:
+		row = {}
 	var col: Color = VETERAN_COLORS[t] if tier > 0 else Color("9fb2c8")
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", box(Color(0, 0, 0, 0.45), Color(col, 0.6), 2, 10))
@@ -1109,25 +1151,41 @@ static func veteran_box(id: String, tier: int, theirs := false, width := 560.0, 
 	v.add_theme_constant_override("separation", 6)
 	p.add_child(v)
 	var top := HBoxContainer.new()
-	top.add_child(label("THEIR CARD XP" if theirs else "CARD XP", 18, MUTED, true))
+	top.add_child(label("MASTERY", 18, MUTED, true))
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(gap)
 	top.add_child(label("VETERAN  ·  %s" % VETERAN_NAMES[t] if tier > 0 else "NOT A VETERAN YET", 18, col, true))
 	v.add_child(top)
-	var bar := ProgressBar.new()
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 14)
-	bar.max_value = 1.0
-	bar.value = 1.0 if next.is_empty() else float(xp - floor_xp) / maxf(1.0, int(next.get("xp", next.get("wins", 1))) - floor_xp)
-	bar.add_theme_stylebox_override("background", box(Color(1, 1, 1, 0.08), Color(0, 0, 0, 0), 0, 7))
-	bar.add_theme_stylebox_override("fill", box(col, Color(0, 0, 0, 0), 0, 7))
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(bar)
-	var what := "%d XP  ·  %d more to %s" % [xp, int(next.get("xp", next.get("wins", 0))) - xp, str(next.get("name", "")).to_upper()] 			if not next.is_empty() else "%d XP  ·  TOP RANK" % xp
-	var sub := label(what if theirs else "%s  ·  %d win%s in %d match%s" % [what, wins, "" if wins == 1 else "s", plays, "" if plays == 1 else "es"], 15, Color(0.85, 0.87, 0.92))
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(sub)
+	for i in 3:
+		var qd: Dictionary = quests[i] if quests[i] is Dictionary else {}
+		var need := int(qd.get("need", 1))
+		var stat := str(qd.get("stat", ""))
+		var n := int(row.get("kos", 0)) + int(row.get("downs", 0)) if stat == "fights" else int(row.get(stat, 0))
+		var done := i < tier
+		var now := i == tier
+		var tc: Color = VETERAN_COLORS[i + 1]
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 10)
+		var name_l := label(VETERAN_NAMES[i + 1], 15, tc if done or now else Color(tc, 0.45), true)
+		name_l.custom_minimum_size = Vector2(150, 0)
+		line.add_child(name_l)
+		var what := label(str(qd.get("text", "")), 15, Color(0.9, 0.92, 0.96) if now else Color(1, 1, 1, 0.75 if done else 0.4))
+		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(what)
+		line.add_child(label("DONE" if done else "%d / %d" % [mini(n, need), need] if now else "", 15, tc if done else Color.WHITE, true))
+		v.add_child(line)
+		if now:
+			var bar := ProgressBar.new()
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(0, 10)
+			bar.max_value = 1.0
+			bar.value = clampf(float(n) / maxf(1.0, need), 0.0, 1.0)
+			bar.add_theme_stylebox_override("background", box(Color(1, 1, 1, 0.08), Color(0, 0, 0, 0), 0, 5))
+			bar.add_theme_stylebox_override("fill", box(tc, Color(0, 0, 0, 0), 0, 5))
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			v.add_child(bar)
 	return p
 
 

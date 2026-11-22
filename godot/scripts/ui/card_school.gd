@@ -465,7 +465,7 @@ func _chapter_pages(ch: String) -> Array:
 			out.append({"chapter": ch, "mode": "tiles", "cols": 3, "title": "CLIMBING THE STREETS", "tiles": [
 				["RANKED BRAWL", Color("ffd34d"), "From level 5, against another player. Wins earn Rank Points, losses cost some (rematches make it a best of 3). Climb from [b]Rookie[/b] to Street Tough, Enforcer, Underboss, Kingpin and [b]Legend[/b]."],
 				["CLAN MASTERY", Color("6fd3ff"), "Each clan you play levels up on its own (10 levels), paying Karat, that clan's profile pictures and titles."],
-				["VETERAN CARDS", Color("d0905a"), "Win with a card and it remembers: 5 wins makes it [b]Seasoned[/b], 15 [b]Battle-Scarred[/b] (holo foil), 40 a [b]Street Legend[/b] (gold foil). Your rivals see it."],
+				["VETERAN CARDS", Color("d0905a"), "Every card has three mastery quests (zoom in on it to see them), done in order: each one earns it the next frame, [b]Seasoned[/b] (bronze), [b]Battle-Scarred[/b] (chrome), then [b]Street Legend[/b] (gold). Your rivals see it."],
 				["ACHIEVEMENTS", Color("ff9a3c"), "Goals of every kind, paying Karat, Dust, titles, profile pictures and card backs."],
 				["TURF DEFENSE", Color("ff4d6d"), "Team up with another player against a clan boss. Beat it on Street for its [b]prize card[/b], a card you can't get anywhere else."],
 				["THE TURF MAP", Color("ff6a4a"), "Every match wins influence for your clan in the district you fight in. Hold districts when the week ends to earn Karat; top fighter in one is its [b]boss[/b]."],

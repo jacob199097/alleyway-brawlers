@@ -37,6 +37,7 @@
 const { randomUUID } = require('crypto');
 const { awayNotGone } = require('./away');
 const contracts = require('../economy/contracts');   // (judging them; the database parts come in through deps)
+const veterans = require('../economy/veterans');   // (card mastery quests: what each card did, counted from the events)
 
 const TURN_SECS        = 90;    // a player who doesn't act for this long is auto-played
 // Once auto-played, a player who still isn't acting gets AWAY_SECS per move, and loses after
@@ -224,7 +225,7 @@ function forSeat(v, seat) {
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  their veteran cards' tiers {cardId: tier}
  * @param {(playerId, cardIds) => Promise<string[]>} [deps.animatedCards]  which of these cards they own animated (economy/animated.js)
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranXp]  their cards' card XP {cardId: xp}
- * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
+ * @param {(playerId, cardIds, won, tracker) => Promise<Array>} [deps.recordVeterans]  cards played + what they did (veterans.track) → new veteran tiers
  * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the match's district
  * @param {(district) => object|null} [deps.districtGang]  the gang running a district ({name, district, seed}): a turf map fight's CPU
  *        m = {playerId, outcome, mode, difficulty, clan, kos, promotes, awakens, morale}
@@ -378,8 +379,8 @@ function createOnlineService(io, deps) {
         const match = {
             id: randomUUID(), mode, state, startedAt: Date.now(), over: false, timer: null, challenge, arena: where, series,
             seats: {
-                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
-                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set() },
+                player: { ...a, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set(), vet: veterans.tracker() },
+                opponent: { ...b, connected: true, grace: null, cardsPlayed: 0, idle: 0, kos: 0, promotes: 0, awakens: 0, drawn: new Set(), played: new Set(), vet: veterans.tracker() },
             },
         };
         // Everything needed to play the match again (replays: routes/replays.js, replaySteps)
@@ -406,7 +407,7 @@ function createOnlineService(io, deps) {
         return { username: seat.profile.username, level: seat.profile.level, avatar_url: seat.profile.avatar_url, rank: seat.profile.rank || null,
             clan: seat.profile.clan || null, clan_level: seat.profile.clan_level || null,
             title: seat.profile.title || null, card_back: seat.profile.card_back || null, vets: seat.vets || {}, vet_xp: seat.vetXp || {}, anim: seat.anim || [],
-            showcase: seat.profile.showcase || [],
+            showcase: seat.profile.showcase || [], border_tier: seat.profile.border_tier || null,
             ...(seat.profile.bot ? { bot: true, subtitle: seat.profile.subtitle || 'CPU OPPONENT', ...(seat.profile.stars ? { stars: seat.profile.stars } : {}) } : {}) };   // (a CPU: who it is; a turf gang's stars)
     }
 
@@ -474,7 +475,10 @@ function createOnlineService(io, deps) {
             if (ev.type === 'ko' && match.seats[other(ev.side)]) match.seats[other(ev.side)].kos += 1;
             if (ev.type === 'promote' && match.seats[ev.side]) match.seats[ev.side].promotes += 1;
             if (ev.type === 'awaken' && match.seats[ev.side]) match.seats[ev.side].awakens += 1;
-            for (const seat of ['player', 'opponent']) if (match.seats[seat].contract) contracts.track(match.seats[seat].contract, ev, seat);
+            for (const seat of ['player', 'opponent']) {
+                if (match.seats[seat].contract) contracts.track(match.seats[seat].contract, ev, seat);
+                veterans.track(match.seats[seat].vet, ev, seat);
+            }
         }
         const doneNow = {};   // seat → its contract, just done (a "contract" event in that player's update)
         for (const seat of ['player', 'opponent']) {
@@ -666,7 +670,8 @@ function createOnlineService(io, deps) {
                 kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: match.state.sides[seat].morale,
             }).catch(() => []);
             mastery[s.playerId] = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
-            veterans[s.playerId] = await deps.recordVeterans?.(s.playerId, [...s.played], outcome === 'win')?.catch?.(() => []) ?? [];
+            const vetIds = [...s.played, ...(s.setup?.leader ? [s.setup.leader] : [])];   // (and its leader: a leader's quests)
+            veterans[s.playerId] = await deps.recordVeterans?.(s.playerId, vetIds, outcome === 'win', s.vet)?.catch?.(() => []) ?? [];
             // (a CPU match past the daily reward cap wins no influence either)
             if (!bot || (rewards[s.playerId] && !rewards[s.playerId].dailyCapReached)) {
                 turf[s.playerId] = await deps.recordInfluence?.({ playerId: s.playerId, district: match.arena, clan,
@@ -1113,10 +1118,12 @@ async function loadSetupFromDb(pool, playerId) {
 }
 
 async function loadProfileFromDb(pool, playerId) {
-    const { rows } = await pool.query('SELECT username, level, avatar_url, title, card_back, rank FROM players WHERE id = $1', [playerId]);
+    const { rows } = await pool.query('SELECT username, level, avatar_url, title, card_back, rank, border FROM players WHERE id = $1', [playerId]);
     if (!rows[0]) return { username: 'Player', level: 1, avatar_url: null };
     const { titleText } = require('../economy/achievements');
-    return { ...rows[0], title: await titleText(rows[0].title).catch(() => null),
+    const { border, ...p } = rows[0];
+    return { ...p, title: await titleText(p.title, playerId).catch(() => null),
+        border_tier: await require('../economy/seasons').borderTier(playerId, border).catch(() => null),
         showcase: await require('../economy/showcase').get(playerId).catch(() => []) };
 }
 

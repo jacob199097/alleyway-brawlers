@@ -1,0 +1,35 @@
+{
+    "_about": "Card mastery quests (backend/economy/veterans.js, UI.veteran_box): three per card, done in order, each earning the next veteran frame (bronze Seasoned, chrome Battle-Scarred, gold Street Legend). A card's set goes by what it is (veterans.js questKind / UI.veteran_kind): leader; a Hustle / Ambush / Equip ('card'); a Striver with a next level; a Heavy; a character with effects ('effects'); any other character. stat: plays (matches it was played in), wins (matches won with it played), kos / downs / fights (enemy characters it KO'd / Downed / both, in its attacks), direct (Morale damage of its direct attacks), effects (times its effects did something), promotes (times it PROMOTED), awakens (a leader's Awakenings).",
+    "kinds": {
+        "striver": [
+            {"stat": "promotes", "need": 3, "text": "PROMOTE it 3 times"},
+            {"stat": "wins", "need": 6, "text": "Win 6 matches with it played"},
+            {"stat": "promotes", "need": 12, "text": "PROMOTE it 12 times"}
+        ],
+        "heavy": [
+            {"stat": "direct", "need": 2500, "text": "Deal 2500 Morale damage with its direct attacks"},
+            {"stat": "wins", "need": 8, "text": "Win 8 matches with it played"},
+            {"stat": "kos", "need": 15, "text": "KO 15 enemy characters with it"}
+        ],
+        "effects": [
+            {"stat": "effects", "need": 10, "text": "Use its effects 10 times"},
+            {"stat": "wins", "need": 8, "text": "Win 8 matches with it played"},
+            {"stat": "fights", "need": 20, "text": "Down or KO 20 enemy characters with it"}
+        ],
+        "character": [
+            {"stat": "fights", "need": 5, "text": "Down or KO 5 enemy characters with it"},
+            {"stat": "wins", "need": 8, "text": "Win 8 matches with it played"},
+            {"stat": "kos", "need": 15, "text": "KO 15 enemy characters with it"}
+        ],
+        "card": [
+            {"stat": "plays", "need": 5, "text": "Play it in 5 matches"},
+            {"stat": "wins", "need": 8, "text": "Win 8 matches with it played"},
+            {"stat": "effects", "need": 30, "text": "Use its effects 30 times"}
+        ],
+        "leader": [
+            {"stat": "awakens", "need": 3, "text": "Awaken it 3 times"},
+            {"stat": "wins", "need": 10, "text": "Win 10 matches with it leading your deck"},
+            {"stat": "wins", "need": 30, "text": "Win 30 matches with it leading your deck"}
+        ]
+    }
+}

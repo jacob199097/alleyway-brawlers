@@ -190,7 +190,7 @@ async function overview(playerId) {
     const [defs, st, { rows }, { rows: [p] }] = await Promise.all([
         definitions(), stats(pool, playerId),
         pool.query('SELECT achievement_id, unlocked_at FROM player_achievements WHERE player_id = $1', [playerId]),
-        pool.query('SELECT avatar_url, title, card_back FROM players WHERE id = $1', [playerId]),
+        pool.query('SELECT avatar_url, title, card_back, border FROM players WHERE id = $1', [playerId]),
     ]);
     const at = new Map(rows.map(r => [r.achievement_id, r.unlocked_at]));
     return {
@@ -201,11 +201,11 @@ async function overview(playerId) {
         })),
         cosmetics: await cosmetics(playerId, defs, new Set(at.keys())),
         mastery: await mastery.overview(playerId),
-        equipped: { avatar: p?.avatar_url || '', title: p?.title || null, back: p?.card_back || null },
+        equipped: { avatar: p?.avatar_url || '', title: p?.title || null, back: p?.card_back || null, border: p?.border || null },
     };
 }
 
-/** What the player may wear: { avatars, titles: [{id, text}], backs } */
+/** What the player may wear: { avatars, titles: [{id, text}], backs, borders: [{id, text, tier}] } */
 async function cosmetics(playerId, defs, unlocked) {
     defs = defs || await definitions();
     if (!unlocked) {
@@ -221,27 +221,31 @@ async function cosmetics(playerId, defs, unlocked) {
     const ms = await mastery.cosmetics(playerId);   // clan mastery pictures and titles
     // Pictures given to this player by hand (scripts/give_avatar.js)
     const { rows: gifts } = await pool.query('SELECT avatar FROM player_avatar_gifts WHERE player_id = $1 ORDER BY granted_at', [playerId]);
+    const honours = await require('./seasons').honours(playerId);   // each season's highest rank: a title and a border
     return {
         avatars: [...new Set([...freeAvatars(), ...levelAvatars, ...got.map(a => a.reward.avatar).filter(Boolean), ...ms.avatars,
             ...gifts.map(g => g.avatar)])],
-        titles: [...got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })), ...ms.titles],
+        titles: [...honours.map(h => ({ id: h.id, text: h.title })), ...got.filter(a => a.reward.title).map(a => ({ id: a.id, text: a.reward.title })), ...ms.titles],
         backs: got.map(a => a.reward.back).filter(Boolean),
+        borders: honours.map(h => ({ id: h.id, text: `${h.name} ${h.tier_name}`, tier: h.tier })),
     };
 }
 
-/** The title text for a player's chosen title (players.title holds the achievement id). */
-async function titleText(achievementId) {
+/** The title text for a player's chosen title (players.title holds the achievement id; a season's title, "season:N",
+ *  names the rank the player reached in it, so it needs the player). */
+async function titleText(achievementId, playerId = null) {
     if (!achievementId) return null;
+    if (String(achievementId).startsWith('season:')) return (await require('./seasons').honourOf(playerId, achievementId))?.title || null;
     if (String(achievementId).startsWith('mastery:')) return mastery.titleText(achievementId);
     const a = (await definitions()).find(d => d.id === achievementId);
     return a?.reward.title || null;
 }
 
 /**
- * Change what the player wears. Each field is optional; null resets title/back to the default.
+ * Change what the player wears. Each field is optional; null resets title/back/border to the default.
  * → { ok: true } or { error }
  */
-async function equip(playerId, { avatar, title, back } = {}) {
+async function equip(playerId, { avatar, title, back, border } = {}) {
     const mine = await cosmetics(playerId);
     const sets = [], params = [];
     if (avatar !== undefined) {
@@ -256,6 +260,10 @@ async function equip(playerId, { avatar, title, back } = {}) {
     if (back !== undefined) {
         if (back !== null && !mine.backs.includes(back)) return { error: "You haven't unlocked that card back." };
         params.push(back); sets.push(`card_back = $${params.length}`);
+    }
+    if (border !== undefined) {
+        if (border !== null && !mine.borders.some(b => b.id === border)) return { error: "You haven't earned that border." };
+        params.push(border); sets.push(`border = $${params.length}`);
     }
     if (!sets.length) return { error: 'Nothing to change.' };
     params.push(playerId);

@@ -8,14 +8,15 @@
 const { pool } = require('../db/pool');
 const achievements = require('./achievements');
 
-const RANKED = `SELECT id, username, level, rank, rank_points, wins, losses, avatar_url, chosen_clan, title AS title_id,
+const RANKED = `SELECT id, username, level, rank, rank_points, wins, losses, avatar_url, chosen_clan, title AS title_id, border,
                        RANK() OVER (ORDER BY rank_points DESC, wins DESC) AS place
                   FROM players`;
 
 async function shown(row) {
     if (!row) return null;
-    const { title_id: titleId, ...rest } = row;
-    return { ...rest, place: Number(row.place), title: await achievements.titleText(titleId) };
+    const { title_id: titleId, border, ...rest } = row;
+    return { ...rest, place: Number(row.place), title: await achievements.titleText(titleId, row.id),
+        border_tier: await require('./seasons').borderTier(row.id, border).catch(() => null) };
 }
 
 /** → { top: [players...], me: the asking player's row (with place), total: how many are ranked } */

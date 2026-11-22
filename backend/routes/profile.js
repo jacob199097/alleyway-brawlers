@@ -7,6 +7,7 @@ const achievements    = require('../economy/achievements');
 const { leaderboard } = require('../economy/leaderboard');
 const mastery         = require('../economy/mastery');
 const veterans        = require('../economy/veterans');
+const seasons         = require('../economy/seasons');   // (a season border's rank)
 const showcase        = require('../economy/showcase');
 
 // ── GET /api/profile/me ───────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ router.get('/me', requireAuth, async (req, res) => {
             `SELECT p.id, p.username, p.email, p.karat, p.contraband, p.level, p.xp,
                     p.rank, p.rank_points, p.wins, p.losses, p.draws,
                     p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.last_played_at,
-                    p.dust, p.title AS title_id, p.card_back, p.free_packs, p.first_win_date,
+                    p.dust, p.title AS title_id, p.card_back, p.border, p.free_packs, p.first_win_date,
                     p.steam_id IS NOT NULL AS steam_linked, p.password_hash IS NOT NULL AS has_password,
                     -- Collection completion %
                     (
@@ -32,7 +33,8 @@ router.get('/me', requireAuth, async (req, res) => {
         // Whether today's first-win bonus is still there (decided as economy/postMatch.js does)
         const { first_win_date: fw, ...me } = rows[0];
         const firstWinReady = (fw ? fw.toISOString().slice(0, 10) : null) !== new Date().toISOString().slice(0, 10);
-        res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id),
+        res.json({ ...me, first_win_ready: firstWinReady, first_win_xp: require('../economy/postMatch').FIRST_WIN_BONUS_XP, title: await achievements.titleText(me.title_id, req.playerId),
+            border_tier: await seasons.borderTier(req.playerId, me.border).catch(() => null),
             most_played: await mastery.mostPlayed(req.playerId).catch(() => null), showcase: await showcase.get(req.playerId).catch(() => []) });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -62,7 +64,7 @@ router.get('/player/:id', requireAuth, async (req, res) => {
         }
         const { rows } = await pool.query(
             `SELECT p.id, p.username, p.level, p.xp, p.rank, p.rank_points, p.wins, p.losses, p.draws,
-                    p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.title AS title_id,
+                    p.avatar_url, p.profile_bio, p.chosen_clan, p.created_at, p.title AS title_id, p.border,
                     p.card_back, p.is_online, p.last_played_at,
                     (SELECT COUNT(*)::int FROM player_achievements pa WHERE pa.player_id = p.id) AS achievements,
                     (
@@ -80,7 +82,8 @@ router.get('/player/:id', requireAuth, async (req, res) => {
         const vet = await veterans.overview(id).catch(() => ({ cards: {} }));
         const best = Object.entries(vet.cards).sort((a, b) => b[1].xp - a[1].xp).slice(0, 5)
             .map(([cardId, v]) => ({ id: cardId, plays: v.plays, wins: v.wins, tier: v.tier }));
-        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id), mastery: ms, best_cards: best,
+        res.json({ ...rows[0], title: await achievements.titleText(rows[0].title_id, id), border_tier: await seasons.borderTier(id, rows[0].border).catch(() => null),
+            mastery: ms, best_cards: best,
             most_played: await mastery.mostPlayed(id).catch(() => null), showcase: await showcase.get(id).catch(() => []) });
     } catch (err) {
         res.status(500).json({ error: err.message });

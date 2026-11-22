@@ -1,5 +1,14 @@
 [
     {
+        "version": "0.9.185",
+        "notes": [
+            "Card mastery quests: every card has three quests (zoom in on a card to see them), done in order, and each one earns its next veteran frame: bronze, chrome, gold. A Striver PROMOTEs, a Heavy hits hard directly, a Hustle gets used. Frames you already have are kept.",
+            "Season titles and borders: reach Street Tough or higher in a Ranked season and you earn its title (\"Season 0 Kingpin\") and a border round your picture in that rank's colours, livelier the higher you climb (Legend has sparks). They rise with your rank while the season runs. Pick them in YOUR LOOK (Profile, CHANGE LOOK).",
+            "Your border shows on your profile, the main menu, the leaderboard and the VS screen.",
+            "The board has a slight table perspective: the far rows sit a little smaller and closer together, as if you were sitting at the table."
+        ]
+    },
+    {
         "version": "0.9.184",
         "notes": [
             "29 new cards: 16 ARSONISTS (Flicker, Ashen, Ashfang, Cinderclaw, Cinderborn, Ashwing, Sister Cinder, Wickwick, Crown of the Inferno) and 13 PIRATES (Captain Blackwake, Powderpaw Pete, Marina Tidewhisper, Gerald Riverfist, Blackbeard's Curse).",

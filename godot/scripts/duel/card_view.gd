@@ -108,11 +108,25 @@ var cost_now := -1: set = set_cost_now        # a lowered Authority cost, shown 
 var glow_color := UI.GOLD
 ## A second glow colour the outline breathes toward (an ability is ready); cleared whenever glow is set
 var pulse_color := Color(0, 0, 0, 0): set = set_pulse_color
-var home := Vector2.ZERO
+var home := Vector2.ZERO:
+	set(v):
+		home = v
+		_rescale()
 var home_rot := 0.0
 var home_scale := 1.0
 ## Free-for-all: an opponent's board is drawn smaller; every scale this card is moved to is times this
-var board_scale := 1.0
+var board_scale := 1.0   # board_base × the table perspective at its home (depth_at): what its moves scale by
+## Its board's size (FFA opponents' boards are smaller; duel.gd _sc)
+var board_base := 1.0:
+	set(v):
+		board_base = v
+		_rescale()
+## The duel's table perspective (duel.gd _depth): a point of the board → how big a card there draws.
+static var depth_at := Callable()
+
+
+func _rescale() -> void:
+	board_scale = board_base * (float(depth_at.call(home)) if depth_at.is_valid() else 1.0)
 var busy := false   # flying / animating: ignore hover and layout
 var hovered := false            # lean toward the mouse
 var rest_tilt := Vector2.ZERO   # resting lean in screen space: (turn, lean back), degrees

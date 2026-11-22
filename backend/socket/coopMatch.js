@@ -37,6 +37,7 @@ const { viewFor, filterEvent, statsFilter } = require('./onlineMatch');
 const { rename } = require('./ffaMatch');
 const { arenaBonus } = require('../utils/arenas');   // (the district's arena: its effect for everyone)
 const { weatherPlan } = require('../utils/weather');   // (and its weather)
+const veterans = require('../economy/veterans');   // (card mastery quests: what each card did, counted from the events)
 
 const TURN_SECS   = 90;
 const AWAY_SECS   = 15;
@@ -96,7 +97,7 @@ function actionFrom(action, seat) {
  * @param {(playerId, clan, outcome) => Promise} [deps.masteryProgress]
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranTiers]  veteran cards' tiers {cardId: tier}
  * @param {(playerId, cardIds) => Promise<object>} [deps.veteranXp]  the cards' card XP {cardId: xp}
- * @param {(playerId, cardIds, won) => Promise<Array>} [deps.recordVeterans]  cards played → new veteran tiers
+ * @param {(playerId, cardIds, won, tracker) => Promise<Array>} [deps.recordVeterans]  cards played + what they did (veterans.track) → new veteran tiers
  * @param {(m) => Promise<object|null>} [deps.recordInfluence]  turf map influence won in the boss's district
  * @param {(deckId, outcome) => Promise} [deps.recordDeck]
  * @param {(playerId, questId, amount) => Promise} [deps.incrementDailyQuest]
@@ -117,7 +118,7 @@ function createCoopService(io, deps) {
     function profileOf(e) {
         const p = e.profile || {};
         return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title || null,
-            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {}, vet_xp: e.vetXp || {}, anim: e.anim || [] };
+            card_back: p.card_back || null, cpu: !!e.bot, boss: !!e.bot, vets: e.vets || {}, vet_xp: e.vetXp || {}, anim: e.anim || [], border_tier: p.border_tier || null };
     }
 
     // ── Quick match ──
@@ -282,7 +283,7 @@ function createCoopService(io, deps) {
             boss, lv, info: bossInfo(boss, lv) };
         for (const s of seats) {
             match.seats[s] = { ...entries[s], seat: s, connected: true, grace: null, idle: 0, kos: 0, promotes: 0, awakens: 0,
-                cardsPlayed: 0, damage: 0, settled: null, watching: !entries[s].bot, played: new Set() };
+                cardsPlayed: 0, damage: 0, settled: null, watching: !entries[s].bot, played: new Set(), vet: veterans.tracker() };
         }
         matches.set(match.id, match);
         for (const s of ['p1', 'p2']) byPlayer.set(entries[s].playerId, match);
@@ -325,6 +326,7 @@ function createCoopService(io, deps) {
         const st = match.state;
         match.lastEvents = events.length;
         for (const ev of events) {
+            for (const [seat, x] of Object.entries(match.seats)) if (x.vet) veterans.track(x.vet, ev, seat);
             const s = match.seats[ev.side];
             if (!s) continue;
             if (['summon', 'set', 'hustle'].includes(ev.type)) s.cardsPlayed += 1;
@@ -434,7 +436,7 @@ function createCoopService(io, deps) {
             clan, kos: s.kos, promotes: s.promotes, awakens: s.awakens, morale: st.sides[seat].morale,
         })?.catch?.(() => []) || [];
         s.settled.mastery = await deps.masteryProgress?.(s.playerId, clan, outcome)?.catch?.(() => null) ?? null;
-        s.settled.veterans = await deps.recordVeterans?.(s.playerId, [...(s.played || [])], won)?.catch?.(() => []) ?? [];
+        s.settled.veterans = await deps.recordVeterans?.(s.playerId, [...(s.played || [])], won, s.vet)?.catch?.(() => []) ?? [];
         s.settled.turf = await deps.recordInfluence?.({ playerId: s.playerId, district: match.boss.arena, clan, mode: 'coop', outcome })?.catch?.(() => null) ?? null;
         return s.settled;
     }

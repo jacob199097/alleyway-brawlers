@@ -59,7 +59,9 @@ func _podium(three: Array) -> void:
 		for m in ["content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"]:
 			fb.set(m, 4)
 		frame.add_theme_stylebox_override("panel", UI._glow(fb, col, 0.8))
-		frame.add_child(UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(150, 150) if i == 0 else Vector2(124, 124), true))
+		var pic := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(150, 150) if i == 0 else Vector2(124, 124), true)
+		UI.season_border(pic, p.get("border_tier"), 150.0 if i == 0 else 124.0)
+		frame.add_child(pic)
 		var c := CenterContainer.new()
 		c.add_child(frame)
 		v.add_child(c)
@@ -127,7 +129,9 @@ func _row(p: Dictionary) -> Control:
 	place.custom_minimum_size = Vector2(80, 0)
 	place.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(place)
-	h.add_child(UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(48, 48), true))
+	var pic := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(48, 48), true)
+	UI.season_border(pic, p.get("border_tier"), 48.0)
+	h.add_child(pic)
 	var who := VBoxContainer.new()
 	who.add_theme_constant_override("separation", 0)
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL

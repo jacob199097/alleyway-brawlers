@@ -303,6 +303,7 @@ func _build_bar(p: Dictionary) -> void:
 	add_child(bar)
 	# (inside the neon frame in the bar artwork, its glow showing evenly all round)
 	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(120, 120), true)
+	UI.season_border(av, p.get("border_tier"), 120.0)
 	av.position = _bar(182, 134) - Vector2(60, 60)
 	av.mouse_filter = Control.MOUSE_FILTER_STOP
 	av.gui_input.connect(func(e):

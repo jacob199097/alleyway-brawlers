@@ -129,7 +129,7 @@ function createFfaService(io, deps) {
     function profileOf(e) {
         const p = e.profile || {};
         return { username: p.username, level: p.level, avatar_url: p.avatar_url, title: p.title || null,
-            card_back: p.card_back || null, cpu: !!e.bot };
+            card_back: p.card_back || null, cpu: !!e.bot, border_tier: p.border_tier || null };
     }
 
     // ── Lobby ──

@@ -98,6 +98,26 @@ const conn = (database) => new Client({
     assert.equal((await seasons.unclaimed(legend)).length, 0);
     assert.equal(await seasons.claim(idle, 0), null, 'nothing for a player who did not play Ranked');
 
+    // Season titles and borders: the highest rank of each season (Street Tough and up), this season's so far too
+    const achievements = require('./achievements');
+    let h = await seasons.honours(legend);
+    assert.deepEqual(h.map((x) => [x.id, x.tier]), [['season:0', 'legend']], 'Season 0: Legend');
+    assert.equal(h[0].title, 'Season 0 Legend');
+    assert.deepEqual(await seasons.honours(idle), [], 'no Ranked: no honour');
+    await q('UPDATE players SET season_ranked = 1, season_peak_points = 1800 WHERE id = $1', [legend]);   // (Kingpin this season)
+    h = await seasons.honours(legend);
+    assert.deepEqual(h.map((x) => [x.id, x.tier]), [['season:1', 'kingpin'], ['season:0', 'legend']], 'this season so far, newest first');
+    const mine = await achievements.cosmetics(legend);
+    assert.ok(mine.borders.some((b) => b.id === 'season:0' && b.tier === 'legend'), 'a border to wear');
+    assert.ok(mine.titles.some((t) => t.id === 'season:1' && t.text === 'Season 1 Kingpin'), 'and a title');
+    assert.deepEqual(await achievements.equip(legend, { border: 'season:1', title: 'season:1' }), { ok: true });
+    assert.equal(await seasons.borderTier(legend, 'season:1'), 'kingpin');
+    await q('UPDATE players SET season_peak_points = 3100 WHERE id = $1', [legend]);
+    assert.equal(await seasons.borderTier(legend, 'season:1'), 'legend', 'it moves up with the season');
+    assert.equal(await achievements.titleText('season:1', legend), 'Season 1 Legend');
+    assert.ok((await achievements.equip(idle, { border: 'season:0' })).error, 'not a border they earned');
+    assert.equal(await seasons.borderTier(idle, 'season:0'), null);
+
     await pool.end();
     console.log('seasons: ok');
 })().catch(async (err) => {

@@ -18,6 +18,9 @@ const OPP_HAND_SCALE := 0.66
 const COLS := [780.0, 930.0, 1080.0, 1230.0, 1380.0]
 const ROWS := {"player": [536.0, 728.0], "opponent": [312.0, 120.0]}   # [front, back]
 const DIVIDER_Y := 424.0
+## Table perspective (1v1): the far side of the board draws a little smaller and closer together, as across a
+## table (_depth; cards follow the slot they sit in: CardView.depth_at). The opponent's back row's size:
+const PERSP_FAR := 0.86
 const CAM_LEAN := 6.0   # how far the camera leans toward whoever is acting (_cam_turn)
 ## Weather that rolls in mid-match (an arena's "weather" in data/arenas.json names which can come): its layers
 ## (ArenaLife kinds, picture pixels), how dark the arena goes, the backdrop's rain / sheen / haze added, the light on
@@ -269,6 +272,7 @@ func _ready() -> void:
 	randomize()
 	CardView.anim_uids.clear()   # (a new table: whose cards move is this match's)
 	CardView.scene_light = Color(0, 0, 0, 0)   # (and its light is this arena's, below)
+	CardView.depth_at = _depth   # (and its table perspective: the far rows smaller)
 	if "--autoplay" in OS.get_cmdline_user_args():
 		ai_sides = ["player", "opponent"]
 	_font = UI.font()
@@ -470,6 +474,7 @@ func _make_leader_views() -> void:
 			var v := _new_view(l, side, true)
 			v.position = pile_pos(side, "leader")
 			v.home = v.position
+			v.scale = Vector2.ONE * v.board_scale   # (its place's size: the table perspective)
 			v.badge_text = _influence_text(int(l.get("influence", l.get("base_defense", 0))))
 			v.show_badge = true
 			leaders[side] = v
@@ -477,6 +482,7 @@ func _make_leader_views() -> void:
 
 func _exit_tree() -> void:
 	CardView.scene_light = Color(0, 0, 0, 0)   # (the arena's light stays in its match)
+	CardView.depth_at = Callable()   # (and its table perspective)
 	Game.sound.calm(0.8)   # (and its music's layers and filter)
 
 
@@ -724,7 +730,9 @@ func _intro_plate(side: String, prof: Dictionary, col: Color) -> Control:
 		fb.set(m, 4)
 	frame.add_theme_stylebox_override("panel", UI._glow(fb, col, 0.8))
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(UI.texture_rect(UI.avatar(prof.get("avatar_url")), Vector2(84, 84), true))
+	var pic := UI.texture_rect(UI.avatar(prof.get("avatar_url")), Vector2(84, 84), true)
+	UI.season_border(pic, prof.get("border_tier"), 84.0)   # (their season border)
+	frame.add_child(pic)
 	row.add_child(frame)
 	var info := VBoxContainer.new()
 	info.add_theme_constant_override("separation", 2)
@@ -1418,6 +1426,7 @@ func _build_from_view() -> void:
 			var v := _new_view(c, side, not c.get("face_down", false))
 			v.position = slot_pos(side, slot)
 			v.home = v.position
+			v.scale = Vector2.ONE * v.board_scale   # (its slot's size: the table perspective)
 			v.home_rot = PI / 2 if slot < 5 and (c.get("position") == "def" or c.get("downed", false)) else 0.0
 			v.rotation = v.home_rot
 			v.downed = c.get("downed", false)
@@ -1678,11 +1687,25 @@ func _row_side(side: String) -> String:
 
 
 ## FFA: a point on the 1v1 board (yours, or the opponent's) → the same point on this side's board in the grid.
+## 1v1: where the table perspective puts it (nearer the middle the farther away it is).
 func _xf(side: String, p: Vector2) -> Vector2:
 	var b: Dictionary = _boards.get(side, {})
 	if b.is_empty():
-		return p
+		var k := _depth(p)
+		return p if k == 1.0 else Vector2(PLAYER_C.x + (p.x - PLAYER_C.x) * k, p.y)
 	return b.c + (p - (PLAYER_C if _row_side(side) == "player" else OPP_C)) * (b.get("p", Vector2.ONE * float(b.s)) as Vector2)
+
+
+## The table perspective's size at a point of the 1v1 board: PERSP_FAR at the opponent's back row, rising to
+## 1 at yours; 1 off the board (the hands) and in FFA.
+func _depth(p: Vector2) -> float:
+	if _ffa or not _boards.is_empty():
+		return 1.0
+	var far: float = ROWS.opponent[1]
+	var near: float = ROWS.player[1]
+	if p.y < far - CARD.y / 2.0 or p.y > near + CARD.y / 2.0:
+		return 1.0
+	return lerpf(PERSP_FAR, 1.0, clampf((p.y - far) / (near - far), 0.0, 1.0))
 
 
 ## How big this side's board is drawn (FFA opponents' are smaller).
@@ -1727,15 +1750,16 @@ func _draw() -> void:
 		draw_line(Vector2(560, DIVIDER_Y), Vector2(1600, DIVIDER_Y), Color(1, 1, 1, 0.14), 2.0)
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 150.0)
 	for side in _sides:
-		var size := CARD * _sc(side)
+		var lk := _sc(side) * _depth(pile_pos(side, "leader"))
 		if not _paint.is_empty():
-			_draw_paint(Rect2(pile_pos(side, "leader") - size / 2, size), "pile", _sc(side))
+			_draw_paint(Rect2(pile_pos(side, "leader") - CARD * lk / 2, CARD * lk), "pile", lk)
 		for slot in 10:
-			var r := Rect2(slot_pos(side, slot) - size / 2, size)
+			var sk := _sc(side) * _depth(slot_pos(side, slot))   # (the table perspective: the far rows smaller)
+			var r := Rect2(slot_pos(side, slot) - CARD * sk / 2, CARD * sk)
 			if _paint.is_empty():
 				draw_style_box(_slot_box if slot < 5 else _slot_box_back, r)
 			else:
-				_draw_paint(r, "front" if slot < 5 else "back", _sc(side))
+				_draw_paint(r, "front" if slot < 5 else "back", sk)
 			var key := "%s:%d" % [side, slot]
 			if _valid.has(key):
 				var c: Color = _valid[key]
@@ -1745,7 +1769,7 @@ func _draw() -> void:
 					_draw_slot_symbol(r.get_center(), c, side)
 		for pile in ["deck", "gutter", "hideout"]:
 			_draw_pile(side, pile)
-		_draw_zone_label(pile_pos(side, "leader"), "LEADER", _sc(side))
+		_draw_zone_label(pile_pos(side, "leader"), "LEADER", lk)
 		if _out.has(side):   # FFA: out of the game
 			var area := _board_rect(side)
 			draw_rect(area, Color(0.02, 0.02, 0.05, 0.72))
@@ -2337,7 +2361,7 @@ func _draw_paint(r: Rect2, kind: String, k: float) -> void:
 
 func _draw_pile(side: String, pile: String) -> void:
 	var p := pile_pos(side, pile)
-	var k := _sc(side)
+	var k := _sc(side) * _depth(p)
 	var size := CARD * k
 	if _paint.is_empty():
 		draw_style_box(_pile_box, Rect2(p - size / 2, size))
@@ -2387,7 +2411,7 @@ func _update_pile_backs(delta: float) -> void:
 					continue
 				_pile_backs[key] = _new_pile_back(side, style)
 			var b: Dictionary = _pile_backs[key]
-			var k := _sc(side)
+			var k := _sc(side) * _depth(pile_pos(side, pile))
 			var size := CARD * k
 			var layers := mini(4, ceili(n / 8.0))
 			var r: TextureRect = b.rect
@@ -2430,7 +2454,7 @@ func _new_pile_back(side: String, style: String) -> Dictionary:
 ## A pile's count and name (on: the board, or the layer over the moving backs).
 func _draw_pile_text(on: CanvasItem, side: String, pile: String) -> void:
 	var p := pile_pos(side, pile)
-	var k := _sc(side)
+	var k := _sc(side) * _depth(p)
 	var n: int = counts.get(side, {}).get(pile, 0)
 	var at := Vector2(p.x - 60, p.y + 16 * k)
 	on.draw_string_outline(_font, at, str(n), HORIZONTAL_ALIGNMENT_CENTER, 120, int(46 * k), 10, Color(0, 0, 0, 0.9))
@@ -2968,7 +2992,7 @@ func _ev_set(ev: Dictionary) -> void:
 func _ev_shuffle(ev: Dictionary) -> void:
 	var side: String = ev.side
 	var at := pile_pos(side, "deck")
-	var k := _sc(side)
+	var k := _sc(side) * _depth(at)
 	var backs: Array = []
 	for i in 3:
 		var v := _new_view({}, side, false)
@@ -7578,7 +7602,7 @@ func _peek(v: CardView, on: bool, pool: Array) -> void:
 func _new_view(c: Dictionary, side: String, up: bool) -> CardView:
 	var v := CardView.new()
 	cards_layer.add_child(v)
-	v.board_scale = _sc(side)
+	v.board_base = _sc(side)
 	v.vets = _vets.get(side, {})
 	v.anims = _anims.get(side, {})
 	v.setup(c, side, up)
@@ -7624,7 +7648,7 @@ func _take_from_hand(side: String, uid: int, c: Dictionary) -> CardView:
 	v.set_card(c)
 	v.glow = 0.0
 	v.cost_now = -1   # (a lowered cost is only shown in the hand)
-	v.board_scale = _sc(side)   # (FFA: your hand is full size, your board smaller)
+	v.board_base = _sc(side)   # (FFA: your hand is full size, your board smaller)
 	_layout_hand(side)
 	return v
 
@@ -11051,6 +11075,7 @@ func _build_my_tag(players: Dictionary) -> void:
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = UI.avatar(str(prof.get("avatar_url", "")) if prof.get("avatar_url") else "")
 	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UI.season_border(av, prof.get("border_tier", Game.player.get("border_tier")), 52.0)
 	tag.add_child(av)
 	var n := _label(20, Color.WHITE, true)
 	n.text = str(prof.get("username", Game.player.get("username", "YOU"))).to_upper().left(14)
@@ -11085,6 +11110,7 @@ func _build_plate(side: String, p: Panel, prof: Dictionary, accent: Color) -> vo
 	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	av.texture = UI.avatar("cpu" if prof.get("cpu", false) else str(prof.get("avatar_url", "")) if prof.get("avatar_url") else "")
 	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UI.season_border(av, prof.get("border_tier"), 52.0)
 	p.add_child(av)
 	var n := _label(20, Color.WHITE, true)
 	n.text = str(prof.get("username", "PLAYER")).to_upper().left(14)

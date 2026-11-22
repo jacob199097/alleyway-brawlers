@@ -225,6 +225,34 @@ func _render_look() -> void:
 	titles.item_selected.connect(func(i): _equip({"title": titles.get_item_metadata(i)}))
 	_look.add_child(titles)
 
+	# Season borders: the highest rank reached in each Ranked season (Street Tough and up), round your picture
+	_look.add_child(UI.label("SEASON BORDER", 18, UI.MUTED, true))
+	var borders := HFlowContainer.new()
+	borders.add_theme_constant_override("h_separation", 12)
+	borders.add_theme_constant_override("v_separation", 12)
+	_look.add_child(borders)
+	var border_now = eq.get("border")
+	var none := VBoxContainer.new()
+	none.add_child(_pick(UI.avatar(current), Vector2(84, 84), border_now == null, func(): _equip({"border": null})))
+	none.add_child(_caption("NONE"))
+	borders.add_child(none)
+	for b in cos.get("borders", []):
+		if not b is Dictionary:
+			continue
+		var v := VBoxContainer.new()
+		var pick := _pick(UI.avatar(current), Vector2(84, 84), border_now is String and border_now == str(b.get("id", "")),
+			func(): _equip({"border": str(b.get("id", ""))}))
+		UI.season_border(pick.get_child(0), b.get("tier"), 84.0)
+		v.add_child(pick)
+		var cap := _caption(str(b.get("text", "")).to_upper())
+		cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # ("SEASON 0 / KINGPIN")
+		v.add_child(cap)
+		borders.add_child(v)
+	var bnote := UI.label("Reach Street Tough or higher in a Ranked season to earn its border and title (they rise with your rank while the season runs).", 16, UI.MUTED)
+	bnote.autowrap_mode = TextServer.AUTOWRAP_WORD
+	bnote.custom_minimum_size = Vector2(560, 0)
+	_look.add_child(bnote)
+
 	_look.add_child(UI.label("CARD BACK", 18, UI.MUTED, true))
 	var backs := HFlowContainer.new()
 	backs.add_theme_constant_override("h_separation", 12)
@@ -285,6 +313,12 @@ func _equip(change: Dictionary) -> void:
 		Game.player.avatar_url = change.avatar
 	if change.has("back"):
 		Game.player.card_back = change.back
+	if change.has("border"):
+		var tier = null
+		for b in _data.get("cosmetics", {}).get("borders", []):
+			if change.border != null and b is Dictionary and str(b.get("id", "")) == str(change.border):
+				tier = b.get("tier")
+		Game.player.border_tier = tier
 	if change.has("title"):
 		var text = null
 		for t in _data.get("cosmetics", {}).get("titles", []):

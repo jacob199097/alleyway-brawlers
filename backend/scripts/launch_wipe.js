@@ -112,7 +112,7 @@ async function wipe(client, opts = {}) {
         `UPDATE players SET karat = $1, contraband = 0, dust = 0, free_packs = 0, level = 1, xp = 0,
                 rank = 'rookie', rank_points = 0, season_ranked = 0, season_peak_points = 0,
                 wins = 0, losses = 0, draws = 0, first_win_date = NULL, daily_streak = 0, daily_claimed_on = NULL,
-                title = NULL, card_back = NULL, showcase = '{}'`, [START_KARAT]);
+                title = NULL, card_back = NULL, border = NULL, showcase = '{}'`, [START_KARAT]);
     lines.push(`  ${String(was.karat).padStart(7)} Karat, ${was.contraband} Contraband, ${was.dust} Dust and ${was.free_packs} free packs: every account back to ${START_KARAT} Karat and nothing else`);
     lines.push(`  ${String(was.leveled).padStart(7)} accounts above level 1 and ${was.ranked} above Rookie: all back to level 1 and Rookie, with a clean win / loss record`);
     if (opts.bought === 'keep') {

@@ -135,6 +135,13 @@ jobs:
           DB_PORT: 5432
           DB_USER: postgres
           DB_PASS: postgres
+      - name: Card mastery quests (counted from a match's events, done in order, earlier veteran tiers kept)
+        run: node backend/economy/veterans.test.cjs
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASS: postgres
       - name: Crafting and achievements
         run: node backend/economy/progression.test.cjs
         env:

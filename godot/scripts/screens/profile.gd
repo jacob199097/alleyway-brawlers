@@ -47,6 +47,7 @@ func _render(p: Dictionary) -> void:
 	left.add_theme_constant_override("separation", 12)
 	card.add_child(left)
 	var av := UI.texture_rect(UI.avatar(p.get("avatar_url")), Vector2(240, 240), true)
+	UI.season_border(av, p.get("border_tier"), 240.0)   # (a season border: economy/seasons.js)
 	var frame := PanelContainer.new()
 	var fb := UI.box(Color(0, 0, 0, 0.5), clan_col, 4, 12)
 	for m in ["content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"]:

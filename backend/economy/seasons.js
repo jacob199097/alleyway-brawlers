@@ -164,4 +164,42 @@ async function endSeason({ name, subtitle = '', weeks = DEFAULT_WEEKS } = {}, ap
     }
 }
 
-module.exports = { current, status, unclaimed, claim, endSeason, softReset, rewardFor, prizeRanks, TIER_NAMES };
+// ── Season titles and borders ────────────────────────────────────────────────
+// The highest rank a player reached in a season (Street Tough and up; this season's so far too) gives them a title
+// ("Season 0 Kingpin") and a border round their picture in that rank's colours. Both are worn by the season's
+// id ("season:0", players.title / players.border), so they move up with the player while the season runs.
+
+const HONOUR_FROM = RANK_TIERS.findIndex((t) => t.tier === 'street_tough');
+
+/** The seasons a player has an honour from, newest first: [{id: 'season:N', season, name, tier, tier_name, title}]. */
+async function honours(playerId, db = pool) {
+    if (!playerId) return [];
+    const out = [];
+    const add = (season, name, tier) => {
+        if (RANK_TIERS.findIndex((t) => t.tier === tier) < HONOUR_FROM) return;
+        out.push({ id: `season:${season}`, season, name, tier, tier_name: TIER_NAMES[tier] || tier, title: `${name} ${TIER_NAMES[tier] || tier}` });
+    };
+    const s = await current(db);
+    if (s) {
+        const { rows: [p] } = await db.query('SELECT season_ranked, season_peak_points FROM players WHERE id = $1', [playerId]);
+        if (p && p.season_ranked > 0) add(s.id, s.name, calcRank(p.season_peak_points).tier);
+    }
+    const { rows } = await db.query(
+        `SELECT ps.season, s.name, ps.peak_tier FROM player_seasons ps JOIN seasons s ON s.id = ps.season
+          WHERE ps.player_id = $1 ORDER BY ps.season DESC`, [playerId]);
+    for (const r of rows) add(r.season, r.name, r.peak_tier);
+    return out;
+}
+
+/** One of a player's honours by its id ('season:N'), or null (not theirs, or not a season id). */
+async function honourOf(playerId, id) {
+    if (!String(id || '').startsWith('season:')) return null;
+    return (await honours(playerId)).find((h) => h.id === id) || null;
+}
+
+/** The rank a player's worn border is in ('kingpin'), or null (none worn, or no longer theirs). */
+async function borderTier(playerId, border) {
+    return border ? (await honourOf(playerId, border))?.tier ?? null : null;
+}
+
+module.exports = { current, status, unclaimed, claim, endSeason, softReset, rewardFor, prizeRanks, honours, honourOf, borderTier, TIER_NAMES };
