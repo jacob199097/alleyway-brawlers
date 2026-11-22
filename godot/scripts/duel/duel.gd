@@ -8966,6 +8966,13 @@ func _build_detail() -> void:
 	text.add_theme_font_size_override("bold_font_size", UI.text_size(21 if phone else 16, false))
 	text.meta_underlined = false
 	text.mouse_filter = Control.MOUSE_FILTER_PASS   # keywords explain themselves when hovered
+	# Long text scrolls (the wheel over it, or its bar): a bar you can see and grab, wide enough for a finger on a phone
+	var bar := text.get_v_scroll_bar()
+	bar.custom_minimum_size.x = 20.0 if phone else 12.0
+	bar.add_theme_stylebox_override("scroll", _box(Color(1, 1, 1, 0.07), Color(0, 0, 0, 0), 0, 6))
+	bar.add_theme_stylebox_override("grabber", _box(Color(0.55, 0.6, 1.0, 0.6), Color(0, 0, 0, 0), 0, 6))
+	bar.add_theme_stylebox_override("grabber_highlight", _box(Color(0.6, 0.68, 1.0, 0.85), Color(0, 0, 0, 0), 0, 6))
+	bar.add_theme_stylebox_override("grabber_pressed", _box(Color(0.7, 0.76, 1.0, 1.0), Color(0, 0, 0, 0), 0, 6))
 	p.add_child(text)
 	var tip := PanelContainer.new()
 	tip.add_theme_stylebox_override("panel", _box(INK, Color(0.6, 0.55, 0.9), 2, 8))

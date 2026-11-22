@@ -1,5 +1,11 @@
 [
     {
+        "version": "0.9.187",
+        "notes": [
+            "In a match, a card with long text now has a scroll bar beside its text in the card panel: drag it, or use the mouse wheel over the text, to read the rest."
+        ]
+    },
+    {
         "version": "0.9.186",
         "notes": [
             "Animated cards, remade: every card's animation now fits its own art. Rain falls on rainy streets, flames flicker, hellfire burns in its own purple, gunfire flashes, smoke rolls, ghosts drift, the sea ripples, stars twinkle and screens glitch, with embers, ash, motes or bubbles over the top. The picture itself no longer warps, so it always looks like the original art.",
